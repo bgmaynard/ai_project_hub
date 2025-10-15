@@ -9,3 +9,5 @@ store/tasks/*.json
 *.h5
 *.keras
 store/code/IBKR_Algo_BOT.zip
+*.zip
+store/code/IBKR_Algo_BOT.zip
