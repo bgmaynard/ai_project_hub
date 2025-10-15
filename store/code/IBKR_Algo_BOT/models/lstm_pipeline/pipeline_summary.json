@@ -1,0 +1,60 @@
+{
+  "pipeline_run": "2025-10-11T20:21:15.348729",
+  "models_trained": 2,
+  "training_history": [
+    {
+      "symbol": "AAPL",
+      "timestamp": "2025-10-11T20:11:49.963025",
+      "config": {
+        "sequence_length": 60,
+        "prediction_horizon": 5,
+        "lstm_units": [
+          64,
+          32
+        ],
+        "dropout_rate": 0.2,
+        "learning_rate": 0.001,
+        "epochs": 50,
+        "batch_size": 32
+      },
+      "results": {
+        "train_loss": 0.682686448097229,
+        "train_accuracy": 0.5704404711723328,
+        "train_auc": 0.5683568716049194,
+        "val_loss": 0.6921865344047546,
+        "val_accuracy": 0.5342066884040833,
+        "val_auc": 0.5292733907699585,
+        "epochs_trained": 11,
+        "timestamp": "2025-10-11T20:11:49.805616"
+      },
+      "data_points": 3494
+    },
+    {
+      "symbol": "TSLA",
+      "timestamp": "2025-10-11T20:16:37.899878",
+      "config": {
+        "sequence_length": 60,
+        "prediction_horizon": 5,
+        "lstm_units": [
+          64,
+          32
+        ],
+        "dropout_rate": 0.2,
+        "learning_rate": 0.001,
+        "epochs": 50,
+        "batch_size": 32
+      },
+      "results": {
+        "train_loss": 0.6880444288253784,
+        "train_accuracy": 0.5362213253974915,
+        "train_auc": 0.5564976334571838,
+        "val_loss": 0.6979661583900452,
+        "val_accuracy": 0.5021833777427673,
+        "val_auc": 0.4697946012020111,
+        "epochs_trained": 11,
+        "timestamp": "2025-10-11T20:16:37.767893"
+      },
+      "data_points": 3494
+    }
+  ]
+}

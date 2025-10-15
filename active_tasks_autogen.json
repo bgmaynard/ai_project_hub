@@ -1,0 +1,72 @@
+﻿[
+    {
+        "task":  "Add unit tests + type checks for high fan-out module: ibkr_live_trading_connector",
+        "rationale":  "High fan-out affects many downstream modules",
+        "assigned_to":  "Copilot",
+        "cluster":  "Utilities/AI/Trading (depends on module)",
+        "status":  "pending"
+    },
+    {
+        "task":  "Add unit tests + type checks for high fan-out module: train_mtf_fixed",
+        "rationale":  "High fan-out affects many downstream modules",
+        "assigned_to":  "Copilot",
+        "cluster":  "Utilities/AI/Trading (depends on module)",
+        "status":  "pending"
+    },
+    {
+        "task":  "Add unit tests + type checks for high fan-out module: dashboard_api",
+        "rationale":  "High fan-out affects many downstream modules",
+        "assigned_to":  "Copilot",
+        "cluster":  "Utilities/AI/Trading (depends on module)",
+        "status":  "pending"
+    },
+    {
+        "task":  "Add unit tests + type checks for high fan-out module: backups.dashboard_api",
+        "rationale":  "High fan-out affects many downstream modules",
+        "assigned_to":  "Copilot",
+        "cluster":  "Utilities/AI/Trading (depends on module)",
+        "status":  "pending"
+    },
+    {
+        "task":  "Add unit tests + type checks for high fan-out module: lstm_training_pipeline",
+        "rationale":  "High fan-out affects many downstream modules",
+        "assigned_to":  "Copilot",
+        "cluster":  "Utilities/AI/Trading (depends on module)",
+        "status":  "pending"
+    },
+    {
+        "task":  "Refactor / isolate interfaces for high fan-in module: datetime",
+        "rationale":  "Reduce coupling; create stable interface to protect dependents",
+        "assigned_to":  "ChatGPT",
+        "cluster":  "Depends on module",
+        "status":  "pending"
+    },
+    {
+        "task":  "Refactor / isolate interfaces for high fan-in module: pandas",
+        "rationale":  "Reduce coupling; create stable interface to protect dependents",
+        "assigned_to":  "ChatGPT",
+        "cluster":  "Depends on module",
+        "status":  "pending"
+    },
+    {
+        "task":  "Refactor / isolate interfaces for high fan-in module: time",
+        "rationale":  "Reduce coupling; create stable interface to protect dependents",
+        "assigned_to":  "ChatGPT",
+        "cluster":  "Depends on module",
+        "status":  "pending"
+    },
+    {
+        "task":  "Refactor / isolate interfaces for high fan-in module: logging",
+        "rationale":  "Reduce coupling; create stable interface to protect dependents",
+        "assigned_to":  "ChatGPT",
+        "cluster":  "Depends on module",
+        "status":  "pending"
+    },
+    {
+        "task":  "Refactor / isolate interfaces for high fan-in module: numpy",
+        "rationale":  "Reduce coupling; create stable interface to protect dependents",
+        "assigned_to":  "ChatGPT",
+        "cluster":  "Depends on module",
+        "status":  "pending"
+    }
+]

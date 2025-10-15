@@ -1,0 +1,17 @@
+﻿[
+    {
+        "status":  "done",
+        "task":  "Inventory and dependency mapping for IBKR_Algo_BOT",
+        "assigned_to":  "ChatGPT"
+    },
+    {
+        "status":  "pending",
+        "task":  "Add adaptive trailing stops (ATR, momentum score) to risk module",
+        "assigned_to":  "Copilot"
+    },
+    {
+        "status":  "pending",
+        "task":  "Summarize strategy notes into logic_docs/mtf_logic.md",
+        "assigned_to":  "Claude"
+    }
+]

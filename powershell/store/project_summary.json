@@ -1,0 +1,2877 @@
+﻿{
+    "project_name":  "IBKR_Algo_BOT",
+    "description":  "Unified AI trading bot combining LSTM/MTF, Warrior-style momentum, and IBKR execution.",
+    "created_or_updated_utc":  "2025-10-13T18:10:51.1448463Z",
+    "location":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT",
+    "inventory":  [
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\.env.template",
+                          "rel_path":  ".env.template",
+                          "name":  ".env.template",
+                          "ext":  ".template",
+                          "language":  "template",
+                          "size_bytes":  328,
+                          "last_write_time":  "2025-10-11T03:39:21.0750044Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\.gitignore",
+                          "rel_path":  ".gitignore",
+                          "name":  ".gitignore",
+                          "ext":  ".gitignore",
+                          "language":  "gitignore",
+                          "size_bytes":  318,
+                          "last_write_time":  "2025-10-11T03:39:21.0750044Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\ai_trading_bot.tsx",
+                          "rel_path":  "ai_trading_bot.tsx",
+                          "name":  "ai_trading_bot.tsx",
+                          "ext":  ".tsx",
+                          "language":  "tsx",
+                          "size_bytes":  16375,
+                          "last_write_time":  "2025-10-11T03:24:28.0120489Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\check_data_settings.py",
+                          "rel_path":  "check_data_settings.py",
+                          "name":  "check_data_settings.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  4899,
+                          "last_write_time":  "2025-10-12T01:53:55.3871879Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\check_python.py",
+                          "rel_path":  "check_python.py",
+                          "name":  "check_python.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  5233,
+                          "last_write_time":  "2025-10-11T15:02:08.9292347Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\compare_results.py",
+                          "rel_path":  "compare_results.py",
+                          "name":  "compare_results.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  8390,
+                          "last_write_time":  "2025-10-12T01:54:13.9393386Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\create_dashboard.py",
+                          "rel_path":  "create_dashboard.py",
+                          "name":  "create_dashboard.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  0,
+                          "last_write_time":  "2025-10-12T13:25:48.4246930Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\dashboard_api.py",
+                          "rel_path":  "dashboard_api.py",
+                          "name":  "dashboard_api.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  38415,
+                          "last_write_time":  "2025-10-13T04:18:11.1634374Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\database.py",
+                          "rel_path":  "database.py",
+                          "name":  "database.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  20559,
+                          "last_write_time":  "2025-10-12T13:10:21.5453738Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\easy_mtf_trainer.py",
+                          "rel_path":  "easy_mtf_trainer.py",
+                          "name":  "easy_mtf_trainer.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  13966,
+                          "last_write_time":  "2025-10-12T05:09:45.2768372Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\ibkr_data_fetcher.py",
+                          "rel_path":  "ibkr_data_fetcher.py",
+                          "name":  "ibkr_data_fetcher.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  9180,
+                          "last_write_time":  "2025-10-12T00:25:28.3744183Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\ibkr_live_trading_connector.py",
+                          "rel_path":  "ibkr_live_trading_connector.py",
+                          "name":  "ibkr_live_trading_connector.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  21810,
+                          "last_write_time":  "2025-10-12T05:29:03.1381847Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\ibkr_totalview_integration.py",
+                          "rel_path":  "ibkr_totalview_integration.py",
+                          "name":  "ibkr_totalview_integration.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  15182,
+                          "last_write_time":  "2025-10-11T15:15:45.3579146Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\ibkr_trading_backend.py",
+                          "rel_path":  "ibkr_trading_backend.py",
+                          "name":  "ibkr_trading_backend.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  19578,
+                          "last_write_time":  "2025-10-11T03:24:14.9168318Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\improved_backtest.py",
+                          "rel_path":  "improved_backtest.py",
+                          "name":  "improved_backtest.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  12200,
+                          "last_write_time":  "2025-10-11T22:59:01.8133264Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\install_packages.py",
+                          "rel_path":  "install_packages.py",
+                          "name":  "install_packages.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  4176,
+                          "last_write_time":  "2025-10-11T14:54:54.9417941Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\install_script.py",
+                          "rel_path":  "install_script.py",
+                          "name":  "install_script.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  11091,
+                          "last_write_time":  "2025-10-12T13:10:46.6264322Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\level1_test.py",
+                          "rel_path":  "level1_test.py",
+                          "name":  "level1_test.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  7184,
+                          "last_write_time":  "2025-10-11T15:37:12.5286793Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\lstm_implementation_summary.md",
+                          "rel_path":  "lstm_implementation_summary.md",
+                          "name":  "lstm_implementation_summary.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  10871,
+                          "last_write_time":  "2025-10-11T14:41:01.9978936Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\lstm_model_complete.py",
+                          "rel_path":  "lstm_model_complete.py",
+                          "name":  "lstm_model_complete.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  15166,
+                          "last_write_time":  "2025-10-11T18:21:16.4055840Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\lstm_neural_network.py",
+                          "rel_path":  "lstm_neural_network.py",
+                          "name":  "lstm_neural_network.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  11938,
+                          "last_write_time":  "2025-10-11T03:24:07.0148496Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\lstm_setup_guide.md",
+                          "rel_path":  "lstm_setup_guide.md",
+                          "name":  "lstm_setup_guide.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  18241,
+                          "last_write_time":  "2025-10-11T14:40:45.5148155Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\lstm_trading_integration.py",
+                          "rel_path":  "lstm_trading_integration.py",
+                          "name":  "lstm_trading_integration.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  17630,
+                          "last_write_time":  "2025-10-11T14:40:27.1218728Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\lstm_training_pipeline.py",
+                          "rel_path":  "lstm_training_pipeline.py",
+                          "name":  "lstm_training_pipeline.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  18986,
+                          "last_write_time":  "2025-10-11T19:38:11.8255537Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\modular_dashboard_config.py",
+                          "rel_path":  "modular_dashboard_config.py",
+                          "name":  "modular_dashboard_config.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  18640,
+                          "last_write_time":  "2025-10-11T03:23:57.7889771Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\mtf_implementation_guide.md",
+                          "rel_path":  "mtf_implementation_guide.md",
+                          "name":  "mtf_implementation_guide.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  10703,
+                          "last_write_time":  "2025-10-12T01:54:03.4545366Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\mtf_integration_step1.py",
+                          "rel_path":  "mtf_integration_step1.py",
+                          "name":  "mtf_integration_step1.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  11294,
+                          "last_write_time":  "2025-10-12T01:53:28.2668938Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\order_reconciliation.py",
+                          "rel_path":  "order_reconciliation.py",
+                          "name":  "order_reconciliation.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  16652,
+                          "last_write_time":  "2025-10-12T05:29:32.0237621Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\patch_training_mtf.py",
+                          "rel_path":  "patch_training_mtf.py",
+                          "name":  "patch_training_mtf.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  9270,
+                          "last_write_time":  "2025-10-12T02:08:12.2746833Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\quick_fix_train.py",
+                          "rel_path":  "quick_fix_train.py",
+                          "name":  "quick_fix_train.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  11364,
+                          "last_write_time":  "2025-10-11T23:46:05.0238238Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\quick_ref.md",
+                          "rel_path":  "quick_ref.md",
+                          "name":  "quick_ref.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  14742,
+                          "last_write_time":  "2025-10-12T13:10:54.0081146Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\quick_start_script.py",
+                          "rel_path":  "quick_start_script.py",
+                          "name":  "quick_start_script.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  6755,
+                          "last_write_time":  "2025-10-12T13:25:06.4590018Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\react_dashboard.tsx",
+                          "rel_path":  "react_dashboard.tsx",
+                          "name":  "react_dashboard.tsx",
+                          "ext":  ".tsx",
+                          "language":  "tsx",
+                          "size_bytes":  14622,
+                          "last_write_time":  "2025-10-12T13:10:29.1905304Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\README.md",
+                          "rel_path":  "README.md",
+                          "name":  "README.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  0,
+                          "last_write_time":  "2025-10-11T03:39:21.0764574Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\requirements.txt",
+                          "rel_path":  "requirements.txt",
+                          "name":  "requirements.txt",
+                          "ext":  ".txt",
+                          "language":  "text",
+                          "size_bytes":  908,
+                          "last_write_time":  "2025-10-11T03:37:33.4208324Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\ross_cameron_momentum_proxy_ai_upload_pack.zip",
+                          "rel_path":  "ross_cameron_momentum_proxy_ai_upload_pack.zip",
+                          "name":  "ross_cameron_momentum_proxy_ai_upload_pack.zip",
+                          "ext":  ".zip",
+                          "language":  "zip",
+                          "size_bytes":  5580,
+                          "last_write_time":  "2025-10-12T05:39:39.5890829Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\save_files_instructions.md",
+                          "rel_path":  "save_files_instructions.md",
+                          "name":  "save_files_instructions.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  1712,
+                          "last_write_time":  "2025-10-12T02:08:01.9622942Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\session_continuation_doc2.md",
+                          "rel_path":  "session_continuation_doc2.md",
+                          "name":  "session_continuation_doc2.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  17749,
+                          "last_write_time":  "2025-10-11T20:39:59.6562034Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\setup.py",
+                          "rel_path":  "setup.py",
+                          "name":  "setup.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  11281,
+                          "last_write_time":  "2025-10-11T03:36:01.8898760Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\setup_dashboard.py",
+                          "rel_path":  "setup_dashboard.py",
+                          "name":  "setup_dashboard.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  638,
+                          "last_write_time":  "2025-10-12T13:18:14.2186813Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\setup_guide.md",
+                          "rel_path":  "setup_guide.md",
+                          "name":  "setup_guide.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  14778,
+                          "last_write_time":  "2025-10-12T13:10:39.0492322Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\setup_training_guide6md.md",
+                          "rel_path":  "setup_training_guide6md.md",
+                          "name":  "setup_training_guide6md.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  8827,
+                          "last_write_time":  "2025-10-13T02:27:35.8693710Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\startup guide.pdf",
+                          "rel_path":  "startup guide.pdf",
+                          "name":  "startup guide.pdf",
+                          "ext":  ".pdf",
+                          "language":  "pdf",
+                          "size_bytes":  5258514,
+                          "last_write_time":  "2025-10-12T13:11:25.7514517Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\start_all.bat",
+                          "rel_path":  "start_all.bat",
+                          "name":  "start_all.bat",
+                          "ext":  ".bat",
+                          "language":  "bat",
+                          "size_bytes":  294,
+                          "last_write_time":  "2025-10-12T13:37:40.1906206Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\start_backend.bat",
+                          "rel_path":  "start_backend.bat",
+                          "name":  "start_backend.bat",
+                          "ext":  ".bat",
+                          "language":  "bat",
+                          "size_bytes":  84,
+                          "last_write_time":  "2025-10-12T13:19:14.2956269Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\start_bot.bat",
+                          "rel_path":  "start_bot.bat",
+                          "name":  "start_bot.bat",
+                          "ext":  ".bat",
+                          "language":  "bat",
+                          "size_bytes":  132,
+                          "last_write_time":  "2025-10-11T03:39:21.0750044Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\start_dashboard.bat",
+                          "rel_path":  "start_dashboard.bat",
+                          "name":  "start_dashboard.bat",
+                          "ext":  ".bat",
+                          "language":  "bat",
+                          "size_bytes":  442,
+                          "last_write_time":  "2025-10-12T13:16:34.4193550Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\start_frontend.bat",
+                          "rel_path":  "start_frontend.bat",
+                          "name":  "start_frontend.bat",
+                          "ext":  ".bat",
+                          "language":  "bat",
+                          "size_bytes":  89,
+                          "last_write_time":  "2025-10-12T13:16:34.4180017Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\summary_doc.md",
+                          "rel_path":  "summary_doc.md",
+                          "name":  "summary_doc.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  16801,
+                          "last_write_time":  "2025-10-12T13:11:01.9286017Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\test_ibkr.py",
+                          "rel_path":  "test_ibkr.py",
+                          "name":  "test_ibkr.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  2171,
+                          "last_write_time":  "2025-10-13T04:16:32.3343300Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\test_lstm.py",
+                          "rel_path":  "test_lstm.py",
+                          "name":  "test_lstm.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  2434,
+                          "last_write_time":  "2025-10-11T15:06:17.1246660Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\totalview_live_test.py",
+                          "rel_path":  "totalview_live_test.py",
+                          "name":  "totalview_live_test.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  8452,
+                          "last_write_time":  "2025-10-11T15:19:17.1937268Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\totalview_test.py",
+                          "rel_path":  "totalview_test.py",
+                          "name":  "totalview_test.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  8452,
+                          "last_write_time":  "2025-10-11T15:23:31.0658113Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\trading_strategy_selector.py",
+                          "rel_path":  "trading_strategy_selector.py",
+                          "name":  "trading_strategy_selector.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  9499,
+                          "last_write_time":  "2025-10-12T05:47:54.4180785Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\train_mtf_fixed.py",
+                          "rel_path":  "train_mtf_fixed.py",
+                          "name":  "train_mtf_fixed.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  19001,
+                          "last_write_time":  "2025-10-12T01:53:47.6415886Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\train_real_stocks.py",
+                          "rel_path":  "train_real_stocks.py",
+                          "name":  "train_real_stocks.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  3139,
+                          "last_write_time":  "2025-10-12T01:10:53.4677927Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\train_real_stocks_old.py",
+                          "rel_path":  "train_real_stocks_old.py",
+                          "name":  "train_real_stocks_old.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  4364,
+                          "last_write_time":  "2025-10-12T00:55:35.1487296Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\train_with_ibkr.py",
+                          "rel_path":  "train_with_ibkr.py",
+                          "name":  "train_with_ibkr.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  4415,
+                          "last_write_time":  "2025-10-12T00:25:39.4216775Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\train_with_mtf.py",
+                          "rel_path":  "train_with_mtf.py",
+                          "name":  "train_with_mtf.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  12434,
+                          "last_write_time":  "2025-10-12T01:53:37.5777449Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\validate_ibkr_connection.py",
+                          "rel_path":  "validate_ibkr_connection.py",
+                          "name":  "validate_ibkr_connection.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  13099,
+                          "last_write_time":  "2025-10-12T05:29:14.1273324Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\warrior trading quick start.pdf",
+                          "rel_path":  "warrior trading quick start.pdf",
+                          "name":  "warrior trading quick start.pdf",
+                          "ext":  ".pdf",
+                          "language":  "pdf",
+                          "size_bytes":  4186068,
+                          "last_write_time":  "2025-10-12T05:48:37.1056751Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\warrior_momentum_scanner.py",
+                          "rel_path":  "warrior_momentum_scanner.py",
+                          "name":  "warrior_momentum_scanner.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  20614,
+                          "last_write_time":  "2025-10-12T05:47:46.3441771Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\warrior_quickstart.md",
+                          "rel_path":  "warrior_quickstart.md",
+                          "name":  "warrior_quickstart.md",
+                          "ext":  ".md",
+                          "language":  "markdown",
+                          "size_bytes":  11677,
+                          "last_write_time":  "2025-10-12T05:48:06.2430697Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\backups\\dashboard_api.py",
+                          "rel_path":  "backups\\dashboard_api.py",
+                          "name":  "dashboard_api.py",
+                          "ext":  ".py",
+                          "language":  "python",
+                          "size_bytes":  37803,
+                          "last_write_time":  "2025-10-13T04:14:18.1052257Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\configs\\app.jsx",
+                          "rel_path":  "configs\\app.jsx",
+                          "name":  "app.jsx",
+                          "ext":  ".jsx",
+                          "language":  "jsx",
+                          "size_bytes":  21034,
+                          "last_write_time":  "2025-10-13T02:27:10.4738347Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\configs\\config.json",
+                          "rel_path":  "configs\\config.json",
+                          "name":  "config.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  1458,
+                          "last_write_time":  "2025-10-11T03:39:21.0750044Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\dashboard_data\\watchlists\\MTF Swing.json",
+                          "rel_path":  "dashboard_data\\watchlists\\MTF Swing.json",
+                          "name":  "MTF Swing.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  194,
+                          "last_write_time":  "2025-10-13T04:19:37.7945368Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\dashboard_data\\watchlists\\MTF_Swing.json",
+                          "rel_path":  "dashboard_data\\watchlists\\MTF_Swing.json",
+                          "name":  "MTF_Swing.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  181,
+                          "last_write_time":  "2025-10-12T18:14:03.9604752Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\dashboard_data\\watchlists\\Scanner_Results.json",
+                          "rel_path":  "dashboard_data\\watchlists\\Scanner_Results.json",
+                          "name":  "Scanner_Results.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  198,
+                          "last_write_time":  "2025-10-12T19:03:20.1916123Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\dashboard_data\\watchlists\\Warrior_Momentum.json",
+                          "rel_path":  "dashboard_data\\watchlists\\Warrior_Momentum.json",
+                          "name":  "Warrior_Momentum.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  146,
+                          "last_write_time":  "2025-10-12T18:14:03.9614753Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\index.html",
+                          "rel_path":  "frontend\\index.html",
+                          "name":  "index.html",
+                          "ext":  ".html",
+                          "language":  "html",
+                          "size_bytes":  312,
+                          "last_write_time":  "2025-10-12T18:27:58.5795961Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\package-lock.json",
+                          "rel_path":  "frontend\\package-lock.json",
+                          "name":  "package-lock.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  91098,
+                          "last_write_time":  "2025-10-12T13:30:43.7720453Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\package.json",
+                          "rel_path":  "frontend\\package.json",
+                          "name":  "package.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  458,
+                          "last_write_time":  "2025-10-12T13:30:05.4087845Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\postcss.config.js",
+                          "rel_path":  "frontend\\postcss.config.js",
+                          "name":  "postcss.config.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  82,
+                          "last_write_time":  "2025-10-12T13:30:05.2708260Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\tailwind.config.js",
+                          "rel_path":  "frontend\\tailwind.config.js",
+                          "name":  "tailwind.config.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  114,
+                          "last_write_time":  "2025-10-12T13:30:05.2422509Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\vite.config.js",
+                          "rel_path":  "frontend\\vite.config.js",
+                          "name":  "vite.config.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  337,
+                          "last_write_time":  "2025-10-12T18:36:59.6990576Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\chunk-47D5AHTN.js",
+                          "rel_path":  "frontend\\.vite\\deps\\chunk-47D5AHTN.js",
+                          "name":  "chunk-47D5AHTN.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  928843,
+                          "last_write_time":  "2025-10-12T13:30:52.8291639Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\chunk-47D5AHTN.js.map",
+                          "rel_path":  "frontend\\.vite\\deps\\chunk-47D5AHTN.js.map",
+                          "name":  "chunk-47D5AHTN.js.map",
+                          "ext":  ".map",
+                          "language":  "map",
+                          "size_bytes":  1492624,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\chunk-B46YTOBL.js",
+                          "rel_path":  "frontend\\.vite\\deps\\chunk-B46YTOBL.js",
+                          "name":  "chunk-B46YTOBL.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  79217,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\chunk-B46YTOBL.js.map",
+                          "rel_path":  "frontend\\.vite\\deps\\chunk-B46YTOBL.js.map",
+                          "name":  "chunk-B46YTOBL.js.map",
+                          "ext":  ".map",
+                          "language":  "map",
+                          "size_bytes":  125655,
+                          "last_write_time":  "2025-10-12T13:30:52.8315524Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\lucide-react.js",
+                          "rel_path":  "frontend\\.vite\\deps\\lucide-react.js",
+                          "name":  "lucide-react.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  613090,
+                          "last_write_time":  "2025-10-12T13:30:52.8315524Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\lucide-react.js.map",
+                          "rel_path":  "frontend\\.vite\\deps\\lucide-react.js.map",
+                          "name":  "lucide-react.js.map",
+                          "ext":  ".map",
+                          "language":  "map",
+                          "size_bytes":  2153523,
+                          "last_write_time":  "2025-10-12T13:30:52.8315524Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\package.json",
+                          "rel_path":  "frontend\\.vite\\deps\\package.json",
+                          "name":  "package.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  23,
+                          "last_write_time":  "2025-10-12T13:30:51.8536852Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react-dom.js",
+                          "rel_path":  "frontend\\.vite\\deps\\react-dom.js",
+                          "name":  "react-dom.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  163,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react-dom.js.map",
+                          "rel_path":  "frontend\\.vite\\deps\\react-dom.js.map",
+                          "name":  "react-dom.js.map",
+                          "ext":  ".map",
+                          "language":  "map",
+                          "size_bytes":  93,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react-dom_client.js",
+                          "rel_path":  "frontend\\.vite\\deps\\react-dom_client.js",
+                          "name":  "react-dom_client.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  986,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react-dom_client.js.map",
+                          "rel_path":  "frontend\\.vite\\deps\\react-dom_client.js.map",
+                          "name":  "react-dom_client.js.map",
+                          "ext":  ".map",
+                          "language":  "map",
+                          "size_bytes":  1225,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react.js",
+                          "rel_path":  "frontend\\.vite\\deps\\react.js",
+                          "name":  "react.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  121,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react.js.map",
+                          "rel_path":  "frontend\\.vite\\deps\\react.js.map",
+                          "name":  "react.js.map",
+                          "ext":  ".map",
+                          "language":  "map",
+                          "size_bytes":  93,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react_jsx-dev-runtime.js",
+                          "rel_path":  "frontend\\.vite\\deps\\react_jsx-dev-runtime.js",
+                          "name":  "react_jsx-dev-runtime.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  36929,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react_jsx-dev-runtime.js.map",
+                          "rel_path":  "frontend\\.vite\\deps\\react_jsx-dev-runtime.js.map",
+                          "name":  "react_jsx-dev-runtime.js.map",
+                          "ext":  ".map",
+                          "language":  "map",
+                          "size_bytes":  61108,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react_jsx-runtime.js",
+                          "rel_path":  "frontend\\.vite\\deps\\react_jsx-runtime.js",
+                          "name":  "react_jsx-runtime.js",
+                          "ext":  ".js",
+                          "language":  "javascript",
+                          "size_bytes":  37268,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\react_jsx-runtime.js.map",
+                          "rel_path":  "frontend\\.vite\\deps\\react_jsx-runtime.js.map",
+                          "name":  "react_jsx-runtime.js.map",
+                          "ext":  ".map",
+                          "language":  "map",
+                          "size_bytes":  61935,
+                          "last_write_time":  "2025-10-12T13:30:52.8300462Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\.vite\\deps\\_metadata.json",
+                          "rel_path":  "frontend\\.vite\\deps\\_metadata.json",
+                          "name":  "_metadata.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  1302,
+                          "last_write_time":  "2025-10-12T13:30:54.9378194Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\src\\app.jsx",
+                          "rel_path":  "frontend\\src\\app.jsx",
+                          "name":  "app.jsx",
+                          "ext":  ".jsx",
+                          "language":  "jsx",
+                          "size_bytes":  50291,
+                          "last_write_time":  "2025-10-13T03:57:35.0103786Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\src\\index.css",
+                          "rel_path":  "frontend\\src\\index.css",
+                          "name":  "index.css",
+                          "ext":  ".css",
+                          "language":  "css",
+                          "size_bytes":  180,
+                          "last_write_time":  "2025-10-12T18:27:58.5372192Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\frontend\\src\\main.jsx",
+                          "rel_path":  "frontend\\src\\main.jsx",
+                          "name":  "main.jsx",
+                          "ext":  ".jsx",
+                          "language":  "jsx",
+                          "size_bytes":  239,
+                          "last_write_time":  "2025-10-12T18:27:58.5060852Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_mtf\\AAPL_mtf.keras",
+                          "rel_path":  "models\\lstm_mtf\\AAPL_mtf.keras",
+                          "name":  "AAPL_mtf.keras",
+                          "ext":  ".keras",
+                          "language":  "keras",
+                          "size_bytes":  1674116,
+                          "last_write_time":  "2025-10-12T05:06:13.4940607Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_mtf\\TSLA_mtf.keras",
+                          "rel_path":  "models\\lstm_mtf\\TSLA_mtf.keras",
+                          "name":  "TSLA_mtf.keras",
+                          "ext":  ".keras",
+                          "language":  "keras",
+                          "size_bytes":  1674126,
+                          "last_write_time":  "2025-10-12T05:06:18.7597599Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_mtf_v2\\AAPL_mtf_v2.keras",
+                          "rel_path":  "models\\lstm_mtf_v2\\AAPL_mtf_v2.keras",
+                          "name":  "AAPL_mtf_v2.keras",
+                          "ext":  ".keras",
+                          "language":  "keras",
+                          "size_bytes":  6749952,
+                          "last_write_time":  "2025-10-12T05:10:51.4359794Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_mtf_v2\\TSLA_mtf_v2.keras",
+                          "rel_path":  "models\\lstm_mtf_v2\\TSLA_mtf_v2.keras",
+                          "name":  "TSLA_mtf_v2.keras",
+                          "ext":  ".keras",
+                          "language":  "keras",
+                          "size_bytes":  6749962,
+                          "last_write_time":  "2025-10-12T05:11:05.4470122Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_pipeline\\evaluation_plots.png",
+                          "rel_path":  "models\\lstm_pipeline\\evaluation_plots.png",
+                          "name":  "evaluation_plots.png",
+                          "ext":  ".png",
+                          "language":  "png",
+                          "size_bytes":  194703,
+                          "last_write_time":  "2025-10-12T01:21:15.3402938Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_pipeline\\pipeline_summary.json",
+                          "rel_path":  "models\\lstm_pipeline\\pipeline_summary.json",
+                          "name":  "pipeline_summary.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  1625,
+                          "last_write_time":  "2025-10-12T01:21:15.3485669Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_trading\\AAPL_lstm.h5",
+                          "rel_path":  "models\\lstm_trading\\AAPL_lstm.h5",
+                          "name":  "AAPL_lstm.h5",
+                          "ext":  ".h5",
+                          "language":  "h5",
+                          "size_bytes":  480552,
+                          "last_write_time":  "2025-10-12T01:11:49.9616450Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_trading\\AAPL_lstm_scaler.pkl",
+                          "rel_path":  "models\\lstm_trading\\AAPL_lstm_scaler.pkl",
+                          "name":  "AAPL_lstm_scaler.pkl",
+                          "ext":  ".pkl",
+                          "language":  "pkl",
+                          "size_bytes":  1535,
+                          "last_write_time":  "2025-10-12T01:11:49.9626453Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_trading\\best_model.h5",
+                          "rel_path":  "models\\lstm_trading\\best_model.h5",
+                          "name":  "best_model.h5",
+                          "ext":  ".h5",
+                          "language":  "h5",
+                          "size_bytes":  480552,
+                          "last_write_time":  "2025-10-12T01:16:30.8957688Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_trading\\test_model.h5",
+                          "rel_path":  "models\\lstm_trading\\test_model.h5",
+                          "name":  "test_model.h5",
+                          "ext":  ".h5",
+                          "language":  "h5",
+                          "size_bytes":  480552,
+                          "last_write_time":  "2025-10-11T15:11:09.9697041Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_trading\\test_model_scaler.pkl",
+                          "rel_path":  "models\\lstm_trading\\test_model_scaler.pkl",
+                          "name":  "test_model_scaler.pkl",
+                          "ext":  ".pkl",
+                          "language":  "pkl",
+                          "size_bytes":  1535,
+                          "last_write_time":  "2025-10-11T15:11:09.9697041Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_trading\\training_results.json",
+                          "rel_path":  "models\\lstm_trading\\training_results.json",
+                          "name":  "training_results.json",
+                          "ext":  ".json",
+                          "language":  "json",
+                          "size_bytes":  296,
+                          "last_write_time":  "2025-10-11T15:11:09.8275715Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_trading\\TSLA_lstm.h5",
+                          "rel_path":  "models\\lstm_trading\\TSLA_lstm.h5",
+                          "name":  "TSLA_lstm.h5",
+                          "ext":  ".h5",
+                          "language":  "h5",
+                          "size_bytes":  480552,
+                          "last_write_time":  "2025-10-12T01:16:37.8983596Z"
+                      },
+                      {
+                          "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\models\\lstm_trading\\TSLA_lstm_scaler.pkl",
+                          "rel_path":  "models\\lstm_trading\\TSLA_lstm_scaler.pkl",
+                          "name":  "TSLA_lstm_scaler.pkl",
+                          "ext":  ".pkl",
+                          "language":  "pkl",
+                          "size_bytes":  1535,
+                          "last_write_time":  "2025-10-12T01:16:37.8993643Z"
+                      }
+                  ],
+    "language_stats":  [
+                           {
+                               "language":  "template",
+                               "files":  1,
+                               "bytes":  328
+                           },
+                           {
+                               "language":  "gitignore",
+                               "files":  1,
+                               "bytes":  318
+                           },
+                           {
+                               "language":  "tsx",
+                               "files":  2,
+                               "bytes":  30997
+                           },
+                           {
+                               "language":  "python",
+                               "files":  40,
+                               "bytes":  487354
+                           },
+                           {
+                               "language":  "markdown",
+                               "files":  11,
+                               "bytes":  126101
+                           },
+                           {
+                               "language":  "text",
+                               "files":  1,
+                               "bytes":  908
+                           },
+                           {
+                               "language":  "zip",
+                               "files":  1,
+                               "bytes":  5580
+                           },
+                           {
+                               "language":  "pdf",
+                               "files":  2,
+                               "bytes":  9444582
+                           },
+                           {
+                               "language":  "bat",
+                               "files":  5,
+                               "bytes":  1041
+                           },
+                           {
+                               "language":  "jsx",
+                               "files":  3,
+                               "bytes":  71564
+                           },
+                           {
+                               "language":  "json",
+                               "files":  11,
+                               "bytes":  96979
+                           },
+                           {
+                               "language":  "html",
+                               "files":  1,
+                               "bytes":  312
+                           },
+                           {
+                               "language":  "javascript",
+                               "files":  11,
+                               "bytes":  1697150
+                           },
+                           {
+                               "language":  "map",
+                               "files":  8,
+                               "bytes":  3896256
+                           },
+                           {
+                               "language":  "css",
+                               "files":  1,
+                               "bytes":  180
+                           },
+                           {
+                               "language":  "keras",
+                               "files":  4,
+                               "bytes":  16848156
+                           },
+                           {
+                               "language":  "png",
+                               "files":  1,
+                               "bytes":  194703
+                           },
+                           {
+                               "language":  "h5",
+                               "files":  4,
+                               "bytes":  1922208
+                           },
+                           {
+                               "language":  "pkl",
+                               "files":  3,
+                               "bytes":  4605
+                           }
+                       ],
+    "dependency_graph":  {
+                             "graphviz_dot":  "powershell\\store\\dependency_graph.dot",
+                             "edges":  [
+                                           {
+                                               "from":  "check_data_settings",
+                                               "to":  "yfinance",
+                                               "file":  "check_data_settings.py"
+                                           },
+                                           {
+                                               "from":  "check_data_settings",
+                                               "to":  "pandas",
+                                               "file":  "check_data_settings.py"
+                                           },
+                                           {
+                                               "from":  "check_data_settings",
+                                               "to":  "datetime",
+                                               "file":  "check_data_settings.py"
+                                           },
+                                           {
+                                               "from":  "check_python",
+                                               "to":  "sys",
+                                               "file":  "check_python.py"
+                                           },
+                                           {
+                                               "from":  "check_python",
+                                               "to":  "subprocess",
+                                               "file":  "check_python.py"
+                                           },
+                                           {
+                                               "from":  "check_python",
+                                               "to":  "os",
+                                               "file":  "check_python.py"
+                                           },
+                                           {
+                                               "from":  "check_python",
+                                               "to":  "pip",
+                                               "file":  "check_python.py"
+                                           },
+                                           {
+                                               "from":  "check_python",
+                                               "to":  "shutil",
+                                               "file":  "check_python.py"
+                                           },
+                                           {
+                                               "from":  "check_python",
+                                               "to":  "urllib.request",
+                                               "file":  "check_python.py"
+                                           },
+                                           {
+                                               "from":  "compare_results",
+                                               "to":  "json",
+                                               "file":  "compare_results.py"
+                                           },
+                                           {
+                                               "from":  "compare_results",
+                                               "to":  "os",
+                                               "file":  "compare_results.py"
+                                           },
+                                           {
+                                               "from":  "compare_results",
+                                               "to":  "pathlib",
+                                               "file":  "compare_results.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "threading",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "time",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "logging",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "json",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "flask",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "flask_cors",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "flask_socketio",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "datetime",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "pathlib",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "ibapi.client",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "ibapi.scanner",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "ibapi.contract",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "dashboard_api",
+                                               "to":  "ibapi.order",
+                                               "file":  "dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "database",
+                                               "to":  "sqlite3",
+                                               "file":  "database.py"
+                                           },
+                                           {
+                                               "from":  "database",
+                                               "to":  "json",
+                                               "file":  "database.py"
+                                           },
+                                           {
+                                               "from":  "database",
+                                               "to":  "logging",
+                                               "file":  "database.py"
+                                           },
+                                           {
+                                               "from":  "database",
+                                               "to":  "shutil",
+                                               "file":  "database.py"
+                                           },
+                                           {
+                                               "from":  "database",
+                                               "to":  "datetime",
+                                               "file":  "database.py"
+                                           },
+                                           {
+                                               "from":  "database",
+                                               "to":  "pathlib",
+                                               "file":  "database.py"
+                                           },
+                                           {
+                                               "from":  "database",
+                                               "to":  "typing",
+                                               "file":  "database.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "pandas",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "numpy",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "yfinance",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "os",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "warnings",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "traceback",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "sklearn.preprocessing",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "tensorflow",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "easy_mtf_trainer",
+                                               "to":  "tensorflow.keras",
+                                               "file":  "easy_mtf_trainer.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "pandas",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "time",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "threading",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "logging",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "os",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "argparse",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "ibapi.client",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "ibapi.contract",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_data_fetcher",
+                                               "to":  "datetime",
+                                               "file":  "ibkr_data_fetcher.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "threading",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "time",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "pandas",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "numpy",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "logging",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "pickle",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "argparse",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "ibapi.client",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "ibapi.contract",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "ibapi.order",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "datetime",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "collections",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "tensorflow",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_live_trading_connector",
+                                               "to":  "EASY_MTF_TRAINER_V2",
+                                               "file":  "ibkr_live_trading_connector.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "pandas",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "numpy",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "threading",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "time",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "logging",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "ibapi.client",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "ibapi.contract",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "datetime",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_totalview_integration",
+                                               "to":  "collections",
+                                               "file":  "ibkr_totalview_integration.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "threading",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "time",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "pandas",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "numpy",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "json",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "ibapi.client",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "ibapi.contract",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "ibapi.order",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "datetime",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "ibkr_trading_backend",
+                                               "to":  "collections",
+                                               "file":  "ibkr_trading_backend.py"
+                                           },
+                                           {
+                                               "from":  "improved_backtest",
+                                               "to":  "numpy",
+                                               "file":  "improved_backtest.py"
+                                           },
+                                           {
+                                               "from":  "improved_backtest",
+                                               "to":  "pandas",
+                                               "file":  "improved_backtest.py"
+                                           },
+                                           {
+                                               "from":  "improved_backtest",
+                                               "to":  "logging",
+                                               "file":  "improved_backtest.py"
+                                           },
+                                           {
+                                               "from":  "improved_backtest",
+                                               "to":  "typing",
+                                               "file":  "improved_backtest.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "subprocess",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "sys",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "time",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "tensorflow",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "pandas",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "numpy",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "sklearn",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "yfinance",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "matplotlib",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "seaborn",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_packages",
+                                               "to":  "joblib",
+                                               "file":  "install_packages.py"
+                                           },
+                                           {
+                                               "from":  "install_script",
+                                               "to":  "os",
+                                               "file":  "install_script.py"
+                                           },
+                                           {
+                                               "from":  "install_script",
+                                               "to":  "sys",
+                                               "file":  "install_script.py"
+                                           },
+                                           {
+                                               "from":  "install_script",
+                                               "to":  "subprocess",
+                                               "file":  "install_script.py"
+                                           },
+                                           {
+                                               "from":  "install_script",
+                                               "to":  "json",
+                                               "file":  "install_script.py"
+                                           },
+                                           {
+                                               "from":  "install_script",
+                                               "to":  "react",
+                                               "file":  "install_script.py"
+                                           },
+                                           {
+                                               "from":  "install_script",
+                                               "to":  "ReactDOM",
+                                               "file":  "install_script.py"
+                                           },
+                                           {
+                                               "from":  "install_script",
+                                               "to":  "App",
+                                               "file":  "install_script.py"
+                                           },
+                                           {
+                                               "from":  "install_script",
+                                               "to":  "pathlib",
+                                               "file":  "install_script.py"
+                                           },
+                                           {
+                                               "from":  "level1_test",
+                                               "to":  "threading",
+                                               "file":  "level1_test.py"
+                                           },
+                                           {
+                                               "from":  "level1_test",
+                                               "to":  "time",
+                                               "file":  "level1_test.py"
+                                           },
+                                           {
+                                               "from":  "level1_test",
+                                               "to":  "ibapi.client",
+                                               "file":  "level1_test.py"
+                                           },
+                                           {
+                                               "from":  "level1_test",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "level1_test.py"
+                                           },
+                                           {
+                                               "from":  "level1_test",
+                                               "to":  "ibapi.contract",
+                                               "file":  "level1_test.py"
+                                           },
+                                           {
+                                               "from":  "level1_test",
+                                               "to":  "datetime",
+                                               "file":  "level1_test.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "numpy",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "pandas",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "tensorflow",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "joblib",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "json",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "logging",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "tensorflow.keras",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "sklearn.preprocessing",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "sklearn.model_selection",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "datetime",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_model_complete",
+                                               "to":  "pathlib",
+                                               "file":  "lstm_model_complete.py"
+                                           },
+                                           {
+                                               "from":  "lstm_neural_network",
+                                               "to":  "numpy",
+                                               "file":  "lstm_neural_network.py"
+                                           },
+                                           {
+                                               "from":  "lstm_neural_network",
+                                               "to":  "pandas",
+                                               "file":  "lstm_neural_network.py"
+                                           },
+                                           {
+                                               "from":  "lstm_neural_network",
+                                               "to":  "json",
+                                               "file":  "lstm_neural_network.py"
+                                           },
+                                           {
+                                               "from":  "lstm_neural_network",
+                                               "to":  "sklearn.preprocessing",
+                                               "file":  "lstm_neural_network.py"
+                                           },
+                                           {
+                                               "from":  "lstm_neural_network",
+                                               "to":  "sklearn.model_selection",
+                                               "file":  "lstm_neural_network.py"
+                                           },
+                                           {
+                                               "from":  "lstm_neural_network",
+                                               "to":  "datetime",
+                                               "file":  "lstm_neural_network.py"
+                                           },
+                                           {
+                                               "from":  "lstm_trading_integration",
+                                               "to":  "pandas",
+                                               "file":  "lstm_trading_integration.py"
+                                           },
+                                           {
+                                               "from":  "lstm_trading_integration",
+                                               "to":  "numpy",
+                                               "file":  "lstm_trading_integration.py"
+                                           },
+                                           {
+                                               "from":  "lstm_trading_integration",
+                                               "to":  "threading",
+                                               "file":  "lstm_trading_integration.py"
+                                           },
+                                           {
+                                               "from":  "lstm_trading_integration",
+                                               "to":  "time",
+                                               "file":  "lstm_trading_integration.py"
+                                           },
+                                           {
+                                               "from":  "lstm_trading_integration",
+                                               "to":  "logging",
+                                               "file":  "lstm_trading_integration.py"
+                                           },
+                                           {
+                                               "from":  "lstm_trading_integration",
+                                               "to":  "datetime",
+                                               "file":  "lstm_trading_integration.py"
+                                           },
+                                           {
+                                               "from":  "lstm_trading_integration",
+                                               "to":  "collections",
+                                               "file":  "lstm_trading_integration.py"
+                                           },
+                                           {
+                                               "from":  "lstm_trading_integration",
+                                               "to":  "lstm_model_complete",
+                                               "file":  "lstm_trading_integration.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "pandas",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "numpy",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "yfinance",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "json",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "matplotlib.pyplot",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "seaborn",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "logging",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "datetime",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "pathlib",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "sklearn.metrics",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "lstm_model_complete",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "sklearn.model_selection",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "lstm_training_pipeline",
+                                               "to":  "tensorflow.keras",
+                                               "file":  "lstm_training_pipeline.py"
+                                           },
+                                           {
+                                               "from":  "modular_dashboard_config",
+                                               "to":  "json",
+                                               "file":  "modular_dashboard_config.py"
+                                           },
+                                           {
+                                               "from":  "modular_dashboard_config",
+                                               "to":  "threading",
+                                               "file":  "modular_dashboard_config.py"
+                                           },
+                                           {
+                                               "from":  "modular_dashboard_config",
+                                               "to":  "abc",
+                                               "file":  "modular_dashboard_config.py"
+                                           },
+                                           {
+                                               "from":  "modular_dashboard_config",
+                                               "to":  "typing",
+                                               "file":  "modular_dashboard_config.py"
+                                           },
+                                           {
+                                               "from":  "modular_dashboard_config",
+                                               "to":  "queue",
+                                               "file":  "modular_dashboard_config.py"
+                                           },
+                                           {
+                                               "from":  "mtf_integration_step1",
+                                               "to":  "pandas",
+                                               "file":  "mtf_integration_step1.py"
+                                           },
+                                           {
+                                               "from":  "mtf_integration_step1",
+                                               "to":  "numpy",
+                                               "file":  "mtf_integration_step1.py"
+                                           },
+                                           {
+                                               "from":  "mtf_integration_step1",
+                                               "to":  "yfinance",
+                                               "file":  "mtf_integration_step1.py"
+                                           },
+                                           {
+                                               "from":  "mtf_integration_step1",
+                                               "to":  "logging",
+                                               "file":  "mtf_integration_step1.py"
+                                           },
+                                           {
+                                               "from":  "mtf_integration_step1",
+                                               "to":  "datetime",
+                                               "file":  "mtf_integration_step1.py"
+                                           },
+                                           {
+                                               "from":  "mtf_integration_step1",
+                                               "to":  "typing",
+                                               "file":  "mtf_integration_step1.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "threading",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "time",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "pandas",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "argparse",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "ibapi.client",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "ibapi.contract",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "datetime",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "collections",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "order_reconciliation",
+                                               "to":  "ibapi.execution",
+                                               "file":  "order_reconciliation.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "sys",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "os",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "pandas",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "numpy",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "yfinance",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "logging",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "traceback",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "datetime",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "lstm_training_pipeline",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "lstm_model_complete",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "patch_training_mtf",
+                                               "to":  "mtf_features_simple",
+                                               "file":  "patch_training_mtf.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "sys",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "logging",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "yfinance",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "pandas",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "argparse",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "pathlib",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "lstm_training_pipeline",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "improved_backtest",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_fix_train",
+                                               "to":  "lstm_model_complete",
+                                               "file":  "quick_fix_train.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "os",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "threading",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "time",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "logging",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "pathlib",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "flask",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "flask_cors",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "flask_socketio",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "quick_start_script",
+                                               "to":  "datetime",
+                                               "file":  "quick_start_script.py"
+                                           },
+                                           {
+                                               "from":  "setup",
+                                               "to":  "os",
+                                               "file":  "setup.py"
+                                           },
+                                           {
+                                               "from":  "setup",
+                                               "to":  "sys",
+                                               "file":  "setup.py"
+                                           },
+                                           {
+                                               "from":  "setup",
+                                               "to":  "subprocess",
+                                               "file":  "setup.py"
+                                           },
+                                           {
+                                               "from":  "setup",
+                                               "to":  "json",
+                                               "file":  "setup.py"
+                                           },
+                                           {
+                                               "from":  "setup",
+                                               "to":  "pathlib",
+                                               "file":  "setup.py"
+                                           },
+                                           {
+                                               "from":  "setup_dashboard",
+                                               "to":  "os",
+                                               "file":  "setup_dashboard.py"
+                                           },
+                                           {
+                                               "from":  "setup_dashboard",
+                                               "to":  "subprocess",
+                                               "file":  "setup_dashboard.py"
+                                           },
+                                           {
+                                               "from":  "setup_dashboard",
+                                               "to":  "sys",
+                                               "file":  "setup_dashboard.py"
+                                           },
+                                           {
+                                               "from":  "test_ibkr",
+                                               "to":  "threading",
+                                               "file":  "test_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "test_ibkr",
+                                               "to":  "time",
+                                               "file":  "test_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "test_ibkr",
+                                               "to":  "ibapi.client",
+                                               "file":  "test_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "test_ibkr",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "test_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "test_ibkr",
+                                               "to":  "ibapi.contract",
+                                               "file":  "test_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "test_ibkr",
+                                               "to":  "ibapi.order",
+                                               "file":  "test_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "test_lstm",
+                                               "to":  "numpy",
+                                               "file":  "test_lstm.py"
+                                           },
+                                           {
+                                               "from":  "test_lstm",
+                                               "to":  "pandas",
+                                               "file":  "test_lstm.py"
+                                           },
+                                           {
+                                               "from":  "test_lstm",
+                                               "to":  "datetime",
+                                               "file":  "test_lstm.py"
+                                           },
+                                           {
+                                               "from":  "test_lstm",
+                                               "to":  "lstm_model_complete",
+                                               "file":  "test_lstm.py"
+                                           },
+                                           {
+                                               "from":  "totalview_live_test",
+                                               "to":  "threading",
+                                               "file":  "totalview_live_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_live_test",
+                                               "to":  "time",
+                                               "file":  "totalview_live_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_live_test",
+                                               "to":  "ibapi.client",
+                                               "file":  "totalview_live_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_live_test",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "totalview_live_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_live_test",
+                                               "to":  "ibapi.contract",
+                                               "file":  "totalview_live_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_live_test",
+                                               "to":  "datetime",
+                                               "file":  "totalview_live_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_live_test",
+                                               "to":  "collections",
+                                               "file":  "totalview_live_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_test",
+                                               "to":  "threading",
+                                               "file":  "totalview_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_test",
+                                               "to":  "time",
+                                               "file":  "totalview_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_test",
+                                               "to":  "ibapi.client",
+                                               "file":  "totalview_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_test",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "totalview_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_test",
+                                               "to":  "ibapi.contract",
+                                               "file":  "totalview_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_test",
+                                               "to":  "datetime",
+                                               "file":  "totalview_test.py"
+                                           },
+                                           {
+                                               "from":  "totalview_test",
+                                               "to":  "collections",
+                                               "file":  "totalview_test.py"
+                                           },
+                                           {
+                                               "from":  "trading_strategy_selector",
+                                               "to":  "argparse",
+                                               "file":  "trading_strategy_selector.py"
+                                           },
+                                           {
+                                               "from":  "trading_strategy_selector",
+                                               "to":  "subprocess",
+                                               "file":  "trading_strategy_selector.py"
+                                           },
+                                           {
+                                               "from":  "trading_strategy_selector",
+                                               "to":  "sys",
+                                               "file":  "trading_strategy_selector.py"
+                                           },
+                                           {
+                                               "from":  "trading_strategy_selector",
+                                               "to":  "time",
+                                               "file":  "trading_strategy_selector.py"
+                                           },
+                                           {
+                                               "from":  "trading_strategy_selector",
+                                               "to":  "datetime",
+                                               "file":  "trading_strategy_selector.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "os",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "sys",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "pandas",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "numpy",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "yfinance",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "json",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "logging",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "pickle",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "traceback",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "datetime",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "pathlib",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "sklearn.preprocessing",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "tensorflow",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_mtf_fixed",
+                                               "to":  "tensorflow.keras",
+                                               "file":  "train_mtf_fixed.py"
+                                           },
+                                           {
+                                               "from":  "train_real_stocks",
+                                               "to":  "sys",
+                                               "file":  "train_real_stocks.py"
+                                           },
+                                           {
+                                               "from":  "train_real_stocks",
+                                               "to":  "time",
+                                               "file":  "train_real_stocks.py"
+                                           },
+                                           {
+                                               "from":  "train_real_stocks",
+                                               "to":  "pathlib",
+                                               "file":  "train_real_stocks.py"
+                                           },
+                                           {
+                                               "from":  "train_real_stocks",
+                                               "to":  "lstm_training_pipeline",
+                                               "file":  "train_real_stocks.py"
+                                           },
+                                           {
+                                               "from":  "train_real_stocks_old",
+                                               "to":  "sys",
+                                               "file":  "train_real_stocks_old.py"
+                                           },
+                                           {
+                                               "from":  "train_real_stocks_old",
+                                               "to":  "time",
+                                               "file":  "train_real_stocks_old.py"
+                                           },
+                                           {
+                                               "from":  "train_real_stocks_old",
+                                               "to":  "traceback",
+                                               "file":  "train_real_stocks_old.py"
+                                           },
+                                           {
+                                               "from":  "train_real_stocks_old",
+                                               "to":  "lstm_training_pipeline",
+                                               "file":  "train_real_stocks_old.py"
+                                           },
+                                           {
+                                               "from":  "train_with_ibkr",
+                                               "to":  "sys",
+                                               "file":  "train_with_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "train_with_ibkr",
+                                               "to":  "pandas",
+                                               "file":  "train_with_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "train_with_ibkr",
+                                               "to":  "logging",
+                                               "file":  "train_with_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "train_with_ibkr",
+                                               "to":  "argparse",
+                                               "file":  "train_with_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "train_with_ibkr",
+                                               "to":  "pathlib",
+                                               "file":  "train_with_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "train_with_ibkr",
+                                               "to":  "lstm_training_pipeline",
+                                               "file":  "train_with_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "train_with_ibkr",
+                                               "to":  "improved_backtest",
+                                               "file":  "train_with_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "train_with_ibkr",
+                                               "to":  "lstm_model_complete",
+                                               "file":  "train_with_ibkr.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "os",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "sys",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "pandas",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "numpy",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "yfinance",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "json",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "logging",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "datetime",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "pathlib",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "train_with_mtf",
+                                               "to":  "sklearn.preprocessing",
+                                               "file":  "train_with_mtf.py"
+                                           },
+                                           {
+                                               "from":  "validate_ibkr_connection",
+                                               "to":  "threading",
+                                               "file":  "validate_ibkr_connection.py"
+                                           },
+                                           {
+                                               "from":  "validate_ibkr_connection",
+                                               "to":  "time",
+                                               "file":  "validate_ibkr_connection.py"
+                                           },
+                                           {
+                                               "from":  "validate_ibkr_connection",
+                                               "to":  "argparse",
+                                               "file":  "validate_ibkr_connection.py"
+                                           },
+                                           {
+                                               "from":  "validate_ibkr_connection",
+                                               "to":  "ibapi.client",
+                                               "file":  "validate_ibkr_connection.py"
+                                           },
+                                           {
+                                               "from":  "validate_ibkr_connection",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "validate_ibkr_connection.py"
+                                           },
+                                           {
+                                               "from":  "validate_ibkr_connection",
+                                               "to":  "ibapi.contract",
+                                               "file":  "validate_ibkr_connection.py"
+                                           },
+                                           {
+                                               "from":  "validate_ibkr_connection",
+                                               "to":  "ibapi.order",
+                                               "file":  "validate_ibkr_connection.py"
+                                           },
+                                           {
+                                               "from":  "validate_ibkr_connection",
+                                               "to":  "datetime",
+                                               "file":  "validate_ibkr_connection.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "pandas",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "numpy",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "threading",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "time",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "logging",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "yfinance",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "argparse",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "datetime",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "ibapi.client",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "ibapi.contract",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "ibapi.scanner",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "warrior_momentum_scanner",
+                                               "to":  "collections",
+                                               "file":  "warrior_momentum_scanner.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "threading",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "time",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "logging",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "json",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "flask",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "flask_cors",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "flask_socketio",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "datetime",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "pathlib",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "ibapi.client",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "ibapi.wrapper",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "ibapi.scanner",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "ibapi.contract",
+                                               "file":  "backups/dashboard_api.py"
+                                           },
+                                           {
+                                               "from":  "backups.dashboard_api",
+                                               "to":  "ibapi.order",
+                                               "file":  "backups/dashboard_api.py"
+                                           }
+                                       ],
+                             "type":  "python_imports",
+                             "nodes":  [
+                                           {
+                                               "file":  "install_script.py",
+                                               "module":  "install_script"
+                                           },
+                                           {
+                                               "file":  "train_with_ibkr.py",
+                                               "module":  "train_with_ibkr"
+                                           },
+                                           {
+                                               "file":  "quick_start_script.py",
+                                               "module":  "quick_start_script"
+                                           },
+                                           {
+                                               "file":  "totalview_live_test.py",
+                                               "module":  "totalview_live_test"
+                                           },
+                                           {
+                                               "file":  "lstm_training_pipeline.py",
+                                               "module":  "lstm_training_pipeline"
+                                           },
+                                           {
+                                               "file":  "order_reconciliation.py",
+                                               "module":  "order_reconciliation"
+                                           },
+                                           {
+                                               "file":  "dashboard_api.py",
+                                               "module":  "dashboard_api"
+                                           },
+                                           {
+                                               "file":  "mtf_integration_step1.py",
+                                               "module":  "mtf_integration_step1"
+                                           },
+                                           {
+                                               "file":  "validate_ibkr_connection.py",
+                                               "module":  "validate_ibkr_connection"
+                                           },
+                                           {
+                                               "file":  "improved_backtest.py",
+                                               "module":  "improved_backtest"
+                                           },
+                                           {
+                                               "file":  "totalview_test.py",
+                                               "module":  "totalview_test"
+                                           },
+                                           {
+                                               "file":  "setup.py",
+                                               "module":  "setup"
+                                           },
+                                           {
+                                               "file":  "warrior_momentum_scanner.py",
+                                               "module":  "warrior_momentum_scanner"
+                                           },
+                                           {
+                                               "file":  "trading_strategy_selector.py",
+                                               "module":  "trading_strategy_selector"
+                                           },
+                                           {
+                                               "file":  "level1_test.py",
+                                               "module":  "level1_test"
+                                           },
+                                           {
+                                               "file":  "ibkr_totalview_integration.py",
+                                               "module":  "ibkr_totalview_integration"
+                                           },
+                                           {
+                                               "file":  "ibkr_trading_backend.py",
+                                               "module":  "ibkr_trading_backend"
+                                           },
+                                           {
+                                               "file":  "train_real_stocks.py",
+                                               "module":  "train_real_stocks"
+                                           },
+                                           {
+                                               "file":  "easy_mtf_trainer.py",
+                                               "module":  "easy_mtf_trainer"
+                                           },
+                                           {
+                                               "file":  "test_lstm.py",
+                                               "module":  "test_lstm"
+                                           },
+                                           {
+                                               "file":  "quick_fix_train.py",
+                                               "module":  "quick_fix_train"
+                                           },
+                                           {
+                                               "file":  "setup_dashboard.py",
+                                               "module":  "setup_dashboard"
+                                           },
+                                           {
+                                               "file":  "lstm_model_complete.py",
+                                               "module":  "lstm_model_complete"
+                                           },
+                                           {
+                                               "file":  "backups/dashboard_api.py",
+                                               "module":  "backups.dashboard_api"
+                                           },
+                                           {
+                                               "file":  "modular_dashboard_config.py",
+                                               "module":  "modular_dashboard_config"
+                                           },
+                                           {
+                                               "file":  "train_real_stocks_old.py",
+                                               "module":  "train_real_stocks_old"
+                                           },
+                                           {
+                                               "file":  "lstm_trading_integration.py",
+                                               "module":  "lstm_trading_integration"
+                                           },
+                                           {
+                                               "file":  "patch_training_mtf.py",
+                                               "module":  "patch_training_mtf"
+                                           },
+                                           {
+                                               "file":  "check_data_settings.py",
+                                               "module":  "check_data_settings"
+                                           },
+                                           {
+                                               "file":  "ibkr_data_fetcher.py",
+                                               "module":  "ibkr_data_fetcher"
+                                           },
+                                           {
+                                               "file":  "test_ibkr.py",
+                                               "module":  "test_ibkr"
+                                           },
+                                           {
+                                               "file":  "database.py",
+                                               "module":  "database"
+                                           },
+                                           {
+                                               "file":  "ibkr_live_trading_connector.py",
+                                               "module":  "ibkr_live_trading_connector"
+                                           },
+                                           {
+                                               "file":  "install_packages.py",
+                                               "module":  "install_packages"
+                                           },
+                                           {
+                                               "file":  "lstm_neural_network.py",
+                                               "module":  "lstm_neural_network"
+                                           },
+                                           {
+                                               "file":  "check_python.py",
+                                               "module":  "check_python"
+                                           },
+                                           {
+                                               "file":  "compare_results.py",
+                                               "module":  "compare_results"
+                                           },
+                                           {
+                                               "file":  "create_dashboard.py",
+                                               "module":  "create_dashboard"
+                                           },
+                                           {
+                                               "file":  "train_with_mtf.py",
+                                               "module":  "train_with_mtf"
+                                           },
+                                           {
+                                               "file":  "train_mtf_fixed.py",
+                                               "module":  "train_mtf_fixed"
+                                           }
+                                       ]
+                         },
+    "linked_ai_projects":  {
+                               "copilot_project":  {
+                                                       "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT",
+                                                       "status":  "active",
+                                                       "role":  "developer"
+                                                   },
+                               "claude_project":  {
+                                                      "path":  "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT",
+                                                      "status":  "active",
+                                                      "role":  "logic_designer"
+                                                  },
+                               "chatgpt_project":  {
+                                                       "path":  "powershell\\store",
+                                                       "status":  "active",
+                                                       "role":  "orchestrator"
+                                                   }
+                           },
+    "active_tasks_file":  "powershell\\store\\tasks\\active_tasks.json",
+    "completed_tasks_file":  "powershell\\store\\tasks\\completed_tasks.json",
+    "changelog":  "powershell\\store\\changelog.md"
+}

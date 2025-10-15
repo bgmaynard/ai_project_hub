@@ -1,0 +1,98 @@
+﻿param(
+  [string]$Root = "C:\ai_project_hub",
+  [switch]$Open
+)
+
+$ErrorActionPreference = "Stop"
+
+$store = Join-Path $Root "store"
+$codePath = "C:\ai_project_hub\store\code\IBKR_Algo_BOT"
+
+# 1) Ensure base inventory/graph exists or refresh it
+powershell -ExecutionPolicy Bypass -File (Join-Path $Root "Initialize-AIProjectHub.ps1") -Root $Root -ProjectPath $codePath
+
+# 2) Build enhanced colored/clustered graph and HTML viewer
+powershell -ExecutionPolicy Bypass -File (Join-Path $Root "Build-EnhancedGraph.ps1") -Root $Root
+
+# 3) Make HTML that inlines DOT (no fetch issues)
+powershell -ExecutionPolicy Bypass -File (Join-Path $Root "Make-GraphHTML.ps1")
+
+# 4) Analyze dependencies: fan-in / fan-out + summary
+powershell -ExecutionPolicy Bypass -File (Join-Path $Root "Make-DepReport.ps1")
+
+# 5) Create autogen tasks from the report (does NOT overwrite your main tasks)
+powershell -ExecutionPolicy Bypass -File (Join-Path $Root "Make-TasksFromDeps.ps1")
+
+# 6) Drop ready-to-use prompts for Claude, Copilot, ChatGPT
+$promptsDir = Join-Path $store "logic_docs\prompts"
+if (-not (Test-Path -LiteralPath $promptsDir)) { New-Item -ItemType Directory -Path $promptsDir | Out-Null }
+
+$claudePrompt = @"
+# Claude Prompt â€” Cluster Notes & Risk Review
+Context files:
+- project summary: C:\ai_project_hub\store\project_summary.json
+- dep summary:     C:\ai_project_hub\store\dep_summary.md
+- tasks (autogen): C:\ai_project_hub\store\tasks\active_tasks_autogen.json
+
+Your role: Planner/Analyst. For each cluster (Trading, AI, Dashboard, Utilities):
+1) Write/Update a 1-page design note in C:\ai_project_hub\store\logic_docs\<cluster>_cluster_plan.md covering:
+   - Purpose, inputs/outputs, invariants (what must never change)
+   - Top hazards (race conditions, order routing, data gaps)
+   - From dep_summary.md: call out top 3 Fan-In modules and why
+   - From tasks_autogen: confirm/refine priorities
+2) For Trading cluster, propose a broker interface split (broker_if.py): methods you need (submit_order, cancel, get_positions, subscribe_mktdata), return types, and error handling.
+Return your updated pages + a short changelog entry we can append to C:\ai_project_hub\store\changelog.md.
+"@
+Set-Cont
+# --- run unit tests headlessly and save log ---
+$store      = Join-Path $Root "store"
+$codeParent = "C:\ai_project_hub\store\code"
+$pytestLog  = Join-Path $store "last_pytest.log"
+
+# Prefer your venv python if present; else fall back to launcher
+$venvPy = "C:\ai_project_hub\venv\Scripts\python.exe"
+if (Test-Path `$venvPy) { `$pyExe = `$venvPy } else { `$pyExe = "py.exe" }
+
+# Ensure package imports resolve
+$env:PYTHONPATH = $codeParent
+
+# By default we only run the lightweight tests (integration off)
+$env:RUN_INTEGRATION = $env:RUN_INTEGRATION   # keep whatever the environment has
+if (-not $env:RUN_INTEGRATION) { $env:RUN_INTEGRATION = "0" }
+
+# Run pytest quietly and capture output + exit code
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName  = $pyExe
+$psi.Arguments = "-m pytest -q `"$codeParent`""
+$psi.UseShellExecute        = $false
+$psi.RedirectStandardOutput = $true
+$psi.RedirectStandardError  = $true
+$p = New-Object System.Diagnostics.Process
+$p.StartInfo = $psi
+[void]$p.Start()
+$stdout = $p.StandardOutput.ReadToEnd()
+$stderr = $p.StandardError.ReadToEnd()
+$p.WaitForExit()
+
+# Write full log (stdout + stderr)
+$logText = ($stdout.TrimEnd() + "`r`n" + $stderr.TrimEnd()).Trim()
+Set-Content -LiteralPath $pytestLog -Value $logText -Encoding UTF8
+
+# Emit a friendly one-line summary
+$passed = ($stdout -split "`r?`n" | Where-Object { $_ -match '^[.]+ \[100%]' -or $_ -match 'passed' }) -join '; '
+if (-not $passed) { $passed = "See log." }
+Write-Host ("Pytest exit={0}. Log: {1}. Summary: {2}" -f $p.ExitCode, $pytestLog, $passed)
+
+# --- run unit tests headlessly and save log ---
+$store      = Join-Path $Root "store"
+$codeParent = "C:\ai_project_hub\store\code"
+$pytestLog  = Join-Path $store "last_pytest.log"
+$venvPy = "C:\ai_project_hub\venv\Scripts\python.exe"
+if (Test-Path `$venvPy) { `$pyExe = `$venvPy } else { `$pyExe = "py.exe" }
+$env:PYTHONPATH = $codeParent
+if (-not $env:RUN_INTEGRATION) { $env:RUN_INTEGRATION = "0" }
+& $pyExe -m pytest -q $codeParent *>&1 | Tee-Object -FilePath $pytestLog
+Write-Host ("Pytest log written to: {0}" -f $pytestLog)
+
+
+

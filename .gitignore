@@ -1,0 +1,10 @@
+﻿venv/
+**/__pycache__/
+*.log
+store/last_pytest.log
+store/enhanced_dependency_graph.png
+store/dependency_graph.png
+store/tasks/*.json
+*.sqlite
+*.h5
+*.keras
