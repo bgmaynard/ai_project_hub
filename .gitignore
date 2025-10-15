@@ -8,3 +8,4 @@ store/tasks/*.json
 *.sqlite
 *.h5
 *.keras
+store/code/IBKR_Algo_BOT.zip
