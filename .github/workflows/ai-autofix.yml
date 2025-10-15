@@ -1,0 +1,31 @@
+﻿name: AI Autofix PR
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 14 * * 1-5"
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort
+      - name: Apply formatters
+        run: |
+          black .
+          isort .
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ai/autofix
+          title: "AI Autofix: code formatting & imports"
+          commit-message: "style: black + isort automated formatting"
+          labels: ai-autofix

@@ -1,0 +1,40 @@
+﻿name: AI Mesh CI
+on:
+  push:
+  pull_request:
+jobs:
+  run-mesh:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path requirements.txt) { pip install -r requirements.txt }
+          pip install pytest
+      - name: Run validator
+        shell: pwsh
+        run: |
+          ="1"; ="utf-8"
+          python ai_validator_connect.py
+      - name: Run trainer auditor
+        shell: pwsh
+        run: |
+          ="1"; ="utf-8"
+          python ai_trainer_connect.py
+      - name: Run tests
+        shell: pwsh
+        run: |
+          if (Test-Path store/code) { %PYTHONPATH%;C:\IBKR_Trading _Bot\IBridgePy = "store/code" }
+          pytest -q
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-mesh-artifacts
+          path: |
+            store/ai_shared/*.md
+            store/ai_shared/*.json
+          if-no-files-found: ignore
