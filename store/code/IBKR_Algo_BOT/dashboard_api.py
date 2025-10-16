@@ -1,4 +1,4 @@
-"""
+﻿"""
 Dashboard API - Complete Backend for AI Trading Bot
 Version: 2.0 - Clean, Verified, Production-Ready
 """
@@ -203,6 +203,7 @@ class WatchlistManager:
     def __init__(self):
         self.watchlists_dir = Path('dashboard_data/watchlists')
         self.watchlists_dir.mkdir(parents=True, exist_ok=True)
+        self.watchlists = {}
         self.watchlists = self.load_all_watchlists()
     
     def load_all_watchlists(self):
@@ -276,7 +277,7 @@ class IBKRManager:
     def connect(self, host='127.0.0.1', port=7497, client_id=1):
         """Actually connect to IBKR TWS"""
         print('\n' + '='*60)
-        print('🔌 STARTING IBKR CONNECTION')
+        print('ðŸ”Œ STARTING IBKR CONNECTION')
         print('='*60)
         print(f'Host: {host}, Port: {port}, Client ID: {client_id}')
         print(f'IBKR_AVAILABLE: {IBKR_AVAILABLE}')
@@ -287,13 +288,13 @@ class IBKRManager:
         
         try:
             if not IBKR_AVAILABLE:
-                print('❌ IBKR API not installed')
+                print('âŒ IBKR API not installed')
                 logger.error('IBKR API not installed')
                 bot_state.add_log('error', 'ibkr', 'IBKR API not available')
                 return False
             
             if EClient is None or EWrapper is None:
-                print('❌ IBKR classes not imported')
+                print('âŒ IBKR classes not imported')
                 logger.error('IBKR classes not imported')
                 bot_state.add_log('error', 'ibkr', 'IBKR classes not available')
                 return False
@@ -310,24 +311,24 @@ class IBKRManager:
                     self.account_data = {}
                     self.scanner_data = []
                     self.next_order_id = None
-                    print('  ✓ TradingWrapper initialized')
+                    print('  âœ“ TradingWrapper initialized')
                 
                 def connectAck(self):
-                    print('  ✅ IBKR connectAck received!')
-                    logger.info('✅ IBKR connectAck received!')
+                    print('  âœ… IBKR connectAck received!')
+                    logger.info('âœ… IBKR connectAck received!')
                     self.connected_event.set()
                 
                 def nextValidId(self, orderId):
                     self.next_order_id = orderId
-                    print(f'  ✅ Next valid order ID: {orderId}')
-                    logger.info(f'✅ Next valid order ID: {orderId}')
+                    print(f'  âœ… Next valid order ID: {orderId}')
+                    logger.info(f'âœ… Next valid order ID: {orderId}')
                 
                 def accountSummary(self, reqId, account, tag, value, currency):
                     self.account_data[tag] = {
                         'value': float(value) if value.replace('.','').replace('-','').isdigit() else value, 
                         'currency': currency
                     }
-                    print(f'  ✓ Account {tag}: {value} {currency}')
+                    print(f'  âœ“ Account {tag}: {value} {currency}')
                     logger.info(f'Account data: {tag} = {value} {currency}')
                 
                 def position(self, account, contract, position, avgCost):
@@ -339,11 +340,11 @@ class IBKRManager:
                         'unrealized_pnl': 0
                     }
                     self.positions_data.append(pos)
-                    print(f'  ✓ Position: {contract.symbol} {position} @ ${avgCost}')
+                    print(f'  âœ“ Position: {contract.symbol} {position} @ ${avgCost}')
                     logger.info(f'Position: {contract.symbol} {position} @ {avgCost}')
                 
                 def positionEnd(self):
-                    print(f'  ✓ Positions loaded: {len(self.positions_data)}')
+                    print(f'  âœ“ Positions loaded: {len(self.positions_data)}')
                     logger.info('Position data complete')
                 
                 def openOrder(self, orderId, contract, order, orderState):
@@ -355,11 +356,11 @@ class IBKRManager:
                         'status': orderState.status
                     }
                     self.orders_data.append(ord)
-                    print(f'  ✓ Order callback: ID={orderId} {contract.symbol} {order.action} {order.totalQuantity} - Status: {orderState.status}')
+                    print(f'  âœ“ Order callback: ID={orderId} {contract.symbol} {order.action} {order.totalQuantity} - Status: {orderState.status}')
                     logger.info(f'Order: {contract.symbol} {order.action} {order.totalQuantity} - {orderState.status}')
                 
                 def orderStatus(self, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice):
-                    print(f'  📋 Order {orderId} status: {status} (filled: {filled}, remaining: {remaining})')
+                    print(f'  ðŸ“‹ Order {orderId} status: {status} (filled: {filled}, remaining: {remaining})')
                     if whyHeld:
                         print(f'     Why held: {whyHeld}')
                     logger.info(f'Order {orderId} status: {status}')
@@ -377,21 +378,21 @@ class IBKRManager:
                     logger.info(f'Scanner: #{rank} {contract.symbol}')
                 
                 def scannerDataEnd(self, reqId):
-                    print(f'  ✓ Scanner complete: {len(self.scanner_data)} results')
+                    print(f'  âœ“ Scanner complete: {len(self.scanner_data)} results')
                     logger.info('Scanner data complete')
                 
                 def error(self, reqId, errorCode, errorString, advancedOrderRejectJson=''):
                     if errorCode in [2104, 2106, 2158, 2119]:
-                        print(f'  ℹ IBKR [{errorCode}]: {errorString}')
+                        print(f'  â„¹ IBKR [{errorCode}]: {errorString}')
                         logger.info(f'IBKR Info [{errorCode}]: {errorString}')
                     else:
-                        print(f'  ❌ IBKR Error [{errorCode}]: {errorString}')
+                        print(f'  âŒ IBKR Error [{errorCode}]: {errorString}')
                         logger.error(f'IBKR Error [{errorCode}]: {errorString}')
             
             class TradingClient(EClient):
                 def __init__(self, wrapper):
                     super().__init__(wrapper)
-                    print('  ✓ TradingClient initialized')
+                    print('  âœ“ TradingClient initialized')
             
             self.wrapper = TradingWrapper()
             self.client = TradingClient(self.wrapper)
@@ -401,9 +402,9 @@ class IBKRManager:
             print('Connection initiated, starting client thread...')
             
             def run_client():
-                print('  ✓ Client thread started')
+                print('  âœ“ Client thread started')
                 self.client.run()
-                print('  ✓ Client thread ended')
+                print('  âœ“ Client thread ended')
             
             self.connection_thread = threading.Thread(target=run_client, daemon=True)
             self.connection_thread.start()
@@ -411,18 +412,18 @@ class IBKRManager:
             print('Waiting for connection acknowledgment (5 sec)...\n')
             
             if self.wrapper.connected_event.wait(timeout=5):
-                print('✅ CONNECTION SUCCESSFUL!\n')
+                print('âœ… CONNECTION SUCCESSFUL!\n')
                 
                 # Wait for nextValidId to arrive (usually comes right after connectAck)
                 print('Waiting for order ID from TWS...')
                 for i in range(10):  # Wait up to 1 second
                     if self.wrapper.next_order_id is not None:
-                        print(f'✅ Got order ID: {self.wrapper.next_order_id}')
+                        print(f'âœ… Got order ID: {self.wrapper.next_order_id}')
                         break
                     time.sleep(0.1)
                 
                 if self.wrapper.next_order_id is None:
-                    print('⚠ No order ID received yet (will use timestamp if needed)')
+                    print('âš  No order ID received yet (will use timestamp if needed)')
                 
                 self.connected = True
                 bot_state.add_log('success', 'ibkr', f'Connected to IBKR TWS on {host}:{port}')
@@ -444,21 +445,21 @@ class IBKRManager:
                 
                 if 'NetLiquidation' in self.wrapper.account_data:
                     self.account_value = self.wrapper.account_data['NetLiquidation']['value']
-                    print(f'💰 Account Value: ${self.account_value:,.2f}')
+                    print(f'ðŸ’° Account Value: ${self.account_value:,.2f}')
                 
                 if 'BuyingPower' in self.wrapper.account_data:
                     self.buying_power = self.wrapper.account_data['BuyingPower']['value']
-                    print(f'💵 Buying Power: ${self.buying_power:,.2f}')
+                    print(f'ðŸ’µ Buying Power: ${self.buying_power:,.2f}')
                 
-                print(f'📊 Positions: {len(self.positions)}')
-                print(f'📝 Orders: {len(self.orders)}')
+                print(f'ðŸ“Š Positions: {len(self.positions)}')
+                print(f'ðŸ“ Orders: {len(self.orders)}')
                 print('\n' + '='*60)
-                print('✅ IBKR CONNECTION COMPLETE')
+                print('âœ… IBKR CONNECTION COMPLETE')
                 print('='*60 + '\n')
                 
                 return True
             else:
-                print('\n❌ CONNECTION TIMEOUT')
+                print('\nâŒ CONNECTION TIMEOUT')
                 print('Check: 1) TWS running, 2) API enabled, 3) Port correct')
                 print('='*60 + '\n')
                 self.connected = False
@@ -466,9 +467,9 @@ class IBKRManager:
                 return False
                 
         except Exception as e:
-            print(f'\n❌ CONNECTION FAILED: {e}')
+            print(f'\nâŒ CONNECTION FAILED: {e}')
             print('='*60 + '\n')
-            logger.error(f'❌ IBKR CONNECTION FAILED: {e}', exc_info=True)
+            logger.error(f'âŒ IBKR CONNECTION FAILED: {e}', exc_info=True)
             self.connected = False
             bot_state.add_log('error', 'ibkr', f'Connection failed: {e}')
             return False
@@ -546,7 +547,7 @@ class IBKRManager:
         
         # Check if client is still alive
         if not self.client or not self.client.isConnected():
-            print('⚠ IBKR client disconnected, setting connected=False')
+            print('âš  IBKR client disconnected, setting connected=False')
             self.connected = False
             return False
         
@@ -663,7 +664,7 @@ def execute_trade():
         limit_price = data.get('limit_price')
         
         print('\n' + '='*60)
-        print(f'📈 TRADE EXECUTION REQUEST')
+        print(f'ðŸ“ˆ TRADE EXECUTION REQUEST')
         print('='*60)
         print(f'Symbol: {symbol}')
         print(f'Action: {action}')
@@ -673,41 +674,41 @@ def execute_trade():
         logger.info(f'Trade request: {action} {quantity} {symbol}')
         
         if not ibkr_manager.is_connected():
-            print('❌ Not connected to IBKR')
+            print('âŒ Not connected to IBKR')
             print('='*60 + '\n')
             logger.error('Trade failed: Not connected to IBKR')
             return jsonify({'success': False, 'message': 'Not connected to IBKR'}), 400
         
         if not symbol or not quantity:
-            print('❌ Missing symbol or quantity')
+            print('âŒ Missing symbol or quantity')
             print('='*60 + '\n')
             logger.error('Trade failed: Missing symbol or quantity')
             return jsonify({'success': False, 'message': 'Symbol and quantity required'}), 400
         
         # Check if client is actually initialized
         if not ibkr_manager.client:
-            print('❌ IBKR client is None - connection not real!')
+            print('âŒ IBKR client is None - connection not real!')
             print('='*60 + '\n')
             logger.error('Trade failed: IBKR client is None')
             return jsonify({'success': False, 'message': 'IBKR client not initialized. Reconnect to IBKR.'}), 400
         
         if not ibkr_manager.wrapper:
-            print('❌ IBKR wrapper is None - connection not real!')
+            print('âŒ IBKR wrapper is None - connection not real!')
             print('='*60 + '\n')
             logger.error('Trade failed: IBKR wrapper is None')
             return jsonify({'success': False, 'message': 'IBKR wrapper not initialized. Reconnect to IBKR.'}), 400
         
-        print('✓ IBKR client and wrapper initialized')
+        print('âœ“ IBKR client and wrapper initialized')
         
         # Verify client is actually connected
         if not ibkr_manager.client.isConnected():
-            print('❌ Client shows as disconnected!')
+            print('âŒ Client shows as disconnected!')
             print('   Try disconnecting and reconnecting in the dashboard')
             print('='*60 + '\n')
             return jsonify({'success': False, 'message': 'IBKR client disconnected. Please reconnect.'}), 400
         
-        print('✓ Client connection verified')
-        print('✓ Creating order...')
+        print('âœ“ Client connection verified')
+        print('âœ“ Creating order...')
         
         # Place real order via IBKR
         try:
@@ -721,7 +722,7 @@ def execute_trade():
             contract.exchange = 'SMART'
             contract.currency = 'USD'
             
-            print(f'✓ Contract: {contract.symbol} {contract.secType} {contract.exchange}')
+            print(f'âœ“ Contract: {contract.symbol} {contract.secType} {contract.exchange}')
             
             # Create order with only essential attributes
             order = Order()
@@ -737,31 +738,31 @@ def execute_trade():
             if order_type == 'LMT' and limit_price:
                 order.lmtPrice = float(limit_price)
             
-            print(f'✓ Order: {order.action} {order.totalQuantity} @ {order.orderType}')
+            print(f'âœ“ Order: {order.action} {order.totalQuantity} @ {order.orderType}')
             
             # Get next order ID from wrapper
             if hasattr(ibkr_manager.wrapper, 'next_order_id') and ibkr_manager.wrapper.next_order_id:
                 order_id = ibkr_manager.wrapper.next_order_id
                 ibkr_manager.wrapper.next_order_id += 1
-                print(f'✓ Using order ID from TWS: {order_id}')
+                print(f'âœ“ Using order ID from TWS: {order_id}')
             else:
                 order_id = int(time.time())
-                print(f'⚠ No order ID from TWS, using timestamp: {order_id}')
+                print(f'âš  No order ID from TWS, using timestamp: {order_id}')
             
-            print(f'\n🚀 Sending order to IBKR...')
+            print(f'\nðŸš€ Sending order to IBKR...')
             
             # Transmit order immediately (bypass confirmations)
             order.transmit = True
             
             ibkr_manager.client.placeOrder(order_id, contract, order)
-            print(f'✅ placeOrder() called successfully!')
+            print(f'âœ… placeOrder() called successfully!')
             print(f'   Order ID: {order_id}')
             print(f'   {action} {quantity} {symbol} @ {order_type}')
             print(f'   Transmit: True (will execute immediately)')
             print('='*60 + '\n')
             
             bot_state.add_log('success', 'trade', 
-                f'✅ Order sent to IBKR: {action} {quantity} {symbol} (ID: {order_id})')
+                f'âœ… Order sent to IBKR: {action} {quantity} {symbol} (ID: {order_id})')
             
             # Wait for order confirmation
             time.sleep(1)
@@ -780,13 +781,13 @@ def execute_trade():
             })
                 
         except Exception as e:
-            print(f'❌ Order placement FAILED: {e}')
+            print(f'âŒ Order placement FAILED: {e}')
             print('='*60 + '\n')
             logger.error(f'Order placement error: {e}', exc_info=True)
             return jsonify({'success': False, 'message': f'Order failed: {str(e)}'}), 500
         
     except Exception as e:
-        print(f'❌ Trade execution FAILED: {e}')
+        print(f'âŒ Trade execution FAILED: {e}')
         print('='*60 + '\n')
         logger.error(f'Trade execution error: {e}', exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1020,3 +1021,4 @@ if __name__ == '__main__':
     print('Press Ctrl+C to stop')
     print('=' * 60)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+

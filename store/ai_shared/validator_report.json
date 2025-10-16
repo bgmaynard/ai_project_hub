@@ -1,0 +1,684 @@
+{
+  "generated_at": "2025-10-14 22:46:45",
+  "root": "C:\\ai_project_hub",
+  "scanned_files": 52,
+  "missing_modules_overall": [
+    "",
+    "App",
+    "EASY_MTF_TRAINER_V2",
+    "IBKR_Algo_BOT",
+    "ReactDOM",
+    "broker_if",
+    "improved_backtest",
+    "lstm_model_complete",
+    "lstm_training_pipeline",
+    "mtf_features_simple",
+    "react"
+  ],
+  "pytest_result": {
+    "returncode": 3,
+    "output": "               ~~~~~~~~~~~~^^\nINTERNALERROR>   File \"C:\\Users\\bgmay\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages\\_pytest\\python.py\", line 551, in _getobj\nINTERNALERROR>     return importtestmodule(self.path, self.config)\nINTERNALERROR>   File \"C:\\Users\\bgmay\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages\\_pytest\\python.py\", line 498, in importtestmodule\nINTERNALERROR>     mod = import_path(\nINTERNALERROR>         path,\nINTERNALERROR>     ...<2 lines>...\nINTERNALERROR>         consider_namespace_packages=config.getini(\"consider_namespace_packages\"),\nINTERNALERROR>     )\nINTERNALERROR>   File \"C:\\Users\\bgmay\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages\\_pytest\\pathlib.py\", line 587, in import_path\nINTERNALERROR>     importlib.import_module(module_name)\nINTERNALERROR>     ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^\nINTERNALERROR>   File \"C:\\Users\\bgmay\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\importlib\\__init__.py\", line 88, in import_module\nINTERNALERROR>     return _bootstrap._gcd_import(name[level:], package, level)\nINTERNALERROR>            ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nINTERNALERROR>   File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\nINTERNALERROR>   File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\nINTERNALERROR>   File \"<frozen importlib._bootstrap>\", line 1331, in _find_and_load_unlocked\nINTERNALERROR>   File \"<frozen importlib._bootstrap>\", line 935, in _load_unlocked\nINTERNALERROR>   File \"C:\\Users\\bgmay\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py\", line 186, in exec_module\nINTERNALERROR>     exec(co, module.__dict__)\nINTERNALERROR>     ~~~~^^^^^^^^^^^^^^^^^^^^^\nINTERNALERROR>   File \"C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT\\tests_integration\\test_lstm.py\", line 20, in <module>\nINTERNALERROR>     exit(1)\nINTERNALERROR>     ~~~~^^^\nINTERNALERROR>   File \"<frozen _sitebuiltins>\", line 26, in __call__\nINTERNALERROR> SystemExit: 1\n\n"
+  },
+  "ibkr_api_probe": {
+    "ok": true,
+    "payload": {
+      "client_exists": true,
+      "connected": true,
+      "ibkr_available": true,
+      "wrapper_exists": true
+    }
+  },
+  "files": [
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\bot_entry.py",
+      "imports": [
+        "IBKR_Algo_BOT",
+        "importlib",
+        "runpy",
+        "sys",
+        "traceback"
+      ],
+      "missing_here": [
+        "IBKR_Algo_BOT"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\broker_if.py",
+      "imports": [
+        "typing"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\check_data_settings.py",
+      "imports": [
+        "datetime",
+        "pandas",
+        "yfinance"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\check_python.py",
+      "imports": [
+        "os",
+        "pip",
+        "shutil",
+        "subprocess",
+        "sys",
+        "urllib"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\compare_results.py",
+      "imports": [
+        "json",
+        "os",
+        "pathlib"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\conftest.py",
+      "imports": [
+        "os",
+        "pathlib"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\create_dashboard.py",
+      "imports": [],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\dashboard_api.py",
+      "imports": [
+        "datetime",
+        "flask",
+        "flask_cors",
+        "flask_socketio",
+        "functools",
+        "ibapi",
+        "json",
+        "logging",
+        "pathlib",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\database.py",
+      "imports": [
+        "datetime",
+        "json",
+        "logging",
+        "pathlib",
+        "shutil",
+        "sqlite3",
+        "typing"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\easy_mtf_trainer.py",
+      "imports": [
+        "numpy",
+        "os",
+        "pandas",
+        "sklearn",
+        "tensorflow",
+        "traceback",
+        "warnings",
+        "yfinance"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\ibkr_adapter.py",
+      "imports": [
+        "",
+        "broker_if",
+        "dataclasses",
+        "ibapi",
+        "typing"
+      ],
+      "missing_here": [
+        "",
+        "broker_if"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\ibkr_data_fetcher.py",
+      "imports": [
+        "argparse",
+        "datetime",
+        "ibapi",
+        "logging",
+        "os",
+        "pandas",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\ibkr_live_trading_connector.py",
+      "imports": [
+        "EASY_MTF_TRAINER_V2",
+        "argparse",
+        "collections",
+        "datetime",
+        "ibapi",
+        "logging",
+        "numpy",
+        "pandas",
+        "pickle",
+        "tensorflow",
+        "threading",
+        "time"
+      ],
+      "missing_here": [
+        "EASY_MTF_TRAINER_V2"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\ibkr_ping.py",
+      "imports": [
+        "ibapi",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\ibkr_totalview_integration.py",
+      "imports": [
+        "ibapi",
+        "threading",
+        "typing"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\ibkr_trading_backend.py",
+      "imports": [
+        "collections",
+        "datetime",
+        "ibapi",
+        "json",
+        "numpy",
+        "pandas",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\improved_backtest.py",
+      "imports": [
+        "logging",
+        "numpy",
+        "pandas",
+        "typing"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\install_packages.py",
+      "imports": [
+        "joblib",
+        "matplotlib",
+        "numpy",
+        "pandas",
+        "seaborn",
+        "sklearn",
+        "subprocess",
+        "sys",
+        "tensorflow",
+        "time",
+        "yfinance"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\install_script.py",
+      "imports": [
+        "App",
+        "ReactDOM",
+        "json",
+        "os",
+        "pathlib",
+        "react",
+        "subprocess",
+        "sys"
+      ],
+      "missing_here": [
+        "App",
+        "ReactDOM",
+        "react"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\lstm_model_complete.py",
+      "imports": [
+        "datetime",
+        "joblib",
+        "json",
+        "logging",
+        "numpy",
+        "pandas",
+        "pathlib",
+        "sklearn",
+        "tensorflow"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\lstm_neural_network.py",
+      "imports": [
+        "datetime",
+        "json",
+        "numpy",
+        "pandas",
+        "sklearn"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\lstm_trading_integration.py",
+      "imports": [
+        "collections",
+        "datetime",
+        "logging",
+        "lstm_model_complete",
+        "numpy",
+        "pandas",
+        "threading",
+        "time"
+      ],
+      "missing_here": [
+        "lstm_model_complete"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\lstm_training_pipeline.py",
+      "imports": [
+        "datetime",
+        "json",
+        "logging",
+        "lstm_model_complete",
+        "matplotlib",
+        "numpy",
+        "pandas",
+        "pathlib",
+        "seaborn",
+        "sklearn",
+        "tensorflow",
+        "yfinance"
+      ],
+      "missing_here": [
+        "lstm_model_complete"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\modular_dashboard_config.py",
+      "imports": [
+        "abc",
+        "json",
+        "queue",
+        "threading",
+        "typing"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\mtf_integration_step1.py",
+      "imports": [
+        "datetime",
+        "logging",
+        "numpy",
+        "pandas",
+        "typing",
+        "yfinance"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\order_reconciliation.py",
+      "imports": [
+        "argparse",
+        "collections",
+        "datetime",
+        "ibapi",
+        "pandas",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\order_router.py",
+      "imports": [
+        "",
+        "broker_if",
+        "typing"
+      ],
+      "missing_here": [
+        "",
+        "broker_if"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\patch_training_mtf.py",
+      "imports": [
+        "datetime",
+        "logging",
+        "lstm_model_complete",
+        "lstm_training_pipeline",
+        "mtf_features_simple",
+        "numpy",
+        "os",
+        "pandas",
+        "sys",
+        "traceback",
+        "yfinance"
+      ],
+      "missing_here": [
+        "lstm_model_complete",
+        "lstm_training_pipeline",
+        "mtf_features_simple"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\quick_fix_train.py",
+      "imports": [
+        "argparse",
+        "improved_backtest",
+        "logging",
+        "lstm_model_complete",
+        "lstm_training_pipeline",
+        "pandas",
+        "pathlib",
+        "sys",
+        "yfinance"
+      ],
+      "missing_here": [
+        "improved_backtest",
+        "lstm_model_complete",
+        "lstm_training_pipeline"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\quick_start_script.py",
+      "imports": [
+        "datetime",
+        "flask",
+        "flask_cors",
+        "flask_socketio",
+        "logging",
+        "os",
+        "pathlib",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\risk_manager.py",
+      "imports": [
+        "math",
+        "typing"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\run_backtest_cli.py",
+      "imports": [
+        "IBKR_Algo_BOT",
+        "datetime",
+        "numpy",
+        "pandas",
+        "sys",
+        "traceback",
+        "yfinance"
+      ],
+      "missing_here": [
+        "IBKR_Algo_BOT"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\run_totalview_cli.py",
+      "imports": [
+        "IBKR_Algo_BOT"
+      ],
+      "missing_here": [
+        "IBKR_Algo_BOT"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\setup.py",
+      "imports": [
+        "json",
+        "os",
+        "pathlib",
+        "subprocess",
+        "sys"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\setup_dashboard.py",
+      "imports": [
+        "os",
+        "subprocess",
+        "sys"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\trading_strategy_selector.py",
+      "imports": [
+        "argparse",
+        "datetime",
+        "subprocess",
+        "sys",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\train_mtf_fixed.py",
+      "imports": [
+        "datetime",
+        "json",
+        "logging",
+        "numpy",
+        "os",
+        "pandas",
+        "pathlib",
+        "pickle",
+        "sklearn",
+        "sys",
+        "tensorflow",
+        "traceback",
+        "yfinance"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\train_real_stocks.py",
+      "imports": [
+        "lstm_training_pipeline",
+        "pathlib",
+        "sys",
+        "time"
+      ],
+      "missing_here": [
+        "lstm_training_pipeline"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\train_real_stocks_old.py",
+      "imports": [
+        "lstm_training_pipeline",
+        "sys",
+        "time",
+        "traceback"
+      ],
+      "missing_here": [
+        "lstm_training_pipeline"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\train_with_ibkr.py",
+      "imports": [
+        "argparse",
+        "improved_backtest",
+        "logging",
+        "lstm_model_complete",
+        "lstm_training_pipeline",
+        "pandas",
+        "pathlib",
+        "sys"
+      ],
+      "missing_here": [
+        "improved_backtest",
+        "lstm_model_complete",
+        "lstm_training_pipeline"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\train_with_mtf.py",
+      "imports": [
+        "datetime",
+        "json",
+        "logging",
+        "numpy",
+        "os",
+        "pandas",
+        "pathlib",
+        "sklearn",
+        "sys",
+        "yfinance"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\validate_ibkr_connection.py",
+      "imports": [
+        "argparse",
+        "datetime",
+        "ibapi",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\warrior_momentum_scanner.py",
+      "imports": [
+        "argparse",
+        "collections",
+        "datetime",
+        "ibapi",
+        "logging",
+        "numpy",
+        "pandas",
+        "threading",
+        "time",
+        "yfinance"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\__init__.py",
+      "imports": [],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\backups\\dashboard_api.py",
+      "imports": [
+        "datetime",
+        "flask",
+        "flask_cors",
+        "flask_socketio",
+        "ibapi",
+        "json",
+        "logging",
+        "pathlib",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\tests\\test_order_router.py",
+      "imports": [
+        "IBKR_Algo_BOT"
+      ],
+      "missing_here": [
+        "IBKR_Algo_BOT"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\tests\\__init__.py",
+      "imports": [],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\tests_integration\\level1_test.py",
+      "imports": [
+        "datetime",
+        "ibapi",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\tests_integration\\test_ibkr.py",
+      "imports": [
+        "ibapi",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\tests_integration\\test_lstm.py",
+      "imports": [
+        "datetime",
+        "lstm_model_complete",
+        "numpy",
+        "pandas"
+      ],
+      "missing_here": [
+        "lstm_model_complete"
+      ]
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\tests_integration\\totalview_live_test.py",
+      "imports": [
+        "collections",
+        "datetime",
+        "ibapi",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    },
+    {
+      "file": "store\\code\\IBKR_Algo_BOT\\tests_integration\\totalview_test.py",
+      "imports": [
+        "collections",
+        "datetime",
+        "ibapi",
+        "threading",
+        "time"
+      ],
+      "missing_here": []
+    }
+  ]
+}
