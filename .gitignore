@@ -11,3 +11,4 @@ store/tasks/*.json
 store/code/IBKR_Algo_BOT.zip
 *.zip
 store/code/IBKR_Algo_BOT.zip
+store/code/dashboard_data/
