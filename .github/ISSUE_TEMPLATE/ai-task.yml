@@ -1,0 +1,24 @@
+﻿name: AI Task
+description: Request work from the AI mesh (validator/trainer)
+labels: ["ai-task"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should the AIs improve/verify?
+      placeholder: e.g., optimize order routing latency, add unit test coverage for ibkr_totalview_integration
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / Constraints
+      description: What files, modules, or constraints should be respected?
+      placeholder: e.g., only touch IBKR_Algo_BOT/order_router.py and tests, no new heavy deps
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List what success looks like.
+      placeholder: e.g., pytest passes, new benchmark shows <5ms added latency

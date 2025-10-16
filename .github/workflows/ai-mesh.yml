@@ -1,0 +1,52 @@
+﻿name: AI Mesh
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to commit the generated reports
+  actions: read
+
+jobs:
+  mesh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install runtime deps
+        run: |
+          python -m pip install -U pip
+
+      - name: Run validator
+        run: |
+          python ai_validator_connect.py || echo "validator script exited nonzero"
+      - name: Run trainer
+        run: |
+          python ai_trainer_connect.py || echo "trainer script exited nonzero"
+
+      - name: Commit AI reports (if changed)
+        run: |
+          git config user.name "ai-mesh-bot"
+          git config user.email "ai-mesh-bot@users.noreply.github.com"
+          git add store/ai_shared/*.md store/ai_shared/*.json 2> || true
+          if git diff --cached --quiet; then
+            echo "No report changes to commit."
+          else
+            git commit -m "chore(ai-mesh): refresh reports [skip ci]"
+            git push
+          fi
+
+      - name: Upload reports as artifact (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-mesh-reports
+          path: |
+            store/ai_shared/*.md
+            store/ai_shared/*.json
