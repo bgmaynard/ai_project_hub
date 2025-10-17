@@ -1022,3 +1022,22 @@ if __name__ == '__main__':
     print('=' * 60)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
 
+# -------- cancel endpoint --------
+@app.route("/api/trade/cancel", methods=["POST"])
+def cancel_trade():
+    try:
+        data = request.json or {}
+        order_id = int(data.get("order_id", 0))
+        if not order_id:
+            return jsonify({"success": False, "message": "order_id required"}), 400
+        if not ibkr_manager.is_connected():
+            return jsonify({"success": False, "message": "Not connected to IBKR"}), 400
+        if not ibkr_manager.client:
+            return jsonify({"success": False, "message": "IBKR client not initialized"}), 400
+
+        ibkr_manager.client.cancelOrder(order_id)
+        bot_state.add_log("info", "trade", f"Cancel requested for order {order_id}")
+        return jsonify({"success": True, "order_id": order_id, "message": f"Cancel requested for order {order_id}"})
+    except Exception as e:
+        logger.error("cancel_trade error", exc_info=True)
+        return jsonify({"success": False, "message": str(e)}), 500
