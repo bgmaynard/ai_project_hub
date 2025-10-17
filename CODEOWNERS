@@ -1,0 +1,6 @@
+# Request reviews automatically
+# Replace @bgmaynard and @your-team with real GitHub handles/teams
+*       @bgmaynard
+/store/code/IBKR_Algo_BOT/   @bgmaynard @your-team
+/.github/                     @bgmaynard @your-team
+/store/ai_shared/             @bgmaynard @your-team

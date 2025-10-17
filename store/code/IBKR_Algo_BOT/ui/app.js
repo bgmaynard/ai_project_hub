@@ -1,5 +1,4 @@
 const $ = (id) => document.getElementById(id);
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function pingStatus() {
   try {
@@ -87,6 +86,5 @@ function wireEvents() {
 (async function init(){
   wireEvents();
   await pingStatus();
-  // soft refresh of status every 10s
   setInterval(pingStatus, 10000);
 })();

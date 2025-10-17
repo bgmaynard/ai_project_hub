@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a bug in the AI dashboard/bots
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What is the bug and expected behavior?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide exact steps and logs/screens.
+  - type: input
+    id: version
+    attributes:
+      label: Version/Branch
+      description: Commit SHA or branch name
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - UI
+        - API
+        - IBKR Bridge
+        - Signals/AI
+        - CI/CD
