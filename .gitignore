@@ -14,3 +14,13 @@ store/code/IBKR_Algo_BOT.zip
 store/code/dashboard_data/
 store/ai_shared/mesh_heartbeat.json
 store/ai_shared/mesh_heartbeat.json
+# --- project ---
+.env
+store/ai_shared/mesh_heartbeat.json
+store/logs/
+__pycache__/
+*.pyc
+*.pyo
+
+# venv
+.venv/
