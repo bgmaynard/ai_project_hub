@@ -1,0 +1,21 @@
+﻿name: smoke
+on: [push, pull_request]
+jobs:
+  api-import:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt
+      - name: Import API and list routes
+        run: |
+          python - << "PY"
+          import importlib, sys, pathlib
+          sys.path.insert(0, str(pathlib.Path("store/code/IBKR_Algo_BOT").resolve()))
+          m = importlib.import_module("dashboard_api")
+          app = getattr(m, "app", None)
+          assert app is not None, "FastAPI app not found"
+          print("ROUTES:", [r.path for r in app.routes])
+          PY
