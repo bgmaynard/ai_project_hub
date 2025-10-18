@@ -1,1 +1,25 @@
-{"last_run":"2025-10-14T22:46:45.808196","validator_rc":0,"trainer_rc":0}
+{
+  "agents": [
+    {
+      "id": "chatgpt",
+      "ver": "controller-1.0",
+      "last": "2025-10-18T00:35:30.219680Z",
+      "status": "initialized"
+    },
+    {
+      "id": "claude",
+      "ver": "review-2.0",
+      "last": "2025-10-18T00:35:30.219709Z",
+      "status": "active"
+    },
+    {
+      "id": "copilot",
+      "ver": "assistant-2.3",
+      "last": "2025-10-18T00:35:30.219710Z",
+      "status": "ready"
+    }
+  ],
+  "last_update": "2025-10-18T00:35:30.219711Z",
+  "project": "IBKR_Algo_BOT",
+  "version": "2.0.0"
+}
