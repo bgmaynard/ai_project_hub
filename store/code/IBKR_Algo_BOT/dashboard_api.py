@@ -1,6 +1,7 @@
 ﻿# store/code/IBKR_Algo_BOT/dashboard_api.py
 import os, asyncio
 from fastapi import FastAPI, Request, Header, HTTPException
+from store.code.IBKR_Algo_BOT.alpha.alpha_fusion import AlphaFusion, AlphaFusionConfig
 from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -19,6 +20,8 @@ TWS_PORT = int(os.getenv("TWS_PORT", "7497"))
 TWS_CLIENT_ID = int(os.getenv("TWS_CLIENT_ID", "1101"))
 
 app = FastAPI(title="AI Project Hub API", version=os.getenv("VERSION", "dev"))
+# AlphaFusion online model
+fusion = AlphaFusion(AlphaFusionConfig())
 
 # Static UI mount
 ui_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "ui"))
@@ -109,3 +112,57 @@ async def order_buy(request: Request, x_api_key: str | None = Header(default=Non
     return JSONResponse({"ok": True, "note": "buy stub"})
 
 
+
+
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class PredictBody(BaseModel):
+    symbol: Optional[str] = None
+    # manual feature override (used if symbol is None or data unavailable)
+    bid: Optional[float] = None
+    ask: Optional[float] = None
+    bidSize: Optional[float] = None
+    askSize: Optional[float] = None
+    vwap: Optional[float] = None
+    lastMid: Optional[float] = None
+    sentiment: Optional[float] = 0.0
+    similarityWinrate: Optional[float] = None
+
+@app.post("/api/ai/predict")
+async def ai_predict(body: PredictBody):
+    """
+    Returns fused short-horizon up-move probability p_final in [0,1].
+    - If symbol is provided and IBKR connected, fetch L1 snapshot.
+    - Else, use manual fields (bid/ask/bidSize/askSize/vwap/lastMid/sentiment).
+    """
+    # try IBKR path first
+    bid=ask=bidSz=askSz=vwap=lastMid=None
+    if body.symbol and ib_adapter.connected:
+        try:
+            # lightweight snapshot: last tick values cached in adapter if present
+            data = await ib_adapter.get_l1_snapshot(body.symbol)
+            bid   = data.get("bid")
+            ask   = data.get("ask")
+            bidSz = data.get("bidSize")
+            askSz = data.get("askSize")
+            vwap  = data.get("vwap")
+            lastMid = data.get("mid")
+        except Exception:
+            pass
+
+    # fallbacks to body fields
+    bid   = bid   if bid   is not None else body.bid
+    ask   = ask   if ask   is not None else body.ask
+    bidSz = bidSz if bidSz is not None else body.bidSize
+    askSz = askSz if askSz is not None else body.askSize
+    vwap  = vwap  if vwap  is not None else body.vwap
+    lastMid = lastMid if lastMid is not None else body.lastMid
+
+    if not (bid and ask):
+        return {"ok": True, "used": "manual", "p_final": None, "reason": "insufficient L1: need bid/ask or symbol"}
+
+    feats = fusion.features_from_l1(bid, ask, bidSz, askSz, lastMid, vwap, body.sentiment)
+    p_final = fusion.fused_probability(feats, body.similarityWinrate)
+    return {"ok": True, "used": "ibkr" if body.symbol and ib_adapter.connected else "manual",
+            "features": feats, "p_final": p_final}
