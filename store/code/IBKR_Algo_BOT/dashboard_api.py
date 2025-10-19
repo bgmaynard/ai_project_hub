@@ -212,3 +212,41 @@ def orders_cancel_many(payload: CancelManyRequest):
     overall_ok = all(r.get("ok") for r in results)
     return {"ok": overall_ok, "results": results}
 # === end appended ===
+# === appended: simple X-API-Key guard for order routes ===
+import os
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+_API_KEY = os.getenv("LOCAL_API_KEY", "")
+
+@app.middleware("http")
+async def api_key_guard(request: Request, call_next):
+    # Protect only trading routes (mutations + order views)
+    protected = request.url.path.startswith(("/api/order", "/api/orders"))
+    if protected:
+        # If a key is set in env, require it.
+        if _API_KEY:
+            key = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
+            if key != _API_KEY:
+                return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
+        # If no key configured, allow (useful for dev), but you can flip this to block.
+    return await call_next(request)
+
+# (Optional) reflect whether auth is required in /health
+try:
+    # Find and patch the existing /health handler result on the fly
+    for r in app.router.routes:
+        if getattr(r, "path", None) == "/health":
+            old = r.endpoint
+            async def _patched_health():
+                res = await old() if callable(old) else {"ok": True}
+                # ensure dict
+                if hasattr(res, "dict"): res = res.dict()
+                if isinstance(res, dict):
+                    res.setdefault("security", {})["ordersRequireApiKey"] = bool(_API_KEY)
+                return res
+            r.endpoint = _patched_health
+            break
+except Exception:
+    pass
+# === end appended ===
