@@ -212,3 +212,75 @@ def orders_cancel_many(payload: CancelManyRequest):
     overall_ok = all(r.get("ok") for r in results)
     return {"ok": overall_ok, "results": results}
 # === end appended ===
+# === appended: tws ping + system info ===
+import os, time
+from fastapi import Header
+from typing import Optional
+
+@app.get("/api/tws/ping")
+def tws_ping():
+    """Lightweight health for IBKR connectivity."""
+    try:
+        # Use existing bridge status; fast and safe
+        s = _bridge.ib_status()
+        return {"connected": bool(s.get("connected")), "ts": int(time.time())}
+    except Exception as e:
+        return {"connected": False, "error": str(e), "ts": int(time.time())}
+
+@app.get("/api/info")
+def api_info(x_api_key: Optional[str] = Header(None, convert_underscores=False)):
+    """Feature flags + env snapshot (non-secret)."""
+    from platform import python_version
+    offline = os.getenv("OFFLINE_MODE","0").lower() in ("1","true","yes","on")
+    require_key = bool(os.getenv("LOCAL_API_KEY",""))
+    host = os.getenv("API_HOST")
+    port = os.getenv("API_PORT","9101")
+    client_id = os.getenv("TWS_CLIENT_ID")
+    # hide api key value; only indicate presence and whether header matched (for quick diag)
+    key_ok = (x_api_key == os.getenv("LOCAL_API_KEY")) if require_key else True
+
+    # Basic route inventory (top-level only)
+    routes = []
+    try:
+        for r in app.routes:
+            p = getattr(r, "path", "")
+            if p.startswith("/api/"):
+                routes.append({"path": p, "methods": list(getattr(r, "methods", []))})
+    except Exception:
+        pass
+
+    return {
+        "service": "ai-bot-connection",
+        "version": (open("VERSION").read().strip() if os.path.exists("VERSION") else None),
+        "python": python_version(),
+        "features": {
+            "twsPing": True,
+            "ordersRequireApiKey": require_key,
+            "offlineMode": offline,
+        },
+        "env": {
+            "host": host, "port": port,
+            "tws": {"host": os.getenv("TWS_HOST"), "port": os.getenv("TWS_PORT"), "clientId": client_id}
+        },
+        "auth": {"apiKeyConfigured": require_key, "apiKeyHeaderValid": key_ok},
+        "routes": routes[:60],
+        "ts": int(time.time())
+    }
+# === end appended ===
+# === appended: UI static mount + root redirect ===
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
+import pathlib
+
+_ui_dir = pathlib.Path(__file__).parent / "ui"
+if _ui_dir.exists():
+    try:
+        app.mount("/ui", StaticFiles(directory=str(_ui_dir), html=True), name="ui")
+    except Exception:
+        pass
+
+@app.get("/")
+def _root():
+    # land on status page
+    return RedirectResponse(url="/ui/status.html")
+# === end appended ===
