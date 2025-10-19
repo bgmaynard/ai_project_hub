@@ -1,0 +1,14 @@
+﻿[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+  ".venv",
+  "venv",
+  "__pycache__",
+  "build",
+  "dist",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]   # pycodestyle/pyflakes/imports
+ignore = []
