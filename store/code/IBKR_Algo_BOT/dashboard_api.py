@@ -1,168 +1,170 @@
-﻿# store/code/IBKR_Algo_BOT/dashboard_api.py
-import os, asyncio
-from fastapi import FastAPI, Request, Header, HTTPException
-from store.code.IBKR_Algo_BOT.alpha.alpha_fusion import AlphaFusion, AlphaFusionConfig
-from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from dotenv import load_dotenv
-load_dotenv()
+﻿import os
+import asyncio
+import logging
+from datetime import datetime
+from pathlib import Path
 
-# NEW: import adapter
-from store.code.IBKR_Algo_BOT.bridge.ib_adapter import IBAdapter, IBConfig
+# Load environment first
+try:
+    from dotenv import load_dotenv
+    project_root = Path(__file__).parent.parent.parent
+    load_dotenv(project_root / '.env')
+    print("✅ Environment loaded")
+except ImportError:
+    print("⚠️ python-dotenv not installed")
 
+# FastAPI imports
+try:
+    from fastapi import FastAPI, HTTPException
+    from fastapi.responses import JSONResponse
+    import uvicorn
+    print("✅ FastAPI imported")
+except ImportError:
+    print("❌ FastAPI not installed - run: pip install fastapi uvicorn")
+    exit(1)
 
-X_API_KEY = os.getenv("LOCAL_API_KEY") or os.getenv("X_API_KEY") or "changeme_strong"
-HOST = os.getenv("API_HOST", "127.0.0.1")
-PORT = int(os.getenv("API_PORT", "9101"))
+# Try to import IBKR adapter
+try:
+    from bridge.ib_adapter import IBAdapter, IBConfig
+    print("✅ IB Adapter imported")
+    IBKR_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ IB Adapter import failed: {e}")
+    print("⚠️ Starting without IBKR connection")
+    IBKR_AVAILABLE = False
 
-TWS_HOST = os.getenv("TWS_HOST", "127.0.0.1")
-TWS_PORT = int(os.getenv("TWS_PORT", "7497"))
-TWS_CLIENT_ID = int(os.getenv("TWS_CLIENT_ID", "1101"))
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AI Project Hub API", version=os.getenv("VERSION", "dev"))
-# AlphaFusion online model
-fusion = AlphaFusion(AlphaFusionConfig())
+# Global adapter instance
+ib_adapter = None
 
-# Static UI mount
-ui_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "ui"))
-app.mount("/ui", StaticFiles(directory=ui_dir), name="ui")
-
-# NEW: global adapter instance
-cfg = IBConfig(
-    host=TWS_HOST, port=TWS_PORT, client_id=TWS_CLIENT_ID,
-    heartbeat_sec=float(os.getenv("IB_HEARTBEAT_SEC", "2.5")),
-    backoff_base=float(os.getenv("IB_BACKOFF_BASE", "1.0")),
-    backoff_factor=float(os.getenv("IB_BACKOFF_FACTOR", "2.0")),
-    backoff_max=float(os.getenv("IB_BACKOFF_MAX", "30.0")),
-    jitter_ratio=float(os.getenv("IB_JITTER_RATIO", "0.15")),
-    max_fail_streak=int(os.getenv("IB_MAX_FAIL_STREAK", "10")),
+# Initialize FastAPI app
+app = FastAPI(
+    title="IBKR Trading Bot API",
+    description="IBKR Trading Bot with Connection Diagnostics",
+    version="1.0.0"
 )
-ib_adapter = IBAdapter(cfg)
 
-# Optional: resubscribe hook for quotes/streams later
-async def _resubscribe_all():
-    # TODO: re-issue any market data subscriptions here
-    return
-ib_adapter.set_resubscribe_hook(_resubscribe_all)
-
-# --- Startup / Shutdown -------------------------------------------------------
 @app.on_event("startup")
-async def _on_startup():
-    try:
-        await ib_adapter.start()
-    except Exception as e:
-        import sys
-        print(f"IBKR start failed: {e}. Continuing; watchdog will retry.", file=sys.stderr)
-
-
-@app.on_event("shutdown")
-async def _on_shutdown():
-    await ib_adapter.stop()
-
-# --- Helpers ------------------------------------------------------------------
-def require_api_key(api_key: str | None):
-    if not X_API_KEY:
-        return
-    if not api_key or api_key != X_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key")
-
-# --- Routes -------------------------------------------------------------------
-@app.get("/")
-async def root():
-    return RedirectResponse(url="/ui/status.html")
+async def startup():
+    global ib_adapter
+    
+    print("🚀 Starting IBKR Dashboard API...")
+    
+    # Environment validation
+    required_vars = ["LOCAL_API_KEY", "TWS_HOST", "TWS_PORT", "TWS_CLIENT_ID"]
+    for var in required_vars:
+        value = os.getenv(var)
+        if value:
+            display_value = "***" if "KEY" in var else value
+            print(f"✅ {var}={display_value}")
+        else:
+            print(f"❌ Missing {var} in .env")
+    
+    # Create IBKR adapter if available
+    if IBKR_AVAILABLE:
+        try:
+            config = IBConfig()
+            ib_adapter = IBAdapter(config)
+            print("✅ IB Adapter created")
+        except Exception as e:
+            print(f"❌ Error creating IB Adapter: {e}")
+            ib_adapter = None
+    
+    print("✅ Dashboard API startup complete")
 
 @app.get("/health")
-async def health():
-    return {"ok": True, "service": "ai-bot-connection", "features": {"orderGuard": True, "watchdog": True}}
-
-@app.get("/api/info")
-async def api_info():
+async def health_check():
     return {
-        "version": app.version,
-        "statusRoutes": ["/api/status", "/api/tws/ping"],
-        "orderGuard": True,
-        "host": HOST, "port": PORT
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "ibkr_available": IBKR_AVAILABLE,
+        "adapter_created": ib_adapter is not None
     }
 
 @app.get("/api/status")
-async def api_status():
+async def get_status():
+    if not ib_adapter:
+        return {
+            "ib_connection": False,
+            "state": "NOT_AVAILABLE",
+            "error": "IB Adapter not available",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    # Get status from adapter
+    try:
+        status = ib_adapter.get_connection_status()
+        return status
+    except Exception as e:
+        return {
+            "ib_connection": False,
+            "state": "ERROR",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+@app.get("/api/debug")
+async def debug_info():
+    import socket
+    
+    # Environment check
+    env_vars = {}
+    for var in ["TWS_HOST", "TWS_PORT", "TWS_CLIENT_ID", "LOCAL_API_KEY"]:
+        value = os.getenv(var)
+        env_vars[var] = {
+            "set": bool(value),
+            "value": "***" if "KEY" in var else value
+        }
+    
+    # Socket test
+    host = os.getenv("TWS_HOST", "127.0.0.1")
+    port = int(os.getenv("TWS_PORT", "7497"))
+    
+    socket_test = {"success": False, "error": None}
+    try:
+        with socket.create_connection((host, port), timeout=5):
+            socket_test["success"] = True
+    except Exception as e:
+        socket_test["error"] = str(e)
+    
     return {
-        "service": "ai-bot-connection",
-        "ibkr": ib_adapter.get_status()
+        "timestamp": datetime.utcnow().isoformat(),
+        "environment": env_vars,
+        "socket_test": {
+            "host": host,
+            "port": port,
+            "success": socket_test["success"],
+            "error": socket_test.get("error")
+        },
+        "ibkr_available": IBKR_AVAILABLE,
+        "adapter_status": "created" if ib_adapter else "not_created"
     }
 
-@app.get("/api/tws/ping")
-async def tws_ping():
-    return {"connected": ib_adapter.is_connected(), "state": ib_adapter.state}
+@app.get("/")
+async def root():
+    return {
+        "message": "IBKR Trading Bot API",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "status": "/api/status", 
+            "debug": "/api/debug"
+        }
+    }
 
-# ---- Protected order routes (examples) --------------------------------------
-@app.post("/api/order/preview")
-async def order_preview(request: Request, x_api_key: str | None = Header(default=None, convert_underscores=False)):
-    require_api_key(x_api_key)
-    # Ensure we’re connected before preview
-    await ib_adapter.ensure_connected()
-    # ... existing preview logic ...
-    return JSONResponse({"ok": True, "note": "preview stub"})
-
-@app.post("/api/order/buy")
-async def order_buy(request: Request, x_api_key: str | None = Header(default=None, convert_underscores=False)):
-    require_api_key(x_api_key)
-    await ib_adapter.ensure_connected()
-    # ... existing buy logic ...
-    return JSONResponse({"ok": True, "note": "buy stub"})
-
-
-
-
-from pydantic import BaseModel, Field
-from typing import Optional
-
-class PredictBody(BaseModel):
-    symbol: Optional[str] = None
-    # manual feature override (used if symbol is None or data unavailable)
-    bid: Optional[float] = None
-    ask: Optional[float] = None
-    bidSize: Optional[float] = None
-    askSize: Optional[float] = None
-    vwap: Optional[float] = None
-    lastMid: Optional[float] = None
-    sentiment: Optional[float] = 0.0
-    similarityWinrate: Optional[float] = None
-
-@app.post("/api/ai/predict")
-async def ai_predict(body: PredictBody):
-    """
-    Returns fused short-horizon up-move probability p_final in [0,1].
-    - If symbol is provided and IBKR connected, fetch L1 snapshot.
-    - Else, use manual fields (bid/ask/bidSize/askSize/vwap/lastMid/sentiment).
-    """
-    # try IBKR path first
-    bid=ask=bidSz=askSz=vwap=lastMid=None
-    if body.symbol and ib_adapter.connected:
-        try:
-            # lightweight snapshot: last tick values cached in adapter if present
-            data = await ib_adapter.get_l1_snapshot(body.symbol)
-            bid   = data.get("bid")
-            ask   = data.get("ask")
-            bidSz = data.get("bidSize")
-            askSz = data.get("askSize")
-            vwap  = data.get("vwap")
-            lastMid = data.get("mid")
-        except Exception:
-            pass
-
-    # fallbacks to body fields
-    bid   = bid   if bid   is not None else body.bid
-    ask   = ask   if ask   is not None else body.ask
-    bidSz = bidSz if bidSz is not None else body.bidSize
-    askSz = askSz if askSz is not None else body.askSize
-    vwap  = vwap  if vwap  is not None else body.vwap
-    lastMid = lastMid if lastMid is not None else body.lastMid
-
-    if not (bid and ask):
-        return {"ok": True, "used": "manual", "p_final": None, "reason": "insufficient L1: need bid/ask or symbol"}
-
-    feats = fusion.features_from_l1(bid, ask, bidSz, askSz, lastMid, vwap, body.sentiment)
-    p_final = fusion.fused_probability(feats, body.similarityWinrate)
-    return {"ok": True, "used": "ibkr" if body.symbol and ib_adapter.connected else "manual",
-            "features": feats, "p_final": p_final}
+if __name__ == "__main__":
+    print("🚀 Starting IBKR Dashboard API Server...")
+    print("🌐 API will be available at: http://127.0.0.1:9101")
+    print("🔍 Debug info at: http://127.0.0.1:9101/api/debug")
+    print("❤️ Health check at: http://127.0.0.1:9101/health")
+    print()
+    
+    uvicorn.run(
+        "dashboard_api:app",
+        host=os.getenv("API_HOST", "127.0.0.1"),
+        port=int(os.getenv("API_PORT", "9101")),
+        reload=False
+    )
