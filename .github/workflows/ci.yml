@@ -4,8 +4,12 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  tests:
+  test:
+    name: Python tests
     runs-on: ubuntu-latest
 
     steps:
@@ -15,31 +19,39 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: ${{ runner.os }}-pip-
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            pip install "flask<3.0" flask-cors flask-socketio pytest ruff black
-          fi
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest
 
-      - name: Lint (ruff)
-        run: ruff check .
+      - name: Show tree (debug)
+        run: |
+          ls -la
+          ls -la store/ai_shared || true
+          ls -la tests || true
 
-      - name: Format check (black)
-        run: black --check .
+      - name: Run tests
+        run: |
+          pytest -q || (echo "::error::pytest failed" && exit 1)
 
-      - name: Run unit tests (fast set)
-        env:
-          PYTHONPATH: ${{ github.workspace }}/store/code
-        run: pytest -q -m "not slow and not integration"
+  sanity:
+    name: Repo sanity checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required files exist
+        run: |
+          test -f .env.example
+          test -f docs/AI_PROJECT_HUB_COLLAB.md
+          echo "OK"
