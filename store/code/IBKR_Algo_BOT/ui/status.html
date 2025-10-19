@@ -1,104 +1,71 @@
-﻿<!doctype html>
+﻿<!-- store/code/IBKR_Algo_BOT/ui/status.html -->
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AI Bot · Status</title>
-<style>
-  :root { --ok:#2ecc71; --bad:#e74c3c; --warn:#f39c12; --fg:#222; --muted:#666; --bg:#fafafa; }
-  body { font-family: system-ui, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--fg); margin:0; }
-  .wrap { max-width: 860px; margin: 40px auto; padding: 0 20px; }
-  .card { background:#fff; border-radius:16px; box-shadow: 0 6px 22px rgba(0,0,0,.06); padding: 20px; margin: 16px 0; }
-  .row { display:flex; gap:12px; align-items:center; flex-wrap: wrap; }
-  .pill { padding:6px 10px; border-radius:999px; font-weight:600; }
-  .ok{ background: var(--ok); color:#fff;}
-  .bad{ background: var(--bad); color:#fff;}
-  .warn{ background: var(--warn); color:#fff;}
-  .muted{ color: var(--muted); }
-  h1 { font-size: 24px; margin: 0 0 8px; }
-  h2 { font-size: 16px; margin: 0 0 10px; color: var(--muted); font-weight: 600; letter-spacing: .02em;}
-  pre { background: #f4f4f4; padding: 10px; border-radius: 10px; overflow:auto; }
-  .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
-  .kv { background:#fff; border-radius:12px; padding:12px; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
-  .k { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
-  .v { font-size:16px; margin-top:4px; }
-  footer { text-align:center; color: var(--muted); font-size: 12px; padding: 24px 0; }
-  a { color: inherit; }
-</style>
+  <meta charset="utf-8" />
+  <title>AI Project Hub — Status</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Segoe UI, Roboto, sans-serif; margin: 24px; }
+    .row { display:flex; align-items:center; gap:10px; }
+    .pill { padding:4px 10px; border-radius:999px; color:#fff; font-weight:600; }
+    .ok { background:#16a34a; }       /* green */
+    .warn { background:#f59e0b; }     /* amber */
+    .bad { background:#dc2626; }      /* red */
+    .muted { color:#6b7280; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .grid { display:grid; grid-template-columns: 160px 1fr; gap:6px 16px; margin-top:12px; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h1>AI Bot · Status</h1>
-    <div class="row">
-      <span id="conn" class="pill">checking…</span>
-      <span id="mode" class="pill warn">mode?</span>
-      <span id="auth" class="pill warn">auth?</span>
-    </div>
-    <div class="grid" style="margin-top:12px">
-      <div class="kv"><div class="k">Version</div><div class="v" id="version">—</div></div>
-      <div class="kv"><div class="k">Host</div><div class="v" id="host">—</div></div>
-      <div class="kv"><div class="k">Port</div><div class="v" id="port">—</div></div>
-      <div class="kv"><div class="k">TWS</div><div class="v" id="tws">—</div></div>
-      <div class="kv"><div class="k">Updated</div><div class="v" id="updated">—</div></div>
-    </div>
+  <h1>AI Project Hub — Status</h1>
+  <div class="row">
+    <div>IBKR Connection:</div>
+    <div id="pill" class="pill warn">Checking…</div>
+    <div id="state" class="mono muted"></div>
+  </div>
+  <div class="grid mono">
+    <div>Connected</div><div id="connected">—</div>
+    <div>Host:Port</div><div id="hp">—</div>
+    <div>ClientId</div><div id="cid">—</div>
+    <div>Fail Streak</div><div id="fs">—</div>
+    <div>Backoff Level</div><div id="bo">—</div>
+    <div>Last Change</div><div id="lc">—</div>
   </div>
 
-  <div class="card">
-    <h2>Raw</h2>
-    <pre id="raw">loading…</pre>
-  </div>
+  <script>
+    async function refresh() {
+      try {
+        const r = await fetch('/api/status', { cache: 'no-store' });
+        const j = await r.json();
+        const s = j?.ibkr ?? j?.ibkr ?? j?.status?.ibkr;
+        const state = s?.state || 'UNKNOWN';
+        const connected = !!s?.connected;
 
-  <footer>
-    <a href="/docs">Open API Docs</a> · <a href="/health">Health JSON</a>
-  </footer>
-</div>
+        const pill = document.getElementById('pill');
+        pill.classList.remove('ok','warn','bad');
+        if (state === 'CONNECTED' && connected) pill.classList.add('ok');
+        else if (state === 'RECONNECTING' || state === 'DEGRADED') pill.classList.add('warn');
+        else pill.classList.add('bad');
+        pill.textContent = state;
 
-<script>
-const $ = (id)=>document.getElementById(id);
-const fmtTs = ts => new Date(ts*1000).toLocaleString();
-
-async function refresh() {
-  try {
-    const [ping, info] = await Promise.all([
-      fetch('/api/tws/ping').then(r=>r.json()),
-      fetch('/api/info').then(r=>r.json()),
-    ]);
-
-    // Connection pill
-    const conn = $('conn');
-    if (ping.connected) { conn.className='pill ok'; conn.textContent='TWS: CONNECTED'; }
-    else { conn.className='pill bad'; conn.textContent='TWS: DISCONNECTED'; }
-
-    // Mode & Auth pills
-    const mode = $('mode');
-    mode.className = 'pill ' + (info.features.offlineMode ? 'warn' : 'ok');
-    mode.textContent = info.features.offlineMode ? 'OFFLINE' : 'LIVE';
-
-    const auth = $('auth');
-    let authText = info.features.ordersRequireApiKey ? 'API KEY REQUIRED' : 'NO API KEY';
-    auth.className = 'pill ' + (info.features.ordersRequireApiKey ? 'warn' : 'ok');
-    auth.textContent = authText;
-
-    // KV fields
-    $('version').textContent = info.version ?? '—';
-    $('host').textContent = info.env?.host ?? '—';
-    $('port').textContent = info.env?.port ?? '—';
-    const tHost = info.env?.tws?.host ?? '—';
-    const tPort = info.env?.tws?.port ?? '—';
-    const tCid  = info.env?.tws?.clientId ?? '—';
-    $('tws').textContent = `${tHost}:${tPort} (clientId ${tCid})`;
-    $('updated').textContent = fmtTs(info.ts);
-
-    $('raw').textContent = JSON.stringify({ ping, info }, null, 2);
-  } catch (e) {
-    $('conn').className='pill bad';
-    $('conn').textContent='ERROR';
-    $('raw').textContent = String(e);
-  }
-}
-refresh();
-setInterval(refresh, 3000);
-</script>
+        document.getElementById('state').textContent = connected ? 'connected' : 'not connected';
+        document.getElementById('connected').textContent = String(connected);
+        document.getElementById('hp').textContent = s.host + ':' + s.port;
+        document.getElementById('cid').textContent = s.clientId;
+        document.getElementById('fs').textContent = s.failStreak;
+        document.getElementById('bo').textContent = s.backoffLevel;
+        const ts = s.lastChangeTs ? new Date(s.lastChangeTs * 1000).toLocaleString() : '—';
+        document.getElementById('lc').textContent = ts;
+      } catch (e) {
+        const pill = document.getElementById('pill');
+        pill.classList.remove('ok','warn'); pill.classList.add('bad');
+        pill.textContent = 'ERROR';
+        document.getElementById('state').textContent = 'status fetch failed';
+      }
+    }
+    refresh();
+    setInterval(refresh, 2500);
+  </script>
 </body>
 </html>
