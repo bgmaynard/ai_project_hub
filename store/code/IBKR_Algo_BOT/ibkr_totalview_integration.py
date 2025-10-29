@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
-import threading, time, queue
+import threading
+import time
+import queue
 from typing import Dict, Any, Optional
 
 from ibapi.client import EClient
@@ -158,7 +160,7 @@ class TotalViewDataHandler(EClient, _TVWrapper):
             try:
                 self.reqMktDepth(req_id, c, int(rows), bool(smart_depth), [])
                 break
-            except Exception as e:
+            except Exception:
                 time.sleep(0.5)
         return req_id
 

@@ -24,7 +24,7 @@ class Level1Test(EWrapper, EClient):
         super().nextValidId(orderId)
         self.next_req_id = orderId
         self.connected = True
-        print(f"✓ Connected to IBKR")
+        print("✓ Connected to IBKR")
         
     def error(self, reqId, errorCode, errorString, advancedOrderRejectJson=""):
         if errorCode == 2104 or errorCode == 2106 or errorCode == 2158:

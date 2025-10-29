@@ -5,7 +5,7 @@ Handles data loading, preprocessing, training, evaluation, and deployment
 
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 import yfinance as yf
 import json
 from pathlib import Path
@@ -318,7 +318,7 @@ class LSTMTrainingPipeline:
             'profitable_trades': int(profitable_trades)
         }
         
-        logger.info(f"\nBacktest Results:")
+        logger.info("\nBacktest Results:")
         logger.info(f"  Accuracy: {accuracy:.3f}")
         logger.info(f"  Total Return: {total_return:.2%}")
         logger.info(f"  Sharpe Ratio: {sharpe:.2f}")

@@ -16,7 +16,6 @@ Usage:
 
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
-from ibapi.contract import Contract
 import threading
 import time
 from datetime import datetime
@@ -309,7 +308,7 @@ def display_summary(app):
             status_counts[status] += 1
         
         print(f"  Total Orders: {total_orders}")
-        print(f"\n  By Status:")
+        print("\n  By Status:")
         for status, count in sorted(status_counts.items()):
             print(f"    {status:.<20} {count:>5}")
     
@@ -324,11 +323,11 @@ def display_summary(app):
         buy_value = sum(e['shares'] * e['price'] for e in app.executions if e['side'] == 'BOT')
         sell_value = sum(e['shares'] * e['price'] for e in app.executions if e['side'] == 'SLD')
         
-        print(f"\n  Buy Side:")
+        print("\n  Buy Side:")
         print(f"    Shares: {buy_shares:,}")
         print(f"    Value:  ${buy_value:,.2f}")
         
-        print(f"\n  Sell Side:")
+        print("\n  Sell Side:")
         print(f"    Shares: {sell_shares:,}")
         print(f"    Value:  ${sell_value:,.2f}")
         
@@ -342,7 +341,7 @@ def display_summary(app):
 def export_to_csv(app, filename):
     """Export trading data to CSV files"""
     
-    print(f"\n📁 Exporting data...")
+    print("\n📁 Exporting data...")
     
     # Export positions
     if app.positions:

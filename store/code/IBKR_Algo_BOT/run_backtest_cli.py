@@ -3,7 +3,7 @@ import sys
 import traceback
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
 try:
     from IBKR_Algo_BOT.improved_backtest import run_improved_backtest

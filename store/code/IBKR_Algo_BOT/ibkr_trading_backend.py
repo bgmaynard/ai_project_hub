@@ -9,11 +9,8 @@ from ibapi.contract import Contract
 from ibapi.order import Order
 import threading
 import time
-import pandas as pd
 import numpy as np
-from datetime import datetime
 from collections import deque
-import json
 
 # ============================================================================
 # IBKR Connection Module

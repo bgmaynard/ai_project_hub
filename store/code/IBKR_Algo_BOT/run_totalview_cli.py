@@ -1,4 +1,6 @@
-﻿import argparse, time, sys
+﻿import argparse
+import time
+import sys
 from IBKR_Algo_BOT.ibkr_totalview_integration import TotalViewDataHandler
 
 def main():

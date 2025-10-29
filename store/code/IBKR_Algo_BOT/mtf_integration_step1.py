@@ -14,10 +14,8 @@ Expected improvements:
 """
 
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
 import yfinance as yf
-from typing import Dict, List, Tuple
+from typing import Dict
 import logging
 
 logging.basicConfig(level=logging.INFO)

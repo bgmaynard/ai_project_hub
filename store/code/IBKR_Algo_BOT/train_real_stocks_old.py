@@ -76,9 +76,9 @@ try:
     
     print("\n" + "=" * 60)
     print("📁 OUTPUT FILES:")
-    print(f"  Models:      models/lstm_pipeline/")
-    print(f"  Plots:       models/lstm_pipeline/evaluation_plots.png")
-    print(f"  Summary:     models/lstm_pipeline/pipeline_summary.json")
+    print("  Models:      models/lstm_pipeline/")
+    print("  Plots:       models/lstm_pipeline/evaluation_plots.png")
+    print("  Summary:     models/lstm_pipeline/pipeline_summary.json")
     print("=" * 60)
     
     print("\n✨ Next Steps:")

@@ -1,0 +1,212 @@
+﻿"""IBKR Adapter - With TIF fix"""
+import os
+from pathlib import Path
+from typing import Dict, Any, List
+from datetime import datetime
+from dotenv import load_dotenv
+import nest_asyncio
+
+nest_asyncio.apply()
+
+project_root = Path(__file__).parent.parent.parent.parent
+env_file = project_root / '.env'
+load_dotenv(env_file)
+
+from ib_insync import IB, Stock, MarketOrder, LimitOrder
+
+class IBConfig:
+    def __init__(self):
+        self.host = os.getenv("TWS_HOST", "127.0.0.1")
+        self.port = int(os.getenv("TWS_PORT", "7497"))
+        self.base_client_id = int(os.getenv("TWS_CLIENT_ID", "1"))
+        print(f"IBConfig: {self.host}:{self.port}, clientId: {self.base_client_id}")
+
+class IBConnectionState:
+    DISCONNECTED = "DISCONNECTED"
+    CONNECTED = "CONNECTED"
+    FAILED = "FAILED"
+
+class IBAdapter:
+    def __init__(self, config: IBConfig):
+        self.config = config
+        self.ib = IB()
+        self.current_client_id = config.base_client_id
+        self.connection_state = IBConnectionState.DISCONNECTED
+        self.last_error = None
+        
+    def connect(self) -> bool:
+        print(f"Connecting to TWS on {self.config.port}...")
+        try:
+            self.ib.connect(self.config.host, self.config.port, clientId=self.current_client_id, timeout=30)
+            self.connection_state = IBConnectionState.CONNECTED
+            print("SUCCESS! Connected!")
+            print(f"Server version: {self.ib.client.serverVersion()}")
+            return True
+        except Exception as e:
+            self.last_error = str(e)
+            self.connection_state = IBConnectionState.FAILED
+            print(f"Failed: {e}")
+            return False
+    
+    def is_connected(self) -> bool:
+        return self.connection_state == IBConnectionState.CONNECTED and self.ib and self.ib.isConnected()
+    
+    def get_positions(self) -> List[Dict[str, Any]]:
+        if not self.is_connected():
+            return []
+        try:
+            positions = self.ib.positions()
+            return [{"symbol": p.contract.symbol, "position": p.position, "avgCost": p.avgCost} for p in positions]
+        except:
+            return []
+    
+    def get_account_summary(self) -> Dict[str, Any]:
+        if not self.is_connected():
+            return {}
+        try:
+            values = self.ib.accountSummary()
+            return {av.tag: {"value": av.value, "currency": av.currency} for av in values}
+        except:
+            return {}
+    
+        def place_limit_order_sync(self, symbol: str, quantity: int, limit_price: float, action: str = "BUY", outside_rth: bool = False):
+        """Place a limit order synchronously"""
+        if not self.is_connected():
+            raise Exception("Not connected to IBKR")
+        
+        contract = Contract()
+        contract.symbol = symbol
+        contract.secType = "STK"
+        contract.exchange = "SMART"
+        contract.currency = "USD"
+        
+        order = Order()
+        order.action = action
+        order.orderType = "LMT"  # CRITICAL: Set order type to LIMIT
+        order.totalQuantity = quantity
+        order.lmtPrice = limit_price
+        order.outsideRth = outside_rth  # Allow extended hours trading
+        order.tif = "GTC" if outside_rth else "DAY"  # Good-til-canceled for extended hours
+        
+        order_id = self.next_order_id
+        self.next_order_id += 1
+        
+        self.logger.info(f"Placing LIMIT order: {action} {quantity} {symbol} @ ${limit_price} (outsideRth={outside_rth})")
+        self.ib_client.placeOrder(order_id, contract, order)
+        
+        time.sleep(2)
+        
+        return {
+            "success": True,
+            "orderId": order_id,
+            "symbol": symbol,
+            "quantity": quantity,
+            "action": action,
+            "limitPrice": limit_price,
+            "orderType": "LMT",
+            "outsideRth": outside_rth,
+            "status": "Submitted"
+        }
+        
+        try:
+            contract = Stock(symbol, 'SMART', 'USD')
+            order = LimitOrder(action, qty, price)
+            order.tif = "GTC"
+            
+            trade = self.ib.placeOrder(contract, order)
+            self.ib.sleep(0.5)
+            
+            return {
+                "success": True,
+                "orderId": trade.order.orderId,
+                "symbol": symbol,
+                "quantity": qty,
+                "action": action,
+                "limitPrice": price,
+                "status": trade.orderStatus.status if trade.orderStatus else "Submitted"
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+        def place_market_order_sync(self, symbol: str, quantity: int, action: str = "BUY", outside_rth: bool = False):
+        """Place a market order synchronously"""
+        if not self.is_connected():
+            raise Exception("Not connected to IBKR")
+        
+        contract = Contract()
+        contract.symbol = symbol
+        contract.secType = "STK"
+        contract.exchange = "SMART"
+        contract.currency = "USD"
+        
+        order = Order()
+        order.action = action
+        order.orderType = "MKT"  # CRITICAL: Set order type to MARKET
+        order.totalQuantity = quantity
+        order.outsideRth = outside_rth
+        order.tif = "GTC" if outside_rth else "DAY"
+        
+        order_id = self.next_order_id
+        self.next_order_id += 1
+        
+        self.logger.info(f"Placing MARKET order: {action} {quantity} {symbol} (outsideRth={outside_rth})")
+        self.ib_client.placeOrder(order_id, contract, order)
+        
+        time.sleep(2)
+        
+        return {
+            "success": True,
+            "orderId": order_id,
+            "symbol": symbol,
+            "quantity": quantity,
+            "action": action,
+            "orderType": "MKT",
+            "outsideRth": outside_rth,
+            "status": "Submitted"
+        }
+        
+        try:
+            contract = Stock(symbol, 'SMART', 'USD')
+            order = MarketOrder(action, qty)
+            order.tif = "DAY"
+            
+            trade = self.ib.placeOrder(contract, order)
+            self.ib.sleep(0.5)
+            
+            return {
+                "success": True,
+                "orderId": trade.order.orderId,
+                "symbol": symbol,
+                "quantity": qty,
+                "action": action,
+                "status": trade.orderStatus.status if trade.orderStatus else "Submitted"
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def get_open_orders(self) -> List[Dict[str, Any]]:
+        if not self.is_connected():
+            return []
+        try:
+            trades = self.ib.openTrades()
+            return [{
+                "orderId": t.order.orderId,
+                "symbol": t.contract.symbol,
+                "action": t.order.action,
+                "quantity": t.order.totalQuantity,
+                "status": t.orderStatus.status
+            } for t in trades]
+        except:
+            return []
+    
+    def get_status(self) -> Dict[str, Any]:
+        return {
+            "state": self.connection_state,
+            "host": self.config.host,
+            "port": self.config.port,
+            "current_client_id": self.current_client_id,
+            "last_error": self.last_error,
+            "ib_connected": self.ib.isConnected() if self.ib else False,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+

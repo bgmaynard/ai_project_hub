@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Note: In production, use TensorFlow/PyTorch for actual LSTM
 # This is a simplified implementation for demonstration

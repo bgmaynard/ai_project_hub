@@ -208,23 +208,23 @@ def run_validation_tests(test_orders=False):
     contract.currency = "USD"
     
     req_id = 1001
-    print(f"  Requesting market data for AAPL...")
+    print("  Requesting market data for AAPL...")
     app.reqMktData(req_id, contract, "", False, False, [])
     
     time.sleep(3)
     
     if req_id in app.market_data_received and len(app.market_data_received[req_id]) > 0:
-        print(f"  ✓ Market data received:")
+        print("  ✓ Market data received:")
         data = app.market_data_received[req_id]
         for key, value in data.items():
             if isinstance(value, (int, float)):
                 print(f"    {key}: {value:,.2f}" if isinstance(value, float) else f"    {key}: {value:,}")
         app.tests_passed.append("Market Data")
     else:
-        print(f"  ⚠️  No market data received")
-        print(f"  Possible reasons:")
-        print(f"    - Market is closed (9:30 AM - 4:00 PM ET)")
-        print(f"    - No market data subscription")
+        print("  ⚠️  No market data received")
+        print("  Possible reasons:")
+        print("    - Market is closed (9:30 AM - 4:00 PM ET)")
+        print("    - No market data subscription")
         app.tests_failed.append("Market Data")
     
     # Cancel market data
@@ -237,7 +237,7 @@ def run_validation_tests(test_orders=False):
     req_id = 2001
     end_time = datetime.now().strftime('%Y%m%d %H:%M:%S')
     
-    print(f"  Requesting 2 days of 1-hour bars for AAPL...")
+    print("  Requesting 2 days of 1-hour bars for AAPL...")
     app.reqHistoricalData(
         req_id, contract, end_time, "2 D", "1 hour",
         "TRADES", 1, 1, False, []
@@ -253,20 +253,20 @@ def run_validation_tests(test_orders=False):
         print(f"    Sample: O={bars[-1]['open']:.2f}, H={bars[-1]['high']:.2f}, L={bars[-1]['low']:.2f}, C={bars[-1]['close']:.2f}")
         app.tests_passed.append("Historical Data")
     else:
-        print(f"  ❌ No historical data received")
+        print("  ❌ No historical data received")
         app.tests_failed.append("Historical Data")
     
     # Test 4: Account Data
     print("\n\nTEST 4: Account Data")
     print("-" * 70)
     
-    print(f"  Requesting account updates...")
+    print("  Requesting account updates...")
     app.reqAccountUpdates(True, "")
     
     time.sleep(2)
     
     if len(app.account_values_received) > 0:
-        print(f"  ✓ Account data received:")
+        print("  ✓ Account data received:")
         important_keys = ['NetLiquidation', 'TotalCashValue', 'AvailableFunds', 'BuyingPower']
         for key in important_keys:
             if key in app.account_values_received:
@@ -274,34 +274,34 @@ def run_validation_tests(test_orders=False):
                 print(f"    {key}: {val['value']} {val['currency']}")
         app.tests_passed.append("Account Data")
     else:
-        print(f"  ⚠️  No account data received")
+        print("  ⚠️  No account data received")
         app.tests_failed.append("Account Data")
     
     # Test 5: Positions
     print("\n\nTEST 5: Positions")
     print("-" * 70)
     
-    print(f"  Requesting positions...")
+    print("  Requesting positions...")
     app.reqPositions()
     
     time.sleep(2)
     
     if len(app.positions_received) > 0:
-        print(f"  ✓ Positions received:")
+        print("  ✓ Positions received:")
         for pos in app.positions_received:
             print(f"    {pos['symbol']}: {pos['quantity']} @ ${pos['avg_cost']:.2f}")
         app.tests_passed.append("Positions")
     else:
-        print(f"  ℹ️  No open positions (this is normal if you haven't traded yet)")
+        print("  ℹ️  No open positions (this is normal if you haven't traded yet)")
         app.tests_passed.append("Positions")
     
     # Test 6: Order Placement (Optional)
     if test_orders:
         print("\n\nTEST 6: Order Placement (PAPER TRADING ONLY!)")
         print("-" * 70)
-        print(f"  ⚠️  WARNING: This will place a REAL order in your paper account")
+        print("  ⚠️  WARNING: This will place a REAL order in your paper account")
         
-        confirm = input(f"  Continue? (yes/no): ")
+        confirm = input("  Continue? (yes/no): ")
         if confirm.lower() == 'yes':
             # Place small test order
             order = Order()
@@ -312,7 +312,7 @@ def run_validation_tests(test_orders=False):
             
             order_id = app.next_order_id
             
-            print(f"  Placing test order: BUY 1 AAPL @ $100.00 (limit)...")
+            print("  Placing test order: BUY 1 AAPL @ $100.00 (limit)...")
             app.placeOrder(order_id, contract, order)
             app.next_order_id += 1
             
@@ -320,20 +320,20 @@ def run_validation_tests(test_orders=False):
             
             if order_id in app.order_statuses:
                 status = app.order_statuses[order_id]
-                print(f"  ✓ Order placed successfully!")
+                print("  ✓ Order placed successfully!")
                 print(f"    Status: {status['status']}")
                 
                 # Cancel the order
-                print(f"  Cancelling test order...")
+                print("  Cancelling test order...")
                 app.cancelOrder(order_id, "")
                 time.sleep(1)
                 
                 app.tests_passed.append("Order Placement")
             else:
-                print(f"  ❌ Order placement failed")
+                print("  ❌ Order placement failed")
                 app.tests_failed.append("Order Placement")
         else:
-            print(f"  Skipped order placement test")
+            print("  Skipped order placement test")
     
     # Disconnect
     app.disconnect()

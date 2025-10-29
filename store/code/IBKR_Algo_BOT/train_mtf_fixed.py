@@ -19,14 +19,11 @@ Usage:
 """
 
 import os
-import sys
 import pandas as pd
 import numpy as np
 import yfinance as yf
-from datetime import datetime
 import json
 import logging
-from pathlib import Path
 
 # Ensure required directories exist
 os.makedirs('models/lstm_trading', exist_ok=True)
@@ -296,7 +293,7 @@ def train_symbol(symbol, period='2y', interval='1h'):
     
     # 1. Download data - CORRECT SETTINGS!
     logger.info(f"📥 Downloading {period} of {interval} data for {symbol}...")
-    logger.info(f"   THIS SHOULD GIVE ~4032 BARS FOR 2 YEARS HOURLY")
+    logger.info("   THIS SHOULD GIVE ~4032 BARS FOR 2 YEARS HOURLY")
     
     df = yf.download(symbol, period=period, interval=interval, progress=False)
     
@@ -313,8 +310,8 @@ def train_symbol(symbol, period='2y', interval='1h'):
     
     if len(df) < 4000:
         logger.warning(f"⚠️  WARNING: Only got {len(df)} bars!")
-        logger.warning(f"   Expected ~4032 bars for 2y hourly")
-        logger.warning(f"   This will affect model quality!")
+        logger.warning("   Expected ~4032 bars for 2y hourly")
+        logger.warning("   This will affect model quality!")
     else:
         logger.info(f"   ✅ Data looks good! ({len(df)} bars)")
     
@@ -345,7 +342,7 @@ def train_symbol(symbol, period='2y', interval='1h'):
     X = df[feature_cols].values
     y = df['target'].values
     
-    logger.info(f"\n📊 Training dataset:")
+    logger.info("\n📊 Training dataset:")
     logger.info(f"   Features: {len(feature_cols)}")
     logger.info(f"   Samples: {len(X)}")
     logger.info(f"   Up moves: {y.sum()} ({y.sum()/len(y)*100:.1f}%)")
@@ -430,7 +427,7 @@ def train_symbol(symbol, period='2y', interval='1h'):
     train_acc = (train_pred == y_train).mean()
     test_acc = (test_pred == y_test).mean()
     
-    logger.info(f"\n✅ Training complete!")
+    logger.info("\n✅ Training complete!")
     logger.info(f"   Train accuracy: {train_acc*100:.1f}%")
     logger.info(f"   Test accuracy: {test_acc*100:.1f}%")
     

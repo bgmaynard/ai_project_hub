@@ -5,7 +5,6 @@ Run with: python test_lstm.py
 """
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
 
 print("Testing LSTM Model...")
 print("=" * 60)
@@ -71,7 +70,7 @@ print(f"   Confidence: {confidence:.3f}")
 # Save model
 print("\n6. Saving model...")
 lstm.save("test_model")
-print(f"   ✓ Model saved to: models/lstm_trading/")
+print("   ✓ Model saved to: models/lstm_trading/")
 
 print("\n" + "=" * 60)
 print("✓ LSTM Test Complete - Everything Works!")

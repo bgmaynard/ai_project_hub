@@ -5,7 +5,6 @@ Predicts price direction and momentum probability for AI trading bot
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, callbacks, optimizers
 from sklearn.preprocessing import StandardScaler
@@ -382,7 +381,7 @@ if __name__ == "__main__":
     lstm = LSTMTradingModel(sequence_length=60, prediction_horizon=5)
     history, results = lstm.train(df, epochs=20, batch_size=32)
     
-    print(f"\nResults:")
+    print("\nResults:")
     print(f"  Validation Accuracy: {results['val_accuracy']:.3f}")
     print(f"  Validation AUC: {results['val_auc']:.3f}")
     

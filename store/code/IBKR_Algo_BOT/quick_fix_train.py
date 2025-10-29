@@ -34,7 +34,7 @@ def train_with_improved_backtest(
     print(f"\nSymbols: {symbols}")
     print(f"Data: {period} of {interval} bars")
     print(f"Confidence Threshold: {confidence_threshold*100:.0f}%")
-    print(f"\nImprovements:")
+    print("\nImprovements:")
     print("  ✓ More training data (2 years vs 60 days)")
     print("  ✓ Hourly bars (better trends, less noise)")
     print("  ✓ Confidence filtering (only high-confidence trades)")
@@ -158,8 +158,8 @@ def quick_test_single_symbol(symbol='AAPL'):
         print("✓ Model loaded successfully")
     except Exception as e:
         print(f"✗ Could not load model: {e}")
-        print(f"\nPlease train the model first:")
-        print(f"  python train_real_stocks.py")
+        print("\nPlease train the model first:")
+        print("  python train_real_stocks.py")
         return
     
     # Download test data
@@ -268,9 +268,9 @@ def quick_test_single_symbol(symbol='AAPL'):
         print(f"     - {best_balanced['return']*100:.2f}% return")
         print(f"     - {best_balanced['win_rate']*100:.1f}% win rate")
     elif most_trades['trades'] < 20:
-        print(f"   ⚠️  All thresholds produce <20 trades")
+        print("   ⚠️  All thresholds produce <20 trades")
         print(f"   → Use {best_sharpe['threshold']*100:.0f}% for best risk-adjusted returns")
-        print(f"   → Consider retraining with 2 years of hourly data for more opportunities")
+        print("   → Consider retraining with 2 years of hourly data for more opportunities")
     else:
         print(f"   ✓ Use {best_sharpe['threshold']*100:.0f}% threshold")
         print(f"     - Best risk-adjusted returns (Sharpe: {best_sharpe['sharpe']:.2f})")

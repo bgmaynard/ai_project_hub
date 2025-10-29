@@ -74,7 +74,7 @@ print("="*60)
 print(f"✓ Successfully installed: {successful}/{len(packages)}")
 if failed > 0:
     print(f"✗ Failed: {failed}/{len(packages)}")
-    print(f"\nFailed packages:")
+    print("\nFailed packages:")
     for pkg in failed_packages:
         print(f"  • {pkg}")
 print("="*60)
