@@ -1,0 +1,257 @@
+﻿# store/code/IBKR_Algo_BOT/dashboard_api.py
+import os, asyncio
+from fastapi import FastAPI, Request, Header, HTTPException, Response
+from store.code.IBKR_Algo_BOT.alpha.alpha_fusion import AlphaFusion, AlphaFusionConfig
+from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
+load_dotenv()
+
+# NEW: import adapter
+from store.code.IBKR_Algo_BOT.bridge.ib_adapter import IBAdapter, IBConfig
+
+
+X_API_KEY = os.getenv("LOCAL_API_KEY") or os.getenv("X_API_KEY") or "changeme_strong"
+HOST = os.getenv("API_HOST", "127.0.0.1")
+PORT = int(os.getenv("API_PORT", "9101"))
+
+TWS_HOST = os.getenv("TWS_HOST", "127.0.0.1")
+TWS_PORT = int(os.getenv("TWS_PORT", "7497"))
+TWS_CLIENT_ID = int(os.getenv("TWS_CLIENT_ID", "1101"))
+
+app = FastAPI(title="AI Project Hub API", version=os.getenv("VERSION", "dev"))
+# AlphaFusion online model
+fusion = AlphaFusion(AlphaFusionConfig())
+
+# Static UI mount
+ui_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "ui"))
+app.mount("/ui", StaticFiles(directory=ui_dir), name="ui")
+
+# NEW: global adapter instance
+cfg = IBConfig(
+    host=TWS_HOST, port=TWS_PORT, client_id=TWS_CLIENT_ID,
+    heartbeat_sec=float(os.getenv("IB_HEARTBEAT_SEC", "2.5")),
+    backoff_base=float(os.getenv("IB_BACKOFF_BASE", "1.0")),
+    backoff_factor=float(os.getenv("IB_BACKOFF_FACTOR", "2.0")),
+    backoff_max=float(os.getenv("IB_BACKOFF_MAX", "30.0")),
+    jitter_ratio=float(os.getenv("IB_JITTER_RATIO", "0.15")),
+    max_fail_streak=int(os.getenv("IB_MAX_FAIL_STREAK", "10")),
+)
+ib_adapter = IBAdapter(cfg)
+
+# Optional: resubscribe hook for quotes/streams later
+async def _resubscribe_all():
+    # TODO: re-issue any market data subscriptions here
+    return
+ib_adapter.set_resubscribe_hook(_resubscribe_all)
+
+# --- Startup / Shutdown -------------------------------------------------------
+@app.on_event("startup")
+async def _on_startup():
+    try:
+        await ib_adapter.start()
+    except Exception as e:
+        import sys
+        print(f"IBKR start failed: {e}. Continuing; watchdog will retry.", file=sys.stderr)
+
+
+@app.on_event("shutdown")
+async def _on_shutdown():
+    await ib_adapter.stop()
+
+# --- Helpers ------------------------------------------------------------------
+def require_api_key(api_key: str | None):
+    if not X_API_KEY:
+        return
+    if not api_key or api_key != X_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key")
+
+# --- Routes -------------------------------------------------------------------
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/ui/status.html")
+@app.get("/health")
+async def health():
+    return {"ok": True, "service": "ai-bot-connection", "features": {"orderGuard": True, "watchdog": True}}
+@app.get("/api/info")
+async def api_info():
+    return {
+        "version": app.version,
+        "statusRoutes": ["/api/status", "/api/tws/ping"],
+        "orderGuard": True,
+        "host": HOST, "port": PORT
+    }
+@app.get("/api/status")
+async def api_status():
+    return {
+        "service": "ai-bot-connection",
+        "ibkr": ib_adapter.get_status()
+    }
+@app.get("/api/tws/ping")
+async def tws_ping():
+    return {"connected": ib_adapter.is_connected(), "state": ib_adapter.state}
+
+# ---- Protected order routes (examples) --------------------------------------
+@app.post("/api/order/preview")
+async def order_preview(request: Request, x_api_key: str | None = Header(default=None, convert_underscores=False)):
+    require_api_key(x_api_key)
+    # Ensure we’re connected before preview
+    await ib_adapter.ensure_connected()
+    # ... existing preview logic ...
+    return JSONResponse({"ok": True, "note": "preview stub"})
+@app.post("/api/order/buy")
+async def order_buy(request: Request, x_api_key: str | None = Header(default=None, convert_underscores=False)):
+    require_api_key(x_api_key)
+    await ib_adapter.ensure_connected()
+    # ... existing buy logic ...
+    return JSONResponse({"ok": True, "note": "buy stub"})
+
+
+
+
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class PredictBody(BaseModel):
+    symbol: Optional[str] = None
+    # manual feature override (used if symbol is None or data unavailable)
+    bid: Optional[float] = None
+    ask: Optional[float] = None
+    bidSize: Optional[float] = None
+    askSize: Optional[float] = None
+    vwap: Optional[float] = None
+    lastMid: Optional[float] = None
+    sentiment: Optional[float] = 0.0
+    similarityWinrate: Optional[float] = None
+@app.post("/api/ai/predict")
+async def ai_predict(body: PredictBody):
+    """
+    Returns fused short-horizon up-move probability p_final in [0,1].
+    - If symbol is provided and IBKR connected, fetch L1 snapshot.
+    - Else, use manual fields (bid/ask/bidSize/askSize/vwap/lastMid/sentiment).
+    """
+    # try IBKR path first
+    bid=ask=bidSz=askSz=vwap=lastMid=None
+    if body.symbol and ib_adapter.connected:
+        try:
+            # lightweight snapshot: last tick values cached in adapter if present
+            data = await ib_adapter.get_l1_snapshot(body.symbol)
+            bid   = data.get("bid")
+            ask   = data.get("ask")
+            bidSz = data.get("bidSize")
+            askSz = data.get("askSize")
+            vwap  = data.get("vwap")
+            lastMid = data.get("mid")
+        except Exception:
+            pass
+
+    # fallbacks to body fields
+    bid   = bid   if bid   is not None else body.bid
+    ask   = ask   if ask   is not None else body.ask
+    bidSz = bidSz if bidSz is not None else body.bidSize
+    askSz = askSz if askSz is not None else body.askSize
+    vwap  = vwap  if vwap  is not None else body.vwap
+    lastMid = lastMid if lastMid is not None else body.lastMid
+
+    if not (bid and ask):
+        return {"ok": True, "used": "manual", "p_final": None, "reason": "insufficient L1: need bid/ask or symbol"}
+
+    feats = fusion.features_from_l1(bid, ask, bidSz, askSz, lastMid, vwap, body.sentiment)
+    p_final = fusion.fused_probability(feats, body.similarityWinrate)
+    return {"ok": True, "used": "ibkr" if body.symbol and ib_adapter.connected else "manual",
+            "features": feats, "p_final": p_final}
+from pydantic import BaseModel
+from typing import Optional
+
+class DecisionBody(BaseModel):
+    symbol: Optional[str] = None
+    # Manual L1 fallback (if no symbol or IB not ready)
+    bid: Optional[float] = None
+    ask: Optional[float] = None
+    bidSize: Optional[float] = None
+    askSize: Optional[float] = None
+    vwap: Optional[float] = None
+    lastMid: Optional[float] = None
+    sentiment: Optional[float] = 0.0
+    similarityWinrate: Optional[float] = None
+    # Policy knobs
+    theta: float = 0.6           # act when p_final >= theta
+    maxQty: float = 1.0          # suggested qty capasync def _post_json_internal(path: str, body: dict):
+    """Call our own API with X-API-Key for protected endpoints."""
+    base = f"http://{os.getenv('API_HOST','127.0.0.1')}:{int(os.getenv('API_PORT','9101'))}"
+    key  = os.getenv("LOCAL_API_KEY") or os.getenv("API_KEY") or "dev_local_key_change_me"
+    headers = {"Content-Type":"application/json", "X-API-Key": key}
+    url = f"{base}{path}"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(url, headers=headers, json=body)
+        resp.raise_for_status()
+        return resp.json()# REMOVED stray top-level 'async with httpx.AsyncClient(...)' block
+#         resp = await client.post(url, headers=headers, json=body)
+#         resp.raise_for_status()
+#         return resp.json()#         resp = await client.post(url, headers=headers, json=body)
+#         resp.raise_for_status()
+#         return resp.json()
+@app.post("/api/orders/log_test")
+async def orders_log_test():
+    await log_event("test", {"msg": "hello from log_test"})
+    return {"ok": True}
+@app.get("/api/orders/logs/tail")
+async def orders_logs_tail(n: int = 100):
+    text = await log_tail(n)
+    return Response(content=text, media_type="text/plain")
+@app.post("/api/orders/decide")
+async def orders_decide(body: DecisionBody):
+    """
+    Minimal decision policy:
+      1) call /api/ai/predict (symbol or manual fields)
+      2) if p_final >= theta → suggest SIDE/QTY and call /api/order/preview
+    Returns: { ok, p_final, side, qty, preview? }
+    """
+    # 1) predict
+    pred_req = {
+        "symbol": body.symbol,
+        "bid": body.bid, "ask": body.ask,
+        "bidSize": body.bidSize, "askSize": body.askSize,
+        "vwap": body.vwap, "lastMid": body.lastMid,
+        "sentiment": body.sentiment,
+        "similarityWinrate": body.similarityWinrate,
+    }
+    try:
+        pred = await _post_json_internal("/api/ai/predict", pred_req)
+    except Exception as e:
+        await log_event("policy_error", {"stage":"predict", "err": str(e)})
+        return JSONResponse({"ok": False, "error": f"predict failed: {e}"}, status_code=500)
+
+    p_final = pred.get("p_final")
+    if p_final is None:
+        await log_event("policy_skip", {"reason":"no_p_final", "pred": pred})
+        return {"ok": True, "p_final": None, "reason": "insufficient inputs"}
+
+    side = "BUY" if p_final >= 0.5 else "SELL"
+    act  = p_final >= body.theta
+    qty  = body.maxQty if act else 0.0
+
+    result = {"ok": True, "p_final": p_final, "side": side, "qty": qty, "acted": act}
+
+    # 2) preview only if acting
+    if act and qty > 0:
+        # NOTE: Adjust your order preview schema as needed
+        preview_req = {
+            "symbol": body.symbol or "MANUAL",
+            "side": side,
+            "qty": qty,
+            "meta": {"p_final": p_final, "theta": body.theta}
+        }
+        try:
+            prv = await _post_json_internal("/api/order/preview", preview_req)
+            result["preview"] = prv
+            await log_event("policy_preview", {"req": preview_req, "resp": prv})
+        except Exception as e:
+            await log_event("policy_error", {"stage":"preview", "err": str(e), "req": preview_req})
+            result["preview_error"] = str(e)
+
+    return result
+
+
+
+

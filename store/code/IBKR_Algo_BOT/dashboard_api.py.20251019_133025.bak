@@ -1,0 +1,194 @@
+﻿# C:\ai_project_hub\store\code\IBKR_Algo_BOT\dashboard_api.py
+
+from __future__ import annotations
+
+import os
+import asyncio
+import json
+from typing import Optional, Dict, Any
+
+from fastapi import FastAPI, Depends, Header, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from dotenv import load_dotenv
+import httpx
+
+# Our IBKR adapter
+from store.code.IBKR_Algo_BOT.bridge.ib_adapter import IBAdapter, IBConfig
+
+# -- Env -----------------------------------------------------------------------
+load_dotenv()
+
+API_HOST = os.getenv("API_HOST", "127.0.0.1")
+API_PORT = int(os.getenv("API_PORT", "9101"))
+
+LOCAL_API_KEY = os.getenv("LOCAL_API_KEY") or os.getenv("API_KEY") or "dev_local_key_change_me"
+
+TWS_HOST = os.getenv("TWS_HOST", "127.0.0.1")
+TWS_PORT = int(os.getenv("TWS_PORT", "7497"))
+TWS_CLIENT_ID = int(os.getenv("TWS_CLIENT_ID", "1101"))
+
+IB_HEARTBEAT_SEC = float(os.getenv("IB_HEARTBEAT_SEC", "3.0"))
+IB_CONNECT_TIMEOUT_SEC = float(os.getenv("IB_CONNECT_TIMEOUT_SEC", "15.0"))
+
+# -- App -----------------------------------------------------------------------
+app = FastAPI(
+    title="AI Project Hub – IBKR Bot API",
+    version="2025.10.19",
+)
+
+# -- IB Adapter wiring ----------------------------------------------------------
+ib_cfg = IBConfig(
+    host=TWS_HOST,
+    port=TWS_PORT,
+    client_id=TWS_CLIENT_ID,
+    heartbeat_sec=IB_HEARTBEAT_SEC,
+    connect_timeout_sec=IB_CONNECT_TIMEOUT_SEC,
+)
+ib_adapter = IBAdapter(cfg=ib_cfg)
+
+# -- Security -------------------------------------------------------------------
+def require_api_key(x_api_key: Optional[str] = Header(default=None, alias="X-API-Key")) -> str:
+    expected = LOCAL_API_KEY
+    if not x_api_key or x_api_key != expected:
+        # Keep this message short so it’s not a secret leak vector
+        raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key")
+    return x_api_key
+
+# -- Internal HTTP helper (self-call) ------------------------------------------
+async def _post_json_internal(path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Call our own API with X-API-Key for protected endpoints.
+    """
+    base = f"http://{API_HOST}:{API_PORT}"
+    url = f"{base}{path}"
+    headers = {"Content-Type": "application/json", "X-API-Key": LOCAL_API_KEY}
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(url, headers=headers, json=body)
+        resp.raise_for_status()
+        return resp.json()
+
+# -- Lifespan -------------------------------------------------------------------
+@app.on_event("startup")
+async def _on_startup():
+    # Don’t crash API if IB isn’t ready; watchdog in adapter will retry.
+    try:
+        await ib_adapter.start()
+    except Exception as e:
+        # Log to stderr but keep API alive
+        print(f"IBKR start failed: {e}. Continuing; watchdog will retry.", flush=True)
+
+@app.on_event("shutdown")
+async def _on_shutdown():
+    try:
+        await ib_adapter.stop()
+    except Exception:
+        pass
+
+# -- Status / UI ----------------------------------------------------------------
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    # Simple redirect to status html if you have a static page,
+    # otherwise render a tiny live page
+    return RedirectResponse(url="/status.html", status_code=307)
+
+@app.get("/status.html", response_class=HTMLResponse)
+async def status_html():
+    s = await get_status()
+    # Minimal self-contained status page (keeps your existing URL working)
+    html = f"""
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AI Bot Status</title>
+  <meta http-equiv="refresh" content="2">
+  <style>
+    body {{ font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto; padding:16px; }}
+    .ok {{ color: #0a0; }}
+    .warn {{ color: #c80; }}
+    .bad {{ color: #a00; }}
+    code {{ background: #f6f6f6; padding:2px 4px; border-radius:4px; }}
+    .grid {{ display:grid; grid-template-columns: 140px 1fr; gap:6px 12px; max-width: 720px; }}
+  </style>
+</head>
+<body>
+  <h2>AI Bot Connection</h2>
+  <div class="grid">
+    <div>Host</div><div><code>{s['ibkr']['host']}</code></div>
+    <div>Port</div><div><code>{s['ibkr']['port']}</code></div>
+    <div>Client ID</div><div><code>{s['ibkr']['clientId']}</code></div>
+    <div>Connected</div><div><b class="{ 'ok' if s['ibkr']['connected'] else 'bad' }">{s['ibkr']['connected']}</b></div>
+    <div>State</div><div>{s['ibkr']['state']}</div>
+  </div>
+  <p>API: <code>http://{API_HOST}:{API_PORT}</code></p>
+  <p>Try: <code>/health</code>, <code>/api/status</code>, <code>/api/tws/ping</code></p>
+</body>
+</html>
+"""
+    return HTMLResponse(content=html, status_code=200)
+
+# -- Health & IBKR status -------------------------------------------------------
+@app.get("/health")
+async def health():
+    return {
+        "ok": True,
+        "service": "ai-bot-connection",
+        "features": {"orderGuard": True, "watchdog": True},
+    }
+
+def _ib_status_dict() -> Dict[str, Any]:
+    # Try to read a richer state if adapter exposes it; fall back to simple state.
+    try:
+        connected = bool(ib_adapter.ib and ib_adapter.ib.isConnected())
+    except Exception:
+        connected = False
+
+    state = "CONNECTED" if connected else "DEGRADED"
+    d = {
+        "connected": connected,
+        "state": state,
+        "host": ib_adapter.cfg.host,
+        "port": ib_adapter.cfg.port,
+        "clientId": ib_adapter.cfg.client_id,
+    }
+    # If your adapter exposes optional diagnostics, include them safely:
+    for opt in ("failStreak", "backoffLevel", "lastError", "lastConnectedAt", "lastHeartbeatAt"):
+        v = getattr(ib_adapter, opt, None)
+        if v is not None:
+            d[opt] = v
+    return d
+
+@app.get("/api/status")
+async def get_status():
+    return {
+        "service": "ai-bot-connection",
+        "ibkr": _ib_status_dict(),
+    }
+
+@app.get("/api/tws/ping")
+async def tws_ping():
+    d = _ib_status_dict()
+    return {"connected": d["connected"], "state": d["state"]}
+
+# -- Protected example endpoint -------------------------------------------------
+@app.post("/api/order/preview")
+async def order_preview(payload: Dict[str, Any], x_api_key: str = Depends(require_api_key)):
+    """
+    Stub preview: echoes validated payload and current IB connection state.
+    Real logic should map to contracts/orders and simulate margin/size, etc.
+    """
+    ibs = _ib_status_dict()
+    return {
+        "ok": True,
+        "preview": {
+            "received": payload,
+            "ib_connected": ibs["connected"],
+            "notes": "preview stub (replace with real pricing/margin checks)",
+        },
+    }
+
+# -- OPTIONAL: sample internal caller (kept for reference; not exposed) --------
+async def _demo_internal_preview_call() -> Dict[str, Any]:
+    # Example of how to call our own protected endpoint
+    body = {"symbol": "AAPL", "side": "BUY", "qty": 1}
+    return await _post_json_internal("/api/order/preview", body)

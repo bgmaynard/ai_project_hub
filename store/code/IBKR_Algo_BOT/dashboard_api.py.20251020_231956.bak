@@ -1,0 +1,136 @@
+﻿import os, sys
+from pathlib import Path
+from datetime import datetime
+from typing import Optional
+
+from fastapi import FastAPI, Header, HTTPException, Depends
+from pydantic import BaseModel
+
+# Make sure imports resolve on Windows
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Load env early
+try:
+    from dotenv import load_dotenv
+    load_dotenv(project_root / ".env")
+    print("✅ Environment loaded")
+except Exception:
+    pass
+
+# Import adapter
+try:
+    from store.code.IBKR_Algo_BOT.bridge.ib_adapter import IBAdapter, IBConfig
+    ADAPTER_OK = True
+    print("✅ IB Adapter import OK")
+except Exception as e:
+    IBAdapter = None  # type: ignore
+    IBConfig = None  # type: ignore
+    ADAPTER_OK = False
+    print(f"⚠️ IB Adapter import failed: {e}")
+
+app = FastAPI(title="IBKR Dashboard API", version="2.0.0", description="TWS-only IBKR bot")
+
+ib_adapter: Optional["IBAdapter"] = None
+startup_error: Optional[str] = None
+
+def require_api_key(x_api_key: str = Header(None)):
+    expected = os.getenv("LOCAL_API_KEY")
+    if not expected:
+        raise HTTPException(500, "Server misconfigured: LOCAL_API_KEY not set")
+    if x_api_key != expected:
+        raise HTTPException(401, "Invalid API key")
+    return True
+
+def _validate_env() -> Optional[str]:
+    need = ["LOCAL_API_KEY", "TWS_HOST", "TWS_PORT", "TWS_CLIENT_ID"]
+    missing = [k for k in need if not os.getenv(k)]
+    return f"Missing env vars: {', '.join(missing)}" if missing else None
+
+def _make_adapter() -> Optional["IBAdapter"]:
+    global startup_error
+    if not ADAPTER_OK:
+        startup_error = "adapter import failed"
+        return None
+    err = _validate_env()
+    if err:
+        startup_error = err
+        return None
+    try:
+        cfg = IBConfig()
+        adp = IBAdapter(cfg)
+        adp.connect()  # best effort; status endpoint works even if not connected
+        return adp
+    except Exception as e:
+        startup_error = str(e)
+        return None
+
+@app.on_event("startup")
+def _on_startup():
+    global ib_adapter
+    print("🚀 Starting IBKR Dashboard API (TWS only)...")
+    ib_adapter = _make_adapter()
+    print("✅ Startup complete")
+
+class OrderIn(BaseModel):
+    symbol: str
+    side: str
+    qty: int
+    limitPrice: float | None = None
+
+@app.get("/health")
+def health():
+    base = {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "2.0.0",
+        "adapter_import": ADAPTER_OK,
+        "env_ok": _validate_env() is None,
+    }
+    if ib_adapter:
+        s = ib_adapter.get_detailed_status()
+        base["ibkr"] = s
+    elif startup_error:
+        base["status"] = "degraded"
+        base["error"] = startup_error
+    return base
+
+@app.get("/api/status")
+def status():
+    out = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "api_version": "2.0.0",
+        "env": {
+            "tws_host": os.getenv("TWS_HOST"),
+            "tws_port": os.getenv("TWS_PORT"),
+            "tws_client_id": os.getenv("TWS_CLIENT_ID"),
+            "api_key_set": bool(os.getenv("LOCAL_API_KEY")),
+        },
+        "adapter_import": ADAPTER_OK,
+        "adapter_created": ib_adapter is not None,
+        "startup_error": startup_error,
+    }
+    if ib_adapter:
+        out["ibkr"] = ib_adapter.get_detailed_status()
+    else:
+        out["ibkr"] = {"connected": False, "state": "NOT_AVAILABLE"}
+    return out
+
+@app.post("/api/order/preview")
+def order_preview(body: OrderIn, _=Depends(require_api_key)):
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    if not ib_adapter.connected:
+        s = ib_adapter.get_detailed_status()
+        raise HTTPException(503, f"IB not connected: {s.get('state')} - {s.get('last_error')}")
+    return ib_adapter.preview_order(body.symbol, body.side, body.qty, body.limitPrice)
+
+@app.post("/api/order/place")
+def order_place(body: OrderIn, _=Depends(require_api_key)):
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    if not ib_adapter.connected:
+        s = ib_adapter.get_detailed_status()
+        raise HTTPException(503, f"IB not connected: {s.get('state')} - {s.get('last_error')}")
+    return ib_adapter.place_order(body.symbol, body.side, body.qty, body.limitPrice)
