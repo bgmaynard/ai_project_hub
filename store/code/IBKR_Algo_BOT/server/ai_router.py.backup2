@@ -50,87 +50,39 @@ def load_ai_predictor():
     except ImportError:
         return None
 
-def make_fallback_prediction(req: PredictionRequest) -> PredictionResponse:
-    """Fallback prediction using order book imbalance"""
-    prob_up = 0.5
-    features = []
-    
-    if req.bidSize and req.askSize and req.bidSize + req.askSize > 0:
-        imbalance = (req.bidSize - req.askSize) / (req.bidSize + req.askSize)
-        prob_up = 0.5 + (imbalance * 0.3)
-        features.append("order_book_imbalance")
-    
-    if req.sentiment is not None:
-        prob_up = prob_up * 0.7 + req.sentiment * 0.3
-        features.append("sentiment")
-    
-    prob_up = max(0.0, min(1.0, prob_up))
-    
-    if prob_up > 0.55:
-        signal = "bullish"
-    elif prob_up < 0.45:
-        signal = "bearish"
-    else:
-        signal = "neutral"
-    
-    return PredictionResponse(
-        symbol=req.symbol,
-        signal=signal,
-        prob_up=round(prob_up, 4),
-        confidence=0.65,
-        timestamp=datetime.utcnow().isoformat(),
-        features_used=features if features else ["baseline"]
-    )
-
 @router.post("/predict", response_model=PredictionResponse)
 async def predict(req: PredictionRequest):
-    """Generate AI prediction for a symbol"""
-    prediction = None
-    used_ai = False
-    
-    # Try to use real AI predictor
-    predictor = load_ai_predictor()
-    if predictor:
-        try:
+    try:
+        predictor = load_ai_predictor()
+        if predictor:
             result = predictor.predict(req.symbol)
-            
-            if result['prob_up'] > 0.55:
-                signal = "bullish"
-            elif result['prob_up'] < 0.45:
-                signal = "bearish"
-            else:
-                signal = "neutral"
-            
+            signal = "bullish" if result['prob_up'] > 0.55 else ("bearish" if result['prob_up'] < 0.45 else "neutral")
             prediction = PredictionResponse(
-                symbol=req.symbol,
-                signal=signal,
-                prob_up=result['prob_up'],
-                confidence=result['confidence'],
-                timestamp=datetime.utcnow().isoformat(),
+                symbol=req.symbol, signal=signal, prob_up=result['prob_up'],
+                confidence=result['confidence'], timestamp=datetime.utcnow().isoformat(),
                 features_used=result.get('features_used', [])
             )
-            used_ai = True
-            print(f"✅ Used AI predictor for {req.symbol}")
-            
-        except Exception as ai_error:
-            print(f"⚠️ AI predictor failed ({ai_error}), using fallback")
-            prediction = make_fallback_prediction(req)
-    else:
-        print(f"ℹ️ AI predictor not available, using fallback for {req.symbol}")
-        prediction = make_fallback_prediction(req)
-    
-    # Save to CSV
-    try:
-        save_prediction_to_csv(prediction.model_dump())
-    except AttributeError:
-        # Fallback for older Pydantic
+        else:
+            prob_up = 0.5
+            if req.bidSize and req.askSize:
+                imbalance = (req.bidSize - req.askSize) / (req.bidSize + req.askSize)
+                prob_up = 0.5 + (imbalance * 0.3)
+            if req.sentiment:
+                prob_up = prob_up * 0.7 + req.sentiment * 0.3
+            prob_up = max(0.0, min(1.0, prob_up))
+            signal = "bullish" if prob_up > 0.55 else ("bearish" if prob_up < 0.45 else "neutral")
+            prediction = PredictionResponse(
+                symbol=req.symbol, signal=signal, prob_up=round(prob_up, 4),
+                confidence=0.65, timestamp=datetime.utcnow().isoformat(),
+                features_used=["order_book_imbalance", "sentiment"]
+            )
         save_prediction_to_csv(prediction.dict())
-    
-    return prediction
+        return prediction
+    except Exception as e:
+        raise HTTPException(500, f"Prediction failed: {str(e)}")
 
 @router.get("/predict/last")
 async def get_last_prediction():
-    """Get the most recent prediction"""
     csv_path = get_predictions_log_path()
     if not csv_path.exists():
         raise HTTPException(404, "No predictions found")
@@ -140,22 +92,16 @@ async def get_last_prediction():
         if not predictions:
             raise HTTPException(404, "No predictions found")
         last = predictions[-1]
-        return {
-            "symbol": last['symbol'],
-            "signal": last['signal'],
-            "prob_up": float(last['prob_up']),
-            "confidence": float(last['confidence']),
-            "timestamp": last['timestamp']
-        }
+        return {"symbol": last['symbol'], "signal": last['signal'],
+                "prob_up": float(last['prob_up']), "confidence": float(last['confidence']),
+                "timestamp": last['timestamp']}
     except Exception as e:
         raise HTTPException(500, f"Failed to read predictions: {str(e)}")
 
 @router.get("/predict/history")
 async def get_prediction_history(
-    symbol: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=100)
+    symbol: Optional[str] = Query(None), limit: int = Query(20, ge=1, le=100)
 ):
-    """Get prediction history"""
     csv_path = get_predictions_log_path()
     if not csv_path.exists():
         return {"predictions": [], "total": 0}
@@ -166,30 +112,20 @@ async def get_prediction_history(
             predictions = [p for p in predictions if p['symbol'].upper() == symbol.upper()]
         predictions = predictions[-limit:]
         predictions.reverse()
-        result = []
-        for p in predictions:
-            result.append({
-                "symbol": p['symbol'],
-                "signal": p['signal'],
-                "prob_up": float(p['prob_up']),
-                "confidence": float(p['confidence']),
-                "timestamp": p['timestamp']
-            })
+        result = [{"symbol": p['symbol'], "signal": p['signal'],
+                   "prob_up": float(p['prob_up']), "confidence": float(p['confidence']),
+                   "timestamp": p['timestamp']} for p in predictions]
         return {"predictions": result, "total": len(result), "symbol_filter": symbol}
     except Exception as e:
-        raise HTTPException(500, f"Failed to read history: {str(e)}")
+        raise HTTPException(500, f"Failed to read prediction history: {str(e)}")
 
 @router.get("/status")
 async def ai_status():
-    """Get AI module status"""
     predictor = load_ai_predictor()
     return {
-        "status": "operational",
-        "ai_available": predictor is not None,
-        "version": "1.0.0",
+        "status": "operational", "ai_available": predictor is not None, "version": "1.0.0",
         "endpoints": {
-            "predict": "/api/ai/predict",
-            "last_prediction": "/api/ai/predict/last",
+            "predict": "/api/ai/predict", "last_prediction": "/api/ai/predict/last",
             "history": "/api/ai/predict/history"
         },
         "timestamp": datetime.utcnow().isoformat()
