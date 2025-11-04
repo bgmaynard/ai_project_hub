@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -58,6 +58,14 @@ except Exception as e:
     print(f"?? IB Adapter import failed: {e}")
 
 app = FastAPI(title="IBKR Trading Bot API", version="4.0.0")
+
+# === AI Router Integration ===
+try:
+    from server.ai_router import router as ai_router
+    app.include_router(ai_router)
+    print('✅ AI Router mounted successfully')
+except ImportError as e:
+    print(f'⚠️ AI router error: {e}')
 
 @app.on_event("startup")
 def _on_startup():
@@ -517,6 +525,15 @@ def get_level2(symbol: str, _=Depends(require_api_key)):
     except Exception as e:
         raise HTTPException(500, f"Level 2 fetch failed: {e}")
 
+# === AI router mount ===
+try:
+    from server.ai_router import router as ai_router
+    app.include_router(ai_router)
+    print("? AI router mounted successfully")
+except Exception as e:
+    print("? AI router failed:", e)
+# === end AI router mount ===
+
 if __name__ == "__main__":
     import uvicorn
     print("?? Starting IBKR Trading Bot Dashboard API on http://127.0.0.1:9101")
@@ -534,6 +551,20 @@ if __name__ == "__main__":
 
 
 
+
+
+
+
+
+# === AI router mount (added by collab patch) ===
+try:
+    from server.ai_router import router as ai_router
+    app.include_router(ai_router)
+except Exception as _e:
+    print("? AI router not mounted:", _e)
+else:
+    print("? AI router mounted successfully")
+# === end AI router mount ===
 
 
 

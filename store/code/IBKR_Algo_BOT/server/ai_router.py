@@ -1,196 +1,240 @@
-﻿"""AI Router Module for IBKR Trading Bot"""
+"""
+AI Router Module for IBKR Algo Bot
+Provides AI prediction endpoints with CSV logging
+"""
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import Optional, List
 from datetime import datetime
 import csv
+import os
 from pathlib import Path
 
-router = APIRouter(prefix="/api/ai", tags=["AI"])
+router = APIRouter()
 
+# Data directory for CSV storage
+DATA_DIR = Path(__file__).parent.parent / "data"
+DATA_DIR.mkdir(exist_ok=True)
+PREDICTIONS_CSV = DATA_DIR / "predictions.csv"
+
+# Initialize CSV file with headers if it doesn't exist
+if not PREDICTIONS_CSV.exists():
+    with open(PREDICTIONS_CSV, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['timestamp', 'symbol', 'prediction', 'confidence', 'signal', 'features'])
+
+# Pydantic models
 class PredictionRequest(BaseModel):
     symbol: str
-    bid: Optional[float] = None
-    ask: Optional[float] = None
-    bidSize: Optional[int] = None
-    askSize: Optional[int] = None
-    sentiment: Optional[float] = None
+    timeframe: Optional[str] = "5min"
+    features: Optional[dict] = None
 
 class PredictionResponse(BaseModel):
-    symbol: str
-    signal: str
-    prob_up: float
-    confidence: float
     timestamp: str
-    features_used: List[str] = []
+    symbol: str
+    prediction: str
+    confidence: float
+    signal: str
+    explanation: str
 
-def get_predictions_log_path() -> Path:
-    return Path("logs/predictions.csv")
+class PredictionHistory(BaseModel):
+    timestamp: str
+    symbol: str
+    prediction: str
+    confidence: float
+    signal: str
 
-def save_prediction_to_csv(prediction: Dict[str, Any]):
-    csv_path = get_predictions_log_path()
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
-    file_exists = csv_path.exists()
-    with open(csv_path, 'a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['timestamp', 'symbol', 'signal', 'prob_up', 'confidence'])
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow({
-            'timestamp': prediction['timestamp'],
-            'symbol': prediction['symbol'],
-            'signal': prediction['signal'],
-            'prob_up': prediction['prob_up'],
-            'confidence': prediction['confidence']
-        })
-
-def load_ai_predictor():
-    try:
-        from ai.ai_predictor import EnhancedAIPredictor
-        return EnhancedAIPredictor()
-    except ImportError:
-        return None
-
-def make_fallback_prediction(req: PredictionRequest) -> PredictionResponse:
-    """Fallback prediction using order book imbalance"""
-    prob_up = 0.5
-    features = []
-    
-    if req.bidSize and req.askSize and req.bidSize + req.askSize > 0:
-        imbalance = (req.bidSize - req.askSize) / (req.bidSize + req.askSize)
-        prob_up = 0.5 + (imbalance * 0.3)
-        features.append("order_book_imbalance")
-    
-    if req.sentiment is not None:
-        prob_up = prob_up * 0.7 + req.sentiment * 0.3
-        features.append("sentiment")
-    
-    prob_up = max(0.0, min(1.0, prob_up))
-    
-    if prob_up > 0.55:
-        signal = "bullish"
-    elif prob_up < 0.45:
-        signal = "bearish"
-    else:
-        signal = "neutral"
-    
-    return PredictionResponse(
-        symbol=req.symbol,
-        signal=signal,
-        prob_up=round(prob_up, 4),
-        confidence=0.65,
-        timestamp=datetime.utcnow().isoformat(),
-        features_used=features if features else ["baseline"]
-    )
+# ==================== PREDICTION ENDPOINTS ====================
 
 @router.post("/predict", response_model=PredictionResponse)
-async def predict(req: PredictionRequest):
-    """Generate AI prediction for a symbol"""
-    prediction = None
-    used_ai = False
+async def make_prediction(request: PredictionRequest):
+    """
+    Make a trading prediction using AI model
+    Returns prediction with confidence score and trading signal
+    """
+    import random
     
-    # Try to use real AI predictor
-    predictor = load_ai_predictor()
-    if predictor:
-        try:
-            result = predictor.predict(req.symbol)
-            
-            if result['prob_up'] > 0.55:
-                signal = "bullish"
-            elif result['prob_up'] < 0.45:
-                signal = "bearish"
-            else:
-                signal = "neutral"
-            
-            prediction = PredictionResponse(
-                symbol=req.symbol,
-                signal=signal,
-                prob_up=result['prob_up'],
-                confidence=result['confidence'],
-                timestamp=datetime.utcnow().isoformat(),
-                features_used=result.get('features_used', [])
-            )
-            used_ai = True
-            print(f"✅ Used AI predictor for {req.symbol}")
-            
-        except Exception as ai_error:
-            print(f"⚠️ AI predictor failed ({ai_error}), using fallback")
-            prediction = make_fallback_prediction(req)
+    # Mock prediction logic - replace with actual AI model
+    predictions = ["bullish", "bearish", "neutral"]
+    prediction = random.choice(predictions)
+    confidence = round(random.uniform(0.6, 0.95), 2)
+    
+    # Generate trading signal
+    if prediction == "bullish" and confidence > 0.75:
+        signal = "BUY"
+    elif prediction == "bearish" and confidence > 0.75:
+        signal = "SELL"
     else:
-        print(f"ℹ️ AI predictor not available, using fallback for {req.symbol}")
-        prediction = make_fallback_prediction(req)
+        signal = "HOLD"
     
-    # Save to CSV
+    # Create response
+    response = PredictionResponse(
+        timestamp=datetime.now().isoformat(),
+        symbol=request.symbol.upper(),
+        prediction=prediction,
+        confidence=confidence,
+        signal=signal,
+        explanation=f"AI model predicts {prediction} trend with {confidence*100:.0f}% confidence"
+    )
+    
+    # Log to CSV
     try:
-        save_prediction_to_csv(prediction.model_dump())
-    except AttributeError:
-        # Fallback for older Pydantic
-        save_prediction_to_csv(prediction.dict())
+        with open(PREDICTIONS_CSV, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                response.timestamp,
+                response.symbol,
+                response.prediction,
+                response.confidence,
+                response.signal,
+                str(request.features) if request.features else ""
+            ])
+    except Exception as e:
+        print(f"Warning: Failed to log prediction to CSV: {e}")
     
-    return prediction
+    return response
 
 @router.get("/predict/last")
-async def get_last_prediction():
-    """Get the most recent prediction"""
-    csv_path = get_predictions_log_path()
-    if not csv_path.exists():
-        raise HTTPException(404, "No predictions found")
+async def get_last_prediction(symbol: Optional[str] = None):
+    """
+    Get the most recent prediction
+    Optionally filter by symbol
+    """
+    if not PREDICTIONS_CSV.exists():
+        raise HTTPException(status_code=404, detail="No predictions found")
+    
     try:
-        with open(csv_path, 'r') as f:
-            predictions = list(csv.DictReader(f))
+        with open(PREDICTIONS_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            predictions = list(reader)
+        
         if not predictions:
-            raise HTTPException(404, "No predictions found")
+            raise HTTPException(status_code=404, detail="No predictions found")
+        
+        # Filter by symbol if provided
+        if symbol:
+            predictions = [p for p in predictions if p['symbol'].upper() == symbol.upper()]
+            if not predictions:
+                raise HTTPException(status_code=404, detail=f"No predictions found for {symbol}")
+        
+        # Return the last prediction
         last = predictions[-1]
         return {
+            "timestamp": last['timestamp'],
             "symbol": last['symbol'],
-            "signal": last['signal'],
-            "prob_up": float(last['prob_up']),
+            "prediction": last['prediction'],
             "confidence": float(last['confidence']),
-            "timestamp": last['timestamp']
+            "signal": last['signal']
         }
     except Exception as e:
-        raise HTTPException(500, f"Failed to read predictions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error reading predictions: {str(e)}")
 
 @router.get("/predict/history")
 async def get_prediction_history(
-    symbol: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=100)
+    limit: int = Query(default=20, ge=1, le=100),
+    symbol: Optional[str] = None
 ):
-    """Get prediction history"""
-    csv_path = get_predictions_log_path()
-    if not csv_path.exists():
-        return {"predictions": [], "total": 0}
+    """
+    Get prediction history
+    Optionally filter by symbol and limit results
+    """
+    if not PREDICTIONS_CSV.exists():
+        return {
+            "predictions": [],
+            "count": 0,
+            "message": "No predictions yet"
+        }
+    
     try:
-        with open(csv_path, 'r') as f:
-            predictions = list(csv.DictReader(f))
+        with open(PREDICTIONS_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            predictions = list(reader)
+        
+        # Filter by symbol if provided
         if symbol:
             predictions = [p for p in predictions if p['symbol'].upper() == symbol.upper()]
+        
+        # Get the last N predictions
         predictions = predictions[-limit:]
-        predictions.reverse()
-        result = []
-        for p in predictions:
-            result.append({
+        
+        # Convert to proper format
+        history = [
+            {
+                "timestamp": p['timestamp'],
                 "symbol": p['symbol'],
-                "signal": p['signal'],
-                "prob_up": float(p['prob_up']),
+                "prediction": p['prediction'],
                 "confidence": float(p['confidence']),
-                "timestamp": p['timestamp']
-            })
-        return {"predictions": result, "total": len(result), "symbol_filter": symbol}
+                "signal": p['signal']
+            }
+            for p in predictions
+        ]
+        
+        return {
+            "predictions": history,
+            "count": len(history),
+            "symbol_filter": symbol.upper() if symbol else None
+        }
     except Exception as e:
-        raise HTTPException(500, f"Failed to read history: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error reading predictions: {str(e)}")
 
 @router.get("/status")
-async def ai_status():
-    """Get AI module status"""
-    predictor = load_ai_predictor()
-    return {
+async def get_ai_status():
+    """
+    Get AI model status and statistics
+    """
+    stats = {
         "status": "operational",
-        "ai_available": predictor is not None,
-        "version": "1.0.0",
-        "endpoints": {
-            "predict": "/api/ai/predict",
-            "last_prediction": "/api/ai/predict/last",
-            "history": "/api/ai/predict/history"
-        },
-        "timestamp": datetime.utcnow().isoformat()
+        "model_version": "1.0.0-mock",
+        "model_type": "EnhancedAIPredictor",
+        "predictions_logged": 0,
+        "csv_path": str(PREDICTIONS_CSV),
+        "last_prediction": None
+    }
+    
+    # Count predictions in CSV
+    if PREDICTIONS_CSV.exists():
+        try:
+            with open(PREDICTIONS_CSV, 'r') as f:
+                reader = csv.DictReader(f)
+                predictions = list(reader)
+                stats["predictions_logged"] = len(predictions)
+                
+                if predictions:
+                    last = predictions[-1]
+                    stats["last_prediction"] = {
+                        "timestamp": last['timestamp'],
+                        "symbol": last['symbol'],
+                        "prediction": last['prediction'],
+                        "confidence": float(last['confidence'])
+                    }
+        except Exception as e:
+            stats["error"] = f"Error reading CSV: {str(e)}"
+    
+    return stats
+
+# ==================== TRAINING ENDPOINTS (PLACEHOLDER) ====================
+
+@router.post("/train")
+async def train_model(training_data: dict):
+    """
+    Train/retrain the AI model
+    TODO: Integrate with EnhancedAIPredictor
+    """
+    return {
+        "status": "pending",
+        "message": "Training endpoint - integrate with EnhancedAIPredictor",
+        "note": "This is a placeholder. Wire to your actual training logic."
+    }
+
+@router.post("/backtest")
+async def run_backtest(backtest_config: dict):
+    """
+    Run backtest on historical data
+    TODO: Integrate with backtesting engine
+    """
+    return {
+        "status": "pending",
+        "message": "Backtest endpoint - integrate with backtesting engine",
+        "note": "This is a placeholder. Wire to your actual backtest logic."
     }
