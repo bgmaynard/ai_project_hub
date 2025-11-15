@@ -1,28 +1,47 @@
-﻿venv/
-**/__pycache__/
-*.log
-store/last_pytest.log
-store/enhanced_dependency_graph.png
-store/dependency_graph.png
-store/tasks/*.json
-*.sqlite
-*.h5
-*.keras
-store/code/IBKR_Algo_BOT.zip
-*.zip
-store/code/IBKR_Algo_BOT.zip
-store/code/dashboard_data/
-store/ai_shared/mesh_heartbeat.json
-store/ai_shared/mesh_heartbeat.json
-# --- project ---
-.env
-store/ai_shared/mesh_heartbeat.json
-store/logs/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-
-# venv
+*.pyd
+*.so
+.Python
 .venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Node / UI
+node_modules/
+.ui-cache/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data & models
+store/**/*.parquet
+store/**/*.duckdb
+store/**/*.db
+store/**/*.sqlite*
+store/models/*.onnx
+store/models/*.txt
+store/models/*.bin
+store/logs/
+logs/
+
+# Secrets
 .env
-*.bak
+*.key
+*.pem
+*.pfx
+secrets/
+
+# Zips & artifacts
+*.zip
+*.tar
+*.tar.gz

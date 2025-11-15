@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Worklist with Analytics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-size: 11px;
+        }
+
+        .worklist-container {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            margin: 10px;
+        }
+
+        .worklist-header {
+            background: #252525;
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .worklist-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .worklist-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .worklist-btn {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 4px 10px;
+            font-size: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .worklist-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .worklist-btn.active {
+            background: #1e40af;
+            color: #fff;
+            border-color: #1e40af;
+        }
+
+        .worklist-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .worklist-table thead {
+            background: #1e1e1e;
+            border-bottom: 1px solid #333;
+        }
+
+        .worklist-table th {
+            padding: 6px 8px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            border-right: 1px solid #2a2a2a;
+        }
+
+        .worklist-table th:last-child {
+            border-right: none;
+        }
+
+        .worklist-table tbody tr {
+            border-bottom: 1px solid #252525;
+            transition: background 0.1s;
+        }
+
+        .worklist-table tbody tr:hover {
+            background: #222;
+        }
+
+        .worklist-table td {
+            padding: 8px;
+            font-size: 11px;
+            border-right: 1px solid #252525;
+        }
+
+        .worklist-table td:last-child {
+            border-right: none;
+        }
+
+        .symbol-cell {
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: #60a5fa;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .symbol-cell:hover {
+            color: #93c5fd;
+            text-decoration: underline;
+        }
+
+        .price-cell {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .change-positive {
+            color: #22c55e;
+            font-weight: 600;
+        }
+
+        .change-negative {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .volume-cell {
+            color: #94a3b8;
+        }
+
+        .volume-high {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        .gap-cell {
+            font-weight: 600;
+        }
+
+        .gap-strong {
+            color: #22c55e;
+        }
+
+        .gap-moderate {
+            color: #f59e0b;
+        }
+
+        .catalyst-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #dc2626;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+
+        .ai-score {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 6px;
+            border-radius: 2px;
+            font-weight: 600;
+            font-size: 10px;
+        }
+
+        .ai-score.bullish {
+            background: #166534;
+            color: #22c55e;
+        }
+
+        .ai-score.bearish {
+            background: #7f1d1d;
+            color: #ef4444;
+        }
+
+        .ai-score.neutral {
+            background: #374151;
+            color: #9ca3af;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 4px;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            font-size: 9px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            border-radius: 2px;
+        }
+
+        .btn-chart {
+            background: #1e40af;
+            color: #fff;
+        }
+
+        .btn-chart:hover {
+            background: #1e3a8a;
+        }
+
+        .btn-buy {
+            background: #15803d;
+            color: #fff;
+        }
+
+        .btn-buy:hover {
+            background: #166534;
+        }
+
+        .btn-analyze {
+            background: #7c3aed;
+            color: #fff;
+        }
+
+        .btn-analyze:hover {
+            background: #6d28d9;
+        }
+
+        .analytics-row {
+            display: none;
+            background: #0f0f0f;
+            border-top: 1px solid #333;
+        }
+
+        .analytics-row.active {
+            display: table-row;
+        }
+
+        .analytics-content {
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 12px;
+        }
+
+        .analytics-box {
+            background: #1a1a1a;
+            padding: 8px;
+            border: 1px solid #333;
+        }
+
+        .analytics-label {
+            font-size: 9px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .analytics-value {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+        }
+
+        .mini-chart {
+            height: 40px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .empty-state {
+            padding: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .loading {
+            padding: 40px;
+            text-align: center;
+            color: #888;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #333;
+            border-radius: 50%;
+            border-top-color: #60a5fa;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="worklist-container">
+        <div class="worklist-header">
+            <div class="worklist-title">📊 Scanner Worklist - Live Market Data</div>
+            <div class="worklist-controls">
+                <button class="worklist-btn active" onclick="setFilter('all')">ALL</button>
+                <button class="worklist-btn" onclick="setFilter('gappers')">GAPPERS</button>
+                <button class="worklist-btn" onclick="setFilter('momentum')">MOMENTUM</button>
+                <button class="worklist-btn" onclick="setFilter('breakout')">BREAKOUTS</button>
+                <button class="worklist-btn" onclick="refreshWorklist()">REFRESH</button>
+            </div>
+        </div>
+
+        <table class="worklist-table">
+            <thead>
+                <tr>
+                    <th>SYMBOL</th>
+                    <th>PRICE</th>
+                    <th>CHANGE%</th>
+                    <th>VOLUME</th>
+                    <th>GAP%</th>
+                    <th>NEWS</th>
+                    <th>AI SCORE</th>
+                    <th>REL VOL</th>
+                    <th>ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody id="worklistBody">
+                <tr>
+                    <td colspan="9" class="loading">
+                        <div class="spinner"></div>
+                        <div style="margin-top: 10px;">Connecting to market data...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+        let worklistData = [];
+        let expandedRow = null;
+        let ws = null;
+        let subscribedSymbols = new Set();
+
+        // Connect to market data WebSocket
+        function connectWebSocket() {
+            // Connect to data bus WebSocket for real-time updates
+            // This would connect to individual symbol WebSockets as needed
+        }
+
+        // Initialize worklist
+        async function initWorklist() {
+            try {
+                // Load initial worklist from scanner
+                await loadWorklist();
+                
+                // Set up auto-refresh
+                setInterval(refreshWorklist, 15000); // Refresh every 15 seconds
+            } catch (error) {
+                console.error('Failed to initialize worklist:', error);
+                showError('Failed to connect to market data');
+            }
+        }
+
+        async function loadWorklist() {
+            try {
+                const response = await fetch('/api/scanner/results');
+                const data = await response.json();
+                
+                worklistData = data.symbols || [];
+                renderWorklist();
+            } catch (error) {
+                console.error('Error loading worklist:', error);
+                // Show mock data for development
+                showMockData();
+            }
+        }
+
+        function showMockData() {
+            worklistData = [
+                {
+                    symbol: 'AAPL',
+                    price: 185.32,
+                    change: 5.2,
+                    volume: 2300000,
+                    gap: 6.1,
+                    news: 'CATALYST',
+                    ai_score: 85,
+                    rel_volume: 2.4,
+                    bid: 185.30,
+                    ask: 185.34,
+                    high: 186.50,
+                    low: 183.20,
+                    open: 174.50,
+                    vwap: 185.10
+                },
+                {
+                    symbol: 'TSLA',
+                    price: 242.15,
+                    change: 8.1,
+                    volume: 5100000,
+                    gap: 9.3,
+                    news: null,
+                    ai_score: 78,
+                    rel_volume: 3.2,
+                    bid: 242.10,
+                    ask: 242.20,
+                    high: 245.80,
+                    low: 238.90,
+                    open: 222.40,
+                    vwap: 241.50
+                },
+                {
+                    symbol: 'NVDA',
+                    price: 505.80,
+                    change: 4.8,
+                    volume: 3700000,
+                    gap: 5.5,
+                    news: 'CATALYST',
+                    ai_score: 92,
+                    rel_volume: 2.8,
+                    bid: 505.75,
+                    ask: 505.85,
+                    high: 508.20,
+                    low: 502.10,
+                    open: 480.30,
+                    vwap: 505.20
+                }
+            ];
+            renderWorklist();
+        }
+
+        function renderWorklist() {
+            const tbody = document.getElementById('worklistBody');
+            
+            if (worklistData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            No symbols in worklist. Waiting for scanner signals...
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            worklistData.forEach((stock, index) => {
+                const changeClass = stock.change >= 0 ? 'change-positive' : 'change-negative';
+                const gapClass = stock.gap >= 8 ? 'gap-strong' : stock.gap >= 5 ? 'gap-moderate' : '';
+                const volumeClass = stock.volume > 3000000 ? 'volume-high' : 'volume-cell';
+                
+                let aiScoreClass = 'neutral';
+                if (stock.ai_score >= 75) aiScoreClass = 'bullish';
+                else if (stock.ai_score <= 40) aiScoreClass = 'bearish';
+
+                html += `
+                    <tr onclick="toggleAnalytics(${index})">
+                        <td class="symbol-cell" onclick="event.stopPropagation(); loadSymbol('${stock.symbol}')">${stock.symbol}</td>
+                        <td class="price-cell">$${stock.price.toFixed(2)}</td>
+                        <td class="${changeClass}">${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(1)}%</td>
+                        <td class="${volumeClass}">${formatVolume(stock.volume)}</td>
+                        <td class="gap-cell ${gapClass}">${stock.gap >= 0 ? '+' : ''}${stock.gap.toFixed(1)}%</td>
+                        <td>${stock.news ? '<span class="catalyst-badge">' + stock.news + '</span>' : '─'}</td>
+                        <td><span class="ai-score ${aiScoreClass}">${stock.ai_score}</span></td>
+                        <td>${stock.rel_volume.toFixed(1)}x</td>
+                        <td class="action-btns">
+                            <button class="action-btn btn-chart" onclick="event.stopPropagation(); openChart('${stock.symbol}')">CHART</button>
+                            <button class="action-btn btn-buy" onclick="event.stopPropagation(); quickBuy('${stock.symbol}')">BUY</button>
+                            <button class="action-btn btn-analyze" onclick="event.stopPropagation(); analyzeSymbol('${stock.symbol}')">AI</button>
+                        </td>
+                    </tr>
+                    <tr class="analytics-row" id="analytics-${index}">
+                        <td colspan="9">
+                            <div class="analytics-content">
+                                <div class="analytics-box">
+                                    <div class="analytics-label">Bid / Ask</div>
+                                    <div class="analytics-value">$${stock.bid?.toFixed(2) || '--'} / $${stock.ask?.toFixed(2) || '--'}</div>
+                                    <div class="analytics-label" style="margin-top: 8px;">Spread</div>
+                                    <div class="analytics-value">${stock.bid && stock.ask ? '$' + (stock.ask - stock.bid).toFixed(2) : '--'}</div>
+                                </div>
+                                <div class="analytics-box">
+                                    <div class="analytics-label">High / Low</div>
+                                    <div class="analytics-value">$${stock.high?.toFixed(2) || '--'} / $${stock.low?.toFixed(2) || '--'}</div>
+                                    <div class="analytics-label" style="margin-top: 8px;">Range</div>
+                                    <div class="analytics-value">${stock.high && stock.low ? ((stock.high - stock.low) / stock.low * 100).toFixed(1) + '%' : '--'}</div>
+                                </div>
+                                <div class="analytics-box">
+                                    <div class="analytics-label">VWAP</div>
+                                    <div class="analytics-value">$${stock.vwap?.toFixed(2) || '--'}</div>
+                                    <div class="analytics-label" style="margin-top: 8px;">vs Price</div>
+                                    <div class="analytics-value ${stock.price > stock.vwap ? 'change-positive' : 'change-negative'}">${stock.vwap ? ((stock.price - stock.vwap) / stock.vwap * 100).toFixed(2) + '%' : '--'}</div>
+                                </div>
+                                <div class="analytics-box">
+                                    <div class="mini-chart">
+                                        <div style="padding: 8px; font-size: 9px; color: #666;">5-min chart loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function toggleAnalytics(index) {
+            const row = document.getElementById(`analytics-${index}`);
+            
+            // Close previously opened row
+            if (expandedRow !== null && expandedRow !== index) {
+                const prevRow = document.getElementById(`analytics-${expandedRow}`);
+                if (prevRow) prevRow.classList.remove('active');
+            }
+
+            // Toggle current row
+            if (row) {
+                row.classList.toggle('active');
+                expandedRow = row.classList.contains('active') ? index : null;
+            }
+        }
+
+        function formatVolume(volume) {
+            if (volume >= 1000000) {
+                return (volume / 1000000).toFixed(1) + 'M';
+            } else if (volume >= 1000) {
+                return (volume / 1000).toFixed(0) + 'K';
+            }
+            return volume.toString();
+        }
+
+        function loadSymbol(symbol) {
+            console.log('Loading symbol:', symbol);
+            // Send message to main platform to load symbol
+            window.parent.postMessage({
+                type: 'load_symbol',
+                symbol: symbol
+            }, '*');
+        }
+
+        function openChart(symbol) {
+            console.log('Opening chart for:', symbol);
+            fetch(`/api/scanner/open-chart/${symbol}`, { method: 'POST' })
+                .catch(err => console.error('Error opening chart:', err));
+        }
+
+        function quickBuy(symbol) {
+            console.log('Quick buy:', symbol);
+            window.parent.postMessage({
+                type: 'quick_buy',
+                symbol: symbol
+            }, '*');
+        }
+
+        function analyzeSymbol(symbol) {
+            console.log('Analyzing symbol:', symbol);
+            window.parent.postMessage({
+                type: 'analyze_symbol',
+                symbol: symbol
+            }, '*');
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            // Update button styles
+            document.querySelectorAll('.worklist-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Apply filter
+            renderWorklist();
+        }
+
+        async function refreshWorklist() {
+            await loadWorklist();
+        }
+
+        function showError(message) {
+            const tbody = document.getElementById('worklistBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="empty-state" style="color: #ef4444;">
+                        ⚠️ ${message}
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Initialize on load
+        window.addEventListener('load', initWorklist);
+    </script>
+</body>
+</html>

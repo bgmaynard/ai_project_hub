@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBKR Algo Bot - Professional Trading Platform</title>
+    <!-- TradingView Widget -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            font-size: 12px;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: #2d2d2d;
+            border-bottom: 1px solid #404040;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 40px;
+        }
+
+        .top-bar-left {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .top-bar-left h1 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+        }
+
+        .top-bar-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 11px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            border-radius: 2px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+
+        .status-dot.connected {
+            background: #22c55e;
+        }
+
+        /* Menu Bar */
+        .menu-bar {
+            background: #252525;
+            border-bottom: 1px solid #404040;
+            padding: 0 12px;
+            display: flex;
+            gap: 0;
+            height: 28px;
+        }
+
+        .menu-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            color: #b0b0b0;
+            border-right: 1px solid #404040;
+            transition: background 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #2d2d2d;
+            color: #ffffff;
+        }
+
+        /* Main Container */
+        .main-container {
+            display: grid;
+            grid-template-columns: 280px 400px 320px 1fr;
+            grid-template-rows: auto 1fr 250px;
+            height: calc(100vh - 68px);
+            gap: 0;
+        }
+
+        /* Top row panels */
+        .account-panel {
+            grid-column: 1;
+            grid-row: 1 / 3;
+        }
+
+        .market-panel {
+            grid-column: 2;
+            grid-row: 1 / 3;
+        }
+
+        .order-panel {
+            grid-column: 3;
+            grid-row: 1 / 3;
+            overflow-y: auto;
+        }
+
+        .charts-panel {
+            grid-column: 4;
+            grid-row: 1 / 3;
+            border-left: 1px solid #404040;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+        }
+
+        /* Bottom row - full width */
+        .bottom-panels {
+            grid-column: 1 / 5;
+            grid-row: 3;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            border-top: 1px solid #404040;
+        }
+
+        /* Panel Styles */
+        .panel {
+            background: #1e1e1e;
+            border: 1px solid #404040;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #2a2a2a;
+            padding: 6px 10px;
+            border-bottom: 1px solid #404040;
+            font-size: 11px;
+            font-weight: 600;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        /* Left Panel - Symbol Entry & Orders */
+        .symbol-entry {
+            background: #252525;
+            border: 1px solid #404040;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .symbol-entry label {
+            display: block;
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .symbol-entry input {
+            width: 100%;
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            color: #ffffff;
+            padding: 6px 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-family: 'Courier New', monospace;
+        }
+
+        .symbol-entry input:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 8px;
+            border: none;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+
+        .btn-buy {
+            background: #22c55e;
+            color: #000;
+        }
+
+        .btn-buy:hover {
+            background: #16a34a;
+        }
+
+        .btn-sell {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-sell:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #404040;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #505050;
+        }
+
+        /* Center Panel - Market Data */
+        .center-panel {
+            display: grid;
+            grid-template-rows: auto 250px 1fr;
+            gap: 0;
+        }
+
+        /* Quote Display */
+        .quote-display {
+            background: #1e1e1e;
+            border-bottom: 1px solid #404040;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .quote-item {
+            text-align: center;
+        }
+
+        .quote-label {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .quote-value {
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .quote-value.bid {
+            color: #22c55e;
+        }
+
+        .quote-value.ask {
+            color: #ef4444;
+        }
+
+        .quote-value.last {
+            color: #60a5fa;
+        }
+
+        .quote-change {
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .quote-change.positive {
+            color: #22c55e;
+        }
+
+        .quote-change.negative {
+            color: #ef4444;
+        }
+
+        /* Level 2 Grid */
+        .level2-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            border-top: 1px solid #404040;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .level2-column {
+            border-right: 1px solid #404040;
+        }
+
+        .level2-column:last-child {
+            border-right: none;
+        }
+
+        .level2-header {
+            background: #252525;
+            padding: 4px 6px;
+            text-align: center;
+            font-size: 9px;
+            font-weight: 600;
+            border-bottom: 1px solid #404040;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            display: grid;
+            grid-template-columns: 30px 45px 50px 30px;
+        }
+
+        .level2-row {
+            display: grid;
+            grid-template-columns: 30px 45px 50px 30px;
+            padding: 2px 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            border-bottom: 1px solid #303030;
+            align-items: center;
+        }
+
+        .level2-row:hover {
+            background: #252525;
+        }
+
+        .level2-row div {
+            padding: 1px 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .level2-row .price {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .level2-row .size {
+            text-align: right;
+        }
+
+        .level2-row .orders {
+            text-align: center;
+            color: #888;
+            font-size: 9px;
+        }
+
+        .bid-side .price {
+            color: #22c55e;
+        }
+
+        .ask-side .price {
+            color: #ef4444;
+        }
+
+        /* Time & Sales */
+        .timesales-row {
+            display: grid;
+            grid-template-columns: 60px 50px 60px;
+            padding: 3px 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            border-bottom: 1px solid #303030;
+        }
+
+        .timesales-row:hover {
+            background: #252525;
+        }
+
+        .timesales-row .time {
+            color: #888;
+        }
+
+        .timesales-row .price {
+            text-align: right;
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        .timesales-row .size {
+            text-align: right;
+            color: #888;
+        }
+
+        /* Right Panel - Positions & Orders */
+        .data-table {
+            width: 100%;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            border-collapse: collapse;
+        }
+
+        .data-table thead {
+            background: #252525;
+            position: sticky;
+            top: 0;
+        }
+
+        .data-table th {
+            padding: 8px 6px;
+            text-align: left;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            border-bottom: 1px solid #404040;
+            font-size: 10px;
+        }
+
+        .data-table td {
+            padding: 7px 6px;
+            border-bottom: 1px solid #303030;
+        }
+
+        .data-table tr:hover {
+            background: #252525;
+        }
+
+        .order-status {
+            padding: 3px 8px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .order-status.working {
+            background: #f59e0b;
+            color: #000;
+        }
+
+        .order-status.filled {
+            background: #22c55e;
+            color: #000;
+        }
+
+        .order-status.cancelled {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .order-status.partial {
+            background: #60a5fa;
+            color: #000;
+        }
+
+        .position-pnl {
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .position-pnl.profit {
+            color: #22c55e;
+        }
+
+        .position-pnl.loss {
+            color: #ef4444;
+        }
+
+        .btn-cancel-order {
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            padding: 3px 8px;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+
+        .btn-cancel-order:hover {
+            background: #dc2626;
+        }
+
+        /* Chart Container */
+        #tradingview_chart {
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 11px;
+        }
+
+        /* AI Prediction Box */
+        .ai-prediction {
+            background: #252525;
+            border: 1px solid #404040;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .ai-prediction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .ai-signal {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .ai-signal.buy {
+            color: #22c55e;
+        }
+
+        .ai-signal.sell {
+            color: #ef4444;
+        }
+
+        .ai-signal.hold {
+            color: #f59e0b;
+        }
+
+        .ai-confidence {
+            font-size: 10px;
+            color: #888;
+        }
+
+        .ai-details {
+            font-size: 10px;
+            color: #b0b0b0;
+            line-height: 1.4;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #505050;
+        }
+
+        /* Bot Control Panel */
+        .bot-control {
+            background: #252525;
+            border: 1px solid #404040;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .bot-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 10px;
+        }
+
+        .bot-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        /* Watchlist Styles */
+        .watchlist-item {
+            display: grid;
+            grid-template-columns: 50px 1fr;
+            padding: 4px 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            border-bottom: 1px solid #303030;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .watchlist-item:hover {
+            background: #2a2a2a;
+        }
+
+        .watchlist-item.active {
+            background: #1a3a5a;
+        }
+
+        .watchlist-symbol {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        .watchlist-price {
+            text-align: right;
+            font-size: 10px;
+        }
+
+        .watchlist-price.up {
+            color: #22c55e;
+        }
+
+        .watchlist-price.down {
+            color: #ef4444;
+        }
+
+        .watchlist-add {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 4px;
+            padding: 6px;
+            border-top: 1px solid #404040;
+        }
+
+        .watchlist-add input {
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            color: #fff;
+            padding: 4px 6px;
+            font-size: 10px;
+            text-transform: uppercase;
+            font-family: 'Courier New', monospace;
+        }
+
+        .watchlist-add input:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .btn-add {
+            background: #404040;
+            color: #fff;
+            border: none;
+            padding: 4px 8px;
+            font-size: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-add:hover {
+            background: #505050;
+        }
+
+        /* Account Info Styles */
+        .account-info {
+            background: #252525;
+            border: 1px solid #404040;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+
+        .account-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            padding: 3px 0;
+            font-size: 10px;
+            border-bottom: 1px solid #303030;
+        }
+
+        .account-row:last-child {
+            border-bottom: none;
+        }
+
+        .account-label {
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .account-value {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .account-value.positive {
+            color: #22c55e;
+        }
+
+        .account-value.negative {
+            color: #ef4444;
+        }
+
+        .account-value.neutral {
+            color: #60a5fa;
+        }
+
+        /* Order Entry Form */
+        .order-form {
+            background: #252525;
+            border: 1px solid #404040;
+            padding: 10px;
+        }
+
+        .order-form-row {
+            margin-bottom: 8px;
+        }
+
+        .order-form-row label {
+            display: block;
+            font-size: 9px;
+            color: #888;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .order-form-row input,
+        .order-form-row select {
+            width: 100%;
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            color: #ffffff;
+            padding: 6px 8px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .order-form-row input:focus,
+        .order-form-row select:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .order-form-row select {
+            cursor: pointer;
+        }
+
+        .order-form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .order-form-checkbox input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .order-form-checkbox label {
+            margin: 0;
+            font-size: 10px;
+            color: #b0b0b0;
+            cursor: pointer;
+        }
+
+        .order-calculation {
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            padding: 8px;
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        .calc-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid #303030;
+        }
+
+        .calc-row:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            color: #60a5fa;
+            padding-top: 6px;
+        }
+
+        .calc-label {
+            color: #888;
+        }
+
+        .calc-value {
+            color: #ffffff;
+        }
+
+        .order-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .order-buttons-full {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .btn-buy-order {
+            background: #22c55e;
+            color: #000;
+            padding: 12px;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-buy-order:hover {
+            background: #16a34a;
+        }
+
+        .btn-sell-order {
+            background: #ef4444;
+            color: #fff;
+            padding: 12px;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-sell-order:hover {
+            background: #dc2626;
+        }
+
+        .btn-cancel {
+            background: #f59e0b;
+            color: #000;
+            padding: 8px;
+            border: none;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .btn-cancel:hover {
+            background: #d97706;
+        }
+
+        .btn-cancel-all {
+            background: #ef4444;
+            color: #fff;
+            padding: 8px;
+            border: none;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .btn-cancel-all:hover {
+            background: #dc2626;
+        }
+
+        .clickable-symbol {
+            cursor: pointer;
+            color: #60a5fa;
+            font-weight: 700;
+            text-decoration: underline;
+            font-size: 12px;
+        }
+
+        .clickable-symbol:hover {
+            color: #93c5fd;
+        }
+
+        .btn-close-position {
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            padding: 4px 10px;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+
+        .btn-close-position:hover {
+            background: #dc2626;
+        }
+
+        /* Chart Containers */
+        .chart-container {
+            border-right: 1px solid #404040;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container:last-child {
+            border-right: none;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 4px 8px;
+            background: #252525;
+            border-top: 1px solid #404040;
+            font-size: 10px;
+        }
+
+        .chart-controls label {
+            color: #888;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+
+        .chart-controls select {
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            color: #fff;
+            padding: 3px 6px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <h1>IBKR ALGO BOT PROFESSIONAL</h1>
+        </div>
+        <div class="top-bar-right">
+            <div class="status-item">
+                <div class="status-dot" id="connectionStatus"></div>
+                <span id="connectionText">DISCONNECTED</span>
+            </div>
+            <div class="status-item">
+                <span id="accountDisplay">NO ACCOUNT</span>
+            </div>
+            <div class="status-item">
+                <span id="timeDisplay">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Bar -->
+    <div class="menu-bar">
+        <div class="menu-item">FILE</div>
+        <div class="menu-item">ORDERS</div>
+        <div class="menu-item">POSITIONS</div>
+        <div class="menu-item" onclick="window.location.href='/ui/prediction_history.html'">AI HISTORY</div>
+        <div class="menu-item" onclick="window.location.href='/docs'">API DOCS</div>
+        <div class="menu-item">TOOLS</div>
+        <div class="menu-item">HELP</div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel: Account Info & Watchlist -->
+        <div class="panel account-panel">
+            <div class="panel-header">ACCOUNT & WATCHLIST</div>
+            <div class="panel-content">
+                <div class="account-info">
+                    <div class="panel-header" style="margin: -8px -8px 8px -8px; padding: 6px 10px;">ACCOUNT INFO</div>
+                    <div class="account-row">
+                        <div class="account-label">Account</div>
+                        <div class="account-value neutral" id="accountNumber">U0000000</div>
+                    </div>
+                    <div class="account-row">
+                        <div class="account-label">Buying Power</div>
+                        <div class="account-value neutral" id="buyingPower">$0.00</div>
+                    </div>
+                    <div class="account-row">
+                        <div class="account-label">Settled Cash</div>
+                        <div class="account-value neutral" id="settledCash">$0.00</div>
+                    </div>
+                    <div class="account-row">
+                        <div class="account-label">Day P&L</div>
+                        <div class="account-value" id="dayPL">$0.00</div>
+                    </div>
+                    <div class="account-row">
+                        <div class="account-label">Total P&L</div>
+                        <div class="account-value" id="totalPL">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="panel-header" style="margin: 12px -8px 0px -8px; padding: 6px 10px;">WATCHLIST</div>
+                <div style="margin-top: 8px;">
+                    <div id="watchlistDisplay"></div>
+                    <div class="watchlist-add">
+                        <input type="text" id="watchlistInput" placeholder="SYMBOL" maxlength="6">
+                        <button class="btn-add" onclick="addToWatchlist()">+</button>
+                    </div>
+                </div>
+
+                <div class="bot-control" style="margin-top: 12px;">
+                    <div class="panel-header" style="margin: -10px -10px 8px -10px; padding: 6px 10px;">BOT CONTROL</div>
+                    <div class="bot-status">
+                        <span style="color: #888;">STATUS:</span>
+                        <span id="botStatusText" style="color: #ef4444; font-weight: 600;">IDLE</span>
+                    </div>
+                    <div class="bot-buttons">
+                        <button class="btn btn-buy" onclick="startBot()">START</button>
+                        <button class="btn btn-sell" onclick="stopBot()">STOP</button>
+                    </div>
+                </div>
+
+                <div class="ai-prediction" style="margin-top: 12px;">
+                    <div class="panel-header" style="margin: -10px -10px 8px -10px; padding: 6px 10px;">AI PREDICTION</div>
+                    <div id="aiPredictionDisplay" class="empty-state">
+                        Click PREDICT to generate AI signal
+                    </div>
+                    <button class="btn btn-secondary" onclick="getPrediction()" style="width: 100%; margin-top: 8px;">
+                        PREDICT
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel: Market Data -->
+        <div class="center-panel market-panel">
+            <!-- Quote Display -->
+            <div class="quote-display">
+                <div class="quote-item">
+                    <div class="quote-label">BID</div>
+                    <div class="quote-value bid" id="bidPrice">--</div>
+                    <div class="quote-label" style="margin-top: 4px;" id="bidSize">--</div>
+                </div>
+                <div class="quote-item">
+                    <div class="quote-label">ASK</div>
+                    <div class="quote-value ask" id="askPrice">--</div>
+                    <div class="quote-label" style="margin-top: 4px;" id="askSize">--</div>
+                </div>
+                <div class="quote-item">
+                    <div class="quote-label">LAST</div>
+                    <div class="quote-value last" id="lastPrice">--</div>
+                    <div class="quote-change" id="priceChange">--</div>
+                </div>
+                <div class="quote-item">
+                    <div class="quote-label">VOLUME</div>
+                    <div class="quote-value" id="volume" style="color: #888; font-size: 16px;">--</div>
+                </div>
+            </div>
+
+            <!-- Level 2 Market Depth -->
+            <div class="panel">
+                <div class="panel-header">LEVEL II - <span id="level2Symbol">--</span></div>
+                <div class="level2-container">
+                    <!-- Bids -->
+                    <div class="level2-column">
+                        <div class="level2-header" style="color: #22c55e;">
+                            <div>ORD</div>
+                            <div>SIZE</div>
+                            <div>BID</div>
+                            <div></div>
+                        </div>
+                        <div id="bidsDisplay"></div>
+                    </div>
+                    <!-- Asks -->
+                    <div class="level2-column">
+                        <div class="level2-header" style="color: #ef4444;">
+                            <div></div>
+                            <div>ASK</div>
+                            <div>SIZE</div>
+                            <div>ORD</div>
+                        </div>
+                        <div id="asksDisplay"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time & Sales -->
+            <div class="panel">
+                <div class="panel-header">TIME & SALES</div>
+                <div class="panel-content" style="padding: 0;">
+                    <div id="timesalesDisplay"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Entry Panel -->
+        <div class="panel order-panel">
+            <div class="panel-header">ORDER ENTRY</div>
+            <div class="panel-content">
+                <div class="order-form">
+                    <div class="order-form-row">
+                        <label>Symbol</label>
+                        <input type="text" id="orderSymbol" value="AAPL" maxlength="6" style="text-transform: uppercase;" onchange="onOrderSymbolChange()" oninput="this.value = this.value.toUpperCase()">
+                    </div>
+
+                    <div class="order-form-row">
+                        <label>Quantity</label>
+                        <input type="number" id="orderQuantity" value="100" min="1" step="1" oninput="calculateOrderCost()">
+                    </div>
+
+                    <div class="order-form-row">
+                        <label>Price (Manual Entry)</label>
+                        <input type="number" id="orderPriceManual" step="0.01" placeholder="Enter price..." oninput="calculateOrderCost()">
+                    </div>
+
+                    <div class="order-form-row">
+                        <label>Order Type</label>
+                        <select id="orderType" onchange="togglePriceField()">
+                            <option value="MARKET">MARKET</option>
+                            <option value="LIMIT">LIMIT</option>
+                            <option value="STOP">STOP</option>
+                            <option value="STOP_LIMIT">STOP LIMIT</option>
+                        </select>
+                    </div>
+
+                    <div class="order-form-row" id="stopRow" style="display: none;">
+                        <label>Stop Price</label>
+                        <input type="number" id="orderStopPrice" step="0.01" placeholder="0.00">
+                    </div>
+
+                    <div class="order-form-row">
+                        <label>Time in Force</label>
+                        <select id="orderTIF">
+                            <option value="DAY">DAY</option>
+                            <option value="GTC">GTC (Good Till Cancel)</option>
+                            <option value="IOC">IOC (Immediate or Cancel)</option>
+                            <option value="FOK">FOK (Fill or Kill)</option>
+                            <option value="EXT">EXT (Extended Hours)</option>
+                        </select>
+                    </div>
+
+                    <div class="order-form-checkbox">
+                        <input type="checkbox" id="extendedHours">
+                        <label for="extendedHours">ALLOW EXTENDED HOURS</label>
+                    </div>
+
+                    <div class="order-form-checkbox">
+                        <input type="checkbox" id="autoSubmit" checked>
+                        <label for="autoSubmit">AUTO-SUBMIT ORDER</label>
+                    </div>
+
+                    <!-- Order Cost Calculation -->
+                    <div class="order-calculation">
+                        <div class="calc-row">
+                            <span class="calc-label">Shares:</span>
+                            <span class="calc-value" id="calcShares">0</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">Price:</span>
+                            <span class="calc-value" id="calcPrice">$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">Est. Total:</span>
+                            <span class="calc-value" id="calcTotal">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="order-buttons">
+                        <button class="btn-buy-order" onclick="submitOrder('BUY')">BUY</button>
+                        <button class="btn-sell-order" onclick="submitOrder('SELL')">SELL</button>
+                    </div>
+
+                    <div class="order-buttons-full">
+                        <button class="btn-cancel" onclick="cancelLastOrder()">CANCEL LAST</button>
+                        <button class="btn-cancel-all" onclick="cancelAllOrders()">CANCEL ALL ORDERS</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 12px; padding: 8px; background: #252525; border: 1px solid #404040;">
+                    <div style="font-size: 9px; color: #888; margin-bottom: 6px; text-transform: uppercase;">Quick Actions</div>
+                    <button class="btn btn-secondary" onclick="loadSymbolToOrder()" style="width: 100%; margin-bottom: 4px;">
+                        LOAD FROM CHART
+                    </button>
+                    <button class="btn btn-secondary" onclick="useBidPrice()" style="width: 100%; margin-bottom: 4px;">
+                        USE BID PRICE
+                    </button>
+                    <button class="btn btn-secondary" onclick="useAskPrice()" style="width: 100%; margin-bottom: 4px;">
+                        USE ASK PRICE
+                    </button>
+                    <button class="btn btn-secondary" onclick="useLastPrice()" style="width: 100%; margin-bottom: 4px;">
+                        USE LAST PRICE
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearOrderForm()" style="width: 100%;">
+                        CLEAR FORM
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TradingView Chart Panels -->
+        <div class="charts-panel">
+            <!-- Chart 1 -->
+            <div class="chart-container">
+                <div class="panel-header" style="border-bottom: 1px solid #404040;">
+                    CHART 1 - <span id="chart1Symbol">AAPL</span>
+                </div>
+                <div id="tradingview_chart1" style="flex: 1;"></div>
+                <div class="chart-controls">
+                    <label>Timeframe:</label>
+                    <select id="chart1Interval" onchange="updateChart1Interval()">
+                        <option value="1">1 Min</option>
+                        <option value="5" selected>5 Min</option>
+                        <option value="15">15 Min</option>
+                        <option value="30">30 Min</option>
+                        <option value="60">1 Hour</option>
+                        <option value="D">Daily</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Chart 2 -->
+            <div class="chart-container">
+                <div class="panel-header" style="border-bottom: 1px solid #404040;">
+                    CHART 2 - <span id="chart2Symbol">AAPL</span>
+                </div>
+                <div id="tradingview_chart2" style="flex: 1;"></div>
+                <div class="chart-controls">
+                    <label>Timeframe:</label>
+                    <select id="chart2Interval" onchange="updateChart2Interval()">
+                        <option value="1">1 Min</option>
+                        <option value="5">5 Min</option>
+                        <option value="15" selected>15 Min</option>
+                        <option value="30">30 Min</option>
+                        <option value="60">1 Hour</option>
+                        <option value="D">Daily</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Panels: Orders & Positions (Full Width) -->
+        <div class="bottom-panels">
+            <!-- Working Orders -->
+            <div class="panel">
+                <div class="panel-header">WORKING ORDERS</div>
+                <div class="panel-content" style="overflow-y: auto; padding: 0;">
+                    <div id="ordersDisplay" class="empty-state">No active orders</div>
+                </div>
+            </div>
+
+            <!-- Positions -->
+            <div class="panel">
+                <div class="panel-header">POSITIONS</div>
+                <div class="panel-content" style="overflow-y: auto; padding: 0;">
+                    <div id="positionsDisplay" class="empty-state">No positions</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSymbol = 'AAPL';
+        let updateInterval;
+        let watchlist = ['AAPL', 'TSLA', 'SPY', 'QQQ'];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            checkHealth();
+            loadWatchlist();
+            loadAccountInfo();
+            loadData();
+            
+            // Auto-refresh every 2 seconds
+            updateInterval = setInterval(() => {
+                loadData();
+                updateWatchlistPrices();
+                loadAccountInfo();
+            }, 2000);
+
+            // Enter key handler for watchlist input
+            document.getElementById('watchlistInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') addToWatchlist();
+            });
+
+            // Enter key handler for order symbol
+            document.getElementById('orderSymbol').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') loadSymbolToOrder();
+            });
+        });
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('timeDisplay').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    document.getElementById('connectionStatus').classList.add('connected');
+                    document.getElementById('connectionText').textContent = 'CONNECTED';
+                }
+            } catch (error) {
+                console.error('Health check failed:', error);
+            }
+        }
+
+        async function loadData() {
+            // currentSymbol is set by watchlist selection
+            document.getElementById('level2Symbol').textContent = currentSymbol;
+            
+            await Promise.all([
+                loadPrice(),
+                loadLevel2(),
+                loadTimeSales(),
+                loadBotStatus(),
+                loadOrders(),
+                loadPositions()
+            ]);
+        }
+
+        function clearData() {
+            document.getElementById('bidPrice').textContent = '--';
+            document.getElementById('askPrice').textContent = '--';
+            document.getElementById('lastPrice').textContent = '--';
+            document.getElementById('priceChange').textContent = '--';
+            document.getElementById('volume').textContent = '--';
+            document.getElementById('bidsDisplay').innerHTML = '';
+            document.getElementById('asksDisplay').innerHTML = '';
+            document.getElementById('timesalesDisplay').innerHTML = '';
+        }
+
+        async function loadPrice() {
+            try {
+                const response = await fetch(`/api/price/${currentSymbol}`);
+                const data = await response.json();
+                
+                document.getElementById('bidPrice').textContent = data.data.bid.toFixed(2);
+                document.getElementById('askPrice').textContent = data.data.ask.toFixed(2);
+                document.getElementById('lastPrice').textContent = data.data.last.toFixed(2);
+                document.getElementById('volume').textContent = (data.data.volume / 1000).toFixed(0) + 'K';
+                
+                const change = data.data.change || 0;
+                const changePercent = data.data.changePercent || 0;
+                const changeEl = document.getElementById('priceChange');
+                changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent.toFixed(2)}%)`;
+                changeEl.className = 'quote-change ' + (change >= 0 ? 'positive' : 'negative');
+            } catch (error) {
+                console.error('Error loading price:', error);
+            }
+        }
+
+        async function loadLevel2() {
+            try {
+                const response = await fetch(`/api/level2/${currentSymbol}`);
+                const data = await response.json();
+
+                // Check if we're still requesting data
+                if (data.status === 'requesting') {
+                    document.getElementById('bidsDisplay').innerHTML = '<div style="padding: 10px; color: #888;">Requesting data...</div>';
+                    document.getElementById('asksDisplay').innerHTML = '<div style="padding: 10px; color: #888;">Requesting data...</div>';
+                    return;
+                }
+
+                let bidsHtml = '';
+                if (data.bids && data.bids.length > 0) {
+                    data.bids.slice(0, 15).forEach(bid => {
+                        bidsHtml += `
+                            <div class="level2-row bid-side">
+                                <div class="orders">${bid.market_maker || ''}</div>
+                                <div class="size">${bid.size}</div>
+                                <div class="price">${bid.price.toFixed(2)}</div>
+                                <div></div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    bidsHtml = '<div style="padding: 10px; color: #888;">No bid data</div>';
+                }
+
+                let asksHtml = '';
+                if (data.asks && data.asks.length > 0) {
+                    data.asks.slice(0, 15).forEach(ask => {
+                        asksHtml += `
+                            <div class="level2-row ask-side">
+                                <div></div>
+                                <div class="price">${ask.price.toFixed(2)}</div>
+                                <div class="size">${ask.size}</div>
+                                <div class="orders">${ask.market_maker || ''}</div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    asksHtml = '<div style="padding: 10px; color: #888;">No ask data</div>';
+                }
+
+                document.getElementById('bidsDisplay').innerHTML = bidsHtml;
+                document.getElementById('asksDisplay').innerHTML = asksHtml;
+            } catch (error) {
+                console.error('Error loading level2:', error);
+                document.getElementById('bidsDisplay').innerHTML = '<div style="padding: 10px; color: #f88;">Error loading data</div>';
+                document.getElementById('asksDisplay').innerHTML = '<div style="padding: 10px; color: #f88;">Error loading data</div>';
+            }
+        }
+
+        async function loadTimeSales() {
+            try {
+                const response = await fetch(`/api/timesales/${currentSymbol}?limit=20`);
+                const data = await response.json();
+                
+                let html = '';
+                data.trades.slice(0, 20).forEach(trade => {
+                    const time = new Date(trade.timestamp).toLocaleTimeString('en-US', { 
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    html += `
+                        <div class="timesales-row">
+                            <div class="time">${time}</div>
+                            <div class="price">${trade.price.toFixed(2)}</div>
+                            <div class="size">${trade.size}</div>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('timesalesDisplay').innerHTML = html;
+            } catch (error) {
+                console.error('Error loading time & sales:', error);
+            }
+        }
+
+        async function loadBotStatus() {
+            try {
+                const response = await fetch('/api/bot/status');
+                const data = await response.json();
+                document.getElementById('botStatusText').textContent = data.status.toUpperCase();
+            } catch (error) {
+                console.error('Error loading bot status:', error);
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/orders/open');
+                const data = await response.json();
+                
+                if (data.orders && data.orders.length > 0) {
+                    let html = '<table class="data-table"><thead><tr><th>SYM</th><th>SIDE</th><th>QTY</th><th>PX</th></tr></thead><tbody>';
+                    data.orders.forEach(order => {
+                        html += `<tr><td>${order.symbol}</td><td>${order.side}</td><td>${order.quantity}</td><td>${order.price}</td></tr>`;
+                    });
+                    html += '</tbody></table>';
+                    document.getElementById('ordersDisplay').innerHTML = html;
+                } else {
+                    document.getElementById('ordersDisplay').innerHTML = '<div class="empty-state">No active orders</div>';
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            }
+        }
+
+        async function loadPositions() {
+            try {
+                const response = await fetch('/api/orders/positions');
+                const data = await response.json();
+                
+                if (data.positions && data.positions.length > 0) {
+                    let html = '<table class="data-table"><thead><tr><th>SYM</th><th>QTY</th><th>AVG</th><th>P&L</th></tr></thead><tbody>';
+                    data.positions.forEach(pos => {
+                        html += `<tr><td>${pos.symbol}</td><td>${pos.quantity}</td><td>${pos.avgPrice}</td><td class="${pos.pnl >= 0 ? 'positive' : 'negative'}">${pos.pnl}</td></tr>`;
+                    });
+                    html += '</tbody></table>';
+                    document.getElementById('positionsDisplay').innerHTML = html;
+                } else {
+                    document.getElementById('positionsDisplay').innerHTML = '<div class="empty-state">No positions</div>';
+                }
+            } catch (error) {
+                console.error('Error loading positions:', error);
+            }
+        }
+
+        async function getPrediction() {
+            try {
+                document.getElementById('aiPredictionDisplay').innerHTML = '<div class="empty-state">Generating...</div>';
+                
+                const response = await fetch('/api/ai/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: currentSymbol, timeframe: '5min' })
+                });
+                
+                const data = await response.json();
+                
+                const signalClass = data.signal === 'BUY' ? 'buy' : data.signal === 'SELL' ? 'sell' : 'hold';
+                
+                document.getElementById('aiPredictionDisplay').innerHTML = `
+                    <div class="ai-prediction-header">
+                        <div class="ai-signal ${signalClass}">${data.signal}</div>
+                        <div class="ai-confidence">CONF: ${(data.confidence * 100).toFixed(0)}%</div>
+                    </div>
+                    <div class="ai-details">
+                        ${data.prediction.toUpperCase()} • ${data.explanation}
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('aiPredictionDisplay').innerHTML = '<div class="empty-state" style="color: #ef4444;">ERROR</div>';
+            }
+        }
+
+        async function startBot() {
+            try {
+                const response = await fetch('/api/bot/start', { method: 'POST' });
+                await loadBotStatus();
+            } catch (error) {
+                console.error('Error starting bot:', error);
+            }
+        }
+
+        async function stopBot() {
+            try {
+                const response = await fetch('/api/bot/stop', { method: 'POST' });
+                await loadBotStatus();
+            } catch (error) {
+                console.error('Error stopping bot:', error);
+            }
+        }
+
+        // Watchlist Functions
+        function loadWatchlist() {
+            let html = '';
+            watchlist.forEach(symbol => {
+                html += `
+                    <div class="watchlist-item ${symbol === currentSymbol ? 'active' : ''}" onclick="selectFromWatchlist('${symbol}')">
+                        <div class="watchlist-symbol">${symbol}</div>
+                        <div class="watchlist-price" id="wl-${symbol}">--</div>
+                    </div>
+                `;
+            });
+            document.getElementById('watchlistDisplay').innerHTML = html;
+            updateWatchlistPrices();
+        }
+
+        async function updateWatchlistPrices() {
+            for (const symbol of watchlist) {
+                try {
+                    const response = await fetch(`/api/price/${symbol}`);
+                    const data = await response.json();
+                    const change = data.data.change || 0;
+                    const el = document.getElementById(`wl-${symbol}`);
+                    if (el) {
+                        el.textContent = data.data.last.toFixed(2);
+                        el.className = 'watchlist-price ' + (change >= 0 ? 'up' : 'down');
+                    }
+                } catch (error) {
+                    // Silently fail for watchlist updates
+                }
+            }
+        }
+        // ---------------------------------------------------------------
+        // MISSING FUNCTIONS - ADDED BY FIX SCRIPT
+        // ---------------------------------------------------------------
+
+        function calculateOrderCost() {
+            try {
+                const shares = parseInt(document.getElementById('orderShares')?.value) || 0;
+                const price = parseFloat(document.getElementById('orderPrice')?.value) || 0;
+                let cost = shares * price;
+                let commission = Math.max(1, 0.005 * shares);
+                cost += commission;
+                const costElement = document.getElementById('orderCost');
+                if (costElement) costElement.textContent = `${cost.toFixed(2)}`;
+                return cost;
+            } catch (error) {
+                console.error('Error calculating order cost:', error);
+                return 0;
+            }
+        }
+
+        function useBidPrice() {
+            try {
+                const priceInput = document.getElementById('orderPrice');
+                if (!priceInput) return;
+                if (window.lastPriceData && window.lastPriceData.bid) {
+                    priceInput.value = window.lastPriceData.bid.toFixed(2);
+                    calculateOrderCost();
+                }
+            } catch (error) {
+                console.error('Error using bid price:', error);
+            }
+        }
+
+        function useAskPrice() {
+            try {
+                const priceInput = document.getElementById('orderPrice');
+                if (!priceInput) return;
+                if (window.lastPriceData && window.lastPriceData.ask) {
+                    priceInput.value = window.lastPriceData.ask.toFixed(2);
+                    calculateOrderCost();
+                }
+            } catch (error) {
+                console.error('Error using ask price:', error);
+            }
+        }
+
+        function togglePriceField() {
+            try {
+                const orderType = document.getElementById('orderType')?.value;
+                const priceInput = document.getElementById('orderPrice');
+                if (priceInput && priceInput.parentElement) {
+                    const row = priceInput.closest('div') || priceInput.parentElement;
+                    if (orderType === 'MARKET') {
+                        row.style.display = 'none';
+                    } else {
+                        row.style.display = '';
+                    }
+                }
+                calculateOrderCost();
+            } catch (error) {
+                console.error('Error toggling price field:', error);
+            }
+        }
+
+        window.lastPriceData = null;
+
+        // ---------------------------------------------------------------
+        // END OF ADDED FUNCTIONS
+        // ---------------------------------------------------------------
+
+
+        function selectFromWatchlist(symbol) {
+            currentSymbol = symbol;
+            loadData();
+            loadWatchlist(); // Refresh to update active state
+        }
+
+        function addToWatchlist() {
+            const input = document.getElementById('watchlistInput');
+            const symbol = input.value.toUpperCase().trim();
+            
+            if (symbol && !watchlist.includes(symbol)) {
+                watchlist.push(symbol);
+                loadWatchlist();
+                input.value = '';
+            }
+        }
+
+        // Order Entry Functions
+        function togglePriceField() {
+            const orderType = document.getElementById('orderType')?.value || 'LIMIT';
+            const priceRow = document.getElementById('priceRow');
+            const stopRow = document.getElementById('stopRow');
+            
+            priceRow?.style?.display = 'none';
+            stopRow.style.display = 'none';
+            
+            if (orderType === 'LIMIT') {
+                priceRow?.style?.display = 'block';
+            } else if (orderType === 'STOP') {
+                stopRow.style.display = 'block';
+            } else if (orderType === 'STOP_LIMIT') {
+                priceRow?.style?.display = 'block';
+                stopRow.style.display = 'block';
+            }
+        }
+
+        function loadSymbolToOrder() {
+            const symbol = currentSymbol;
+            document.getElementById('orderSymbol')?.value = symbol;
+            
+            // Auto-fill price with last price if limit order
+            if (document.getElementById('orderType')?.value === 'LIMIT') {
+                const lastPrice = document.getElementById('lastPrice').textContent;
+                if (lastPrice !== '--') {
+                    document.getElementById('orderPrice')?.value = lastPrice;
+                }
+            }
+        }
+
+        function clearOrderForm() {
+            document.getElementById('orderSymbol')?.value = '';
+            document.getElementById('orderQuantity').value = '100';
+            document.getElementById('orderType')?.value = 'MARKET';
+            document.getElementById('orderPrice')?.value = '';
+            document.getElementById('orderStopPrice').value = '';
+            document.getElementById('orderTIF').value = 'DAY';
+            togglePriceField();
+        }
+
+        async function submitOrder(side) {
+            const symbol = document.getElementById('orderSymbol')?.value.toUpperCase().trim();
+            const quantity = parseInt(document.getElementById('orderQuantity').value);
+            const orderType = document.getElementById('orderType')?.value || 'LIMIT';
+            const price = parseFloat(document.getElementById('orderPrice')?.value) || null;
+            const stopPrice = parseFloat(document.getElementById('orderStopPrice').value) || null;
+            const tif = document.getElementById('orderTIF').value;
+
+            if (!symbol) {
+                alert('Please enter a symbol');
+                return;
+            }
+
+            if (!quantity || quantity <= 0) {
+                alert('Please enter a valid quantity');
+                return;
+            }
+
+            if ((orderType === 'LIMIT' || orderType === 'STOP_LIMIT') && !price) {
+                alert('Please enter a limit price');
+                return;
+            }
+
+            if ((orderType === 'STOP' || orderType === 'STOP_LIMIT') && !stopPrice) {
+                alert('Please enter a stop price');
+                return;
+            }
+
+            const order = {
+                symbol,
+                side,
+                quantity,
+                orderType,
+                price,
+                stopPrice,
+                tif
+            };
+
+            console.log('Order submitted:', order);
+            
+            // TODO: Send to actual order API endpoint
+            alert(`${side} ORDER SUBMITTED\n\nSymbol: ${symbol}\nQty: ${quantity}\nType: ${orderType}\nTIF: ${tif}${price ? '\nPrice: $' + price.toFixed(2) : ''}${stopPrice ? '\nStop: $' + stopPrice.toFixed(2) : ''}\n\n⚠️ Connect to IBKR to execute real orders`);
+            
+            // Refresh orders display
+            await loadOrders();
+        }
+
+        // Account Info Functions
+        async function loadAccountInfo() {
+            try {
+                // Mock data - replace with actual account endpoint
+                const buyingPower = Math.random() * 100000 + 50000;
+                const settledCash = Math.random() * 50000 + 25000;
+                const dayPL = (Math.random() - 0.5) * 5000;
+                const totalPL = (Math.random() - 0.5) * 20000;
+
+                document.getElementById('buyingPower').textContent = '$' + buyingPower.toFixed(2);
+                document.getElementById('settledCash').textContent = '$' + settledCash.toFixed(2);
+                
+                const dayPLEl = document.getElementById('dayPL');
+                dayPLEl.textContent = (dayPL >= 0 ? '+$' : '-$') + Math.abs(dayPL).toFixed(2);
+                dayPLEl.className = 'account-value ' + (dayPL >= 0 ? 'positive' : 'negative');
+                
+                const totalPLEl = document.getElementById('totalPL');
+                totalPLEl.textContent = (totalPL >= 0 ? '+$' : '-$') + Math.abs(totalPL).toFixed(2);
+                totalPLEl.className = 'account-value ' + (totalPL >= 0 ? 'positive' : 'negative');
+            } catch (error) {
+                console.error('Error loading account info:', error);
+            }
+        }
+
+        // Mock Orders and Positions Data
+        let mockOrders = [];
+        let mockPositions = [];
+        let orderIdCounter = 1000;
+
+        // Chart settings storage
+        let chart1Widget = null;
+        let chart2Widget = null;
+        let chartSettings = {
+            chart1: {
+                symbol: localStorage.getItem('chart1Symbol') || 'PHIO',
+                interval: localStorage.getItem('chart1Interval') || '5'
+            },
+            chart2: {
+                symbol: localStorage.getItem('chart2Symbol') || 'PHIO',
+                interval: localStorage.getItem('chart2Interval') || '15'
+            }
+        };
+
+        // Save chart settings
+        function saveChartSettings() {
+            localStorage.setItem('chart1Symbol', chartSettings.chart1.symbol);
+            localStorage.setItem('chart1Interval', chartSettings.chart1.interval);
+            localStorage.setItem('chart2Symbol', chartSettings.chart2.symbol);
+            localStorage.setItem('chart2Interval', chartSettings.chart2.interval);
+        }
+
+        // Initialize TradingView Chart 1
+        function initChart1(symbol, interval) {
+            if (typeof TradingView === 'undefined') {
+                console.error('TradingView library not loaded');
+                document.getElementById('tradingview_chart1').innerHTML = '<div style="color: #ef4444; padding: 20px; text-align: center;">TradingView not loaded</div>';
+                return;
+            }
+
+            chartSettings.chart1.symbol = symbol;
+            chartSettings.chart1.interval = interval || chartSettings.chart1.interval;
+            saveChartSettings();
+
+            document.getElementById('chart1Symbol').textContent = symbol;
+            document.getElementById('chart1Interval').value = chartSettings.chart1.interval;
+
+            chart1Widget = new TradingView.widget({
+                "width": "100%",
+                "height": "100%",
+                "symbol": "NASDAQ:" + symbol,
+                "interval": chartSettings.chart1.interval,
+                "timezone": "America/New_York",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#1a1a1a",
+                "enable_publishing": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview_chart1",
+                "studies": ["Volume@tv-basicstudies"],
+                "backgroundColor": "#1a1a1a",
+                "gridColor": "#2a2a2a",
+                "hide_side_toolbar": false,
+                "save_image": false,
+                "autosize": true
+            });
+        }
+
+        // Initialize TradingView Chart 2
+        function initChart2(symbol, interval) {
+            if (typeof TradingView === 'undefined') {
+                console.error('TradingView library not loaded');
+                document.getElementById('tradingview_chart2').innerHTML = '<div style="color: #ef4444; padding: 20px; text-align: center;">TradingView not loaded</div>';
+                return;
+            }
+
+            chartSettings.chart2.symbol = symbol;
+            chartSettings.chart2.interval = interval || chartSettings.chart2.interval;
+            saveChartSettings();
+
+            document.getElementById('chart2Symbol').textContent = symbol;
+            document.getElementById('chart2Interval').value = chartSettings.chart2.interval;
+
+            chart2Widget = new TradingView.widget({
+                "width": "100%",
+                "height": "100%",
+                "symbol": "NASDAQ:" + symbol,
+                "interval": chartSettings.chart2.interval,
+                "timezone": "America/New_York",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#1a1a1a",
+                "enable_publishing": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview_chart2",
+                "studies": ["Volume@tv-basicstudies"],
+                "backgroundColor": "#1a1a1a",
+                "gridColor": "#2a2a2a",
+                "hide_side_toolbar": false,
+                "save_image": false,
+                "autosize": true
+            });
+        }
+
+        // Update chart 1 interval
+        function updateChart1Interval() {
+            const interval = document.getElementById('chart1Interval').value;
+            document.getElementById('tradingview_chart1').innerHTML = '';
+            initChart1(chartSettings.chart1.symbol, interval);
+        }
+
+        // Update chart 2 interval
+        function updateChart2Interval() {
+            const interval = document.getElementById('chart2Interval').value;
+            document.getElementById('tradingview_chart2').innerHTML = '';
+            initChart2(chartSettings.chart2.symbol, interval);
+        }
+
+        // Update charts when symbol changes
+        function updateCharts(symbol) {
+            document.getElementById('tradingview_chart1').innerHTML = '';
+            document.getElementById('tradingview_chart2').innerHTML = '';
+            initChart1(symbol);
+            initChart2(symbol);
+        }
+
+        // Handle order entry symbol change
+        function onOrderSymbolChange() {
+            const symbol = document.getElementById('orderSymbol')?.value.toUpperCase().trim();
+            if (symbol && symbol.length >= 1) {
+                currentSymbol = symbol;
+                
+                // Update charts
+                updateCharts(symbol);
+                
+                // Update market data
+                loadData();
+                
+                // Update watchlist active state
+                loadWatchlist();
+                
+                // Calculate order cost
+                calculateOrderCost();
+            }
+        }
+
+        // Update loadSymbolToOrder to use the sync function
+        function loadSymbolToOrder() {
+            const symbol = currentSymbol;
+            document.getElementById('orderSymbol')?.value = symbol;
+            calculateOrderCost();
+        }
+
+        // Update selectFromWatchlist to sync everything
+        const originalSelectFromWatchlist = selectFromWatchlist;
+        selectFromWatchlist = function(symbol) {
+            currentSymbol = symbol;
+            
+            // Update order entry field
+            document.getElementById('orderSymbol')?.value = symbol;
+            
+            // Update charts
+            updateCharts(symbol);
+            
+            // Update market data
+            loadData();
+            
+            // Update watchlist display
+            loadWatchlist();
+            
+            // Recalculate order cost
+            calculateOrderCost();
+        };
+
+        // Load symbol into order entry from clickable sources
+        function loadSymbolFromClick(symbol) {
+            currentSymbol = symbol;
+            
+            // Update order entry field
+            document.getElementById('orderSymbol')?.value = symbol;
+            
+            // Update charts
+            updateCharts(symbol);
+            
+            // Update market data
+            loadData();
+            
+            // Update watchlist
+            loadWatchlist();
+            
+            // Calculate order cost
+            calculateOrderCost();
+            
+            // Scroll to order entry if needed
+            document.querySelector('.order-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Close position function
+        function closePosition(symbol, quantity) {
+            const confirmation = confirm(`CLOSE POSITION:\n\n${symbol}: ${quantity} shares\n\nThis will create a MARKET order to close this position.`);
+            if (!confirmation) return;
+
+            // Pre-fill order entry with opposite side
+            document.getElementById('orderSymbol')?.value = symbol;
+            document.getElementById('orderQuantity').value = quantity;
+            document.getElementById('orderType')?.value = 'MARKET';
+            document.getElementById('orderPriceManual').value = '';
+            calculateOrderCost();
+
+            alert(`Order entry pre-filled to SELL ${quantity} shares of ${symbol}.\n\nClick SELL button to execute.`);
+            
+            // Scroll to order entry
+            document.querySelector('.order-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Enhanced loadOrders
+        async function loadOrders() {
+            try {
+                if (mockOrders.length > 0) {
+                    let html = '<table class="data-table"><thead><tr>';
+                    html += '<th>ID</th><th>SYMBOL</th><th>SIDE</th><th>QTY</th><th>TYPE</th>';
+                    html += '<th>PRICE</th><th>STATUS</th><th>FILLED</th><th>TIME</th><th>ACT</th>';
+                    html += '</tr></thead><tbody>';
+                    
+                    mockOrders.forEach(order => {
+                        const statusClass = order.status.toLowerCase();
+                        html += `<tr>`;
+                        html += `<td>${order.id}</td>`;
+                        html += `<td><span class="clickable-symbol" onclick="loadSymbolFromClick('${order.symbol}')">${order.symbol}</span></td>`;
+                        html += `<td style="color: ${order.side === 'BUY' ? '#22c55e' : '#ef4444'}">${order.side}</td>`;
+                        html += `<td>${order.quantity}</td>`;
+                        html += `<td>${order.type}</td>`;
+                        html += `<td>$${order.price ? order.price.toFixed(2) : 'MKT'}</td>`;
+                        html += `<td><span class="order-status ${statusClass}">${order.status}</span></td>`;
+                        html += `<td>${order.filled}/${order.quantity}</td>`;
+                        html += `<td>${order.time}</td>`;
+                        html += `<td><button class="btn-cancel-order" onclick="cancelOrder(${order.id})">X</button></td>`;
+                        html += `</tr>`;
+                    });
+                    
+                    html += '</tbody></table>';
+                    document.getElementById('ordersDisplay').innerHTML = html;
+                } else {
+                    document.getElementById('ordersDisplay').innerHTML = '<div class="empty-state">No active orders</div>';
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            }
+        }
+
+        // Enhanced loadPositions
+        async function loadPositions() {
+            try {
+                if (mockPositions.length > 0) {
+                    let html = '<table class="data-table"><thead><tr>';
+                    html += '<th>SYMBOL</th><th>QTY</th><th>AVG PRICE</th><th>CURRENT</th>';
+                    html += '<th>TOTAL COST</th><th>MKT VALUE</th><th>P&L</th><th>P&L %</th><th>ACTION</th>';
+                    html += '</tr></thead><tbody>';
+                    
+                    mockPositions.forEach(pos => {
+                        const pnlClass = pos.pnl >= 0 ? 'profit' : 'loss';
+                        const pnlPercent = ((pos.currentPrice - pos.avgPrice) / pos.avgPrice * 100).toFixed(2);
+                        
+                        html += `<tr>`;
+                        html += `<td><span class="clickable-symbol" onclick="loadSymbolFromClick('${pos.symbol}')">${pos.symbol}</span></td>`;
+                        html += `<td>${pos.quantity}</td>`;
+                        html += `<td>$${pos.avgPrice.toFixed(2)}</td>`;
+                        html += `<td>$${pos.currentPrice.toFixed(2)}</td>`;
+                        html += `<td>$${(pos.avgPrice * pos.quantity).toFixed(2)}</td>`;
+                        html += `<td>$${(pos.currentPrice * pos.quantity).toFixed(2)}</td>`;
+                        html += `<td class="position-pnl ${pnlClass}">${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)}</td>`;
+                        html += `<td class="position-pnl ${pnlClass}">${pnlPercent >= 0 ? '+' : ''}${pnlPercent}%</td>`;
+                        html += `<td><button class="btn-close-position" onclick="closePosition('${pos.symbol}', ${pos.quantity})">CLOSE</button></td>`;
+                        html += `</tr>`;
+                    });
+                    
+                    html += '</tbody></table>';
+                    document.getElementById('positionsDisplay').innerHTML = html;
+                } else {
+                    document.getElementById('positionsDisplay').innerHTML = '<div class="empty-state">No positions</div>';
+                }
+            } catch (error) {
+                console.error('Error loading positions:', error);
+            }
+        }
+
+        // Cancel specific order
+        function cancelOrder(orderId) {
+            const confirmation = confirm(`Cancel order #${orderId}?`);
+            if (!confirmation) return;
+            
+            const orderIndex = mockOrders.findIndex(o => o.id === orderId);
+            if (orderIndex !== -1) {
+                mockOrders[orderIndex].status = 'CANCELLED';
+                loadOrders();
+                alert(`Order #${orderId} cancelled`);
+            }
+        }
+
+        // Initialize mock data and charts on page load
+        window.addEventListener('load', function() {
+            // Set initial order entry symbol to match current symbol
+            document.getElementById('orderSymbol')?.value = currentSymbol;
+            
+            // Initialize TradingView charts with saved settings
+            setTimeout(() => {
+                initChart1(chartSettings.chart1.symbol, chartSettings.chart1.interval);
+                initChart2(chartSettings.chart2.symbol, chartSettings.chart2.interval);
+            }, 1000);
+            
+            // Add some mock data for demo
+           mockPositions = [];
+mockOrders = [];
+            loadOrders();
+            loadPositions();
+        });
+    </script>
+</body>
+</html>
+

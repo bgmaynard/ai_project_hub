@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(tasklist /FI \"PID eq 28832\" /FO LIST)",
+      "Bash(cmd //c \"tasklist /FI \"\"PID eq 28832\"\" /FO LIST\")",
+      "Bash(timeout 3 python:*)",
+      "Bash(taskkill //F //PID 28832)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill //F //PID 36716)",
+      "Bash(npx create-react-app ai-control-center --template typescript)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init -p)",
+      "Bash(node_modules/.bin/tailwindcss:*)",
+      "Bash(npm start)",
+      "Bash(npm uninstall:*)",
+      "Bash(taskkill //F //PID 3184)",
+      "Bash(cat:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

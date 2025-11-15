@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Level 2 Market Depth</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-size: 11px;
+        }
+        .l2-container {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .l2-header {
+            background: #252525;
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .l2-symbol {
+            font-size: 14px;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+        .l2-spread {
+            font-size: 10px;
+            color: #f59e0b;
+        }
+        .l2-book {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: #333;
+        }
+        .l2-side {
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+        }
+        .l2-side-header {
+            background: #252525;
+            padding: 6px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+        .bid-header { color: #22c55e; }
+        .ask-header { color: #ef4444; }
+        .l2-levels {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .l2-row {
+            display: grid;
+            grid-template-columns: 80px 100px 80px;
+            padding: 4px 8px;
+            border-bottom: 1px solid #252525;
+            position: relative;
+        }
+        .l2-row.bid {
+            background: linear-gradient(to right, rgba(34, 197, 94, 0.1) 0%, transparent 100%);
+        }
+        .l2-row.ask {
+            background: linear-gradient(to left, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+        }
+        .l2-size { text-align: right; color: #94a3b8; }
+        .l2-price {
+            text-align: center;
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .l2-price.bid { color: #22c55e; }
+        .l2-price.ask { color: #ef4444; }
+        .l2-orders { text-align: left; color: #64748b; font-size: 9px; }
+        .l2-bar {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            opacity: 0.2;
+        }
+        .l2-bar.bid {
+            background: #22c55e;
+            left: 0;
+        }
+        .l2-bar.ask {
+            background: #ef4444;
+            right: 0;
+        }
+        .l2-footer {
+            background: #252525;
+            padding: 8px 12px;
+            border-top: 1px solid #333;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            font-size: 10px;
+        }
+        .l2-stat-label { color: #888; }
+        .l2-stat-value { color: #fff; font-weight: 700; }
+        .loading {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="l2-container">
+        <div class="l2-header">
+            <div class="l2-symbol" id="l2Symbol">─</div>
+            <div class="l2-spread">Spread: <span id="l2Spread">─</span></div>
+        </div>
+        <div class="l2-book">
+            <div class="l2-side">
+                <div class="l2-side-header bid-header">BID (Buy Orders)</div>
+                <div class="l2-levels" id="bidLevels">
+                    <div class="loading">Waiting for data...</div>
+                </div>
+            </div>
+            <div class="l2-side">
+                <div class="l2-side-header ask-header">ASK (Sell Orders)</div>
+                <div class="l2-levels" id="askLevels">
+                    <div class="loading">Waiting for data...</div>
+                </div>
+            </div>
+        </div>
+        <div class="l2-footer">
+            <div>
+                <div class="l2-stat-label">Bid Volume</div>
+                <div class="l2-stat-value" id="bidVolume">─</div>
+            </div>
+            <div>
+                <div class="l2-stat-label">Imbalance</div>
+                <div class="l2-stat-value" id="imbalance">─</div>
+            </div>
+            <div>
+                <div class="l2-stat-label">Ask Volume</div>
+                <div class="l2-stat-value" id="askVolume">─</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let currentSymbol = null;
+        let ws = null;
+        
+        function connectToSymbol(symbol) {
+            if (ws) ws.close();
+            currentSymbol = symbol;
+            document.getElementById('l2Symbol').textContent = symbol;
+            
+            ws = new WebSocket(`ws://127.0.0.1:9101/ws/market-data/${symbol}`);
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'l2') {
+                    updateL2Display(data.data);
+                }
+            };
+        }
+        
+        function updateL2Display(data) {
+            // Support both old array format [price, size] and new object format {price, size, market_maker}
+            const bids = data.bids || [];
+            const asks = data.asks || [];
+
+            // Calculate volumes
+            const bidVol = bids.reduce((sum, b) => sum + (Array.isArray(b) ? b[1] : b.size), 0);
+            const askVol = asks.reduce((sum, a) => sum + (Array.isArray(a) ? a[1] : a.size), 0);
+            const maxVol = Math.max(
+                ...bids.map(b => Array.isArray(b) ? b[1] : b.size),
+                ...asks.map(a => Array.isArray(a) ? a[1] : a.size)
+            );
+
+            // Update bid side
+            const bidHTML = bids.map(bid => {
+                const price = Array.isArray(bid) ? bid[0] : bid.price;
+                const size = Array.isArray(bid) ? bid[1] : bid.size;
+                const mm = Array.isArray(bid) ? '' : (bid.market_maker || '');
+                const barWidth = (size / maxVol) * 100;
+                return `
+                    <div class="l2-row bid">
+                        <div class="l2-bar bid" style="width: ${barWidth}%"></div>
+                        <div class="l2-size">${size}</div>
+                        <div class="l2-price bid">$${price.toFixed(2)}</div>
+                        <div class="l2-orders">${mm || '1'}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Update ask side
+            const askHTML = asks.map(ask => {
+                const price = Array.isArray(ask) ? ask[0] : ask.price;
+                const size = Array.isArray(ask) ? ask[1] : ask.size;
+                const mm = Array.isArray(ask) ? '' : (ask.market_maker || '');
+                const barWidth = (size / maxVol) * 100;
+                return `
+                    <div class="l2-row ask">
+                        <div class="l2-bar ask" style="width: ${barWidth}%"></div>
+                        <div class="l2-orders">${mm || '1'}</div>
+                        <div class="l2-price ask">$${price.toFixed(2)}</div>
+                        <div class="l2-size">${size}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('bidLevels').innerHTML = bidHTML;
+            document.getElementById('askLevels').innerHTML = askHTML;
+
+            // Update footer stats
+            document.getElementById('bidVolume').textContent = bidVol.toLocaleString();
+            document.getElementById('askVolume').textContent = askVol.toLocaleString();
+
+            const imbalance = ((bidVol - askVol) / (bidVol + askVol) * 100).toFixed(1);
+            const imbalanceEl = document.getElementById('imbalance');
+            imbalanceEl.textContent = imbalance + '%';
+            imbalanceEl.style.color = imbalance > 0 ? '#22c55e' : '#ef4444';
+
+            // Update spread
+            if (bids.length && asks.length) {
+                const bidPrice = Array.isArray(bids[0]) ? bids[0][0] : bids[0].price;
+                const askPrice = Array.isArray(asks[0]) ? asks[0][0] : asks[0].price;
+                const spread = (askPrice - bidPrice).toFixed(2);
+                document.getElementById('l2Spread').textContent = '$' + spread;
+            }
+        }
+        
+        // Listen for symbol changes from parent
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'load_symbol') {
+                connectToSymbol(event.data.symbol);
+            }
+        });
+    </script>
+</body>
+</html>

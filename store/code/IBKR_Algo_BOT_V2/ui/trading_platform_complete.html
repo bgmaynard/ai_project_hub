@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBKR Trading Platform - Live</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 2px;
+            background: #000;
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #1a1f3a 0%, #0f1419 100%);
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #00d4ff;
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            color: #00d4ff;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected { background: #00ff88; }
+        .status-dot.disconnected { background: #ff4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Watchlist */
+        .watchlist {
+            background: #0f1419;
+            overflow-y: auto;
+            border-right: 1px solid #1a1f3a;
+        }
+
+        .watchlist-header {
+            padding: 15px;
+            background: #1a1f3a;
+            font-weight: bold;
+            border-bottom: 1px solid #2a2f4a;
+        }
+
+        .watchlist-add {
+            padding: 10px;
+            background: #1a1f3a;
+            border-bottom: 1px solid #2a2f4a;
+        }
+
+        .watchlist-add input {
+            width: 100%;
+            padding: 8px;
+            background: #0a0e27;
+            border: 1px solid #2a2f4a;
+            color: #fff;
+            border-radius: 4px;
+        }
+
+        .watchlist-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #1a1f3a;
+            transition: background 0.2s;
+        }
+
+        .watchlist-item:hover {
+            background: #1a1f3a;
+        }
+
+        .watchlist-item.active {
+            background: #1a3a5a;
+            border-left: 3px solid #00d4ff;
+        }
+
+        .watchlist-symbol {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #00d4ff;
+        }
+
+        .watchlist-price {
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .price-up { color: #00ff88; }
+        .price-down { color: #ff4444; }
+
+        /* Main Content */
+        .main-content {
+            background: #0f1419;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .price-panel {
+            background: #1a1f3a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .price-header {
+            font-size: 2em;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .price-current {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .price-change {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .price-stat {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        /* Level 2 & Time & Sales */
+        .market-depth {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .depth-panel {
+            background: #1a1f3a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .depth-header {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+
+        .depth-table {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .depth-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bid-side { color: #00ff88; }
+        .ask-side { color: #ff4444; }
+
+        /* Order Entry */
+        .order-panel {
+            background: #0f1419;
+            overflow-y: auto;
+            border-left: 1px solid #1a1f3a;
+        }
+
+        .order-header {
+            padding: 15px;
+            background: #1a1f3a;
+            font-weight: bold;
+            border-bottom: 1px solid #2a2f4a;
+        }
+
+        .order-form {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            background: #1a1f3a;
+            border: 1px solid #2a2f4a;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 10px;
+            background: #1a1f3a;
+            border: 1px solid #2a2f4a;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-buy {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .btn-buy:hover {
+            background: #00cc66;
+            transform: scale(1.02);
+        }
+
+        .btn-sell {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .btn-sell:hover {
+            background: #cc0000;
+            transform: scale(1.02);
+        }
+
+        .btn-secondary {
+            background: #2a2f4a;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #3a3f5a;
+        }
+
+        .price-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .btn-price {
+            padding: 5px;
+            background: #2a2f4a;
+            border: none;
+            color: #fff;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .btn-price:hover {
+            background: #3a3f5a;
+        }
+
+        .order-cost {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .cost-label {
+            font-size: 0.8em;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .cost-value {
+            font-size: 1.5em;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 IBKR Trading Platform</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot" id="serverStatus"></div>
+                    <span id="serverText">Server</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="ibkrStatus"></div>
+                    <span id="ibkrText">IBKR</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="claudeStatus"></div>
+                    <span id="claudeText">Claude AI</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Watchlist -->
+        <div class="watchlist">
+            <div class="watchlist-header">WATCHLIST</div>
+            <div class="watchlist-add">
+                <input type="text" id="newSymbol" placeholder="Add symbol..." onkeypress="handleAddSymbol(event)">
+            </div>
+            <div id="watchlistItems"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="price-panel">
+                <div class="price-header" id="currentSymbol">Select a symbol</div>
+                <div class="price-current" id="currentPrice">--</div>
+                <div class="price-change" id="priceChange">--</div>
+                
+                <div class="price-grid">
+                    <div class="price-stat">
+                        <div class="stat-label">BID</div>
+                        <div class="stat-value" id="bidPrice">--</div>
+                    </div>
+                    <div class="price-stat">
+                        <div class="stat-label">ASK</div>
+                        <div class="stat-value" id="askPrice">--</div>
+                    </div>
+                    <div class="price-stat">
+                        <div class="stat-label">VOLUME</div>
+                        <div class="stat-value" id="volume">--</div>
+                    </div>
+                    <div class="price-stat">
+                        <div class="stat-label">SPREAD</div>
+                        <div class="stat-value" id="spread">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="market-depth">
+                <div class="depth-panel">
+                    <div class="depth-header">LEVEL 2 - BID</div>
+                    <div class="depth-table" id="level2Bids">
+                        <div style="text-align: center; padding: 20px; color: #888;">No data</div>
+                    </div>
+                </div>
+                <div class="depth-panel">
+                    <div class="depth-header">LEVEL 2 - ASK</div>
+                    <div class="depth-table" id="level2Asks">
+                        <div style="text-align: center; padding: 20px; color: #888;">No data</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Entry -->
+        <div class="order-panel">
+            <div class="order-header">ORDER ENTRY</div>
+            <div class="order-form">
+                <div class="form-group">
+                    <label class="form-label">Symbol</label>
+                    <input type="text" id="orderSymbol" class="form-input" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Shares</label>
+                    <input type="number" id="orderShares" class="form-input" value="100" oninput="calculateCost()">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Order Type</label>
+                    <select id="orderType" class="form-select" onchange="handleOrderTypeChange()">
+                        <option value="LIMIT">LIMIT</option>
+                        <option value="MARKET">MARKET</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="priceGroup">
+                    <label class="form-label">Limit Price</label>
+                    <input type="number" id="orderPrice" class="form-input" step="0.01" oninput="calculateCost()">
+                    <div class="price-buttons">
+                        <button class="btn-price" onclick="useBid()">Bid</button>
+                        <button class="btn-price" onclick="useMid()">Mid</button>
+                        <button class="btn-price" onclick="useAsk()">Ask</button>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-buy" onclick="submitOrder('BUY')">BUY</button>
+                    <button class="btn btn-sell" onclick="submitOrder('SELL')">SELL</button>
+                </div>
+
+                <div class="order-cost">
+                    <div class="cost-label">Estimated Cost</div>
+                    <div class="cost-value" id="orderCost">$0.00</div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="askClaude()" style="width: 100%; margin-top: 15px;">
+                    🤖 Ask Claude AI
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:9101';
+        let currentSymbol = null;
+        let currentPriceData = null;
+        let watchlist = ['AAPL', 'TSLA', 'SPY', 'QQQ'];
+        let refreshInterval;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkHealth();
+            loadWatchlist();
+            startAutoRefresh();
+        });
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(() => {
+                checkHealth();
+                if (currentSymbol) {
+                    loadPrice(currentSymbol);
+                    loadLevel2(currentSymbol);
+                }
+                updateWatchlistPrices();
+            }, 3000);
+        }
+
+        async function checkHealth() {
+            try {
+                const health = await fetch(`${API_BASE}/health`).then(r => r.json());
+                updateStatus('serverStatus', 'serverText', true, 'Server');
+                updateStatus('ibkrStatus', 'ibkrText', health.ibkr_connected, 'IBKR');
+                updateStatus('claudeStatus', 'claudeText', health.claude_available, 'Claude');
+            } catch (error) {
+                updateStatus('serverStatus', 'serverText', false, 'Server');
+            }
+        }
+
+        function updateStatus(dotId, textId, isConnected, label) {
+            document.getElementById(dotId).className = `status-dot ${isConnected ? 'connected' : 'disconnected'}`;
+            document.getElementById(textId).textContent = label;
+        }
+
+        function loadWatchlist() {
+            const container = document.getElementById('watchlistItems');
+            container.innerHTML = '';
+            watchlist.forEach(symbol => {
+                const item = document.createElement('div');
+                item.className = 'watchlist-item';
+                item.id = `watch-${symbol}`;
+                item.onclick = () => selectSymbol(symbol);
+                item.innerHTML = `
+                    <div class="watchlist-symbol">${symbol}</div>
+                    <div class="watchlist-price" id="watch-price-${symbol}">Loading...</div>
+                `;
+                container.appendChild(item);
+            });
+            if (watchlist.length > 0 && !currentSymbol) {
+                selectSymbol(watchlist[0]);
+            }
+        }
+
+        function selectSymbol(symbol) {
+            currentSymbol = symbol;
+            document.querySelectorAll('.watchlist-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.getElementById(`watch-${symbol}`)?.classList.add('active');
+            document.getElementById('currentSymbol').textContent = symbol;
+            document.getElementById('orderSymbol').value = symbol;
+            loadPrice(symbol);
+            loadLevel2(symbol);
+        }
+
+        async function loadPrice(symbol) {
+            try {
+                const response = await fetch(`${API_BASE}/api/price/${symbol}`);
+                const result = await response.json();
+                
+                // Handle both nested and flat data structures
+                const data = result.data || result;
+                currentPriceData = data;
+                
+                const price = data.last || 0;
+                const change = data.change || 0;
+                const changePercent = data.changePercent || 0;
+                
+                document.getElementById('currentPrice').textContent = `$${price.toFixed(2)}`;
+                document.getElementById('currentPrice').className = `price-current ${change >= 0 ? 'price-up' : 'price-down'}`;
+                
+                const changeText = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent.toFixed(2)}%)`;
+                document.getElementById('priceChange').textContent = changeText;
+                document.getElementById('priceChange').className = `price-change ${change >= 0 ? 'price-up' : 'price-down'}`;
+                
+                document.getElementById('bidPrice').textContent = `$${(data.bid || 0).toFixed(2)}`;
+                document.getElementById('askPrice').textContent = `$${(data.ask || 0).toFixed(2)}`;
+                document.getElementById('volume').textContent = formatVolume(data.volume || 0);
+                const spread = (data.ask || 0) - (data.bid || 0);
+                document.getElementById('spread').textContent = `$${spread.toFixed(2)}`;
+            } catch (error) {
+                console.error('Error loading price:', error);
+            }
+        }
+
+        async function loadLevel2(symbol) {
+            try {
+                const response = await fetch(`${API_BASE}/api/level2/${symbol}`);
+                const result = await response.json();
+                const data = result.data || result;
+                
+                const bidsHtml = (data.bids || []).slice(0, 10).map(bid => `
+                    <div class="depth-row bid-side">
+                        <div>${bid.price?.toFixed(2) || '--'}</div>
+                        <div>${bid.size || 0}</div>
+                        <div>${bid.orders || ''}</div>
+                    </div>
+                `).join('') || '<div style="text-align: center; padding: 20px; color: #888;">No bids</div>';
+                
+                const asksHtml = (data.asks || []).slice(0, 10).map(ask => `
+                    <div class="depth-row ask-side">
+                        <div>${ask.price?.toFixed(2) || '--'}</div>
+                        <div>${ask.size || 0}</div>
+                        <div>${ask.orders || ''}</div>
+                    </div>
+                `).join('') || '<div style="text-align: center; padding: 20px; color: #888;">No asks</div>';
+                
+                document.getElementById('level2Bids').innerHTML = bidsHtml;
+                document.getElementById('level2Asks').innerHTML = asksHtml;
+            } catch (error) {
+                console.error('Error loading Level 2:', error);
+            }
+        }
+
+        async function updateWatchlistPrices() {
+            for (const symbol of watchlist) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/price/${symbol}`);
+                    const result = await response.json();
+                    const data = result.data || result;
+                    const price = data.last || 0;
+                    const change = data.change || 0;
+                    const el = document.getElementById(`watch-price-${symbol}`);
+                    if (el) {
+                        el.textContent = `$${price.toFixed(2)}`;
+                        el.className = `watchlist-price ${change >= 0 ? 'price-up' : 'price-down'}`;
+                    }
+                } catch (error) {
+                    // Ignore errors for watchlist updates
+                }
+            }
+        }
+
+        function handleAddSymbol(event) {
+            if (event.key === 'Enter') {
+                const input = document.getElementById('newSymbol');
+                const symbol = input.value.trim().toUpperCase();
+                if (symbol && !watchlist.includes(symbol)) {
+                    watchlist.push(symbol);
+                    loadWatchlist();
+                    input.value = '';
+                }
+            }
+        }
+
+        function handleOrderTypeChange() {
+            const type = document.getElementById('orderType').value;
+            document.getElementById('priceGroup').style.display = type === 'MARKET' ? 'none' : 'block';
+            calculateCost();
+        }
+
+        function useBid() {
+            if (currentPriceData?.bid) {
+                document.getElementById('orderPrice').value = currentPriceData.bid.toFixed(2);
+                calculateCost();
+            }
+        }
+
+        function useMid() {
+            if (currentPriceData?.bid && currentPriceData?.ask) {
+                const mid = (currentPriceData.bid + currentPriceData.ask) / 2;
+                document.getElementById('orderPrice').value = mid.toFixed(2);
+                calculateCost();
+            }
+        }
+
+        function useAsk() {
+            if (currentPriceData?.ask) {
+                document.getElementById('orderPrice').value = currentPriceData.ask.toFixed(2);
+                calculateCost();
+            }
+        }
+
+        function calculateCost() {
+            const shares = parseInt(document.getElementById('orderShares')?.value) || 0;
+            const price = parseFloat(document.getElementById('orderPrice')?.value) || 0;
+            const cost = shares * price;
+            const commission = Math.max(1, shares * 0.005);
+            const total = cost + commission;
+            document.getElementById('orderCost').textContent = `$${total.toFixed(2)}`;
+        }
+
+        async function submitOrder(action) {
+            const symbol = document.getElementById('orderSymbol').value;
+            const shares = parseInt(document.getElementById('orderShares').value);
+            const type = document.getElementById('orderType').value;
+            const price = type === 'LIMIT' ? parseFloat(document.getElementById('orderPrice').value) : null;
+            
+            if (!symbol || !shares) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            alert(`${action} order for ${shares} shares of ${symbol} at ${type === 'MARKET' ? 'MARKET' : '$' + price}\n\n(Order submission not implemented - this is paper trading)`);
+        }
+
+        async function askClaude() {
+            if (!currentSymbol) {
+                alert('Please select a symbol first');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/claude/analyze-with-data/${currentSymbol}`);
+                const result = await response.json();
+                alert(`Claude's Analysis of ${currentSymbol}:\n\n${result.analysis}`);
+            } catch (error) {
+                alert('Failed to get Claude analysis: ' + error.message);
+            }
+        }
+
+        function formatVolume(vol) {
+            if (vol >= 1000000) return (vol / 1000000).toFixed(1) + 'M';
+            if (vol >= 1000) return (vol / 1000).toFixed(1) + 'K';
+            return vol.toString();
+        }
+    </script>
+</body>
+</html>
