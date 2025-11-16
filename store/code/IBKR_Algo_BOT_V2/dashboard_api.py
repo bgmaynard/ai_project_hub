@@ -108,6 +108,15 @@ except ImportError:
     RISK_MANAGEMENT_AVAILABLE = False
     print("[WARN] warrior_risk_router not found - Phase 4 features disabled")
 
+# Try to import Monitoring Dashboard module
+try:
+    from ai.monitoring_router import router as monitoring_router
+    MONITORING_AVAILABLE = True
+except ImportError:
+    monitoring_router = None
+    MONITORING_AVAILABLE = False
+    print("[WARN] monitoring_router not found - Dashboard monitoring disabled")
+
 # Try to import IBKR
 try:
     from ib_insync import IB, Stock, MarketOrder, LimitOrder, Contract
@@ -163,6 +172,11 @@ if ml_router:
 if risk_router:
     app.include_router(risk_router)
     logger.info("✓ Risk Management API endpoints loaded (Phase 4)")
+
+# Include Monitoring Dashboard router if available
+if monitoring_router:
+    app.include_router(monitoring_router)
+    logger.info("✓ Monitoring Dashboard API endpoints loaded")
 
 # ═══════════════════════════════════════════════════════════════════════
 #                     MARKET DATA BUS
