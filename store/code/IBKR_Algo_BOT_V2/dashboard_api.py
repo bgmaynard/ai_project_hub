@@ -99,6 +99,15 @@ except ImportError:
     ML_AVAILABLE = False
     print("[WARN] warrior_ml_router not found - Phase 3 features disabled")
 
+# Try to import Risk Management module
+try:
+    from ai.warrior_risk_router import router as risk_router
+    RISK_MANAGEMENT_AVAILABLE = True
+except ImportError:
+    risk_router = None
+    RISK_MANAGEMENT_AVAILABLE = False
+    print("[WARN] warrior_risk_router not found - Phase 4 features disabled")
+
 # Try to import IBKR
 try:
     from ib_insync import IB, Stock, MarketOrder, LimitOrder, Contract
@@ -149,6 +158,11 @@ if sentiment_router:
 if ml_router:
     app.include_router(ml_router)
     logger.info("✓ Advanced ML API endpoints loaded (Phase 3)")
+
+# Include Risk Management router if available
+if risk_router:
+    app.include_router(risk_router)
+    logger.info("✓ Risk Management API endpoints loaded (Phase 4)")
 
 # ═══════════════════════════════════════════════════════════════════════
 #                     MARKET DATA BUS
