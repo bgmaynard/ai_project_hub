@@ -12,10 +12,10 @@ def test_finbert_import():
     try:
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
         import torch
-        print("  ✓ transformers and torch imported successfully")
+        print("  [OK] transformers and torch imported successfully")
         return True
     except ImportError as e:
-        print(f"  ✗ Import failed: {e}")
+        print(f"  [FAIL] Import failed: {e}")
         return False
 
 def test_sentiment_analyzer_import():
@@ -27,10 +27,10 @@ def test_sentiment_analyzer_import():
             WarriorSentimentAnalyzer,
             get_sentiment_analyzer
         )
-        print("  ✓ Sentiment analyzer imported successfully")
+        print("  [OK] Sentiment analyzer imported successfully")
         return True
     except ImportError as e:
-        print(f"  ✗ Import failed: {e}")
+        print(f"  [FAIL] Import failed: {e}")
         return False
 
 def test_finbert_analysis():
@@ -40,21 +40,21 @@ def test_finbert_analysis():
         from ai.warrior_sentiment_analyzer import FinBERTSentimentAnalyzer
 
         analyzer = FinBERTSentimentAnalyzer()
-        print("  ✓ FinBERT analyzer created")
+        print("  [OK] FinBERT analyzer created")
 
         # Test positive sentiment
         text = "Stock is surging with strong bullish momentum, great buying opportunity!"
         score, confidence = analyzer.analyze(text)
-        print(f"  ✓ Positive text: score={score:+.2f}, confidence={confidence:.2f}")
+        print(f"  [OK] Positive text: score={score:+.2f}, confidence={confidence:.2f}")
 
         # Test negative sentiment
         text = "Stock is crashing with bearish breakdown, sell everything now!"
         score, confidence = analyzer.analyze(text)
-        print(f"  ✓ Negative text: score={score:+.2f}, confidence={confidence:.2f}")
+        print(f"  [OK] Negative text: score={score:+.2f}, confidence={confidence:.2f}")
 
         return True
     except Exception as e:
-        print(f"  ✗ Analysis failed: {e}")
+        print(f"  [FAIL] Analysis failed: {e}")
         return False
 
 async def test_sentiment_analyzer():
@@ -64,18 +64,18 @@ async def test_sentiment_analyzer():
         from ai.warrior_sentiment_analyzer import get_sentiment_analyzer
 
         analyzer = get_sentiment_analyzer()
-        print("  ✓ Analyzer instance created")
+        print("  [OK] Analyzer instance created")
 
         # Note: This will return empty results without API keys
         # but it should still run without errors
         sentiment = await analyzer.analyze_symbol("AAPL", hours=24, sources=[])
-        print(f"  ✓ Analysis completed (no data sources configured)")
+        print(f"  [OK] Analysis completed (no data sources configured)")
         print(f"    Symbol: {sentiment.symbol}")
         print(f"    Signals: {sentiment.signals_count}")
 
         return True
     except Exception as e:
-        print(f"  ✗ Analyzer test failed: {e}")
+        print(f"  [FAIL] Analyzer test failed: {e}")
         return False
 
 def test_api_router_import():
@@ -83,11 +83,11 @@ def test_api_router_import():
     print("\nTesting API router import...")
     try:
         from ai.warrior_sentiment_router import router
-        print("  ✓ API router imported successfully")
-        print(f"  ✓ Router has {len(router.routes)} routes")
+        print("  [OK] API router imported successfully")
+        print(f"  [OK] Router has {len(router.routes)} routes")
         return True
     except ImportError as e:
-        print(f"  ✗ Import failed: {e}")
+        print(f"  [FAIL] Import failed: {e}")
         return False
 
 async def main():
@@ -120,21 +120,21 @@ async def main():
     total = len(results)
 
     for name, result in results:
-        status = "✓ PASS" if result else "✗ FAIL"
+        status = "[OK] PASS" if result else "[FAIL] FAIL"
         print(f"{status:8s} | {name}")
 
     print("="*60)
     print(f"RESULTS: {passed}/{total} tests passed")
 
     if passed == total:
-        print("✓ All tests passed! Sentiment analysis is ready to use.")
+        print("[OK] All tests passed! Sentiment analysis is ready to use.")
         print("\nNOTE: For full functionality, set these environment variables:")
         print("  - NEWS_API_KEY (newsapi.org)")
         print("  - TWITTER_BEARER_TOKEN (developer.twitter.com)")
         print("  - REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET (reddit.com/prefs/apps)")
         return 0
     else:
-        print(f"✗ {total - passed} test(s) failed. Check errors above.")
+        print(f"[FAIL] {total - passed} test(s) failed. Check errors above.")
         return 1
 
 if __name__ == "__main__":

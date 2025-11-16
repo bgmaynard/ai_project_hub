@@ -8,8 +8,8 @@ Provides endpoints for:
 - Risk status and portfolio metrics
 """
 
-from fastapi import APIRouter, HTTPException, Body
-from typing import List, Dict
+from fastapi import APIRouter, HTTPException, Body, Query
+from typing import List, Dict, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 import logging
