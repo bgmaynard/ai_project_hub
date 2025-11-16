@@ -90,6 +90,15 @@ except ImportError:
 
     print("[WARN] warrior_sentiment_router not found - Phase 5 features disabled")
 
+# Try to import Advanced ML module
+try:
+    from ai.warrior_ml_router import router as ml_router
+    ML_AVAILABLE = True
+except ImportError:
+    ml_router = None
+    ML_AVAILABLE = False
+    print("[WARN] warrior_ml_router not found - Phase 3 features disabled")
+
 # Try to import IBKR
 try:
     from ib_insync import IB, Stock, MarketOrder, LimitOrder, Contract
@@ -135,6 +144,11 @@ if warrior_router:
 if sentiment_router:
     app.include_router(sentiment_router)
     logger.info("✓ Sentiment Analysis API endpoints loaded (Phase 5)")
+
+# Include Advanced ML router if available
+if ml_router:
+    app.include_router(ml_router)
+    logger.info("✓ Advanced ML API endpoints loaded (Phase 3)")
 
 # ═══════════════════════════════════════════════════════════════════════
 #                     MARKET DATA BUS
