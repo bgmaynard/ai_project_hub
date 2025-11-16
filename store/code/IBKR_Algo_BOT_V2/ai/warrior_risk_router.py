@@ -99,3 +99,150 @@ async def get_risk_status():
         "is_trading_halted": False,
         "trades_today": 0
     }
+
+# ===== SLIPPAGE & REVERSAL MONITORING =====
+
+try:
+    from ai.warrior_slippage_monitor import get_slippage_monitor, SlippageLevel
+    from ai.warrior_reversal_detector import get_reversal_detector, ReversalType
+    SLIPPAGE_AVAILABLE = True
+except ImportError:
+    SLIPPAGE_AVAILABLE = False
+    logging.warning("Slippage/Reversal modules not available")
+
+class SlippageRecordRequest(BaseModel):
+    symbol: str
+    side: str = Field(pattern="^(buy|sell)$")
+    expected_price: float = Field(gt=0)
+    actual_price: float = Field(gt=0)
+    shares: int = Field(gt=0)
+
+class SlippageResponse(BaseModel):
+    symbol: str
+    slippage_pct: float
+    slippage_level: str
+    is_acceptable: bool
+
+class ReversalCheckRequest(BaseModel):
+    symbol: str
+    current_price: float
+    entry_price: float
+    recent_prices: List[float]
+    direction: str = Field("long", pattern="^(long|short)$")
+
+class ReversalResponse(BaseModel):
+    symbol: str
+    reversal_detected: bool
+    reversal_type: Optional[str]
+    severity: Optional[str]
+    recommendation: Optional[str]
+    should_exit_fast: bool
+
+@router.post("/record-slippage", response_model=SlippageResponse)
+async def record_slippage(request: SlippageRecordRequest):
+    """
+    Record order execution slippage
+    
+    Tracks difference between expected and actual fill prices.
+    Alerts on excessive slippage (>0.25%)
+    
+    Example:
+        POST /api/risk/record-slippage
+        {
+            "symbol": "AAPL",
+            "side": "buy",
+            "expected_price": 150.00,
+            "actual_price": 150.15,
+            "shares": 100
+        }
+    """
+    if not SLIPPAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Slippage monitor not available")
+    
+    try:
+        monitor = get_slippage_monitor()
+        execution = monitor.record_execution(
+            request.symbol,
+            request.side,
+            request.expected_price,
+            request.actual_price,
+            request.shares
+        )
+        
+        return SlippageResponse(
+            symbol=request.symbol,
+            slippage_pct=execution.slippage_pct,
+            slippage_level=execution.slippage_level.value,
+            is_acceptable=execution.slippage_level == SlippageLevel.ACCEPTABLE
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/slippage-stats")
+async def get_slippage_stats(symbol: Optional[str] = Query(None)):
+    """
+    Get slippage statistics
+    
+    Example:
+        GET /api/risk/slippage-stats?symbol=AAPL
+    """
+    if not SLIPPAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Slippage monitor not available")
+    
+    try:
+        monitor = get_slippage_monitor()
+        return monitor.get_stats(symbol)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/check-reversal", response_model=ReversalResponse)
+async def check_reversal(request: ReversalCheckRequest):
+    """
+    Check for jacknife reversal pattern
+    
+    Detects violent price reversals requiring fast exit.
+    Returns exit recommendation if critical reversal detected.
+    
+    Example:
+        POST /api/risk/check-reversal
+        {
+            "symbol": "TSLA",
+            "current_price": 245.50,
+            "entry_price": 244.00,
+            "recent_prices": [244.0, 245.5, 246.2, 245.5],
+            "direction": "long"
+        }
+    """
+    if not SLIPPAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Reversal detector not available")
+    
+    try:
+        detector = get_reversal_detector()
+        reversal = detector.detect_jacknife(
+            request.symbol,
+            request.current_price,
+            request.entry_price,
+            request.recent_prices,
+            request.direction
+        )
+        
+        if reversal:
+            return ReversalResponse(
+                symbol=request.symbol,
+                reversal_detected=True,
+                reversal_type=reversal.reversal_type.value,
+                severity=reversal.severity.value,
+                recommendation=reversal.recommendation,
+                should_exit_fast=detector.should_exit_fast(reversal)
+            )
+        else:
+            return ReversalResponse(
+                symbol=request.symbol,
+                reversal_detected=False,
+                reversal_type=None,
+                severity=None,
+                recommendation=None,
+                should_exit_fast=False
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
