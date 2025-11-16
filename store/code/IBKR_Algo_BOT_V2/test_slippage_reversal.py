@@ -153,9 +153,10 @@ class TestReversalDetector(unittest.TestCase):
     def test_06_fast_exit(self):
         if not self.available:
             self.skipTest("Not available")
+        detector = self.ReversalDetector()
+        # CRITICAL reversal (>3% reversal from high)
+        # Stock goes from 240 to 250 (+4.2%), then reverses to 240 (4% reversal = CRITICAL)
         rev = detector.detect_jacknife("TEST", 240, 240, [240, 250, 240], 'long')
-        # CRITICAL reversal
-        rev = detector.detect_jacknife("TEST", 241, 240, [240, 248, 241], 'long')
         self.assertTrue(detector.should_exit_fast(rev))
         logger.info("[OK] Fast exit for CRITICAL")
 
