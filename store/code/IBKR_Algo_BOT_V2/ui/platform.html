@@ -91,11 +91,60 @@
             color: #b0b0b0;
             border-right: 1px solid #404040;
             transition: background 0.2s;
+            position: relative;
         }
 
         .menu-item:hover {
             background: #2d2d2d;
             color: #ffffff;
+        }
+
+        /* Dropdown Menu */
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+        }
+
+        .dropdown.show {
+            display: block;
+        }
+
+        .dropdown a {
+            display: block;
+            padding: 8px 12px;
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 11px;
+            border-bottom: 1px solid #404040;
+            transition: background 0.2s;
+        }
+
+        .dropdown a:hover {
+            background: #007acc;
+            color: #ffffff;
+        }
+
+        .dropdown strong {
+            display: block;
+            padding: 6px 12px;
+            color: #007acc;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .dropdown hr {
+            border: none;
+            border-top: 1px solid #404040;
+            margin: 0;
         }
 
         /* Main Container */
@@ -979,6 +1028,15 @@
         <div class="menu-item" onclick="window.location.href='/ui/prediction_history.html'">AI HISTORY</div>
         <div class="menu-item" onclick="window.location.href='/docs'">API DOCS</div>
         <div class="menu-item">TOOLS</div>
+        <div class="menu-item" onclick="toggleDropdown('switch-ui-dropdown')">
+            SWITCH UI
+            <div class="dropdown" id="switch-ui-dropdown">
+                <strong>Available Dashboards</strong>
+                <a href="http://localhost:8000/ui/monitor.html" target="_blank">🎛️ Monitor Dashboard</a>
+                <a href="platform.html">📊 Trading Platform (Current)</a>
+                <a href="complete_platform.html" target="_blank">🖥️ Complete Platform</a>
+            </div>
+        </div>
         <div class="menu-item">HELP</div>
     </div>
 
@@ -1460,14 +1518,34 @@
 
         async function loadOrders() {
             try {
-                const response = await fetch('/api/orders/open');
+                // Fetch real orders from IBKR
+                const response = await fetch('http://localhost:9101/api/ibkr/orders');
                 const data = await response.json();
-                
+
                 if (data.orders && data.orders.length > 0) {
-                    let html = '<table class="data-table"><thead><tr><th>SYM</th><th>SIDE</th><th>QTY</th><th>PX</th></tr></thead><tbody>';
+                    let html = '<table class="data-table"><thead><tr>';
+                    html += '<th>ID</th><th>SYMBOL</th><th>SIDE</th><th>QTY</th><th>TYPE</th>';
+                    html += '<th>PRICE</th><th>STATUS</th><th>FILLED</th><th>ACTION</th>';
+                    html += '</tr></thead><tbody>';
+
                     data.orders.forEach(order => {
-                        html += `<tr><td>${order.symbol}</td><td>${order.side}</td><td>${order.quantity}</td><td>${order.price}</td></tr>`;
+                        const statusClass = order.status.toLowerCase();
+                        const priceDisplay = order.limit_price ? `$${order.limit_price.toFixed(2)}` :
+                                           order.stop_price ? `STOP $${order.stop_price.toFixed(2)}` : 'MKT';
+
+                        html += `<tr>`;
+                        html += `<td>${order.order_id}</td>`;
+                        html += `<td><span class="clickable-symbol" onclick="loadSymbolFromClick('${order.symbol}')">${order.symbol}</span></td>`;
+                        html += `<td style="color: ${order.action === 'BUY' ? '#22c55e' : '#ef4444'}">${order.action}</td>`;
+                        html += `<td>${order.quantity}</td>`;
+                        html += `<td>${order.order_type}</td>`;
+                        html += `<td>${priceDisplay}</td>`;
+                        html += `<td><span class="order-status ${statusClass}">${order.status}</span></td>`;
+                        html += `<td>${order.filled}/${order.quantity}</td>`;
+                        html += `<td><button class="btn-cancel-order" onclick="cancelOrderIBKR(${order.order_id})">CANCEL</button></td>`;
+                        html += `</tr>`;
                     });
+
                     html += '</tbody></table>';
                     document.getElementById('ordersDisplay').innerHTML = html;
                 } else {
@@ -1475,19 +1553,34 @@
                 }
             } catch (error) {
                 console.error('Error loading orders:', error);
+                document.getElementById('ordersDisplay').innerHTML = '<div class="empty-state error">❌ Error loading orders - Check IBKR connection</div>';
             }
         }
 
         async function loadPositions() {
             try {
-                const response = await fetch('/api/orders/positions');
+                // Fetch real positions from IBKR
+                const response = await fetch('http://localhost:9101/api/account');
                 const data = await response.json();
-                
+
                 if (data.positions && data.positions.length > 0) {
-                    let html = '<table class="data-table"><thead><tr><th>SYM</th><th>QTY</th><th>AVG</th><th>P&L</th></tr></thead><tbody>';
+                    let html = '<table class="data-table"><thead><tr>';
+                    html += '<th>SYMBOL</th><th>QTY</th><th>AVG COST</th><th>MKT VALUE</th><th>P&L</th><th>ACTION</th>';
+                    html += '</tr></thead><tbody>';
+
                     data.positions.forEach(pos => {
-                        html += `<tr><td>${pos.symbol}</td><td>${pos.quantity}</td><td>${pos.avgPrice}</td><td class="${pos.pnl >= 0 ? 'positive' : 'negative'}">${pos.pnl}</td></tr>`;
+                        const pnlClass = pos.unrealized_pnl >= 0 ? 'profit' : 'loss';
+
+                        html += `<tr>`;
+                        html += `<td><span class="clickable-symbol" onclick="loadSymbolFromClick('${pos.symbol}')">${pos.symbol}</span></td>`;
+                        html += `<td>${pos.quantity}</td>`;
+                        html += `<td>$${pos.avg_cost.toFixed(2)}</td>`;
+                        html += `<td>$${pos.market_value.toFixed(2)}</td>`;
+                        html += `<td class="position-pnl ${pnlClass}">${pos.unrealized_pnl >= 0 ? '+' : ''}$${pos.unrealized_pnl.toFixed(2)}</td>`;
+                        html += `<td><button class="btn-close-position" onclick="closePositionIBKR('${pos.symbol}', ${pos.quantity})">CLOSE</button></td>`;
+                        html += `</tr>`;
                     });
+
                     html += '</tbody></table>';
                     document.getElementById('positionsDisplay').innerHTML = html;
                 } else {
@@ -1495,6 +1588,7 @@
                 }
             } catch (error) {
                 console.error('Error loading positions:', error);
+                document.getElementById('positionsDisplay').innerHTML = '<div class="empty-state error">❌ Error loading positions - Check IBKR connection</div>';
             }
         }
 
@@ -1581,8 +1675,8 @@
 
         function calculateOrderCost() {
             try {
-                const shares = parseInt(document.getElementById('orderShares')?.value) || 0;
-                const price = parseFloat(document.getElementById('orderPrice')?.value) || 0;
+                const shares = parseInt(document.getElementById('orderQuantity')?.value) || 0;
+                const price = parseFloat(document.getElementById('orderPriceManual')?.value) || 0;
                 let cost = shares * price;
                 let commission = Math.max(1, 0.005 * shares);
                 cost += commission;
@@ -1709,9 +1803,10 @@
             const symbol = document.getElementById('orderSymbol')?.value.toUpperCase().trim();
             const quantity = parseInt(document.getElementById('orderQuantity').value);
             const orderType = document.getElementById('orderType')?.value || 'LIMIT';
-            const price = parseFloat(document.getElementById('orderPrice')?.value) || null;
+            const price = parseFloat(document.getElementById('orderPriceManual')?.value) || null;
             const stopPrice = parseFloat(document.getElementById('orderStopPrice').value) || null;
             const tif = document.getElementById('orderTIF').value;
+            const autoSubmit = document.getElementById('autoSubmit')?.checked;
 
             if (!symbol) {
                 alert('Please enter a symbol');
@@ -1744,10 +1839,14 @@
             };
 
             console.log('Order submitted:', order);
-            
-            // TODO: Send to actual order API endpoint
-            alert(`${side} ORDER SUBMITTED\n\nSymbol: ${symbol}\nQty: ${quantity}\nType: ${orderType}\nTIF: ${tif}${price ? '\nPrice: $' + price.toFixed(2) : ''}${stopPrice ? '\nStop: $' + stopPrice.toFixed(2) : ''}\n\n⚠️ Connect to IBKR to execute real orders`);
-            
+
+            // Show confirmation alert only if auto-submit is disabled
+            if (!autoSubmit) {
+                alert(`${side} ORDER SUBMITTED\n\nSymbol: ${symbol}\nQty: ${quantity}\nType: ${orderType}\nTIF: ${tif}${price ? '\nPrice: $' + price.toFixed(2) : ''}${stopPrice ? '\nStop: $' + stopPrice.toFixed(2) : ''}\n\n⚠️ Connect to IBKR to execute real orders`);
+            } else {
+                console.log(`✓ AUTO-SUBMIT: ${side} ${quantity} ${symbol} @ ${orderType}`);
+            }
+
             // Refresh orders display
             await loadOrders();
         }
@@ -1988,87 +2087,80 @@
             document.querySelector('.order-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        // Enhanced loadOrders
-        async function loadOrders() {
-            try {
-                if (mockOrders.length > 0) {
-                    let html = '<table class="data-table"><thead><tr>';
-                    html += '<th>ID</th><th>SYMBOL</th><th>SIDE</th><th>QTY</th><th>TYPE</th>';
-                    html += '<th>PRICE</th><th>STATUS</th><th>FILLED</th><th>TIME</th><th>ACT</th>';
-                    html += '</tr></thead><tbody>';
-                    
-                    mockOrders.forEach(order => {
-                        const statusClass = order.status.toLowerCase();
-                        html += `<tr>`;
-                        html += `<td>${order.id}</td>`;
-                        html += `<td><span class="clickable-symbol" onclick="loadSymbolFromClick('${order.symbol}')">${order.symbol}</span></td>`;
-                        html += `<td style="color: ${order.side === 'BUY' ? '#22c55e' : '#ef4444'}">${order.side}</td>`;
-                        html += `<td>${order.quantity}</td>`;
-                        html += `<td>${order.type}</td>`;
-                        html += `<td>$${order.price ? order.price.toFixed(2) : 'MKT'}</td>`;
-                        html += `<td><span class="order-status ${statusClass}">${order.status}</span></td>`;
-                        html += `<td>${order.filled}/${order.quantity}</td>`;
-                        html += `<td>${order.time}</td>`;
-                        html += `<td><button class="btn-cancel-order" onclick="cancelOrder(${order.id})">X</button></td>`;
-                        html += `</tr>`;
-                    });
-                    
-                    html += '</tbody></table>';
-                    document.getElementById('ordersDisplay').innerHTML = html;
-                } else {
-                    document.getElementById('ordersDisplay').innerHTML = '<div class="empty-state">No active orders</div>';
-                }
-            } catch (error) {
-                console.error('Error loading orders:', error);
-            }
-        }
+        // loadOrders() and loadPositions() functions defined earlier in file (lines 1461-1535)
 
-        // Enhanced loadPositions
-        async function loadPositions() {
-            try {
-                if (mockPositions.length > 0) {
-                    let html = '<table class="data-table"><thead><tr>';
-                    html += '<th>SYMBOL</th><th>QTY</th><th>AVG PRICE</th><th>CURRENT</th>';
-                    html += '<th>TOTAL COST</th><th>MKT VALUE</th><th>P&L</th><th>P&L %</th><th>ACTION</th>';
-                    html += '</tr></thead><tbody>';
-                    
-                    mockPositions.forEach(pos => {
-                        const pnlClass = pos.pnl >= 0 ? 'profit' : 'loss';
-                        const pnlPercent = ((pos.currentPrice - pos.avgPrice) / pos.avgPrice * 100).toFixed(2);
-                        
-                        html += `<tr>`;
-                        html += `<td><span class="clickable-symbol" onclick="loadSymbolFromClick('${pos.symbol}')">${pos.symbol}</span></td>`;
-                        html += `<td>${pos.quantity}</td>`;
-                        html += `<td>$${pos.avgPrice.toFixed(2)}</td>`;
-                        html += `<td>$${pos.currentPrice.toFixed(2)}</td>`;
-                        html += `<td>$${(pos.avgPrice * pos.quantity).toFixed(2)}</td>`;
-                        html += `<td>$${(pos.currentPrice * pos.quantity).toFixed(2)}</td>`;
-                        html += `<td class="position-pnl ${pnlClass}">${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)}</td>`;
-                        html += `<td class="position-pnl ${pnlClass}">${pnlPercent >= 0 ? '+' : ''}${pnlPercent}%</td>`;
-                        html += `<td><button class="btn-close-position" onclick="closePosition('${pos.symbol}', ${pos.quantity})">CLOSE</button></td>`;
-                        html += `</tr>`;
-                    });
-                    
-                    html += '</tbody></table>';
-                    document.getElementById('positionsDisplay').innerHTML = html;
-                } else {
-                    document.getElementById('positionsDisplay').innerHTML = '<div class="empty-state">No positions</div>';
-                }
-            } catch (error) {
-                console.error('Error loading positions:', error);
-            }
-        }
-
-        // Cancel specific order
+        // Cancel specific order (legacy mock function)
         function cancelOrder(orderId) {
             const confirmation = confirm(`Cancel order #${orderId}?`);
             if (!confirmation) return;
-            
+
             const orderIndex = mockOrders.findIndex(o => o.id === orderId);
             if (orderIndex !== -1) {
                 mockOrders[orderIndex].status = 'CANCELLED';
                 loadOrders();
                 alert(`Order #${orderId} cancelled`);
+            }
+        }
+
+        // Cancel IBKR order
+        async function cancelOrderIBKR(orderId) {
+            try {
+                const response = await fetch('http://localhost:9101/api/ibkr/cancel-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    console.log(`✓ Order ${orderId} cancelled`);
+                    await loadOrders(); // Refresh orders display
+                } else {
+                    alert(`❌ Failed to cancel order: ${data.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error cancelling order:', error);
+                alert(`❌ Error cancelling order: ${error.message}`);
+            }
+        }
+
+        // Close IBKR position
+        async function closePositionIBKR(symbol, quantity) {
+            try {
+                const side = quantity > 0 ? 'SELL' : 'BUY';
+                const qty = Math.abs(quantity);
+
+                const orderRequest = {
+                    symbol: symbol,
+                    action: side,
+                    quantity: qty,
+                    order_type: 'MARKET',
+                    limit_price: null,
+                    stop_price: null,
+                    tif: 'DAY',
+                    extended_hours: false,
+                    exchange: 'SMART'
+                };
+
+                const response = await fetch('http://localhost:9101/api/ibkr/place-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderRequest)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    console.log(`✓ Position closed: ${side} ${qty} ${symbol} at MARKET`);
+                    await loadPositions(); // Refresh positions
+                    await loadOrders(); // Refresh orders
+                } else {
+                    alert(`❌ Failed to close position: ${data.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error closing position:', error);
+                alert(`❌ Error closing position: ${error.message}`);
             }
         }
 
@@ -2088,6 +2180,34 @@
 mockOrders = [];
             loadOrders();
             loadPositions();
+        });
+
+        // Dropdown menu functionality
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            const allDropdowns = document.querySelectorAll('.dropdown');
+
+            // Close all other dropdowns
+            allDropdowns.forEach(d => {
+                if (d.id !== dropdownId) {
+                    d.classList.remove('show');
+                }
+            });
+
+            // Toggle the clicked dropdown
+            dropdown.classList.toggle('show');
+
+            // Prevent event bubbling
+            event.stopPropagation();
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.menu-item')) {
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    d.classList.remove('show');
+                });
+            }
         });
     </script>
 </body>

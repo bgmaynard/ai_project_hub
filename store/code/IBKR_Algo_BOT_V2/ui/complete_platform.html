@@ -16,7 +16,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #0a0a0a;
             color: #e0e0e0;
-            font-size: 11px;
+            font-size: 15px;
             overflow: hidden;
         }
 
@@ -37,7 +37,7 @@
         }
 
         .top-bar-left h1 {
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 600;
             color: #007acc;
             letter-spacing: 1px;
@@ -47,7 +47,7 @@
             display: flex;
             gap: 15px;
             align-items: center;
-            font-size: 10px;
+            font-size: 14px;
         }
 
         .status-item {
@@ -95,18 +95,69 @@
         .menu-item {
             padding: 6px 12px;
             cursor: pointer;
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 600;
             color: #b0b0b0;
             border-right: 1px solid #404040;
             transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            position: relative;
         }
 
         .menu-item:hover {
             background: #007acc;
             color: #ffffff;
+        }
+
+        /* Dropdown Menu */
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            min-width: 220px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+        }
+
+        .dropdown.show {
+            display: block;
+        }
+
+        .dropdown a {
+            display: block;
+            padding: 10px 15px;
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 14px;
+            border-bottom: 1px solid #404040;
+            transition: background 0.2s;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+
+        .dropdown a:hover {
+            background: #007acc;
+            color: #ffffff;
+        }
+
+        .dropdown strong {
+            display: block;
+            padding: 8px 15px;
+            color: #007acc;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .dropdown hr {
+            border: none;
+            border-top: 1px solid #404040;
+            margin: 0;
         }
 
         /* Workspace */
@@ -141,7 +192,7 @@
             background: #2d2d2d;
             padding: 6px 10px;
             border-bottom: 1px solid #404040;
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 700;
             color: #ffffff;
             text-transform: uppercase;
@@ -169,7 +220,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 16px;
             border-radius: 2px;
             transition: background 0.2s;
             font-weight: bold;
@@ -185,7 +236,8 @@
 
         .window-content {
             flex: 1;
-            overflow: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
             background: #1a1a1a;
         }
 
@@ -220,7 +272,7 @@
             background: #2d2d2d;
             border: 1px solid #007acc;
             color: #ffffff;
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             border-radius: 3px;
@@ -236,7 +288,7 @@
         .data-table {
             width: 100%;
             font-family: 'Courier New', monospace;
-            font-size: 10px;
+            font-size: 14px;
         }
 
         .data-table thead {
@@ -253,7 +305,7 @@
             color: #888;
             border-bottom: 1px solid #404040;
             text-transform: uppercase;
-            font-size: 9px;
+            font-size: 13px;
             letter-spacing: 0.5px;
         }
 
@@ -296,14 +348,14 @@
         }
 
         .quote-stat-label {
-            font-size: 9px;
+            font-size: 13px;
             color: #888;
             text-transform: uppercase;
             margin-bottom: 3px;
         }
 
         .quote-stat-value {
-            font-size: 13px;
+            font-size: 17px;
             font-weight: 700;
             font-family: 'Courier New', monospace;
         }
@@ -331,7 +383,7 @@
             display: grid;
             grid-template-columns: 50px 70px 70px 50px;
             padding: 6px 4px;
-            font-size: 9px;
+            font-size: 13px;
             font-weight: 700;
             background: #2d2d2d;
             border-bottom: 1px solid #404040;
@@ -349,7 +401,7 @@
             display: grid;
             grid-template-columns: 50px 70px 70px 50px;
             padding: 3px 4px;
-            font-size: 10px;
+            font-size: 14px;
             border-bottom: 1px solid #222;
             position: relative;
         }
@@ -385,7 +437,7 @@
 
         .order-field label {
             display: block;
-            font-size: 9px;
+            font-size: 13px;
             color: #888;
             margin-bottom: 4px;
             text-transform: uppercase;
@@ -399,7 +451,7 @@
             background: #252525;
             border: 1px solid #404040;
             color: #fff;
-            font-size: 11px;
+            font-size: 15px;
             border-radius: 2px;
             font-family: 'Courier New', monospace;
         }
@@ -422,7 +474,7 @@
             background: #252525;
             border: 1px solid #404040;
             color: #888;
-            font-size: 10px;
+            font-size: 14px;
             cursor: pointer;
             border-radius: 2px;
             transition: all 0.2s;
@@ -446,7 +498,7 @@
             background: #252525;
             border: 1px solid #404040;
             color: #007acc;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: bold;
             cursor: pointer;
             border-radius: 2px;
@@ -468,7 +520,7 @@
             padding: 10px;
             border: none;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 15px;
             font-weight: 700;
             border-radius: 3px;
             transition: all 0.2s;
@@ -525,7 +577,7 @@
             cursor: pointer;
             transition: background 0.2s;
             font-family: 'Courier New', monospace;
-            font-size: 10px;
+            font-size: 14px;
         }
 
         .watchlist-item:hover {
@@ -538,7 +590,7 @@
 
         .watchlist-symbol {
             font-weight: 700;
-            font-size: 11px;
+            font-size: 15px;
         }
 
         .watchlist-price {
@@ -547,7 +599,7 @@
 
         .watchlist-change {
             text-align: right;
-            font-size: 9px;
+            font-size: 13px;
         }
 
         /* Account */
@@ -566,14 +618,14 @@
         }
 
         .account-stat-label {
-            font-size: 9px;
+            font-size: 13px;
             color: #888;
             margin-bottom: 3px;
             text-transform: uppercase;
         }
 
         .account-stat-value {
-            font-size: 12px;
+            font-size: 16px;
             font-weight: 700;
             font-family: 'Courier New', monospace;
         }
@@ -584,7 +636,7 @@
             grid-template-columns: 70px 80px 60px 40px;
             padding: 4px 8px;
             font-family: 'Courier New', monospace;
-            font-size: 10px;
+            font-size: 14px;
             border-bottom: 1px solid #222;
         }
 
@@ -595,14 +647,14 @@
         .timesales-time { color: #666; }
         .timesales-price { text-align: right; font-weight: 700; }
         .timesales-size { text-align: right; color: #888; }
-        .timesales-side { text-align: center; font-size: 9px; }
+        .timesales-side { text-align: center; font-size: 13px; }
 
         .empty-state {
             padding: 30px 20px;
             text-align: center;
             color: #555;
             font-style: italic;
-            font-size: 11px;
+            font-size: 15px;
         }
 
         /* Chart */
@@ -617,7 +669,7 @@
         .pos-badge {
             padding: 2px 6px;
             border-radius: 2px;
-            font-size: 9px;
+            font-size: 13px;
             font-weight: 700;
         }
 
@@ -634,7 +686,7 @@
         /* Action Button */
         .action-btn {
             padding: 4px 8px;
-            font-size: 9px;
+            font-size: 13px;
             background: #404040;
             border: 1px solid #555;
             color: #fff;
@@ -697,11 +749,30 @@
         <div class="menu-item" onclick="loadLayout('scalping')">🎯 Scalping</div>
         <div class="menu-item" onclick="saveCurrentLayout()">💾 Save Layout</div>
         <div class="menu-item" onclick="resetLayout()">🔄 Reset</div>
+        <div class="menu-item" onclick="toggleDropdown('switch-ui-dropdown')">
+            🖥️ Switch UI
+            <div class="dropdown" id="switch-ui-dropdown">
+                <strong>Available Dashboards</strong>
+                <a href="http://localhost:8000/ui/monitor.html" target="_blank">🎛️ Monitor Dashboard</a>
+                <a href="platform.html" target="_blank">📊 Trading Platform</a>
+                <a href="complete_platform.html">🖥️ Complete Platform (Current)</a>
+            </div>
+        </div>
         <div class="menu-item" onclick="connectToIBKR()">🔌 Connect IBKR</div>
     </div>
 
     <!-- Workspace -->
     <div class="workspace" id="workspace"></div>
+
+    <!-- Halt Indicator (DISABLED - Now in quote window) -->
+    <div id="haltIndicator" style="display: none;"></div>
+
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+            50% { opacity: 0.85; transform: translateX(-50%) scale(1.02); }
+        }
+    </style>
 
     <!-- Layout Controls -->
     <div class="layout-controls">
@@ -726,6 +797,17 @@
         let ordersCache = [];
         let apiAvailable = null; // null = unknown, true = available, false = demo mode
         let demoModeLogged = false;
+        const API_BASE_URL = 'http://127.0.0.1:9101'; // API server base URL
+
+        // Halt Detection State
+        let haltState = {
+            isHalted: false,
+            haltTime: null,
+            haltPrice: null,
+            resumeTime: null,
+            lastUpdateTime: null,
+            symbol: null
+        };
 
         // ═══════════════════════════════════════════════════════════════════════
         //                     WINDOW MANAGEMENT
@@ -960,6 +1042,14 @@
                         <div class="quote-stat-value neutral" id="closePrice">--</div>
                     </div>
                 </div>
+
+                <!-- Halt Indicator -->
+                <div style="padding: 8px;">
+                    <div id="quoteHaltIndicator" style="display: none; padding: 6px; border-radius: 4px; text-align: center; background: #dc2626; color: white; box-sizing: border-box; overflow: hidden; width: 100%;">
+                        <div style="font-size: 13px; font-weight: bold;" id="quoteHaltTitle">🛑 HALT</div>
+                        <div id="quoteHaltInfo" style="font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                    </div>
+                </div>
             `,
 
             level2: `
@@ -1002,7 +1092,7 @@
                     <div class="order-field">
                         <label>Symbol</label>
                         <input type="text" id="orderSymbol" value="AAPL" readonly
-                               style="text-transform: uppercase; background: #1a1a1a; font-weight: 700; font-size: 13px;">
+                               style="text-transform: uppercase; background: #1a1a1a; font-weight: 700; font-size: 17px;">
                     </div>
 
                     <div class="quantity-buttons">
@@ -1010,6 +1100,16 @@
                         <button class="qty-btn" onclick="setQuantity(200)">200</button>
                         <button class="qty-btn" onclick="setQuantity(500)">500</button>
                         <button class="qty-btn" onclick="setQuantity(1000)">1K</button>
+                    </div>
+
+                    <div style="margin: 8px 0 4px 0; font-size: 13px; color: #888; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">
+                        % of Account Value
+                    </div>
+                    <div class="quantity-buttons">
+                        <button class="qty-btn" onclick="setAccountPercent(10)" style="background: #1a4d2e;">10%</button>
+                        <button class="qty-btn" onclick="setAccountPercent(25)" style="background: #1a4d2e;">25%</button>
+                        <button class="qty-btn" onclick="setAccountPercent(50)" style="background: #2d5a3d;">50%</button>
+                        <button class="qty-btn" onclick="setAccountPercent(100)" style="background: #3d6a4d;">100%</button>
                     </div>
 
                     <div class="order-entry-grid">
@@ -1032,7 +1132,7 @@
                         <button class="price-btn" onclick="adjustPrice(-0.01)">−</button>
                         <div class="order-field" style="margin: 0;">
                             <label>Limit Price</label>
-                            <input type="number" id="orderPrice" step="0.01" value="0.00">
+                            <input type="text" id="orderPrice" value="" placeholder="Enter limit price">
                         </div>
                         <button class="price-btn" onclick="adjustPrice(0.01)">+</button>
                     </div>
@@ -1045,6 +1145,20 @@
                             <option value="IOC">IOC</option>
                             <option value="FOK">FOK</option>
                         </select>
+                    </div>
+
+                    <div class="order-field" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="extendedHours" style="width: auto; margin: 0;">
+                        <label for="extendedHours" style="margin: 0; cursor: pointer; font-size: 15px;">
+                            Extended Hours (Pre-Market/After-Hours)
+                        </label>
+                    </div>
+
+                    <div class="order-field" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="autoSubmitOrders" style="width: auto; margin: 0;" onchange="saveAutoSubmitSetting(this.checked)">
+                        <label for="autoSubmitOrders" style="margin: 0; cursor: pointer; font-size: 15px; color: #fbbf24;">
+                            ⚡ Auto-Submit Orders (No Confirmations)
+                        </label>
                     </div>
 
                     <div class="order-buttons">
@@ -1084,6 +1198,12 @@
             `,
 
             orders: `
+                <div style="padding: 6px 8px; border-bottom: 1px solid #333; display: flex; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="cancelAllOrders()"
+                            style="padding: 4px 12px; font-size: 14px; font-weight: 600;">
+                        CANCEL ALL ORDERS
+                    </button>
+                </div>
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -1104,23 +1224,56 @@
             `,
 
             watchlist: `
-                <div id="watchlistDisplay" class="empty-state">Loading watchlist...</div>
-                <div style="padding: 8px; border-top: 1px solid #333;">
-                    <input type="text" id="watchlistInput" placeholder="Add symbol (e.g., AAPL)..."
-                           style="width: calc(100% - 38px); padding: 6px 8px; background: #252525; border: 1px solid #404040;
-                                  color: #fff; font-size: 11px; border-radius: 2px; margin-right: 4px;"
-                           onkeypress="if(event.key==='Enter') addToWatchlist()">
-                    <button class="btn btn-secondary" onclick="addToWatchlist()"
-                            style="width: 32px; padding: 6px; font-size: 14px;">+</button>
+                <div style="padding: 6px 8px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 13px; color: #888; text-transform: uppercase;">Shared Worklist</div>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="btn btn-secondary" onclick="showScannerDialog()"
+                                style="padding: 4px 8px; font-size: 13px; font-weight: 600;">SCANNER</button>
+                        <button class="btn btn-secondary" onclick="showAddSymbolDialog()"
+                                style="padding: 4px 8px; font-size: 13px; font-weight: 600;">+ ADD</button>
+                        <button class="btn btn-secondary" onclick="clearWorklist()"
+                                style="padding: 4px 8px; font-size: 13px; font-weight: 600; background: #7f1d1d;">CLEAR ALL</button>
+                    </div>
+                </div>
+                <div id="worklistStats" style="padding: 6px 8px; background: #1a1a1a; border-bottom: 1px solid #333; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+                    <div style="background: #252525; padding: 4px 6px; border-radius: 2px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 2px;">SYMBOLS</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #fff;" id="statsTotal">0</div>
+                    </div>
+                    <div style="background: #252525; padding: 4px 6px; border-radius: 2px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 2px;">LIVE</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #22c55e;" id="statsLive">0</div>
+                    </div>
+                    <div style="background: #252525; padding: 4px 6px; border-radius: 2px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 2px;">BULLISH</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #22c55e;" id="statsBullish">0</div>
+                    </div>
+                    <div style="background: #252525; padding: 4px 6px; border-radius: 2px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 2px;">BEARISH</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #ef4444;" id="statsBearish">0</div>
+                    </div>
+                </div>
+                <div id="watchlistDisplay" style="overflow-y: auto; max-height: calc(100% - 90px);">
+                    <div class="empty-state">Loading worklist...</div>
                 </div>
             `,
 
             account: `
-                <div class="account-grid">
-                    <div class="account-stat">
-                        <div class="account-stat-label">Account</div>
-                        <div class="account-stat-value neutral" id="accountNumber">DU0000000</div>
+                <div style="padding: 8px; border-bottom: 1px solid #333; background: #1a1a1a;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <div>
+                            <div style="font-size: 13px; color: #888; letter-spacing: 0.5px;">IBKR ACCOUNT</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #00a69c;" id="accountNumber">DU0000000</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 13px; color: #888; letter-spacing: 0.5px;">TYPE</div>
+                            <div style="font-size: 15px; font-weight: 600; color: #e4e5e7;" id="accountType">Unknown</div>
+                        </div>
                     </div>
+                    <div id="accountWarnings" style="font-size: 13px; padding: 4px; border-radius: 2px; display: none;"></div>
+                    <div id="dayTradesInfo" style="font-size: 13px; color: #888; margin-top: 4px; display: none;"></div>
+                </div>
+                <div class="account-grid">
                     <div class="account-stat">
                         <div class="account-stat-label">Equity</div>
                         <div class="account-stat-value neutral" id="equityValue">$0.00</div>
@@ -1149,6 +1302,10 @@
                         <div class="account-stat-label">Positions</div>
                         <div class="account-stat-value neutral" id="positionCount">0</div>
                     </div>
+                    <div class="account-stat" id="dayTradesStat" style="display: none;">
+                        <div class="account-stat-label">Day Trades</div>
+                        <div class="account-stat-value neutral" id="dayTradesRemaining">-</div>
+                    </div>
                 </div>
             `,
 
@@ -1156,108 +1313,108 @@
                 <div class="module-content" style="padding: 8px; overflow-y: auto; max-height: 100%;">
                     <!-- Bot Status Header -->
                     <div style="text-align: center; margin-bottom: 12px; padding: 12px; background: #1a1a1a; border-radius: 4px;">
-                        <div style="font-size: 9px; color: #888; margin-bottom: 4px; letter-spacing: 1px;">AUTONOMOUS BOT STATUS</div>
-                        <div id="botStatusText" style="font-size: 20px; font-weight: 700; color: #ef4444; margin-bottom: 4px;">NOT INITIALIZED</div>
-                        <div id="botStatusSubtext" style="font-size: 9px; color: #888;">Click INIT to initialize bot</div>
+                        <div style="font-size: 13px; color: #888; margin-bottom: 4px; letter-spacing: 1px;">AUTONOMOUS BOT STATUS</div>
+                        <div id="botStatusText" style="font-size: 24px; font-weight: 700; color: #ef4444; margin-bottom: 4px;">NOT INITIALIZED</div>
+                        <div id="botStatusSubtext" style="font-size: 13px; color: #888;">Click INIT to initialize bot</div>
                     </div>
 
                     <!-- Control Buttons -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                        <button id="initBotBtn" class="btn btn-secondary" onclick="initBot()" style="font-size: 10px; padding: 8px;">⚙️ INIT</button>
-                        <button id="startBotBtn" class="btn btn-buy" onclick="startAutonomousBot()" disabled style="font-size: 10px; padding: 8px;">▶ START</button>
-                        <button id="stopBotBtn" class="btn btn-sell" onclick="stopAutonomousBot()" disabled style="font-size: 10px; padding: 8px;">⏹ STOP</button>
-                        <button id="enableBotBtn" class="btn btn-secondary" onclick="enableBot()" disabled style="font-size: 10px; padding: 8px;">✓ ENABLE</button>
+                        <button id="initBotBtn" class="btn btn-secondary" onclick="initBot()" style="font-size: 14px; padding: 8px;">⚙️ INIT</button>
+                        <button id="startBotBtn" class="btn btn-buy" onclick="startAutonomousBot()" disabled style="font-size: 14px; padding: 8px;">▶ START</button>
+                        <button id="stopBotBtn" class="btn btn-sell" onclick="stopAutonomousBot()" disabled style="font-size: 14px; padding: 8px;">⏹ STOP</button>
+                        <button id="enableBotBtn" class="btn btn-secondary" onclick="enableBot()" disabled style="font-size: 14px; padding: 8px;">✓ ENABLE</button>
                     </div>
 
                     <!-- Statistics Grid -->
                     <div id="botStatsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
                         <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
-                            <div style="font-size: 8px; color: #888;">SIGNALS</div>
-                            <div id="botSignals" style="font-size: 13px; font-weight: 700; color: #60a5fa;">0</div>
+                            <div style="font-size: 12px; color: #888;">SIGNALS</div>
+                            <div id="botSignals" style="font-size: 17px; font-weight: 700; color: #60a5fa;">0</div>
                         </div>
                         <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
-                            <div style="font-size: 8px; color: #888;">TRADES</div>
-                            <div id="botTrades" style="font-size: 13px; font-weight: 700; color: #22c55e;">0</div>
+                            <div style="font-size: 12px; color: #888;">TRADES</div>
+                            <div id="botTrades" style="font-size: 17px; font-weight: 700; color: #22c55e;">0</div>
                         </div>
                         <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
-                            <div style="font-size: 8px; color: #888;">POSITIONS</div>
-                            <div id="botPositions" style="font-size: 13px; font-weight: 700; color: #fbbf24;">0</div>
+                            <div style="font-size: 12px; color: #888;">POSITIONS</div>
+                            <div id="botPositions" style="font-size: 17px; font-weight: 700; color: #fbbf24;">0</div>
                         </div>
                         <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
-                            <div style="font-size: 8px; color: #888;">DAILY P&L (5%)</div>
-                            <div id="botDailyPnl" style="font-size: 13px; font-weight: 700;">$0.00</div>
+                            <div style="font-size: 12px; color: #888;">DAILY P&L (5%)</div>
+                            <div id="botDailyPnl" style="font-size: 17px; font-weight: 700;">$0.00</div>
                         </div>
                     </div>
 
                     <!-- 3-5-7 Risk Management Display -->
                     <div style="padding: 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px; margin-bottom: 8px;">
-                        <div style="font-size: 9px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">3-5-7 RISK MANAGEMENT</div>
+                        <div style="font-size: 13px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">3-5-7 RISK MANAGEMENT</div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
                             <div style="padding: 4px;">
-                                <div style="font-size: 8px; color: #888;">WEEKLY P&L (7%)</div>
-                                <div id="botWeeklyPnl" style="font-size: 12px; font-weight: 700;">$0.00</div>
+                                <div style="font-size: 12px; color: #888;">WEEKLY P&L (7%)</div>
+                                <div id="botWeeklyPnl" style="font-size: 16px; font-weight: 700;">$0.00</div>
                             </div>
                             <div style="padding: 4px;">
-                                <div style="font-size: 8px; color: #888;">MAX RISK/TRADE (3%)</div>
-                                <div id="botMaxRisk" style="font-size: 12px; font-weight: 700; color: #888;">$0.00</div>
+                                <div style="font-size: 12px; color: #888;">MAX RISK/TRADE (3%)</div>
+                                <div id="botMaxRisk" style="font-size: 16px; font-weight: 700; color: #888;">$0.00</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Configuration Section -->
                     <div style="padding: 8px; background: #252525; border: 1px solid #333; border-radius: 3px; margin-bottom: 8px;">
-                        <div style="font-size: 9px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">CONFIGURATION</div>
+                        <div style="font-size: 13px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">CONFIGURATION</div>
 
                         <div style="margin-bottom: 6px;">
-                            <label style="font-size: 8px; color: #888; display: block; margin-bottom: 2px;">Watchlist</label>
+                            <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Watchlist</label>
                             <input type="text" id="botWatchlist" value="AAPL,MSFT,GOOGL,TSLA,NVDA"
-                                   style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 10px; border-radius: 2px;">
+                                   style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
                             <div>
-                                <label style="font-size: 8px; color: #888; display: block; margin-bottom: 2px;">Max Position $</label>
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Max Position $</label>
                                 <input type="number" id="botMaxPosition" value="5000" min="100" step="100"
-                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 10px; border-radius: 2px;">
+                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
                             </div>
                             <div>
-                                <label style="font-size: 8px; color: #888; display: block; margin-bottom: 2px;">Daily Loss $</label>
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Daily Loss $</label>
                                 <input type="number" id="botDailyLoss" value="500" min="50" step="50"
-                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 10px; border-radius: 2px;">
+                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
                             </div>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
                             <div>
-                                <label style="font-size: 8px; color: #888; display: block; margin-bottom: 2px;">Min Prob %</label>
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Min Prob %</label>
                                 <input type="number" id="botMinProb" value="60" min="50" max="100" step="1"
-                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 10px; border-radius: 2px;">
+                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
                             </div>
                             <div>
-                                <label style="font-size: 8px; color: #888; display: block; margin-bottom: 2px;">Max Positions</label>
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Max Positions</label>
                                 <input type="number" id="botMaxPositions" value="5" min="1" max="20" step="1"
-                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 10px; border-radius: 2px;">
+                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
                             </div>
                         </div>
 
-                        <button class="btn btn-secondary" onclick="updateBotConfig()" style="width: 100%; margin-top: 6px; font-size: 9px; padding: 5px;">
+                        <button class="btn btn-secondary" onclick="updateBotConfig()" style="width: 100%; margin-top: 6px; font-size: 13px; padding: 5px;">
                             UPDATE CONFIG
                         </button>
                     </div>
 
                     <!-- Recent Predictions -->
                     <div style="padding: 8px; background: #252525; border: 1px solid #333; border-radius: 3px; margin-bottom: 8px;">
-                        <div style="font-size: 9px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">RECENT PREDICTIONS</div>
-                        <div id="botPredictionsDisplay" style="max-height: 120px; overflow-y: auto; font-size: 9px;">
-                            <div class="empty-state" style="padding: 16px; font-size: 9px;">No predictions yet</div>
+                        <div style="font-size: 13px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">RECENT PREDICTIONS</div>
+                        <div id="botPredictionsDisplay" style="max-height: 120px; overflow-y: auto; font-size: 13px;">
+                            <div class="empty-state" style="padding: 16px; font-size: 13px;">No predictions yet</div>
                         </div>
                     </div>
 
                     <!-- Open Positions -->
                     <div style="padding: 8px; background: #252525; border: 1px solid #333; border-radius: 3px;">
-                        <div style="font-size: 9px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">OPEN POSITIONS</div>
-                        <div id="botPositionsDisplay" style="max-height: 120px; overflow-y: auto; font-size: 9px;">
-                            <div class="empty-state" style="padding: 16px; font-size: 9px;">No positions</div>
+                        <div style="font-size: 13px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">OPEN POSITIONS</div>
+                        <div id="botPositionsDisplay" style="max-height: 120px; overflow-y: auto; font-size: 13px;">
+                            <div class="empty-state" style="padding: 16px; font-size: 13px;">No positions</div>
                         </div>
                     </div>
                 </div>
@@ -1311,7 +1468,7 @@
             loadPrice();
             loadLevel2();
             loadTimeSales();
-            updateWatchlistDisplay();
+            loadWorklist();
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -1335,7 +1492,7 @@
         // Helper function to fetch API with error handling
         async function apiFetch(url) {
             try {
-                const response = await fetch(url);
+                const response = await fetch(API_BASE_URL + url);
                 if (response.ok) {
                     apiAvailable = true;
                     return await response.json();
@@ -1361,7 +1518,7 @@
         // Subscribe to market data for a symbol
         async function subscribeToSymbol(symbol) {
             try {
-                await fetch('/api/subscribe', {
+                await fetch(API_BASE_URL + '/api/subscribe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1373,6 +1530,102 @@
                 console.log(`✓ Subscribed to ${symbol}`);
             } catch (error) {
                 console.error(`Error subscribing to ${symbol}:`, error);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     HALT DETECTION & MANAGEMENT
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function checkForHalt(symbol, data) {
+            const now = Date.now();
+
+            // Detect halt conditions:
+            // 1. Bid and Ask are both 0 or -1
+            // 2. OR no updates for more than 8 seconds
+            const isDataHalted = (data.bid <= 0 && data.ask <= 0) ||
+                                 (data.bid === -1 || data.ask === -1);
+
+            const timeSinceLastUpdate = haltState.lastUpdateTime ? now - haltState.lastUpdateTime : 0;
+            const isTimeoutHalt = timeSinceLastUpdate > 8000; // 8 seconds no update
+
+            if ((isDataHalted || isTimeoutHalt) && !haltState.isHalted) {
+                // Entering halt
+                haltState.isHalted = true;
+                haltState.haltTime = new Date();
+                haltState.haltPrice = data.last || marketDataCache[symbol]?.last || 0;
+                haltState.symbol = symbol;
+                haltState.resumeTime = null;
+
+                showHaltIndicator();
+                console.log(`🛑 HALT DETECTED: ${symbol} at $${haltState.haltPrice.toFixed(2)}`);
+
+            } else if (!isDataHalted && !isTimeoutHalt && haltState.isHalted && data.bid > 0 && data.ask > 0) {
+                // Resuming from halt
+                haltState.resumeTime = new Date();
+                const haltDuration = Math.floor((haltState.resumeTime - haltState.haltTime) / 1000);
+
+                console.log(`✅ RESUMED: ${symbol} after ${haltDuration}s halt`);
+
+                // Show resume notification briefly, then hide
+                updateHaltIndicator('resumed');
+                setTimeout(() => {
+                    haltState.isHalted = false;
+                    hideHaltIndicator();
+                }, 3000); // Show resume for 3 seconds
+            }
+
+            // Update last update time if we got valid data
+            if (data.bid > 0 || data.ask > 0 || data.last > 0) {
+                haltState.lastUpdateTime = now;
+            }
+
+            // Update halt indicator if already halted
+            if (haltState.isHalted && haltState.resumeTime === null) {
+                updateHaltIndicator('halted');
+            }
+        }
+
+        function showHaltIndicator() {
+            const indicator = document.getElementById('quoteHaltIndicator');
+            if (indicator) {
+                indicator.style.display = 'block';
+            }
+        }
+
+        function hideHaltIndicator() {
+            const indicator = document.getElementById('quoteHaltIndicator');
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+        }
+
+        function updateHaltIndicator(status) {
+            const indicator = document.getElementById('quoteHaltIndicator');
+            const titleEl = document.getElementById('quoteHaltTitle');
+            const infoEl = document.getElementById('quoteHaltInfo');
+
+            if (!indicator || !titleEl || !infoEl) return;
+
+            if (status === 'halted') {
+                const haltDuration = Math.floor((Date.now() - haltState.haltTime) / 1000);
+                const haltTimeStr = haltState.haltTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                titleEl.textContent = '🛑 HALT';
+                infoEl.innerHTML = `${haltTimeStr} • $${(haltState.haltPrice || 0).toFixed(2)} • ${haltDuration}s`;
+
+                indicator.style.background = 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
+                indicator.style.color = 'white';
+
+            } else if (status === 'resumed') {
+                const resumeTimeStr = haltState.resumeTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const haltDuration = Math.floor((haltState.resumeTime - haltState.haltTime) / 1000);
+
+                titleEl.textContent = '✅ RESUMED';
+                infoEl.innerHTML = `${resumeTimeStr} • ${haltDuration}s halt`;
+
+                indicator.style.background = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+                indicator.style.color = 'white';
             }
         }
 
@@ -1421,14 +1674,22 @@
                     }
                 }
 
-                // Auto-set limit price to mid
+                // Auto-set limit price to mid (only if field is not focused and empty/invalid)
                 const orderTypeEl = document.getElementById('orderType');
-                if (d.bid && d.ask && orderTypeEl && orderTypeEl.value === 'LIMIT') {
-                    const mid = ((d.bid + d.ask) / 2).toFixed(2);
-                    safeUpdate('orderPrice', mid);
+                const orderPriceEl = document.getElementById('orderPrice');
+                if (d.bid && d.ask && d.bid > 0 && d.ask > 0 && orderTypeEl && orderTypeEl.value === 'LIMIT') {
+                    // Only update if user is NOT currently typing (field not focused) and field is empty or invalid
+                    if (document.activeElement !== orderPriceEl &&
+                        (!orderPriceEl.value || orderPriceEl.value === '' || parseFloat(orderPriceEl.value) <= 0)) {
+                        const mid = ((d.bid + d.ask) / 2).toFixed(2);
+                        safeUpdate('orderPrice', mid);
+                    }
                 }
 
                 marketDataCache[currentSymbol] = d;
+
+                // Check for trading halt
+                checkForHalt(currentSymbol, d);
             } catch (error) {
                 console.error('Error loading price:', error);
             }
@@ -1589,32 +1850,74 @@
 
         async function loadOrders() {
             const displayEl = document.getElementById('ordersDisplay');
-            if (!displayEl) return;
+            console.log('loadOrders called, displayEl:', displayEl);
+            if (!displayEl) {
+                console.error('ordersDisplay element not found!');
+                return;
+            }
 
-            // Mock data for now - replace with actual API call
-            const mockOrders = [];
+            try {
+                // Fetch real orders from IBKR
+                const response = await fetch(API_BASE_URL + '/api/ibkr/orders');
+                const data = await response.json();
+                console.log('Orders API response:', data);
 
-            if (mockOrders.length > 0) {
-                let html = '';
-                mockOrders.forEach(order => {
-                    html += `
-                        <tr>
-                            <td>${order.time}</td>
-                            <td><strong>${order.symbol}</strong></td>
-                            <td class="${order.side === 'BUY' ? 'positive' : 'negative'}">${order.side}</td>
-                            <td>${order.quantity}</td>
-                            <td>${order.type}</td>
-                            <td>$${order.price}</td>
-                            <td>${order.status}</td>
-                            <td>
-                                <button class="action-btn" onclick="cancelOrder('${order.id}')">Cancel</button>
-                            </td>
-                        </tr>
-                    `;
+                if (data.orders && data.orders.length > 0) {
+                    console.log(`Building HTML for ${data.orders.length} orders...`);
+                    let html = '';
+                    data.orders.forEach(order => {
+                        const priceDisplay = order.limit_price ? `$${order.limit_price.toFixed(2)}` :
+                                           order.stop_price ? `STOP $${order.stop_price.toFixed(2)}` : 'MKT';
+                        html += `
+                            <tr>
+                                <td>${order.order_id}</td>
+                                <td><strong onclick="selectSymbol('${order.symbol}')" style="cursor: pointer; color: #00c9ff;">${order.symbol}</strong></td>
+                                <td class="${order.action === 'BUY' ? 'positive' : 'negative'}">${order.action}</td>
+                                <td>${order.quantity}</td>
+                                <td>${order.order_type}</td>
+                                <td>${priceDisplay}</td>
+                                <td>${order.status}</td>
+                                <td>
+                                    <button class="action-btn" onclick="cancelOrderIBKR(${order.order_id})">Cancel</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    console.log('Built HTML string (first 500 chars):', html.substring(0, 500));
+                    console.log('Element before update:', displayEl.innerHTML);
+                    console.log('Setting innerHTML...');
+                    displayEl.innerHTML = html;
+                    console.log('After innerHTML update, element now contains:', displayEl.innerHTML.substring(0, 500));
+                    console.log('Element child count:', displayEl.children.length);
+                } else {
+                    console.log('No orders in response, showing empty state');
+                    displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">No working orders</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                displayEl.innerHTML = '<tr><td colspan="8" class="empty-state" style="color: #ef4444;">❌ Error loading orders</td></tr>';
+            }
+        }
+
+        async function cancelOrderIBKR(orderId) {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId })
                 });
-                displayEl.innerHTML = html;
-            } else {
-                displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">No working orders</td></tr>';
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    console.log(`✓ Order ${orderId} cancelled`);
+                    await loadOrders(); // Refresh orders display
+                } else {
+                    alert(`❌ Failed to cancel order: ${data.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error cancelling order:', error);
+                alert(`❌ Error cancelling order: ${error.message}`);
             }
         }
 
@@ -1624,6 +1927,7 @@
                 const accountData = await apiFetch('/api/account');
                 if (!accountData || !accountData.summary) {
                     safeUpdate('accountNumber', '--');
+                    safeUpdate('accountType', '--');
                     safeUpdate('equityValue', '--');
                     safeUpdate('buyingPower', '--');
                     safeUpdate('cashBalance', '--');
@@ -1636,7 +1940,12 @@
 
                 if (accountData.summary) {
                     const s = accountData.summary;
-                    safeUpdate('accountNumber', 'DU1234567');
+
+                    // Update account number and type
+                    safeUpdate('accountNumber', s.account_id || 'DU1234567');
+                    safeUpdate('accountType', s.account_type || 'Unknown');
+
+                    // Update financial values
                     safeUpdate('equityValue', `$${(s.net_liquidation || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
                     safeUpdate('buyingPower', `$${(s.buying_power || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
                     safeUpdate('cashBalance', `$${(s.total_cash || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
@@ -1657,6 +1966,53 @@
                     }
 
                     safeUpdate('positionCount', accountData.positions?.length || 0);
+
+                    // Handle day trades info for PDT accounts
+                    const dayTradesStat = document.getElementById('dayTradesStat');
+                    const dayTradesInfo = document.getElementById('dayTradesInfo');
+                    const accountWarnings = document.getElementById('accountWarnings');
+
+                    if (s.is_pdt) {
+                        // Show day trades remaining
+                        if (dayTradesStat) dayTradesStat.style.display = 'block';
+                        if (s.day_trades_remaining !== null && s.day_trades_remaining !== undefined) {
+                            safeUpdate('dayTradesRemaining', `${s.day_trades_remaining} Left`);
+
+                            if (dayTradesInfo) {
+                                dayTradesInfo.style.display = 'block';
+                                dayTradesInfo.innerHTML = `Pattern Day Trader Account: ${s.day_trades_remaining} day trades remaining this week`;
+                            }
+
+                            // Show warning if running low
+                            if (s.day_trades_remaining <= 1 && accountWarnings) {
+                                accountWarnings.style.display = 'block';
+                                accountWarnings.style.background = '#7f1d1d';
+                                accountWarnings.style.color = '#fca5a5';
+                                accountWarnings.innerHTML = s.day_trades_remaining === 0
+                                    ? '⚠️ DAY TRADE LIMIT REACHED - No day trades remaining!'
+                                    : '⚠️ WARNING - Only 1 day trade remaining!';
+                            }
+                        }
+                    } else {
+                        if (dayTradesStat) dayTradesStat.style.display = 'none';
+                    }
+
+                    // Show account capability warnings
+                    if (s.account_capabilities && accountWarnings) {
+                        const caps = s.account_capabilities;
+                        if (caps.includes('NO_SHORT_SELLING')) {
+                            accountWarnings.style.display = 'block';
+                            accountWarnings.style.background = '#1e3a8a';
+                            accountWarnings.style.color = '#93c5fd';
+                            accountWarnings.innerHTML = '⚠️ SHORT SELLING DISABLED for this account type';
+                        }
+                        if (caps.includes('T+2_SETTLEMENT')) {
+                            if (dayTradesInfo) {
+                                dayTradesInfo.style.display = 'block';
+                                dayTradesInfo.innerHTML = 'Cash Account: T+2 settlement applies - avoid good faith violations';
+                            }
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Error loading account:', error);
@@ -1669,6 +2025,46 @@
 
         function setQuantity(qty) {
             document.getElementById('orderQuantity').value = qty;
+        }
+
+        function setAccountPercent(percent) {
+            const symbol = document.getElementById('orderSymbol').value;
+            const priceEl = document.getElementById('orderPrice');
+
+            // Get account equity value
+            let accountEquity = 100000; // Default value
+            if (accountData && accountData.summary && accountData.summary.net_liquidation) {
+                accountEquity = accountData.summary.net_liquidation;
+            }
+
+            // Get current price (try limit price first, then market data)
+            let currentPrice = parseFloat(priceEl.value) || 0;
+
+            // If no price in order form, try to get from market data cache
+            if (currentPrice === 0 || priceEl.value === 'MARKET') {
+                const data = marketDataCache[symbol];
+                if (data && data.last) {
+                    currentPrice = data.last;
+                } else if (data && data.bid && data.ask) {
+                    currentPrice = (data.bid + data.ask) / 2;
+                }
+            }
+
+            if (currentPrice > 0) {
+                // Calculate dollar amount based on percentage
+                const dollarAmount = accountEquity * (percent / 100);
+
+                // Calculate quantity (round down to whole shares)
+                const quantity = Math.floor(dollarAmount / currentPrice);
+
+                // Set the quantity
+                document.getElementById('orderQuantity').value = quantity;
+
+                // Show confirmation
+                console.log(`Account: $${accountEquity.toFixed(2)}, ${percent}% = $${dollarAmount.toFixed(2)}, Price: $${currentPrice.toFixed(2)}, Qty: ${quantity}`);
+            } else {
+                alert('Cannot calculate quantity: No price available for ' + symbol);
+            }
         }
 
         function adjustPrice(amount) {
@@ -1691,21 +2087,38 @@
                 priceField.value = 'MARKET';
             } else {
                 priceField.disabled = false;
-                if (priceField.value === 'MARKET') {
+                if (priceField.value === 'MARKET' || priceField.value === '') {
                     const data = marketDataCache[currentSymbol];
                     if (data && data.bid && data.ask) {
                         priceField.value = ((data.bid + data.ask) / 2).toFixed(2);
+                    } else {
+                        // Clear field if no market data available
+                        priceField.value = '';
+                        priceField.placeholder = 'Enter limit price';
                     }
                 }
             }
         }
 
-        function submitOrder(action) {
+        async function submitOrder(action) {
             const symbol = document.getElementById('orderSymbol').value;
             const quantity = document.getElementById('orderQuantity').value;
             const type = document.getElementById('orderType').value;
             const price = document.getElementById('orderPrice').value;
             const tif = document.getElementById('orderTIF').value;
+            const extendedHours = document.getElementById('extendedHours').checked;
+            const autoSubmit = document.getElementById('autoSubmitOrders').checked;
+
+            // Validation
+            if (!symbol || symbol.trim() === '') {
+                alert('Please enter a symbol');
+                return;
+            }
+
+            if (!quantity || parseInt(quantity) <= 0) {
+                alert('Please enter a valid quantity');
+                return;
+            }
 
             let side, orderType;
 
@@ -1720,6 +2133,12 @@
                 orderType = type;
             }
 
+            // Validate price for limit orders
+            if (orderType === 'LIMIT' && (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0)) {
+                alert('Please enter a valid limit price (not MARKET)');
+                return;
+            }
+
             const orderDetails = `
 ORDER DETAILS:
 ─────────────
@@ -1729,15 +2148,62 @@ Quantity: ${quantity}
 Type:     ${orderType}
 Price:    ${orderType === 'MARKET' ? 'MARKET' : '$' + price}
 TIF:      ${tif}
+Extended: ${extendedHours ? 'YES (Pre/After Market)' : 'NO (Regular Hours)'}
 
 Confirm order?`;
 
-            if (confirm(orderDetails)) {
-                console.log('Order submitted:', { side, symbol, quantity, orderType, price, tif });
-                alert('✓ Order submitted successfully!\n\nThis is a demo. Connect to IBKR to place real orders.');
+            // Check auto-submit setting - skip confirmation if enabled
+            if (autoSubmit || window.confirm(orderDetails)) {
+                try {
+                    // Prepare order request
+                    const orderRequest = {
+                        symbol: symbol.trim().toUpperCase(),
+                        action: side,
+                        quantity: parseInt(quantity),
+                        order_type: orderType,
+                        limit_price: orderType !== 'MARKET' ? parseFloat(price) : null,
+                        stop_price: null, // Add stop price support if needed
+                        tif: tif,
+                        extended_hours: extendedHours,
+                        exchange: 'SMART'
+                    };
 
-                // Refresh orders display
-                loadOrders();
+                    console.log('Placing order:', orderRequest);
+
+                    // Call API to place order
+                    const response = await fetch(API_BASE_URL + '/api/ibkr/place-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderRequest)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        // Show alert only if auto-submit is disabled (for faster trading)
+                        if (!autoSubmit) {
+                            alert(`✓ Order placed successfully!\n\nOrder ID: ${data.order_id}\nStatus: ${data.status}\n\n${data.message}`);
+                        } else {
+                            console.log(`✓ Order ${data.order_id} placed: ${side} ${quantity} ${symbol} @ ${orderType === 'MARKET' ? 'MARKET' : '$' + price}`);
+                        }
+
+                        // Clear form
+                        document.getElementById('orderSymbol').value = '';
+                        document.getElementById('orderQuantity').value = '';
+                        document.getElementById('orderPrice').value = 'MARKET';
+
+                        // Refresh orders display
+                        await loadOrders();
+                        await loadAccount();
+                    } else {
+                        // Handle error response
+                        const errorMsg = data.detail || data.message || 'Unknown error';
+                        alert(`✗ Failed to place order\n\n${errorMsg}`);
+                    }
+                } catch (error) {
+                    console.error('Order error:', error);
+                    alert(`✗ Failed to place order\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                }
             }
         }
 
@@ -1745,7 +2211,7 @@ Confirm order?`;
             const side = quantity > 0 ? 'SELL' : 'BUY';
             const qty = Math.abs(quantity);
 
-            if (confirm(`Close position in ${symbol}?\n\n${side} ${qty} shares at MARKET`)) {
+            if (window.confirm(`Close position in ${symbol}?\n\n${side} ${qty} shares at MARKET`)) {
                 console.log('Closing position:', symbol);
                 alert('✓ Position close order submitted!');
                 loadPositions();
@@ -1753,77 +2219,385 @@ Confirm order?`;
         }
 
         function cancelOrder(orderId) {
-            if (confirm('Cancel this order?')) {
+            if (window.confirm('Cancel this order?')) {
                 console.log('Cancelling order:', orderId);
                 alert('✓ Order cancelled!');
                 loadOrders();
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
-        //                     WATCHLIST MANAGEMENT
-        // ═══════════════════════════════════════════════════════════════════════
+        async function cancelAllOrders() {
+            if (!window.confirm('⚠️ CANCEL ALL WORKING ORDERS?\n\nThis will cancel ALL open orders.\n\nAre you sure?')) {
+                return;
+            }
 
-        async function updateWatchlistDisplay() {
-            const display = document.getElementById('watchlistDisplay');
-            if (!display) return;
+            try {
+                // Fetch all current orders
+                const response = await fetch(API_BASE_URL + '/api/ibkr/orders');
+                const data = await response.json();
 
-            let html = '';
+                if (!data.orders || data.orders.length === 0) {
+                    alert('No orders to cancel');
+                    return;
+                }
 
-            for (const symbol of watchlist) {
-                // Try to get cached data or fetch from API
-                let data = marketDataCache[symbol];
-                if (!data) {
-                    const apiData = await apiFetch(`/api/price/${symbol}`);
-                    if (apiData && apiData.data) {
-                        data = apiData.data;
-                        marketDataCache[symbol] = data;
+                console.log(`Cancelling ${data.orders.length} orders...`);
+                let cancelled = 0;
+                let failed = 0;
+
+                // Cancel each order
+                for (const order of data.orders) {
+                    try {
+                        const cancelResponse = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ order_id: order.order_id })
+                        });
+
+                        const cancelData = await cancelResponse.json();
+
+                        if (cancelResponse.ok && cancelData.success) {
+                            cancelled++;
+                            console.log(`✓ Cancelled order ${order.order_id}`);
+                        } else {
+                            failed++;
+                            console.error(`✗ Failed to cancel order ${order.order_id}:`, cancelData.detail);
+                        }
+                    } catch (error) {
+                        failed++;
+                        console.error(`✗ Error cancelling order ${order.order_id}:`, error);
                     }
                 }
 
-                const last = data?.last?.toFixed(2) || '--';
-                const change = data?.last && data?.close ? (data.last - data.close).toFixed(2) : '--';
-                const changeClass = change !== '--' && parseFloat(change) >= 0 ? 'positive' : 'negative';
+                // Show results and refresh
+                alert(`✓ Cancel All Complete\n\nCancelled: ${cancelled}\nFailed: ${failed}`);
+                await loadOrders();
+
+            } catch (error) {
+                console.error('Error cancelling all orders:', error);
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     WORKLIST MANAGEMENT (UNIFIED BACKEND)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let worklistData = [];
+
+        async function loadWorklist() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/worklist');
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    worklistData = data.data;
+                    updateWorklistDisplay();
+                    updateWorklistStats();
+                }
+            } catch (error) {
+                console.error('Failed to load worklist:', error);
+            }
+        }
+
+        async function updateWorklistDisplay() {
+            const display = document.getElementById('watchlistDisplay');
+            if (!display) return;
+
+            if (worklistData.length === 0) {
+                display.innerHTML = '<div class="empty-state" style="padding: 20px; text-align: center;"><div style="font-size: 28px; margin-bottom: 8px;">📋</div><div style="font-size: 15px;">No symbols in worklist</div><div style="font-size: 13px; color: #888; margin-top: 4px;">Use Scanner or Add Symbol</div></div>';
+                return;
+            }
+
+            let html = '<table class="data-table" style="font-size: 13px;"><thead><tr><th style="padding: 4px 6px;">Symbol</th><th style="padding: 4px 6px; text-align: right;">Price</th><th style="padding: 4px 6px; text-align: right;">Change</th><th style="padding: 4px 6px; text-align: center;">Pred</th><th style="padding: 4px 6px; text-align: right;">Conf</th><th style="padding: 4px 6px; text-align: center;">Action</th></tr></thead><tbody>';
+
+            for (const item of worklistData) {
+                const price = item.current_price ? `$${item.current_price.toFixed(2)}` : '-';
+                const change = item.change_percent !== undefined ? item.change_percent.toFixed(2) + '%' : '-';
+                const changeClass = item.change_percent !== undefined && item.change_percent >= 0 ? 'positive' : 'negative';
+
+                let predBadge = '-';
+                if (item.prediction === 'UP') {
+                    predBadge = '<span style="background: #166534; color: #22c55e; padding: 2px 6px; border-radius: 2px; font-size: 12px; font-weight: 700;">▲ UP</span>';
+                } else if (item.prediction === 'DOWN') {
+                    predBadge = '<span style="background: #7f1d1d; color: #ef4444; padding: 2px 6px; border-radius: 2px; font-size: 12px; font-weight: 700;">▼ DOWN</span>';
+                }
+
+                const confidence = item.confidence ? item.confidence.toFixed(0) + '%' : '-';
+                const liveIndicator = !item.has_live_data ? '<span style="color: #eab308; margin-left: 4px;" title="No live data">⚠</span>' : '';
 
                 html += `
-                    <div class="watchlist-item ${symbol === currentSymbol ? 'active' : ''}"
-                         onclick="setCurrentSymbol('${symbol}')"
-                         ondblclick="setCurrentSymbol('${symbol}'); focusOnSymbol('${symbol}')">
-                        <div class="watchlist-symbol">${symbol}</div>
-                        <div class="watchlist-price">${last}</div>
-                        <div class="watchlist-change ${changeClass}">${change}</div>
-                    </div>
+                    <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="font-size: 13px;">
+                        <td style="padding: 4px 6px;"><strong>${item.symbol}</strong>${liveIndicator}</td>
+                        <td style="padding: 4px 6px; text-align: right; font-family: monospace;">${price}</td>
+                        <td class="${changeClass}" style="padding: 4px 6px; text-align: right; font-family: monospace;">${change}</td>
+                        <td style="padding: 4px 6px; text-align: center;">${predBadge}</td>
+                        <td style="padding: 4px 6px; text-align: right; font-family: monospace;">${confidence}</td>
+                        <td style="padding: 4px 6px; text-align: center;">
+                            <button onclick="event.stopPropagation(); removeFromWorklist('${item.symbol}')"
+                                    style="background: #7f1d1d; color: #ef4444; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600;">✕</button>
+                        </td>
+                    </tr>
                 `;
             }
 
+            html += '</tbody></table>';
             display.innerHTML = html;
         }
 
-        function focusOnSymbol(symbol) {
-            // Bring Quote window to front
-            const quoteWindow = windows.find(w => w.id === 'quote');
-            if (quoteWindow) {
-                quoteWindow.activate();
-            }
+        function updateWorklistStats() {
+            const total = worklistData.length;
+            const live = worklistData.filter(w => w.has_live_data).length;
+            const bullish = worklistData.filter(w => w.prediction === 'UP').length;
+            const bearish = worklistData.filter(w => w.prediction === 'DOWN').length;
 
-            // Scroll to symbol in watchlist
-            const activeItem = document.querySelector('.watchlist-item.active');
-            if (activeItem) {
-                activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            const safeUpdate = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+
+            safeUpdate('statsTotal', total);
+            safeUpdate('statsLive', live);
+            safeUpdate('statsBullish', bullish);
+            safeUpdate('statsBearish', bearish);
+        }
+
+        async function showAddSymbolDialog() {
+            const symbol = window.prompt('Enter symbol to add to worklist:', '');
+            if (!symbol) return;
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/worklist/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol.toUpperCase(), exchange: 'SMART' })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadWorklist();
+                    alert(`✓ ${symbol.toUpperCase()} added to worklist`);
+                } else {
+                    alert('Failed to add symbol: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Failed to add symbol:', error);
+                alert('Failed to add symbol');
             }
         }
 
-        function addToWatchlist() {
-            const input = document.getElementById('watchlistInput');
-            const symbol = input.value.toUpperCase().trim();
+        async function removeFromWorklist(symbol) {
+            if (!window.confirm(`Remove ${symbol} from worklist?`)) return;
 
-            if (symbol && !watchlist.includes(symbol)) {
-                watchlist.push(symbol);
-                updateWatchlistDisplay();
-                input.value = '';
+            try {
+                const response = await fetch(API_BASE_URL + `/api/worklist/${symbol}`, {
+                    method: 'DELETE'
+                });
 
-                // Save to localStorage
-                localStorage.setItem('watchlist', JSON.stringify(watchlist));
+                const data = await response.json();
+                if (data.success) {
+                    await loadWorklist();
+                } else {
+                    alert('Failed to remove symbol');
+                }
+            } catch (error) {
+                console.error('Failed to remove symbol:', error);
+                alert('Failed to remove symbol');
+            }
+        }
+
+        async function clearWorklist() {
+            if (!window.confirm('⚠️ Clear entire worklist?\n\nThis will remove all symbols.')) return;
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/worklist/clear', {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadWorklist();
+                    alert('✓ Worklist cleared');
+                } else {
+                    alert('Failed to clear worklist');
+                }
+            } catch (error) {
+                console.error('Failed to clear worklist:', error);
+                alert('Failed to clear worklist');
+            }
+        }
+
+        async function showScannerDialog() {
+            // Load scanner presets
+            try {
+                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/presets');
+                const data = await response.json();
+
+                if (!data.success || !data.data) {
+                    alert('Failed to load scanner presets');
+                    return;
+                }
+
+                const presets = data.data;
+                let options = presets.map(p => `<option value="${p.id}">${p.name} - ${p.description}</option>`).join('');
+
+                const html = `
+                    <div style="padding: 16px; background: #1a1a1a; border: 2px solid #007acc; border-radius: 4px; width: 400px;">
+                        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 18px;">IBKR Market Scanner</h3>
+                        <select id="scannerSelect" style="width: 100%; padding: 8px; background: #252525; color: #fff; border: 1px solid #404040; margin-bottom: 12px;">
+                            ${options}
+                        </select>
+                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                            <button onclick="closeScannerDialog()" class="btn btn-secondary">Cancel</button>
+                            <button onclick="runScanner()" class="btn btn-primary" style="background: #007acc;">Run Scanner</button>
+                        </div>
+                        <div id="scannerResults" style="margin-top: 12px; max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.id = 'scannerDialog';
+                dialog.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10000; box-shadow: 0 0 20px rgba(0,0,0,0.5);';
+                dialog.innerHTML = html;
+                document.body.appendChild(dialog);
+
+                // Add backdrop
+                const backdrop = document.createElement('div');
+                backdrop.id = 'scannerBackdrop';
+                backdrop.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999;';
+                backdrop.onclick = closeScannerDialog;
+                document.body.appendChild(backdrop);
+
+            } catch (error) {
+                console.error('Failed to load scanner presets:', error);
+                alert('Failed to load scanner presets');
+            }
+        }
+
+        function closeScannerDialog() {
+            const dialog = document.getElementById('scannerDialog');
+            const backdrop = document.getElementById('scannerBackdrop');
+            if (dialog) dialog.remove();
+            if (backdrop) backdrop.remove();
+        }
+
+        async function runScanner() {
+            const select = document.getElementById('scannerSelect');
+            const resultsDiv = document.getElementById('scannerResults');
+
+            if (!select || !resultsDiv) return;
+
+            resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Scanning...</div>';
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scan_code: select.value,
+                        instrument: 'STK',
+                        location: 'STK.US.MAJOR',
+                        num_rows: 50
+                    })
+                });
+
+                const data = await response.json();
+
+                console.log('Scanner response:', data);
+
+                if (data.success && data.data && data.data.results) {
+                    const results = data.data.results;
+                    console.log('Scanner results:', results);
+
+                    let html = `
+                        <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 14px; color: #888;">Found ${results.length} symbols</div>
+                            <button onclick="addAllScannerResults()" class="btn btn-primary" style="font-size: 14px; padding: 4px 12px; background: #007acc;">Add All to Worklist</button>
+                        </div>
+                        <table class="data-table" style="font-size: 13px;">
+                            <thead>
+                                <tr>
+                                    <th style="padding: 4px;">Rank</th>
+                                    <th style="padding: 4px;">Symbol</th>
+                                    <th style="padding: 4px; text-align: right;">Price</th>
+                                    <th style="padding: 4px; text-align: right;">Change %</th>
+                                    <th style="padding: 4px; text-align: right;">Volume</th>
+                                    <th style="padding: 4px; text-align: center;">
+                                        <input type="checkbox" id="selectAllScanner" onchange="toggleAllScannerResults(this.checked)">
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    results.forEach((r, i) => {
+                        const price = r.price ? r.price.toFixed(2) : 'N/A';
+                        const changePercent = r.change_percent !== undefined ? r.change_percent.toFixed(2) : '0.00';
+                        const volume = r.volume ? (r.volume / 1000000).toFixed(2) : '0.00';
+                        const changeClass = (r.change_percent || 0) >= 0 ? 'positive' : 'negative';
+
+                        html += `
+                            <tr>
+                                <td style="padding: 4px;">${r.rank || (i + 1)}</td>
+                                <td style="padding: 4px;"><strong>${r.symbol || 'N/A'}</strong></td>
+                                <td style="padding: 4px; text-align: right; font-family: monospace;">$${price}</td>
+                                <td class="${changeClass}" style="padding: 4px; text-align: right; font-family: monospace;">${changePercent}%</td>
+                                <td style="padding: 4px; text-align: right; font-family: monospace;">${volume}M</td>
+                                <td style="padding: 4px; text-align: center;">
+                                    <input type="checkbox" class="scanner-checkbox" value="${r.symbol}">
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                    resultsDiv.innerHTML = html;
+                } else {
+                    console.error('Scanner failed - invalid response:', data);
+                    resultsDiv.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444;">
+                        Scanner failed: ${data.message || data.detail || 'No results returned'}
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('Scanner error:', error);
+                resultsDiv.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444;">
+                    Scanner error: ${error.message}<br>
+                    <small style="color: #888;">Check console for details</small>
+                </div>`;
+            }
+        }
+
+        function toggleAllScannerResults(checked) {
+            document.querySelectorAll('.scanner-checkbox').forEach(cb => cb.checked = checked);
+        }
+
+        async function addAllScannerResults() {
+            const checkboxes = document.querySelectorAll('.scanner-checkbox:checked');
+            const symbols = Array.from(checkboxes).map(cb => cb.value);
+
+            if (symbols.length === 0) {
+                alert('No symbols selected');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/add-to-worklist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadWorklist();
+                    closeScannerDialog();
+                    alert(`✓ Added ${symbols.length} symbols to worklist`);
+                } else {
+                    alert('Failed to add symbols');
+                }
+            } catch (error) {
+                console.error('Failed to add scanner results:', error);
+                alert('Failed to add symbols');
             }
         }
 
@@ -1845,7 +2619,7 @@ Confirm order?`;
                     max_positions: parseInt(document.getElementById('botMaxPositions').value)
                 };
 
-                const response = await fetch('/api/bot/init', {
+                const response = await fetch(API_BASE_URL + '/api/bot/init', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
@@ -1883,7 +2657,7 @@ Confirm order?`;
 
         async function startAutonomousBot() {
             try {
-                const response = await fetch('/api/bot/start', { method: 'POST' });
+                const response = await fetch(API_BASE_URL + '/api/bot/start', { method: 'POST' });
 
                 if (response.ok) {
                     const data = await response.json();
@@ -1909,7 +2683,7 @@ Confirm order?`;
 
         async function stopAutonomousBot() {
             try {
-                const response = await fetch('/api/bot/stop', { method: 'POST' });
+                const response = await fetch(API_BASE_URL + '/api/bot/stop', { method: 'POST' });
 
                 if (response.ok) {
                     const data = await response.json();
@@ -1935,7 +2709,7 @@ Confirm order?`;
 
         async function enableBot() {
             try {
-                const response = await fetch('/api/bot/enable', { method: 'POST' });
+                const response = await fetch(API_BASE_URL + '/api/bot/enable', { method: 'POST' });
 
                 if (response.ok) {
                     const data = await response.json();
@@ -1958,7 +2732,7 @@ Confirm order?`;
 
         async function disableBot() {
             try {
-                const response = await fetch('/api/bot/disable', { method: 'POST' });
+                const response = await fetch(API_BASE_URL + '/api/bot/disable', { method: 'POST' });
 
                 if (response.ok) {
                     const data = await response.json();
@@ -1990,7 +2764,7 @@ Confirm order?`;
                     max_positions: parseInt(document.getElementById('botMaxPositions').value)
                 };
 
-                const response = await fetch('/api/bot/config', {
+                const response = await fetch(API_BASE_URL + '/api/bot/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
@@ -2012,7 +2786,7 @@ Confirm order?`;
 
         async function updateBotStatus() {
             try {
-                const response = await fetch('/api/bot/status');
+                const response = await fetch(API_BASE_URL + '/api/bot/status');
                 if (!response.ok) return;
 
                 const data = await response.json();
@@ -2064,7 +2838,7 @@ Confirm order?`;
                                     <span style="font-weight: 700;">${symbol}</span>
                                     <span style="color: ${color};">${prob}%</span>
                                 </div>
-                                <div style="font-size: 8px; color: #888; margin-top: 2px;">
+                                <div style="font-size: 12px; color: #888; margin-top: 2px;">
                                     Reliability: ${reliability}% | ${new Date(pred.timestamp * 1000).toLocaleTimeString()}
                                 </div>
                             </div>
@@ -2088,7 +2862,7 @@ Confirm order?`;
                                     <span style="font-weight: 700;">${symbol}</span>
                                     <span style="color: ${pnlColor};">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span>
                                 </div>
-                                <div style="font-size: 8px; color: #888; margin-top: 2px;">
+                                <div style="font-size: 12px; color: #888; margin-top: 2px;">
                                     ${pos.quantity} @ $${pos.entry_price.toFixed(2)} | ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%
                                 </div>
                             </div>
@@ -2096,7 +2870,7 @@ Confirm order?`;
                     }
                     positionsDiv.innerHTML = html;
                 } else if (data.initialized) {
-                    document.getElementById('botPositionsDisplay').innerHTML = '<div class="empty-state" style="padding: 16px; font-size: 9px;">No positions</div>';
+                    document.getElementById('botPositionsDisplay').innerHTML = '<div class="empty-state" style="padding: 16px; font-size: 13px;">No positions</div>';
                 }
 
             } catch (error) {
@@ -2115,7 +2889,7 @@ Confirm order?`;
 
         async function getPrediction() {
             try {
-                const response = await fetch('/api/ai/predict', {
+                const response = await fetch(API_BASE_URL + '/api/ai/predict', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ symbol: currentSymbol })
@@ -2129,10 +2903,10 @@ Confirm order?`;
                 display.innerHTML = `
                     <div style="padding: 16px; background: #252525; border: 1px solid #333; border-radius: 2px;">
                         <div style="text-align: center; margin-bottom: 12px;">
-                            <div style="font-size: 24px; font-weight: 700; color: ${signalColor};">${signal}</div>
-                            <div style="font-size: 9px; color: #888; margin-top: 4px;">CONFIDENCE: ${data.confidence || 0}%</div>
+                            <div style="font-size: 28px; font-weight: 700; color: ${signalColor};">${signal}</div>
+                            <div style="font-size: 13px; color: #888; margin-top: 4px;">CONFIDENCE: ${data.confidence || 0}%</div>
                         </div>
-                        <div style="font-size: 10px; color: #aaa; line-height: 1.4;">
+                        <div style="font-size: 14px; color: #aaa; line-height: 1.4;">
                             ${data.reason || 'No analysis available'}
                         </div>
                     </div>
@@ -2149,7 +2923,7 @@ Confirm order?`;
 
         async function connectToIBKR() {
             try {
-                const response = await fetch('/api/ibkr/connect', {
+                const response = await fetch(API_BASE_URL + '/api/ibkr/connect', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ host: '127.0.0.1', port: 7497, client_id: 1 })
@@ -2264,6 +3038,20 @@ Confirm order?`;
             alert('✓ Layout saved successfully!');
         }
 
+        // Auto-submit setting functions
+        function saveAutoSubmitSetting(enabled) {
+            localStorage.setItem('autoSubmitOrders', enabled ? 'true' : 'false');
+            console.log('Auto-submit orders:', enabled ? 'ENABLED' : 'DISABLED');
+        }
+
+        function loadAutoSubmitSetting() {
+            const saved = localStorage.getItem('autoSubmitOrders');
+            const checkbox = document.getElementById('autoSubmitOrders');
+            if (checkbox && saved === 'true') {
+                checkbox.checked = true;
+            }
+        }
+
         function loadLayout(name) {
             windows.forEach(w => w.close());
             windows = [];
@@ -2280,7 +3068,7 @@ Confirm order?`;
                 loadPositions();
                 loadOrders();
                 loadAccount();
-                updateWatchlistDisplay();
+                loadWorklist();
 
                 // Initialize any charts that were created
                 windows.forEach(win => {
@@ -2440,13 +3228,16 @@ Confirm order?`;
         }
 
         window.addEventListener('load', async () => {
-            console.log('%c🚀 IBKR Professional Trading Platform', 'color: #007acc; font-size: 14px; font-weight: bold;');
+            console.log('%c🚀 IBKR Professional Trading Platform', 'color: #007acc; font-size: 18px; font-weight: bold;');
 
             // Load saved watchlist
             const savedWatchlist = localStorage.getItem('watchlist');
             if (savedWatchlist) {
                 watchlist = JSON.parse(savedWatchlist);
             }
+
+            // Load auto-submit orders setting
+            loadAutoSubmitSetting();
 
             // Load default layout
             loadLayout('default');
@@ -2471,11 +3262,42 @@ Confirm order?`;
                 loadTimeSales();
                 loadPositions();
                 loadAccount();
-                updateWatchlistDisplay();
+                loadWorklist();
             }, 2000);
 
+            // Initialize order form price field based on selected order type
+            handleOrderTypeChange();
+
             console.log('%c✓ Platform Ready', 'color: #22c55e; font-weight: bold;');
-            console.log('%c💡 Click symbols in watchlist • Click Level 2 prices to fill orders • Drag & resize windows', 'color: #888; font-size: 11px;');
+            console.log('%c💡 Click symbols in watchlist • Click Level 2 prices to fill orders • Drag & resize windows', 'color: #888; font-size: 15px;');
+        });
+
+        // Dropdown menu functionality
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            const allDropdowns = document.querySelectorAll('.dropdown');
+
+            // Close all other dropdowns
+            allDropdowns.forEach(d => {
+                if (d.id !== dropdownId) {
+                    d.classList.remove('show');
+                }
+            });
+
+            // Toggle the clicked dropdown
+            dropdown.classList.toggle('show');
+
+            // Prevent event bubbling
+            event.stopPropagation();
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.menu-item')) {
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    d.classList.remove('show');
+                });
+            }
         });
     </script>
 </body>
