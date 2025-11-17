@@ -22,8 +22,9 @@ async function init() {
     // Initialize drag-and-drop
     DragDropManager.init();
 
-    // Load saved layout or default
-    const savedLayout = localStorage.getItem('dashboard-layout');
+    // Load saved layout or default (using UI-specific key)
+    const storageKey = `${UI_TYPE}_dashboard-layout`;
+    const savedLayout = localStorage.getItem(storageKey);
     if (savedLayout) {
         DragDropManager.loadLayout();
     } else {
@@ -151,7 +152,8 @@ function newDashboard() {
     if (confirm('Create a new dashboard? This will clear the current layout.')) {
         document.querySelectorAll('.widget').forEach(w => w.remove());
         WidgetManager.widgets.clear();
-        localStorage.removeItem('dashboard-layout');
+        const storageKey = `${UI_TYPE}_dashboard-layout`;
+        localStorage.removeItem(storageKey);
         console.log('New dashboard created');
     }
 }
@@ -160,10 +162,10 @@ function newDashboard() {
  * Load saved layout
  */
 async function loadLayout() {
-    const data = await MonitorAPI.getLayouts();
+    const data = await MonitorAPI.getLayouts(UI_TYPE);
 
     if (!data.success || !data.layouts.length) {
-        alert('No saved layouts found');
+        alert(`No saved layouts found for ${UI_TYPE} dashboard`);
         return;
     }
 
@@ -173,7 +175,7 @@ async function loadLayout() {
 
     if (selected) {
         await DragDropManager.loadLayout(selected);
-        console.log(`Layout "${selected}" loaded`);
+        console.log(`Layout "${selected}" loaded for ${UI_TYPE}`);
     }
 }
 
@@ -181,11 +183,11 @@ async function loadLayout() {
  * Save current layout
  */
 async function saveLayout() {
-    const layoutName = prompt('Enter a name for this layout:');
+    const layoutName = prompt(`Enter a name for this ${UI_TYPE} layout:`);
 
     if (!layoutName) return;
 
-    const isDefault = confirm('Set as default layout?');
+    const isDefault = confirm(`Set as default ${UI_TYPE} layout?`);
 
     // Get current layout
     const widgets = document.querySelectorAll('.widget');
@@ -205,8 +207,8 @@ async function saveLayout() {
     });
 
     try {
-        await MonitorAPI.saveLayout(layoutName, layout, isDefault);
-        alert(`Layout "${layoutName}" saved successfully`);
+        await MonitorAPI.saveLayout(layoutName, layout, isDefault, UI_TYPE);
+        alert(`Layout "${layoutName}" saved successfully for ${UI_TYPE} dashboard`);
     } catch (error) {
         alert('Failed to save layout: ' + error.message);
     }

@@ -49,6 +49,7 @@ class SaveLayoutRequest(BaseModel):
     layout_name: str
     layout_config: Dict[str, Any]
     is_default: bool = False
+    ui_type: str = "monitor"  # 'monitor', 'platform', 'complete_platform'
 
 
 class PerformanceQuery(BaseModel):
@@ -433,7 +434,7 @@ async def save_layout(request: SaveLayoutRequest):
     Save a custom dashboard layout
 
     Args:
-        request: Layout name, configuration (widget positions), default flag
+        request: Layout name, configuration (widget positions), default flag, UI type
 
     Returns:
         Layout ID
@@ -443,13 +444,14 @@ async def save_layout(request: SaveLayoutRequest):
         layout_id = db.save_layout(
             layout_name=request.layout_name,
             layout_config=request.layout_config,
-            is_default=request.is_default
+            is_default=request.is_default,
+            ui_type=request.ui_type
         )
 
         return {
             "success": True,
             "layout_id": layout_id,
-            "message": f"Layout '{request.layout_name}' saved successfully"
+            "message": f"Layout '{request.layout_name}' saved successfully for {request.ui_type}"
         }
 
     except Exception as e:
@@ -458,20 +460,24 @@ async def save_layout(request: SaveLayoutRequest):
 
 
 @router.get("/layouts")
-async def get_layouts():
+async def get_layouts(ui_type: Optional[str] = Query("monitor")):
     """
-    Get all saved dashboard layouts
+    Get all saved dashboard layouts for a specific UI type
+
+    Args:
+        ui_type: Filter by UI type (monitor, platform, complete_platform)
 
     Returns:
         List of layouts with configurations
     """
     try:
         db = get_db_manager()
-        layouts = db.get_layouts()
+        layouts = db.get_layouts(ui_type=ui_type)
 
         return {
             "success": True,
             "count": len(layouts),
+            "ui_type": ui_type,
             "layouts": layouts
         }
 
@@ -481,26 +487,31 @@ async def get_layouts():
 
 
 @router.get("/layouts/default")
-async def get_default_layout():
+async def get_default_layout(ui_type: Optional[str] = Query("monitor")):
     """
-    Get the default dashboard layout
+    Get the default dashboard layout for a specific UI type
+
+    Args:
+        ui_type: Filter by UI type (monitor, platform, complete_platform)
 
     Returns:
         Default layout configuration or None
     """
     try:
         db = get_db_manager()
-        layout = db.get_default_layout()
+        layout = db.get_default_layout(ui_type=ui_type)
 
         if not layout:
             return {
                 "success": True,
                 "layout": None,
-                "message": "No default layout configured"
+                "ui_type": ui_type,
+                "message": f"No default layout configured for {ui_type}"
             }
 
         return {
             "success": True,
+            "ui_type": ui_type,
             "layout": layout
         }
 

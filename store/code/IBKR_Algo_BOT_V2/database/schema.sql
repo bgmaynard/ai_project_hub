@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS user_layouts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     layout_id TEXT UNIQUE NOT NULL,
     layout_name TEXT NOT NULL,
+    ui_type TEXT DEFAULT 'monitor', -- 'monitor', 'platform', 'complete_platform'
     user_id TEXT DEFAULT 'default',
     layout_config TEXT NOT NULL, -- JSON string with widget positions
     is_default BOOLEAN DEFAULT 0,

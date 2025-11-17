@@ -365,29 +365,32 @@ class DatabaseManager:
 
     # ==================== LAYOUT MANAGEMENT ====================
 
-    def save_layout(self, layout_name: str, layout_config: Dict, is_default: bool = False) -> str:
-        """Save a dashboard layout"""
+    def save_layout(self, layout_name: str, layout_config: Dict, is_default: bool = False, ui_type: str = "monitor") -> str:
+        """Save a dashboard layout for a specific UI type"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
             layout_id = f"LAYOUT_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-            # If setting as default, unset other defaults
+            # If setting as default, unset other defaults for this UI type
             if is_default:
-                cursor.execute("UPDATE user_layouts SET is_default = 0")
+                cursor.execute("UPDATE user_layouts SET is_default = 0 WHERE ui_type = ?", (ui_type,))
 
             cursor.execute("""
                 INSERT INTO user_layouts (
-                    layout_id, layout_name, layout_config, is_default
-                ) VALUES (?, ?, ?, ?)
-            """, (layout_id, layout_name, json.dumps(layout_config), 1 if is_default else 0))
+                    layout_id, layout_name, layout_config, is_default, ui_type
+                ) VALUES (?, ?, ?, ?, ?)
+            """, (layout_id, layout_name, json.dumps(layout_config), 1 if is_default else 0, ui_type))
             conn.commit()
             return layout_id
 
-    def get_layouts(self) -> List[Dict]:
-        """Get all saved layouts"""
+    def get_layouts(self, ui_type: str = "monitor") -> List[Dict]:
+        """Get all saved layouts for a specific UI type"""
         with self.get_connection() as conn:
-            rows = conn.execute("SELECT * FROM user_layouts ORDER BY is_default DESC, layout_name").fetchall()
+            rows = conn.execute(
+                "SELECT * FROM user_layouts WHERE ui_type = ? ORDER BY is_default DESC, layout_name",
+                (ui_type,)
+            ).fetchall()
             result = []
             for row in rows:
                 d = dict(row)
@@ -395,10 +398,13 @@ class DatabaseManager:
                 result.append(d)
             return result
 
-    def get_default_layout(self) -> Optional[Dict]:
-        """Get the default layout"""
+    def get_default_layout(self, ui_type: str = "monitor") -> Optional[Dict]:
+        """Get the default layout for a specific UI type"""
         with self.get_connection() as conn:
-            row = conn.execute("SELECT * FROM user_layouts WHERE is_default = 1").fetchone()
+            row = conn.execute(
+                "SELECT * FROM user_layouts WHERE is_default = 1 AND ui_type = ?",
+                (ui_type,)
+            ).fetchone()
             if row:
                 d = dict(row)
                 d['layout_config'] = json.loads(d['layout_config'])

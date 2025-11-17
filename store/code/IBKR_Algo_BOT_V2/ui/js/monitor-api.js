@@ -245,26 +245,27 @@ const MonitorAPI = {
     /**
      * Save dashboard layout
      */
-    async saveLayout(layoutName, layoutConfig, isDefault = false) {
+    async saveLayout(layoutName, layoutConfig, isDefault = false, uiType = 'monitor') {
         return await this.post('/api/monitoring/layouts/save', {
             layout_name: layoutName,
             layout_config: layoutConfig,
-            is_default: isDefault
+            is_default: isDefault,
+            ui_type: uiType
         });
     },
 
     /**
-     * Get all saved layouts
+     * Get all saved layouts for a specific UI type
      */
-    async getLayouts() {
-        return await this.get('/api/monitoring/layouts');
+    async getLayouts(uiType = 'monitor') {
+        return await this.get('/api/monitoring/layouts', { ui_type: uiType });
     },
 
     /**
-     * Get default layout
+     * Get default layout for a specific UI type
      */
-    async getDefaultLayout() {
-        return await this.get('/api/monitoring/layouts/default');
+    async getDefaultLayout(uiType = 'monitor') {
+        return await this.get('/api/monitoring/layouts/default', { ui_type: uiType });
     }
 };
 

@@ -4,6 +4,10 @@
  * Enables widget repositioning and resizing
  */
 
+// UI Type identifier - determines storage namespace
+// Change this for different UIs: 'monitor', 'platform', 'complete_platform'
+const UI_TYPE = 'monitor';
+
 const DragDropManager = {
     draggedElement: null,
     dragStartX: 0,
@@ -192,10 +196,11 @@ const DragDropManager = {
             }
         });
 
-        // Store in localStorage
-        localStorage.setItem('dashboard-layout', JSON.stringify(layout));
+        // Store in localStorage with UI-specific key
+        const storageKey = `${UI_TYPE}_dashboard-layout`;
+        localStorage.setItem(storageKey, JSON.stringify(layout));
 
-        console.log('Layout saved:', layout);
+        console.log(`Layout saved (${UI_TYPE}):`, layout);
     },
 
     /**
@@ -205,15 +210,16 @@ const DragDropManager = {
         let layout;
 
         if (layoutName) {
-            // Load from server
-            const data = await MonitorAPI.getLayouts();
+            // Load from server (filtered by UI type)
+            const data = await MonitorAPI.getLayouts(UI_TYPE);
             const savedLayout = data.layouts.find(l => l.layout_name === layoutName);
             if (savedLayout) {
                 layout = savedLayout.layout_config;
             }
         } else {
-            // Load from localStorage
-            const stored = localStorage.getItem('dashboard-layout');
+            // Load from localStorage with UI-specific key
+            const storageKey = `${UI_TYPE}_dashboard-layout`;
+            const stored = localStorage.getItem(storageKey);
             if (stored) {
                 layout = JSON.parse(stored);
             }
@@ -249,7 +255,8 @@ const DragDropManager = {
      */
     resetLayout() {
         if (confirm('Reset to default layout? This will remove all widgets.')) {
-            localStorage.removeItem('dashboard-layout');
+            const storageKey = `${UI_TYPE}_dashboard-layout`;
+            localStorage.removeItem(storageKey);
             document.querySelectorAll('.widget').forEach(w => w.remove());
             WidgetManager.widgets.clear();
 

@@ -57,6 +57,15 @@
                     <a href="#" onclick="toggleGrid()"><i class="fas fa-border-all"></i> Toggle Grid</a>
                 </div>
             </div>
+            <div class="menu-item" onclick="openMenu('switch-ui')">
+                <i class="fas fa-desktop"></i> Switch UI
+                <div class="dropdown" id="switch-ui-menu">
+                    <strong style="padding: 0.5rem 1rem; display: block; color: var(--accent-primary);">Available Dashboards</strong>
+                    <a href="monitor.html"><i class="fas fa-chart-line"></i> Monitor Dashboard (Current)</a>
+                    <a href="http://127.0.0.1:9101/ui/platform.html" target="_blank"><i class="fas fa-layer-group"></i> Trading Platform</a>
+                    <a href="http://127.0.0.1:9101/ui/complete_platform.html" target="_blank"><i class="fas fa-th-large"></i> Complete Platform</a>
+                </div>
+            </div>
             <div class="menu-item" onclick="openMenu('tools')">
                 <i class="fas fa-tools"></i> Tools
                 <div class="dropdown" id="tools-menu">
