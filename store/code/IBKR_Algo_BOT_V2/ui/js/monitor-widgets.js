@@ -58,6 +58,39 @@ const WidgetManager = {
      */
     getWidgetConfig(type) {
         const configs = {
+            // Trading Widgets
+            'scanner-results': {
+                title: 'Scanner Results',
+                icon: 'fas fa-search',
+                refreshInterval: 5000
+            },
+            'active-orders': {
+                title: 'Active Orders',
+                icon: 'fas fa-shopping-cart',
+                refreshInterval: 2000
+            },
+            'risk-manager': {
+                title: 'Risk Manager',
+                icon: 'fas fa-shield-alt',
+                refreshInterval: 3000
+            },
+            // AI & ML Widgets
+            'ml-patterns': {
+                title: 'ML Pattern Detection',
+                icon: 'fas fa-brain',
+                refreshInterval: 10000
+            },
+            'rl-agent': {
+                title: 'RL Agent Recommendations',
+                icon: 'fas fa-robot',
+                refreshInterval: 5000
+            },
+            'sentiment': {
+                title: 'Sentiment Analysis',
+                icon: 'fas fa-comments',
+                refreshInterval: 10000
+            },
+            // Monitoring Widgets
             'active-trades': {
                 title: 'Active Trades',
                 icon: 'fas fa-list',
@@ -109,6 +142,27 @@ const WidgetManager = {
     async initializeWidget(widgetId, type) {
         try {
             switch (type) {
+                // Trading Widgets
+                case 'scanner-results':
+                    await this.updateScannerResults(widgetId);
+                    break;
+                case 'active-orders':
+                    await this.updateActiveOrders(widgetId);
+                    break;
+                case 'risk-manager':
+                    await this.updateRiskManager(widgetId);
+                    break;
+                // AI & ML Widgets
+                case 'ml-patterns':
+                    await this.updateMLPatterns(widgetId);
+                    break;
+                case 'rl-agent':
+                    await this.updateRLAgent(widgetId);
+                    break;
+                case 'sentiment':
+                    await this.updateSentiment(widgetId);
+                    break;
+                // Monitoring Widgets
                 case 'active-trades':
                     await this.updateActiveTrades(widgetId);
                     break;
@@ -404,6 +458,218 @@ const WidgetManager = {
         `).join('');
     },
 
+    // ==================== TRADING WIDGETS ====================
+
+    /**
+     * Update Scanner Results widget
+     */
+    async updateScannerResults(widgetId) {
+        const widget = document.getElementById(widgetId);
+        const tbody = widget.querySelector('#scanner-results-tbody');
+
+        try {
+            const response = await fetch('http://localhost:8000/api/warrior/scan/premarket');
+            const data = await response.json();
+
+            if (!data.success || !data.results?.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No stocks found. Click "Run Scan" to search.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.results.map(stock => `
+                <tr>
+                    <td><strong>${stock.symbol}</strong></td>
+                    <td>$${stock.price?.toFixed(2) || '--'}</td>
+                    <td class="${stock.gap_percent > 0 ? 'positive' : 'negative'}">${stock.gap_percent?.toFixed(1)}%</td>
+                    <td>${stock.relative_volume?.toFixed(1)}x</td>
+                    <td>${stock.float}M</td>
+                    <td>${stock.pattern || '--'}</td>
+                    <td>
+                        <button class="widget-btn" onclick="watchSymbol('${stock.symbol}')" title="Add to watchlist">
+                            <i class="fas fa-star"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Scanner error:', error);
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--accent-danger);">Error loading scanner results</td></tr>';
+        }
+    },
+
+    /**
+     * Update Active Orders widget
+     */
+    async updateActiveOrders(widgetId) {
+        const widget = document.getElementById(widgetId);
+        const tbody = widget.querySelector('#active-orders-tbody');
+
+        // Mock data - would fetch from IBKR API
+        const orders = [];
+
+        if (!orders.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No active orders</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = orders.map(order => `
+            <tr>
+                <td><strong>${order.symbol}</strong></td>
+                <td><span class="status-badge ${order.side}">${order.side.toUpperCase()}</span></td>
+                <td>${order.type}</td>
+                <td>${order.quantity}</td>
+                <td>$${order.limitPrice?.toFixed(2) || '--'}</td>
+                <td>${order.status}</td>
+                <td>
+                    <button class="widget-btn" onclick="cancelOrder('${order.orderId}')" title="Cancel">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    /**
+     * Update Risk Manager widget
+     */
+    async updateRiskManager(widgetId) {
+        const widget = document.getElementById(widgetId);
+
+        try {
+            const response = await fetch('http://localhost:8000/api/warrior/risk/status');
+            const data = await response.json();
+
+            if (!data.success) return;
+
+            const risk = data.risk_status;
+
+            widget.querySelector('#risk-daily-used').textContent = `$${risk.daily_loss_used?.toFixed(2) || '0.00'}`;
+            widget.querySelector('#risk-position-limit').textContent = risk.position_size_limit || '--';
+            widget.querySelector('#risk-max-loss').textContent = `$${risk.max_loss_per_trade || '50'}`;
+            widget.querySelector('#risk-trades-today').textContent = risk.trades_today || '0';
+
+            // Update risk bar
+            const dailyLimit = risk.daily_loss_limit || 100;
+            const used = risk.daily_loss_used || 0;
+            const percent = (used / dailyLimit) * 100;
+
+            const riskBar = widget.querySelector('#risk-daily-bar');
+            riskBar.style.width = `${Math.min(percent, 100)}%`;
+            riskBar.className = 'risk-bar-fill';
+            if (percent > 75) riskBar.classList.add('critical');
+            else if (percent > 50) riskBar.classList.add('warning');
+
+        } catch (error) {
+            console.error('Risk manager error:', error);
+        }
+    },
+
+    // ==================== AI & ML WIDGETS ====================
+
+    /**
+     * Update ML Pattern Detection widget
+     */
+    async updateMLPatterns(widgetId) {
+        const widget = document.getElementById(widgetId);
+        const tbody = widget.querySelector('#ml-patterns-tbody');
+
+        // Mock data - would fetch from ML API
+        const patterns = [];
+
+        if (!patterns.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Enter a symbol and click "Detect" to analyze patterns</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = patterns.map(pattern => `
+            <tr>
+                <td><strong>${pattern.symbol}</strong></td>
+                <td>${pattern.pattern_type}</td>
+                <td class="${pattern.confidence > 0.7 ? 'positive' : 'neutral'}">${(pattern.confidence * 100).toFixed(0)}%</td>
+                <td>$${pattern.price_target?.toFixed(2) || '--'}</td>
+                <td>$${pattern.stop_loss?.toFixed(2) || '--'}</td>
+                <td>${pattern.rr_ratio?.toFixed(1) || '--'}:1</td>
+            </tr>
+        `).join('');
+    },
+
+    /**
+     * Update RL Agent Recommendations widget
+     */
+    async updateRLAgent(widgetId) {
+        const widget = document.getElementById(widgetId);
+
+        // Mock data - would fetch from RL API
+        const recommendation = {
+            action: 'HOLD',
+            confidence: 0.75,
+            trend: 'Bullish',
+            volatility: 'Moderate',
+            sentiment: '+0.45'
+        };
+
+        widget.querySelector('.rec-action').textContent = recommendation.action;
+        widget.querySelector('#rl-confidence').textContent = `${(recommendation.confidence * 100).toFixed(0)}%`;
+        widget.querySelector('#rl-trend').textContent = recommendation.trend;
+        widget.querySelector('#rl-volatility').textContent = recommendation.volatility;
+        widget.querySelector('#rl-sentiment').textContent = recommendation.sentiment;
+
+        // Color code action
+        const actionEl = widget.querySelector('.rec-action');
+        actionEl.className = 'rec-action';
+        if (recommendation.action === 'ENTER' || recommendation.action === 'SIZE_UP') {
+            actionEl.style.color = 'var(--accent-success)';
+        } else if (recommendation.action === 'EXIT' || recommendation.action === 'SIZE_DOWN') {
+            actionEl.style.color = 'var(--accent-danger)';
+        }
+    },
+
+    /**
+     * Update Sentiment Analysis widget
+     */
+    async updateSentiment(widgetId) {
+        const widget = document.getElementById(widgetId);
+
+        // Mock data - would fetch from sentiment API
+        const sentiment = {
+            overall_score: 0.0,
+            news_score: 0.0,
+            twitter_score: 0.0,
+            reddit_score: 0.0
+        };
+
+        const scoreEl = widget.querySelector('#sentiment-overall-score');
+        scoreEl.textContent = sentiment.overall_score.toFixed(2);
+
+        // Color code score
+        scoreEl.className = 'sentiment-score';
+        if (sentiment.overall_score > 0.2) {
+            scoreEl.classList.add('positive');
+        } else if (sentiment.overall_score < -0.2) {
+            scoreEl.classList.add('negative');
+        } else {
+            scoreEl.classList.add('neutral');
+        }
+
+        // Update bar
+        const barPercent = ((sentiment.overall_score + 1) / 2) * 100;
+        const barEl = widget.querySelector('#sentiment-bar');
+        barEl.style.width = `${barPercent}%`;
+
+        if (sentiment.overall_score > 0.2) {
+            barEl.style.background = 'var(--accent-success)';
+        } else if (sentiment.overall_score < -0.2) {
+            barEl.style.background = 'var(--accent-danger)';
+        } else {
+            barEl.style.background = 'var(--accent-warning)';
+        }
+
+        // Update sources
+        widget.querySelector('#sentiment-news').textContent = sentiment.news_score.toFixed(2);
+        widget.querySelector('#sentiment-twitter').textContent = sentiment.twitter_score.toFixed(2);
+        widget.querySelector('#sentiment-reddit').textContent = sentiment.reddit_score.toFixed(2);
+    },
+
     /**
      * Remove widget
      */
@@ -460,5 +726,85 @@ function exitTrade(tradeId) {
     if (confirm('Exit this trade?')) {
         console.log('Exiting trade:', tradeId);
         // Would call trade exit API
+    }
+}
+
+// ==================== TRADING WIDGET HELPERS ====================
+
+async function runScan() {
+    const scanType = document.getElementById('scanner-type')?.value || 'premarket';
+    console.log('Running scan:', scanType);
+
+    // Refresh scanner widgets
+    document.querySelectorAll('[data-type="scanner-results"]').forEach(widget => {
+        WidgetManager.initializeWidget(widget.id, 'scanner-results');
+    });
+}
+
+function watchSymbol(symbol) {
+    console.log('Adding to watchlist:', symbol);
+    // Would call watchlist API
+    alert(`Added ${symbol} to watchlist`);
+}
+
+function cancelOrder(orderId) {
+    if (confirm('Cancel this order?')) {
+        console.log('Canceling order:', orderId);
+        // Would call IBKR cancel order API
+    }
+}
+
+// ==================== AI & ML WIDGET HELPERS ====================
+
+async function detectPattern() {
+    const symbol = document.getElementById('ml-symbol')?.value?.trim().toUpperCase();
+    if (!symbol) {
+        alert('Please enter a symbol');
+        return;
+    }
+
+    console.log('Detecting pattern for:', symbol);
+
+    try {
+        const response = await fetch(`http://localhost:8000/api/ml/detect-pattern`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol, timeframe: '5min' })
+        });
+
+        const data = await response.json();
+        console.log('Pattern detection result:', data);
+
+        // Refresh ML pattern widgets
+        document.querySelectorAll('[data-type="ml-patterns"]').forEach(widget => {
+            WidgetManager.initializeWidget(widget.id, 'ml-patterns');
+        });
+    } catch (error) {
+        console.error('Pattern detection error:', error);
+        alert('Error detecting pattern. Check console for details.');
+    }
+}
+
+async function analyzeSentiment() {
+    const symbol = document.getElementById('sentiment-symbol')?.value?.trim().toUpperCase();
+    if (!symbol) {
+        alert('Please enter a symbol');
+        return;
+    }
+
+    console.log('Analyzing sentiment for:', symbol);
+
+    try {
+        const response = await fetch(`http://localhost:8000/api/sentiment/analyze/${symbol}`);
+        const data = await response.json();
+        console.log('Sentiment analysis result:', data);
+
+        // Refresh sentiment widgets
+        document.querySelectorAll('[data-type="sentiment"]').forEach(widget => {
+            WidgetManager.initializeWidget(widget.id, 'sentiment');
+        });
+    } catch (error) {
+        console.error('Sentiment analysis error:', error);
+        alert('Error analyzing sentiment. Check console for details.');
     }
 }

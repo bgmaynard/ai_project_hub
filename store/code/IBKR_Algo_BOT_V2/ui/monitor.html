@@ -28,6 +28,17 @@
             <div class="menu-item" onclick="openMenu('widgets')">
                 <i class="fas fa-th"></i> Widgets
                 <div class="dropdown" id="widgets-menu">
+                    <strong style="padding: 0.5rem 1rem; display: block; color: var(--accent-primary);">Trading</strong>
+                    <a href="#" onclick="addWidget('scanner-results')"><i class="fas fa-search"></i> Scanner Results</a>
+                    <a href="#" onclick="addWidget('active-orders')"><i class="fas fa-shopping-cart"></i> Active Orders</a>
+                    <a href="#" onclick="addWidget('risk-manager')"><i class="fas fa-shield-alt"></i> Risk Manager</a>
+                    <hr>
+                    <strong style="padding: 0.5rem 1rem; display: block; color: var(--accent-primary);">AI & ML</strong>
+                    <a href="#" onclick="addWidget('ml-patterns')"><i class="fas fa-brain"></i> ML Pattern Detection</a>
+                    <a href="#" onclick="addWidget('rl-agent')"><i class="fas fa-robot"></i> RL Agent Recommendations</a>
+                    <a href="#" onclick="addWidget('sentiment')"><i class="fas fa-comments"></i> Sentiment Analysis</a>
+                    <hr>
+                    <strong style="padding: 0.5rem 1rem; display: block; color: var(--accent-primary);">Monitoring</strong>
                     <a href="#" onclick="addWidget('active-trades')"><i class="fas fa-list"></i> Active Trades</a>
                     <a href="#" onclick="addWidget('trade-history')"><i class="fas fa-history"></i> Trade History</a>
                     <a href="#" onclick="addWidget('performance')"><i class="fas fa-chart-bar"></i> Performance Metrics</a>
@@ -264,6 +275,175 @@
         <div class="widget-scroll">
             <div class="alerts-list" id="alerts-list">
                 <!-- Populated via JS -->
+            </div>
+        </div>
+    </template>
+
+    <!-- Scanner Results Widget Template -->
+    <template id="scanner-results-template">
+        <div class="widget-filters">
+            <button onclick="runScan()" style="background: var(--accent-success);"><i class="fas fa-play"></i> Run Scan</button>
+            <select id="scanner-type">
+                <option value="premarket">Pre-Market</option>
+                <option value="momentum">Momentum</option>
+                <option value="gappers">Gappers</option>
+            </select>
+        </div>
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Price</th>
+                        <th>Gap %</th>
+                        <th>RVOL</th>
+                        <th>Float</th>
+                        <th>Pattern</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="scanner-results-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- Active Orders Widget Template -->
+    <template id="active-orders-template">
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Side</th>
+                        <th>Type</th>
+                        <th>Qty</th>
+                        <th>Limit Price</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="active-orders-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- Risk Manager Widget Template -->
+    <template id="risk-manager-template">
+        <div class="risk-overview">
+            <div class="metric-card">
+                <div class="metric-label">Daily Risk Used</div>
+                <div class="metric-value" id="risk-daily-used">$0</div>
+                <div class="risk-bar">
+                    <div class="risk-bar-fill" id="risk-daily-bar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Position Size Limit</div>
+                <div class="metric-value" id="risk-position-limit">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Max Loss Per Trade</div>
+                <div class="metric-value" id="risk-max-loss">$50</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Trades Today</div>
+                <div class="metric-value" id="risk-trades-today">0</div>
+            </div>
+        </div>
+    </template>
+
+    <!-- ML Pattern Detection Widget Template -->
+    <template id="ml-patterns-template">
+        <div class="widget-filters">
+            <input type="text" placeholder="Symbol..." id="ml-symbol">
+            <button onclick="detectPattern()"><i class="fas fa-search"></i> Detect</button>
+        </div>
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Pattern</th>
+                        <th>Confidence</th>
+                        <th>Target</th>
+                        <th>Stop</th>
+                        <th>R:R</th>
+                    </tr>
+                </thead>
+                <tbody id="ml-patterns-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- RL Agent Recommendations Widget Template -->
+    <template id="rl-agent-template">
+        <div class="rl-recommendations">
+            <div class="recommendation-card" id="rl-current-action">
+                <div class="rec-header">
+                    <i class="fas fa-robot"></i>
+                    <span>Current Recommendation</span>
+                </div>
+                <div class="rec-action">--</div>
+                <div class="rec-confidence">Confidence: <span id="rl-confidence">--</span></div>
+            </div>
+            <div class="recommendation-card">
+                <div class="rec-header">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Market State</span>
+                </div>
+                <div class="state-grid">
+                    <div class="state-item">
+                        <span>Trend:</span>
+                        <span id="rl-trend">--</span>
+                    </div>
+                    <div class="state-item">
+                        <span>Volatility:</span>
+                        <span id="rl-volatility">--</span>
+                    </div>
+                    <div class="state-item">
+                        <span>Sentiment:</span>
+                        <span id="rl-sentiment">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Sentiment Analysis Widget Template -->
+    <template id="sentiment-template">
+        <div class="widget-filters">
+            <input type="text" placeholder="Symbol..." id="sentiment-symbol">
+            <button onclick="analyzeSentiment()"><i class="fas fa-search"></i> Analyze</button>
+        </div>
+        <div class="widget-scroll">
+            <div class="sentiment-result" id="sentiment-result">
+                <div class="sentiment-score-card">
+                    <div class="sentiment-label">Overall Score</div>
+                    <div class="sentiment-score" id="sentiment-overall-score">0.00</div>
+                    <div class="sentiment-bar">
+                        <div class="sentiment-bar-fill" id="sentiment-bar" style="width: 50%; background: var(--accent-warning);"></div>
+                    </div>
+                </div>
+                <div class="sentiment-sources">
+                    <div class="source-card">
+                        <div class="source-label"><i class="fas fa-newspaper"></i> News</div>
+                        <div class="source-score" id="sentiment-news">--</div>
+                    </div>
+                    <div class="source-card">
+                        <div class="source-label"><i class="fab fa-twitter"></i> Twitter</div>
+                        <div class="source-score" id="sentiment-twitter">--</div>
+                    </div>
+                    <div class="source-card">
+                        <div class="source-label"><i class="fab fa-reddit"></i> Reddit</div>
+                        <div class="source-score" id="sentiment-reddit">--</div>
+                    </div>
+                </div>
             </div>
         </div>
     </template>
