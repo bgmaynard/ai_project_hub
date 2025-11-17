@@ -1330,6 +1330,9 @@
     </div>
 
     <script>
+        // API Configuration
+        const API_BASE_URL = 'http://127.0.0.1:9101';
+
         let currentSymbol = 'AAPL';
         let updateInterval;
         let watchlist = ['AAPL', 'TSLA', 'SPY', 'QQQ'];
@@ -1828,27 +1831,57 @@
                 return;
             }
 
-            const order = {
-                symbol,
-                side,
-                quantity,
-                orderType,
-                price,
-                stopPrice,
-                tif
+            // Build order request matching IBKR API format
+            const orderRequest = {
+                symbol: symbol.trim().toUpperCase(),
+                action: side,
+                quantity: parseInt(quantity),
+                order_type: orderType,
+                limit_price: (orderType === 'LIMIT' || orderType === 'STOP_LIMIT') ? parseFloat(price) : null,
+                stop_price: (orderType === 'STOP' || orderType === 'STOP_LIMIT') ? parseFloat(stopPrice) : null,
+                tif: tif,
+                extended_hours: false,
+                exchange: 'SMART'
             };
 
-            console.log('Order submitted:', order);
+            console.log('Placing order:', orderRequest);
 
-            // Show confirmation alert only if auto-submit is disabled
-            if (!autoSubmit) {
-                alert(`${side} ORDER SUBMITTED\n\nSymbol: ${symbol}\nQty: ${quantity}\nType: ${orderType}\nTIF: ${tif}${price ? '\nPrice: $' + price.toFixed(2) : ''}${stopPrice ? '\nStop: $' + stopPrice.toFixed(2) : ''}\n\n⚠️ Connect to IBKR to execute real orders`);
-            } else {
-                console.log(`✓ AUTO-SUBMIT: ${side} ${quantity} ${symbol} @ ${orderType}`);
+            try {
+                // Actually submit order to IBKR API
+                const response = await fetch(API_BASE_URL + '/api/ibkr/place-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderRequest)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Success - show confirmation if not auto-submit
+                    if (!autoSubmit) {
+                        alert(`✓ Order placed successfully!\n\nOrder ID: ${data.order_id}\nStatus: ${data.status}\n\nSymbol: ${symbol}\nQty: ${quantity}\nType: ${orderType}\nTIF: ${tif}${price ? '\nPrice: $' + price.toFixed(2) : ''}${stopPrice ? '\nStop: $' + stopPrice.toFixed(2) : ''}`);
+                    } else {
+                        console.log(`✓ Order ${data.order_id} placed: ${side} ${quantity} ${symbol}`);
+                    }
+
+                    // Clear form fields
+                    document.getElementById('orderSymbol').value = '';
+                    document.getElementById('orderQuantity').value = '';
+                    if (document.getElementById('orderPriceManual')) {
+                        document.getElementById('orderPriceManual').value = '';
+                    }
+
+                    // Refresh orders display
+                    await loadOrders();
+                } else {
+                    // Error - show error message
+                    const errorMsg = data.detail || data.message || 'Unknown error';
+                    alert(`✗ Failed to place order\n\n${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error placing order:', error);
+                alert(`✗ Failed to place order\n\nError: ${error.message}\n\nMake sure IBKR Gateway is running and API is connected.`);
             }
-
-            // Refresh orders display
-            await loadOrders();
         }
 
         // Account Info Functions
