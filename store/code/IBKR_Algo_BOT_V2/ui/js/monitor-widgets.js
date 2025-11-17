@@ -630,44 +630,127 @@ const WidgetManager = {
     async updateSentiment(widgetId) {
         const widget = document.getElementById(widgetId);
 
-        // Mock data - would fetch from sentiment API
-        const sentiment = {
-            overall_score: 0.0,
-            news_score: 0.0,
-            twitter_score: 0.0,
-            reddit_score: 0.0
-        };
+        try {
+            // Get symbol from input or use default
+            const symbolInput = widget.querySelector('#sentiment-symbol');
+            const symbol = symbolInput?.value?.toUpperCase().trim() || 'SPY';
 
-        const scoreEl = widget.querySelector('#sentiment-overall-score');
-        scoreEl.textContent = sentiment.overall_score.toFixed(2);
+            // Fetch sentiment data from API
+            const response = await fetch(`http://127.0.0.1:9101/api/sentiment/${symbol}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
 
-        // Color code score
-        scoreEl.className = 'sentiment-score';
-        if (sentiment.overall_score > 0.2) {
-            scoreEl.classList.add('positive');
-        } else if (sentiment.overall_score < -0.2) {
-            scoreEl.classList.add('negative');
-        } else {
-            scoreEl.classList.add('neutral');
+            const data = await response.json();
+
+            // Update overall score
+            const scoreEl = widget.querySelector('#sentiment-overall-score');
+            scoreEl.textContent = data.overall_score.toFixed(2);
+
+            // Color code score
+            scoreEl.className = 'sentiment-score';
+            if (data.overall_score > 0.2) {
+                scoreEl.classList.add('positive');
+            } else if (data.overall_score < -0.2) {
+                scoreEl.classList.add('negative');
+            } else {
+                scoreEl.classList.add('neutral');
+            }
+
+            // Update bar
+            const barPercent = ((data.overall_score + 1) / 2) * 100;
+            const barEl = widget.querySelector('#sentiment-bar');
+            barEl.style.width = `${barPercent}%`;
+
+            if (data.overall_score > 0.2) {
+                barEl.style.background = 'var(--accent-success)';
+            } else if (data.overall_score < -0.2) {
+                barEl.style.background = 'var(--accent-danger)';
+            } else {
+                barEl.style.background = 'var(--accent-warning)';
+            }
+
+            // Update sources
+            const newsScore = data.source_scores.news || 0;
+            const twitterScore = data.source_scores.twitter || 0;
+            const redditScore = data.source_scores.reddit || 0;
+
+            widget.querySelector('#sentiment-news').textContent = newsScore.toFixed(2);
+            widget.querySelector('#sentiment-twitter').textContent = twitterScore.toFixed(2);
+            widget.querySelector('#sentiment-reddit').textContent = redditScore.toFixed(2);
+
+            // Update breaking news alert
+            const breakingNewsAlert = widget.querySelector('#breaking-news-alert');
+            if (data.breaking_news) {
+                const bn = data.breaking_news;
+
+                // Show alert
+                breakingNewsAlert.style.display = 'block';
+
+                // Set alert color based on type
+                if (bn.alert_type === 'positive') {
+                    breakingNewsAlert.style.borderLeftColor = 'var(--accent-success)';
+                    breakingNewsAlert.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+                } else if (bn.alert_type === 'negative') {
+                    breakingNewsAlert.style.borderLeftColor = 'var(--accent-danger)';
+                    breakingNewsAlert.style.backgroundColor = 'rgba(244, 67, 54, 0.1)';
+                } else {
+                    breakingNewsAlert.style.borderLeftColor = 'var(--accent-warning)';
+                    breakingNewsAlert.style.backgroundColor = 'rgba(255, 193, 7, 0.1)';
+                }
+
+                // Update type
+                widget.querySelector('#breaking-news-type').textContent = `${bn.alert_type} BREAKING NEWS`;
+
+                // Update severity badge
+                const severityBadge = widget.querySelector('#breaking-news-severity');
+                const severityPercent = (bn.severity * 100).toFixed(0);
+                severityBadge.textContent = `${severityPercent}% SEVERITY`;
+                severityBadge.className = 'status-badge';
+                if (bn.severity > 0.7) {
+                    severityBadge.style.background = 'var(--accent-danger)';
+                } else if (bn.severity > 0.4) {
+                    severityBadge.style.background = 'var(--accent-warning)';
+                } else {
+                    severityBadge.style.background = 'var(--accent-info)';
+                }
+
+                // Update headline
+                widget.querySelector('#breaking-news-headline').textContent = bn.headline;
+
+                // Update sources count
+                widget.querySelector('#breaking-news-sources').textContent =
+                    `${bn.sources_count} source${bn.sources_count !== 1 ? 's' : ''}`;
+
+                // Update time
+                const triggerTime = new Date(bn.trigger_time);
+                const now = new Date();
+                const minutesAgo = Math.floor((now - triggerTime) / 60000);
+                let timeText;
+                if (minutesAgo < 1) {
+                    timeText = 'Just now';
+                } else if (minutesAgo < 60) {
+                    timeText = `${minutesAgo}m ago`;
+                } else {
+                    const hoursAgo = Math.floor(minutesAgo / 60);
+                    timeText = `${hoursAgo}h ago`;
+                }
+                widget.querySelector('#breaking-news-time').textContent = timeText;
+            } else {
+                // Hide alert if no breaking news
+                breakingNewsAlert.style.display = 'none';
+            }
+
+        } catch (error) {
+            console.error('Failed to fetch sentiment data:', error);
+            // Show fallback data on error
+            const scoreEl = widget.querySelector('#sentiment-overall-score');
+            scoreEl.textContent = '--';
+            widget.querySelector('#sentiment-news').textContent = '--';
+            widget.querySelector('#sentiment-twitter').textContent = '--';
+            widget.querySelector('#sentiment-reddit').textContent = '--';
+            widget.querySelector('#breaking-news-alert').style.display = 'none';
         }
-
-        // Update bar
-        const barPercent = ((sentiment.overall_score + 1) / 2) * 100;
-        const barEl = widget.querySelector('#sentiment-bar');
-        barEl.style.width = `${barPercent}%`;
-
-        if (sentiment.overall_score > 0.2) {
-            barEl.style.background = 'var(--accent-success)';
-        } else if (sentiment.overall_score < -0.2) {
-            barEl.style.background = 'var(--accent-danger)';
-        } else {
-            barEl.style.background = 'var(--accent-warning)';
-        }
-
-        // Update sources
-        widget.querySelector('#sentiment-news').textContent = sentiment.news_score.toFixed(2);
-        widget.querySelector('#sentiment-twitter').textContent = sentiment.twitter_score.toFixed(2);
-        widget.querySelector('#sentiment-reddit').textContent = sentiment.reddit_score.toFixed(2);
     },
 
     /**

@@ -64,6 +64,45 @@ class SentimentSignal:
 
 
 @dataclass
+class BreakingNewsAlert:
+    """Breaking news alert - trigger for warrior trading system"""
+    symbol: str
+    timestamp: datetime
+    alert_type: str  # 'positive', 'negative', 'neutral'
+    severity: float  # 0.0 to 1.0 (how significant is this news)
+    sentiment_score: float  # -1.0 to 1.0
+    confidence: float  # 0.0 to 1.0
+    sources_count: int  # Number of sources reporting
+    headline: str  # Main headline or summary
+    signals: List[SentimentSignal]  # The breaking news signals
+    trigger_time: datetime  # When this alert was triggered
+
+    def to_dict(self) -> Dict:
+        """Convert to dictionary for API response"""
+        return {
+            'symbol': self.symbol,
+            'timestamp': self.timestamp.isoformat(),
+            'alert_type': self.alert_type,
+            'severity': self.severity,
+            'sentiment_score': self.sentiment_score,
+            'confidence': self.confidence,
+            'sources_count': self.sources_count,
+            'headline': self.headline,
+            'trigger_time': self.trigger_time.isoformat(),
+            'signals': [
+                {
+                    'source': s.source,
+                    'text': s.text,
+                    'score': s.score,
+                    'url': s.url,
+                    'timestamp': s.timestamp.isoformat()
+                }
+                for s in self.signals[:3]  # Top 3 signals
+            ]
+        }
+
+
+@dataclass
 class AggregatedSentiment:
     """Aggregated sentiment across all sources"""
     symbol: str
@@ -76,6 +115,7 @@ class AggregatedSentiment:
     trending: bool  # Is this symbol trending?
     momentum: float  # Sentiment momentum (rate of change)
     top_signals: List[SentimentSignal]  # Top 5 signals
+    breaking_news: Optional['BreakingNewsAlert'] = None  # Breaking news alert if detected
 
 
 class FinBERTSentimentAnalyzer:
@@ -635,6 +675,9 @@ class WarriorSentimentAnalyzer:
         older_score = np.mean([s.score for s in older_signals]) if older_signals else 0.0
         momentum = recent_score - older_score
 
+        # Detect breaking news
+        breaking_news = self._detect_breaking_news(symbol, signals)
+
         return AggregatedSentiment(
             symbol=symbol,
             timestamp=datetime.now(),
@@ -645,7 +688,115 @@ class WarriorSentimentAnalyzer:
             source_counts=dict(source_counts),
             trending=trending,
             momentum=momentum,
-            top_signals=top_signals
+            top_signals=top_signals,
+            breaking_news=breaking_news
+        )
+
+    def _detect_breaking_news(
+        self,
+        symbol: str,
+        signals: List[SentimentSignal]
+    ) -> Optional[BreakingNewsAlert]:
+        """
+        Detect breaking news based on recent, high-impact signals
+
+        Criteria for breaking news:
+        1. Very recent (within last 2 hours)
+        2. High absolute sentiment score (>0.6)
+        3. High confidence (>0.7)
+        4. Multiple sources OR high engagement
+        """
+        if not signals:
+            return None
+
+        # Filter for very recent signals (last 2 hours)
+        recent_cutoff = datetime.now() - timedelta(hours=2)
+        recent_signals = [s for s in signals if s.timestamp > recent_cutoff]
+
+        if not recent_signals:
+            return None
+
+        # Filter for high-impact signals (high score & confidence)
+        high_impact = [
+            s for s in recent_signals
+            if abs(s.score) > 0.6 and s.confidence > 0.7
+        ]
+
+        if not high_impact:
+            return None
+
+        # Check if we have multiple sources or high engagement
+        sources = set(s.source for s in high_impact)
+        has_multiple_sources = len(sources) >= 2
+
+        # Check for high engagement on social signals
+        high_engagement = False
+        for signal in high_impact:
+            if signal.metrics:
+                if signal.source == 'twitter':
+                    likes = signal.metrics.get('like_count', 0)
+                    retweets = signal.metrics.get('retweet_count', 0)
+                    if likes + retweets * 2 > 500:  # High engagement threshold
+                        high_engagement = True
+                        break
+                elif signal.source == 'reddit':
+                    upvotes = signal.metrics.get('upvotes', 0)
+                    if upvotes > 200:  # High upvotes threshold
+                        high_engagement = True
+                        break
+
+        # Trigger breaking news if multiple sources OR high engagement
+        if not (has_multiple_sources or high_engagement):
+            return None
+
+        # Calculate breaking news metrics
+        avg_score = np.mean([s.score for s in high_impact])
+        avg_confidence = np.mean([s.confidence for s in high_impact])
+
+        # Determine alert type
+        if avg_score > 0.3:
+            alert_type = 'positive'
+        elif avg_score < -0.3:
+            alert_type = 'negative'
+        else:
+            alert_type = 'neutral'
+
+        # Calculate severity (0.0 to 1.0)
+        # Based on: absolute score, confidence, number of sources, recency
+        score_factor = min(abs(avg_score), 1.0)
+        confidence_factor = avg_confidence
+        source_factor = min(len(sources) / 3.0, 1.0)  # Cap at 3 sources
+        recency_factor = min(len(high_impact) / 10.0, 1.0)  # More signals = more severe
+
+        severity = (
+            score_factor * 0.4 +
+            confidence_factor * 0.3 +
+            source_factor * 0.2 +
+            recency_factor * 0.1
+        )
+
+        # Sort by confidence * abs(score) to get best signals
+        sorted_signals = sorted(
+            high_impact,
+            key=lambda s: s.confidence * abs(s.score),
+            reverse=True
+        )
+
+        # Generate headline from top signal
+        top_signal = sorted_signals[0]
+        headline = top_signal.text[:150] + "..." if len(top_signal.text) > 150 else top_signal.text
+
+        return BreakingNewsAlert(
+            symbol=symbol,
+            timestamp=top_signal.timestamp,
+            alert_type=alert_type,
+            severity=severity,
+            sentiment_score=avg_score,
+            confidence=avg_confidence,
+            sources_count=len(sources),
+            headline=headline,
+            signals=sorted_signals[:5],  # Top 5 signals
+            trigger_time=datetime.now()
         )
 
     async def close(self):

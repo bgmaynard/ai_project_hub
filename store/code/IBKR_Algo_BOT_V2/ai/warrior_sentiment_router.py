@@ -14,7 +14,8 @@ import logging
 from ai.warrior_sentiment_analyzer import (
     get_sentiment_analyzer,
     AggregatedSentiment,
-    SentimentSignal
+    SentimentSignal,
+    BreakingNewsAlert
 )
 
 
@@ -38,6 +39,20 @@ class SentimentSignalResponse(BaseModel):
     metrics: Optional[dict] = None
 
 
+class BreakingNewsAlertResponse(BaseModel):
+    """Breaking news alert"""
+    symbol: str
+    timestamp: datetime
+    alert_type: str = Field(..., description="positive, negative, or neutral")
+    severity: float = Field(..., ge=0.0, le=1.0, description="Alert severity (0 to 1)")
+    sentiment_score: float = Field(..., ge=-1.0, le=1.0)
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    sources_count: int
+    headline: str
+    trigger_time: datetime
+    signals: List[dict] = Field(default_factory=list, description="Top signals")
+
+
 class AggregatedSentimentResponse(BaseModel):
     """Aggregated sentiment across all sources"""
     symbol: str
@@ -50,6 +65,7 @@ class AggregatedSentimentResponse(BaseModel):
     trending: bool
     momentum: float
     top_signals: List[SentimentSignalResponse]
+    breaking_news: Optional[BreakingNewsAlertResponse] = None
 
 
 class SentimentHealthResponse(BaseModel):
@@ -417,6 +433,78 @@ async def get_trending_symbols(
 
     except Exception as e:
         logger.error(f"Failed to get trending symbols: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/breaking-news", response_model=List[BreakingNewsAlertResponse])
+async def get_breaking_news(
+    limit: int = Query(10, ge=1, le=50, description="Maximum alerts to return"),
+    min_severity: float = Query(0.5, ge=0.0, le=1.0, description="Minimum severity threshold")
+):
+    """
+    Get current breaking news alerts across all tracked symbols
+
+    Breaking news is detected when:
+    - Very recent signals (last 2 hours)
+    - High sentiment scores (>0.6 absolute)
+    - High confidence (>0.7)
+    - Multiple sources OR high social engagement
+
+    Args:
+        limit: Maximum number of alerts to return
+        min_severity: Minimum severity threshold (0.0 to 1.0)
+
+    Returns:
+        List of breaking news alerts sorted by severity
+    """
+    try:
+        analyzer = get_sentiment_analyzer()
+
+        breaking_news_alerts = []
+
+        # Check all cached sentiment results for breaking news
+        for cache_key, sentiment in analyzer.sentiment_cache.items():
+            if sentiment.breaking_news and sentiment.breaking_news.severity >= min_severity:
+                breaking_news_alerts.append(sentiment.breaking_news.to_dict())
+
+        # Sort by severity (most severe first)
+        breaking_news_alerts.sort(key=lambda x: x['severity'], reverse=True)
+
+        return breaking_news_alerts[:limit]
+
+    except Exception as e:
+        logger.error(f"Failed to get breaking news: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{symbol}/breaking-news", response_model=Optional[BreakingNewsAlertResponse])
+async def get_symbol_breaking_news(
+    symbol: str,
+    hours: int = Query(24, ge=1, le=72, description="Hours to analyze")
+):
+    """
+    Check for breaking news alerts for a specific symbol
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        hours: Hours to analyze (default: 24)
+
+    Returns:
+        Breaking news alert if detected, None otherwise
+    """
+    try:
+        analyzer = get_sentiment_analyzer()
+
+        # Analyze the symbol
+        sentiment = await analyzer.analyze_symbol(symbol.upper(), hours=hours)
+
+        if sentiment.breaking_news:
+            return sentiment.breaking_news.to_dict()
+        else:
+            return None
+
+    except Exception as e:
+        logger.error(f"Failed to check breaking news for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
