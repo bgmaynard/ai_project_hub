@@ -181,6 +181,9 @@ const WidgetManager = {
                 case 'slippage':
                     await this.updateSlippage(widgetId);
                     break;
+                case 'watch-list':
+                    await this.updateWatchList(widgetId);
+                    break;
                 case 'alerts':
                     await this.updateAlerts(widgetId);
                     break;
@@ -754,6 +757,57 @@ const WidgetManager = {
     },
 
     /**
+     * Update Watch List widget
+     */
+    async updateWatchList(widgetId) {
+        const widget = document.getElementById(widgetId);
+        const tbody = widget.querySelector('#worklist-tbody');
+
+        try {
+            // Fetch worklist from server (syncs with complete_platform.html and platform.html)
+            const response = await fetch('http://127.0.0.1:9101/api/worklist');
+            const data = await response.json();
+
+            if (!data.success || !data.data || data.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No symbols in worklist</td></tr>';
+                return;
+            }
+
+            // Display worklist items
+            tbody.innerHTML = data.data.map(item => {
+                const changeClass = (item.change_percent || 0) >= 0 ? 'positive' : 'negative';
+                const predictionIcon = item.prediction === 'UP' ? 'fas fa-arrow-up' :
+                                     item.prediction === 'DOWN' ? 'fas fa-arrow-down' :
+                                     'fas fa-minus';
+                const predictionClass = item.prediction === 'UP' ? 'positive' :
+                                       item.prediction === 'DOWN' ? 'negative' :
+                                       'neutral';
+
+                return `
+                    <tr>
+                        <td><strong>${item.symbol}</strong></td>
+                        <td>$${(item.current_price || 0).toFixed(2)}</td>
+                        <td class="${changeClass}">${(item.change_percent || 0).toFixed(2)}%</td>
+                        <td>${((item.volume || 0) / 1000000).toFixed(2)}M</td>
+                        <td class="${predictionClass}">
+                            <i class="${predictionIcon}"></i> ${item.prediction || '--'}
+                            ${item.confidence ? ` (${(item.confidence * 100).toFixed(0)}%)` : ''}
+                        </td>
+                        <td>
+                            <button class="widget-btn" onclick="removeFromWorklist('${item.symbol}')" title="Remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error('Failed to update watch list:', error);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--accent-danger);">Failed to load worklist</td></tr>';
+        }
+    },
+
+    /**
      * Remove widget
      */
     removeWidget(widgetId) {
@@ -792,6 +846,63 @@ function toggleWidget(button) {
 function removeWidget(button) {
     const widget = button.closest('.widget');
     WidgetManager.removeWidget(widget.id);
+}
+
+// Worklist management functions
+async function addToWorklist() {
+    const input = document.getElementById('worklist-input');
+    const symbol = input.value.toUpperCase().trim();
+
+    if (!symbol) return;
+
+    try {
+        const response = await fetch('http://127.0.0.1:9101/api/worklist/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol: symbol, exchange: 'SMART' })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            input.value = '';
+            // Refresh all watch-list widgets
+            WidgetManager.widgets.forEach((widgetData, widgetId) => {
+                if (widgetData.type === 'watch-list') {
+                    WidgetManager.initializeWidget(widgetId, 'watch-list');
+                }
+            });
+        } else {
+            alert('Failed to add symbol: ' + (data.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Failed to add to worklist:', error);
+        alert('Failed to add symbol to worklist');
+    }
+}
+
+async function removeFromWorklist(symbol) {
+    if (!confirm(`Remove ${symbol} from worklist?`)) return;
+
+    try {
+        const response = await fetch(`http://127.0.0.1:9101/api/worklist/${symbol}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            // Refresh all watch-list widgets
+            WidgetManager.widgets.forEach((widgetData, widgetId) => {
+                if (widgetData.type === 'watch-list') {
+                    WidgetManager.initializeWidget(widgetId, 'watch-list');
+                }
+            });
+        } else {
+            alert('Failed to remove symbol: ' + (data.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Failed to remove from worklist:', error);
+        alert('Failed to remove symbol from worklist');
+    }
 }
 
 async function resolveErrorDialog(errorId) {

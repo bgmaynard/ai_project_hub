@@ -747,7 +747,8 @@
         <div class="menu-item" onclick="loadLayout('trading')">⚡ Trading</div>
         <div class="menu-item" onclick="loadLayout('analysis')">📈 Analysis</div>
         <div class="menu-item" onclick="loadLayout('scalping')">🎯 Scalping</div>
-        <div class="menu-item" onclick="saveCurrentLayout()">💾 Save Layout</div>
+        <div class="menu-item" onclick="loadLayout('custom')" style="background: #1a4d2e;">📐 Custom</div>
+        <div class="menu-item" onclick="saveAsCustomLayout()" style="background: #1e3a8a;">💾 Save as Custom</div>
         <div class="menu-item" onclick="resetLayout()">🔄 Reset</div>
         <div class="menu-item" onclick="toggleDropdown('switch-ui-dropdown')">
             🖥️ Switch UI
@@ -759,6 +760,7 @@
             </div>
         </div>
         <div class="menu-item" onclick="connectToIBKR()">🔌 Connect IBKR</div>
+        <div class="menu-item" onclick="openAIControlPanel()" style="background: #1e40af;">🤖 AI Control</div>
     </div>
 
     <!-- Workspace -->
@@ -1005,49 +1007,50 @@
 
         const windowTemplates = {
             quote: `
-                <div class="quote-grid">
-                    <div class="quote-stat">
-                        <div class="quote-stat-label">Bid</div>
-                        <div class="quote-stat-value positive" id="bidPrice">--</div>
-                        <div class="quote-stat-label" style="margin-top: 2px;" id="bidSize">--</div>
+                <!-- Condensed Quote Display -->
+                <div style="padding: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: 11px;">
+                    <div style="text-align: center;">
+                        <div style="color: #666; font-size: 9px; margin-bottom: 2px;">BID</div>
+                        <div id="bidPrice" style="color: #ef4444; font-weight: 700; font-size: 13px;">--</div>
+                        <div id="bidSize" style="color: #666; font-size: 9px;">--</div>
                     </div>
-                    <div class="quote-stat">
-                        <div class="quote-stat-label">Ask</div>
-                        <div class="quote-stat-value negative" id="askPrice">--</div>
-                        <div class="quote-stat-label" style="margin-top: 2px;" id="askSize">--</div>
+                    <div style="text-align: center;">
+                        <div style="color: #666; font-size: 9px; margin-bottom: 2px;">LAST</div>
+                        <div id="lastPrice" style="color: #60a5fa; font-weight: 700; font-size: 13px;">--</div>
+                        <div id="priceChange" style="font-size: 9px;">--</div>
                     </div>
-                    <div class="quote-stat">
-                        <div class="quote-stat-label">Last</div>
-                        <div class="quote-stat-value" id="lastPrice" style="color: #60a5fa;">--</div>
-                        <div class="quote-stat-label" id="priceChange">--</div>
+                    <div style="text-align: center;">
+                        <div style="color: #666; font-size: 9px; margin-bottom: 2px;">ASK</div>
+                        <div id="askPrice" style="color: #22c55e; font-weight: 700; font-size: 13px;">--</div>
+                        <div id="askSize" style="color: #666; font-size: 9px;">--</div>
                     </div>
-                    <div class="quote-stat">
-                        <div class="quote-stat-label">Volume</div>
-                        <div class="quote-stat-value neutral" id="volumePrice">--</div>
+                </div>
+
+                <!-- Secondary Stats -->
+                <div style="padding: 0 8px 8px 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-size: 10px; border-top: 1px solid #333;">
+                    <div style="text-align: center; padding-top: 4px;">
+                        <div style="color: #666; font-size: 8px;">VOL</div>
+                        <div id="volumePrice" style="color: #aaa; font-weight: 600; font-size: 10px;">--</div>
                     </div>
-                    <div class="quote-stat">
-                        <div class="quote-stat-label">High</div>
-                        <div class="quote-stat-value neutral" id="highPrice">--</div>
+                    <div style="text-align: center; padding-top: 4px;">
+                        <div style="color: #666; font-size: 8px;">HIGH</div>
+                        <div id="highPrice" style="color: #aaa; font-weight: 600; font-size: 10px;">--</div>
                     </div>
-                    <div class="quote-stat">
-                        <div class="quote-stat-label">Low</div>
-                        <div class="quote-stat-value neutral" id="lowPrice">--</div>
+                    <div style="text-align: center; padding-top: 4px;">
+                        <div style="color: #666; font-size: 8px;">LOW</div>
+                        <div id="lowPrice" style="color: #aaa; font-weight: 600; font-size: 10px;">--</div>
                     </div>
-                    <div class="quote-stat">
-                        <div class="quote-stat-label">Open</div>
-                        <div class="quote-stat-value neutral" id="openPrice">--</div>
-                    </div>
-                    <div class="quote-stat">
-                        <div class="quote-stat-label">Prev Close</div>
-                        <div class="quote-stat-value neutral" id="closePrice">--</div>
+                    <div style="text-align: center; padding-top: 4px;">
+                        <div style="color: #666; font-size: 8px;">OPEN</div>
+                        <div id="openPrice" style="color: #aaa; font-weight: 600; font-size: 10px;">--</div>
                     </div>
                 </div>
 
                 <!-- Halt Indicator -->
-                <div style="padding: 8px;">
-                    <div id="quoteHaltIndicator" style="display: none; padding: 6px; border-radius: 4px; text-align: center; background: #dc2626; color: white; box-sizing: border-box; overflow: hidden; width: 100%;">
-                        <div style="font-size: 13px; font-weight: bold;" id="quoteHaltTitle">🛑 HALT</div>
-                        <div id="quoteHaltInfo" style="font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                <div style="padding: 0 8px 8px 8px;">
+                    <div id="quoteHaltIndicator" style="display: none; padding: 4px; border-radius: 3px; text-align: center; background: #dc2626; color: white; font-size: 11px;">
+                        <span id="quoteHaltTitle" style="font-weight: bold;">🛑 HALT</span>
+                        <span id="quoteHaltInfo" style="font-size: 9px; margin-left: 6px;"></span>
                     </div>
                 </div>
             `,
@@ -1096,26 +1099,33 @@
                     </div>
 
                     <div class="quantity-buttons">
+                        <button class="qty-btn" onclick="setQuantity(50)">50</button>
                         <button class="qty-btn" onclick="setQuantity(100)">100</button>
                         <button class="qty-btn" onclick="setQuantity(200)">200</button>
                         <button class="qty-btn" onclick="setQuantity(500)">500</button>
                         <button class="qty-btn" onclick="setQuantity(1000)">1K</button>
                     </div>
 
-                    <div style="margin: 8px 0 4px 0; font-size: 13px; color: #888; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">
-                        % of Account Value
-                    </div>
-                    <div class="quantity-buttons">
-                        <button class="qty-btn" onclick="setAccountPercent(10)" style="background: #1a4d2e;">10%</button>
-                        <button class="qty-btn" onclick="setAccountPercent(25)" style="background: #1a4d2e;">25%</button>
-                        <button class="qty-btn" onclick="setAccountPercent(50)" style="background: #2d5a3d;">50%</button>
-                        <button class="qty-btn" onclick="setAccountPercent(100)" style="background: #3d6a4d;">100%</button>
+                    <!-- Market Price Display - Clickable to set price -->
+                    <div id="marketPriceDisplay" style="margin: 8px 0; padding: 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
+                        <div style="cursor: pointer; padding: 4px; border-radius: 3px; transition: background 0.2s;" onclick="setOrderPrice('bid')" onmouseover="this.style.background='#2d2d2d'" onmouseout="this.style.background='transparent'">
+                            <div style="font-size: 10px; color: #666; margin-bottom: 2px;">BID</div>
+                            <div id="marketBid" style="font-size: 14px; font-weight: 600; color: #ef4444;">--</div>
+                        </div>
+                        <div style="cursor: pointer; padding: 4px; border-radius: 3px; transition: background 0.2s;" onclick="setOrderPrice('last')" onmouseover="this.style.background='#2d2d2d'" onmouseout="this.style.background='transparent'">
+                            <div style="font-size: 10px; color: #666; margin-bottom: 2px;">LAST</div>
+                            <div id="marketLast" style="font-size: 14px; font-weight: 600; color: #fff;">--</div>
+                        </div>
+                        <div style="cursor: pointer; padding: 4px; border-radius: 3px; transition: background 0.2s;" onclick="setOrderPrice('ask')" onmouseover="this.style.background='#2d2d2d'" onmouseout="this.style.background='transparent'">
+                            <div style="font-size: 10px; color: #666; margin-bottom: 2px;">ASK</div>
+                            <div id="marketAsk" style="font-size: 14px; font-weight: 600; color: #22c55e;">--</div>
+                        </div>
                     </div>
 
                     <div class="order-entry-grid">
                         <div class="order-field">
                             <label>Quantity</label>
-                            <input type="number" id="orderQuantity" value="100" min="1">
+                            <input type="number" id="orderQuantity" value="100" min="1" oninput="calculateOrderCost()">
                         </div>
                         <div class="order-field">
                             <label>Order Type</label>
@@ -1129,12 +1139,12 @@
                     </div>
 
                     <div class="price-controls">
-                        <button class="price-btn" onclick="adjustPrice(-0.01)">−</button>
+                        <button class="price-btn" onclick="adjustPrice(-0.01); calculateOrderCost();">−</button>
                         <div class="order-field" style="margin: 0;">
                             <label>Limit Price</label>
-                            <input type="text" id="orderPrice" value="" placeholder="Enter limit price">
+                            <input type="text" id="orderPrice" value="" placeholder="Enter limit price" oninput="calculateOrderCost()">
                         </div>
-                        <button class="price-btn" onclick="adjustPrice(0.01)">+</button>
+                        <button class="price-btn" onclick="adjustPrice(0.01); calculateOrderCost();">+</button>
                     </div>
 
                     <div class="order-field">
@@ -1147,31 +1157,78 @@
                         </select>
                     </div>
 
-                    <div class="order-field" style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="extendedHours" style="width: auto; margin: 0;">
-                        <label for="extendedHours" style="margin: 0; cursor: pointer; font-size: 15px;">
-                            Extended Hours (Pre-Market/After-Hours)
-                        </label>
+                    <!-- Checkboxes on one line to save space -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="extendedHours" style="width: auto; margin: 0;">
+                            <label for="extendedHours" style="margin: 0; cursor: pointer; font-size: 13px;">Ext Hours</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="autoSubmitOrders" style="width: auto; margin: 0;" onchange="saveAutoSubmitSetting(this.checked)">
+                            <label for="autoSubmitOrders" style="margin: 0; cursor: pointer; font-size: 13px; color: #fbbf24;">⚡ Auto-Submit</label>
+                        </div>
                     </div>
 
-                    <div class="order-field" style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="autoSubmitOrders" style="width: auto; margin: 0;" onchange="saveAutoSubmitSetting(this.checked)">
-                        <label for="autoSubmitOrders" style="margin: 0; cursor: pointer; font-size: 15px; color: #fbbf24;">
-                            ⚡ Auto-Submit Orders (No Confirmations)
-                        </label>
+                    <!-- Order Cost Calculator -->
+                    <div style="margin: 12px 0; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;">
+                        <div style="font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Estimated Cost
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 10px; color: #666; margin-bottom: 2px;">Shares</div>
+                                <div id="calcShares" style="font-size: 15px; font-weight: 600; color: #fff;">0</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 10px; color: #666; margin-bottom: 2px;">Price</div>
+                                <div id="calcPrice" style="font-size: 15px; font-weight: 600; color: #fff;">$0.00</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 10px; color: #666; margin-bottom: 2px;">Est. Total</div>
+                                <div id="calcTotal" style="font-size: 15px; font-weight: 600; color: #22c55e;">$0.00</div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="order-buttons">
-                        <button class="btn btn-buy" onclick="submitOrder('BUY')">BUY</button>
-                        <button class="btn btn-sell" onclick="submitOrder('SELL')">SELL</button>
+                    <!-- Order buttons: Buys on left, Sells on right -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+                        <!-- BUY SIDE (LEFT) -->
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <button class="btn btn-buy" onclick="submitOrder('BUY')" style="width: 100%; font-weight: 600;">
+                                BUY
+                            </button>
+                            <button class="btn btn-secondary" onclick="submitOrder('BUY_MARKET')" style="width: 100%; font-size: 12px;">
+                                BUY MARKET
+                            </button>
+                            <button class="btn btn-secondary" onclick="submitOrderAtPrice('BUY', 'BID')" style="width: 100%; font-size: 11px; background: #134e4a; color: #22c55e;">
+                                Buy @ Bid
+                            </button>
+                            <button class="btn btn-secondary" onclick="submitOrderAtPrice('BUY', 'ASK')" style="width: 100%; font-size: 11px; background: #134e4a; color: #22c55e;">
+                                Buy @ Ask
+                            </button>
+                        </div>
+
+                        <!-- SELL SIDE (RIGHT) -->
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <button class="btn btn-sell" onclick="submitOrder('SELL')" style="width: 100%; font-weight: 600;">
+                                SELL
+                            </button>
+                            <button class="btn btn-secondary" onclick="submitOrder('SELL_MARKET')" style="width: 100%; font-size: 12px;">
+                                SELL MARKET
+                            </button>
+                            <button class="btn btn-secondary" onclick="submitOrderAtPrice('SELL', 'BID')" style="width: 100%; font-size: 11px; background: #7f1d1d; color: #ef4444;">
+                                Sell @ Bid
+                            </button>
+                            <button class="btn btn-secondary" onclick="submitOrderAtPrice('SELL', 'ASK')" style="width: 100%; font-size: 11px; background: #7f1d1d; color: #ef4444;">
+                                Sell @ Ask
+                            </button>
+                        </div>
                     </div>
 
+                    <!-- Cancel All Button -->
                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #333;">
-                        <button class="btn btn-secondary" onclick="submitOrder('BUY_MARKET')" style="width: 100%; margin-bottom: 6px;">
-                            BUY MARKET
-                        </button>
-                        <button class="btn btn-secondary" onclick="submitOrder('SELL_MARKET')" style="width: 100%;">
-                            SELL MARKET
+                        <button class="btn btn-secondary" onclick="cancelAllOrders()" style="width: 100%; background: #7f1d1d; color: #ef4444; font-size: 13px;">
+                            ❌ CANCEL ALL ORDERS
                         </button>
                     </div>
                 </div>
@@ -1259,53 +1316,41 @@
             `,
 
             account: `
-                <div style="padding: 8px; border-bottom: 1px solid #333; background: #1a1a1a;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <div>
-                            <div style="font-size: 13px; color: #888; letter-spacing: 0.5px;">IBKR ACCOUNT</div>
-                            <div style="font-size: 18px; font-weight: 700; color: #00a69c;" id="accountNumber">DU0000000</div>
+                <!-- Condensed Account Display -->
+                <div style="padding: 6px 8px; border-bottom: 1px solid #333; background: #1a1a1a;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 10px; color: #888;">
+                            <span id="accountNumber">DU0000000</span> • <span id="accountType">Unknown</span>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 13px; color: #888; letter-spacing: 0.5px;">TYPE</div>
-                            <div style="font-size: 15px; font-weight: 600; color: #e4e5e7;" id="accountType">Unknown</div>
-                        </div>
+                        <div id="accountWarnings" style="font-size: 10px; padding: 2px 6px; border-radius: 2px; display: none;"></div>
                     </div>
-                    <div id="accountWarnings" style="font-size: 13px; padding: 4px; border-radius: 2px; display: none;"></div>
-                    <div id="dayTradesInfo" style="font-size: 13px; color: #888; margin-top: 4px; display: none;"></div>
                 </div>
-                <div class="account-grid">
-                    <div class="account-stat">
-                        <div class="account-stat-label">Equity</div>
-                        <div class="account-stat-value neutral" id="equityValue">$0.00</div>
+
+                <!-- Key Stats - Compact Grid -->
+                <div style="padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+                    <div style="padding: 6px; background: #1a1a1a; border-radius: 3px;">
+                        <div style="color: #666; font-size: 8px; margin-bottom: 2px;">CASH</div>
+                        <div id="cashBalance" style="font-weight: 700; font-size: 13px; color: #22c55e;">$0.00</div>
                     </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Buying Power</div>
-                        <div class="account-stat-value neutral" id="buyingPower">$0.00</div>
+                    <div style="padding: 6px; background: #1a1a1a; border-radius: 3px;">
+                        <div style="color: #666; font-size: 8px; margin-bottom: 2px;">BUYING POWER</div>
+                        <div id="buyingPower" style="font-weight: 700; font-size: 13px; color: #60a5fa;">$0.00</div>
                     </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Cash</div>
-                        <div class="account-stat-value neutral" id="cashBalance">$0.00</div>
+                    <div style="padding: 6px; background: #1a1a1a; border-radius: 3px;">
+                        <div style="color: #666; font-size: 8px; margin-bottom: 2px;">DAY P&L</div>
+                        <div id="dayPL" style="font-weight: 700; font-size: 13px;">$0.00</div>
                     </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Day P&L</div>
-                        <div class="account-stat-value" id="dayPL">$0.00</div>
+                    <div style="padding: 6px; background: #1a1a1a; border-radius: 3px;">
+                        <div style="color: #666; font-size: 8px; margin-bottom: 2px;">EQUITY</div>
+                        <div id="equityValue" style="font-weight: 700; font-size: 13px; color: #aaa;">$0.00</div>
                     </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Total P&L</div>
-                        <div class="account-stat-value" id="totalPL">$0.00</div>
-                    </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Margin Used</div>
-                        <div class="account-stat-value neutral" id="marginUsed">$0.00</div>
-                    </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Positions</div>
-                        <div class="account-stat-value neutral" id="positionCount">0</div>
-                    </div>
-                    <div class="account-stat" id="dayTradesStat" style="display: none;">
-                        <div class="account-stat-label">Day Trades</div>
-                        <div class="account-stat-value neutral" id="dayTradesRemaining">-</div>
-                    </div>
+                </div>
+
+                <!-- Additional Info Bar -->
+                <div style="padding: 4px 8px; display: flex; justify-content: space-between; font-size: 9px; color: #666; border-top: 1px solid #333;">
+                    <div>Positions: <span id="positionCount" style="color: #aaa; font-weight: 600;">0</span></div>
+                    <div id="dayTradesInfo" style="display: none;">Day Trades: <span id="dayTradesRemaining" style="color: #aaa; font-weight: 600;">-</span></div>
+                    <div>Total P&L: <span id="totalPL" style="font-weight: 600;">$0.00</span></div>
                 </div>
             `,
 
@@ -1429,6 +1474,189 @@
                 </div>
             `,
 
+            aicontrol: `
+                <div class="module-content" style="padding: 8px; overflow-y: auto; max-height: 100%;">
+                    <!-- Tab Navigation -->
+                    <div style="display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 2px solid #333;">
+                        <button id="aiTabTraining" class="ai-tab active" onclick="switchAITab('training')" style="flex: 1; padding: 8px; background: #2d2d2d; border: none; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            📚 TRAINING
+                        </button>
+                        <button id="aiTabPredictions" class="ai-tab" onclick="switchAITab('predictions')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            🔮 PREDICTIONS
+                        </button>
+                        <button id="aiTabBacktest" class="ai-tab" onclick="switchAITab('backtest')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            📊 BACKTEST
+                        </button>
+                        <button id="aiTabModels" class="ai-tab" onclick="switchAITab('models')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            🎯 MODELS
+                        </button>
+                    </div>
+
+                    <!-- TRAINING TAB -->
+                    <div id="aiTrainingTab" class="ai-tab-content">
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">TRAIN NEW MODEL</div>
+
+                            <div style="margin-bottom: 8px;">
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Training Symbol</label>
+                                <input type="text" id="trainSymbol" value="SPY" placeholder="SPY, AAPL, etc."
+                                       style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                            </div>
+
+                            <div style="margin-bottom: 8px;">
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Training Period</label>
+                                <select id="trainPeriod" style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                    <option value="1y">1 Year</option>
+                                    <option value="2y" selected>2 Years</option>
+                                    <option value="5y">5 Years</option>
+                                    <option value="10y">10 Years</option>
+                                    <option value="max">Max Available</option>
+                                </select>
+                            </div>
+
+                            <div style="margin-bottom: 8px;">
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Test Size %</label>
+                                <input type="number" id="trainTestSize" value="20" min="10" max="40" step="5"
+                                       style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                            </div>
+
+                            <button id="trainModelBtn" class="btn btn-buy" onclick="trainModel()" style="width: 100%; font-size: 14px; padding: 10px; margin-top: 8px;">
+                                🚀 START TRAINING
+                            </button>
+                        </div>
+
+                        <!-- Training Status -->
+                        <div id="trainingStatus" style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: none;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">TRAINING PROGRESS</div>
+                            <div id="trainingProgress" style="margin-bottom: 8px;">
+                                <div style="background: #252525; height: 24px; border-radius: 3px; overflow: hidden; position: relative;">
+                                    <div id="trainingProgressBar" style="background: linear-gradient(90deg, #22c55e, #16a34a); height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center;">
+                                        <span id="trainingProgressText" style="font-size: 12px; font-weight: 700; color: #fff; position: absolute;">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="trainingStatusText" style="font-size: 12px; color: #aaa; text-align: center;">Initializing...</div>
+                            <div id="trainingMetrics" style="margin-top: 12px; padding: 8px; background: #252525; border-radius: 3px; display: none;">
+                                <div style="font-size: 12px; color: #888; margin-bottom: 6px;">TRAINING RESULTS</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <div>
+                                        <div style="font-size: 10px; color: #666;">ACCURACY</div>
+                                        <div id="trainAccuracy" style="font-size: 16px; font-weight: 700; color: #22c55e;">--</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; color: #666;">SAMPLES</div>
+                                        <div id="trainSamples" style="font-size: 16px; font-weight: 700; color: #60a5fa;">--</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PREDICTIONS TAB -->
+                    <div id="aiPredictionsTab" class="ai-tab-content" style="display: none;">
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-size: 13px; color: #888; font-weight: 700;">WORKLIST PREDICTIONS</div>
+                                <button class="btn btn-secondary" onclick="predictWorklist()" style="font-size: 11px; padding: 4px 8px;">
+                                    🔄 REFRESH
+                                </button>
+                            </div>
+                            <div id="worklistPredictions" style="max-height: 400px; overflow-y: auto;">
+                                <div class="empty-state" style="padding: 20px; font-size: 13px;">Click REFRESH to get predictions</div>
+                            </div>
+                        </div>
+
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">SINGLE SYMBOL PREDICTION</div>
+                            <div style="display: flex; gap: 6px;">
+                                <input type="text" id="singlePredictSymbol" value="" placeholder="Enter symbol..."
+                                       style="flex: 1; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                <button class="btn btn-secondary" onclick="predictSingle()" style="font-size: 13px; padding: 6px 16px;">
+                                    PREDICT
+                                </button>
+                            </div>
+                            <div id="singlePredictionResult" style="margin-top: 12px; display: none;">
+                                <!-- Results appear here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BACKTEST TAB -->
+                    <div id="aiBacktestTab" class="ai-tab-content" style="display: none;">
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">BACKTEST CONFIGURATION</div>
+
+                            <div style="margin-bottom: 8px;">
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Strategy</label>
+                                <select id="backtestStrategy" style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                    <option value="ai_predictor">AI Predictor</option>
+                                    <option value="alpha_fusion">AlphaFusion V2</option>
+                                    <option value="ma_cross">Moving Average Cross</option>
+                                    <option value="rsi_strategy">RSI Strategy</option>
+                                </select>
+                            </div>
+
+                            <div style="margin-bottom: 8px;">
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Symbols (comma separated)</label>
+                                <input type="text" id="backtestSymbols" value="AAPL,MSFT,GOOGL" placeholder="AAPL,MSFT,GOOGL"
+                                       style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                                <div>
+                                    <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Start Date</label>
+                                    <input type="date" id="backtestStartDate" value="2024-01-01"
+                                           style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">End Date</label>
+                                    <input type="date" id="backtestEndDate" value="2025-01-01"
+                                           style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                                <div>
+                                    <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Initial Capital $</label>
+                                    <input type="number" id="backtestCapital" value="10000" min="1000" step="1000"
+                                           style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Position Size %</label>
+                                    <input type="number" id="backtestPositionSize" value="20" min="5" max="100" step="5"
+                                           style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                </div>
+                            </div>
+
+                            <button id="runBacktestBtn" class="btn btn-buy" onclick="runBacktest()" style="width: 100%; font-size: 14px; padding: 10px; margin-top: 8px;">
+                                📊 RUN BACKTEST
+                            </button>
+                        </div>
+
+                        <!-- Backtest Results -->
+                        <div id="backtestResults" style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: none;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">BACKTEST RESULTS</div>
+                            <div id="backtestMetrics" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                                <!-- Metrics grid -->
+                            </div>
+                            <div id="backtestEquityCurve" style="margin-top: 12px;">
+                                <!-- Equity curve chart -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODELS TAB -->
+                    <div id="aiModelsTab" class="ai-tab-content" style="display: none;">
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">MODEL PERFORMANCE</div>
+                            <div id="modelsPerformance">
+                                <div class="empty-state" style="padding: 20px; font-size: 13px;">No models available yet.<br>Train a model first!</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
             chart: (id) => `
                 <div id="chart-${id}" class="chart-container">
                     <div class="empty-state">Chart will load here</div>
@@ -1540,7 +1768,31 @@
         function checkForHalt(symbol, data) {
             const now = Date.now();
 
-            // Detect halt conditions:
+            // Check if we're in regular market hours (9:30 AM - 4:00 PM ET)
+            const currentTime = new Date();
+            const hours = currentTime.getHours();
+            const minutes = currentTime.getMinutes();
+            const timeInMinutes = hours * 60 + minutes;
+
+            // Market hours: 9:30 AM (570 minutes) to 4:00 PM (960 minutes) ET
+            // Note: This assumes your local time is ET. Adjust if needed.
+            const marketOpen = 570;  // 9:30 AM
+            const marketClose = 960; // 4:00 PM
+            const isMarketHours = timeInMinutes >= marketOpen && timeInMinutes < marketClose;
+
+            // Only check for halts during market hours
+            // During pre-market/after-hours, bid/ask = 0 is normal, not a halt
+            if (!isMarketHours) {
+                // Not in market hours - don't detect halts
+                if (haltState.isHalted) {
+                    // Clear any existing halt state from previous session
+                    haltState.isHalted = false;
+                    hideHaltIndicator();
+                }
+                return;
+            }
+
+            // Detect halt conditions (ONLY during market hours):
             // 1. Bid and Ask are both 0 or -1
             // 2. OR no updates for more than 8 seconds
             const isDataHalted = (data.bid <= 0 && data.ask <= 0) ||
@@ -1687,6 +1939,11 @@
                 }
 
                 marketDataCache[currentSymbol] = d;
+
+                // Update market price display in order panel
+                safeUpdate('marketBid', d.bid?.toFixed(2) || '--');
+                safeUpdate('marketLast', d.last?.toFixed(2) || '--');
+                safeUpdate('marketAsk', d.ask?.toFixed(2) || '--');
 
                 // Check for trading halt
                 checkForHalt(currentSymbol, d);
@@ -2025,6 +2282,64 @@
 
         function setQuantity(qty) {
             document.getElementById('orderQuantity').value = qty;
+            calculateOrderCost();
+        }
+
+        window.setOrderPrice = function(priceType) {
+            console.log('setOrderPrice called with:', priceType);
+
+            const symbolEl = document.getElementById('orderSymbol');
+            const priceEl = document.getElementById('orderPrice');
+            const orderTypeEl = document.getElementById('orderType');
+
+            if (!symbolEl || !priceEl || !orderTypeEl) {
+                console.error('Order form elements not found');
+                return;
+            }
+
+            const symbol = symbolEl.value;
+            console.log('Current symbol:', symbol);
+
+            if (!symbol || symbol.trim() === '') {
+                alert('Please enter a symbol first');
+                return;
+            }
+
+            // Get price from market data cache
+            const marketData = marketDataCache[symbol];
+            console.log('Market data for', symbol, ':', marketData);
+
+            if (!marketData) {
+                alert('No market data available for ' + symbol + '\n\nPlease wait for data to load.');
+                return;
+            }
+
+            let price;
+            if (priceType === 'bid') {
+                price = marketData.bid;
+            } else if (priceType === 'ask') {
+                price = marketData.ask;
+            } else if (priceType === 'last') {
+                price = marketData.last;
+            }
+
+            console.log('Selected price:', price);
+
+            if (!price || price <= 0) {
+                alert(priceType.toUpperCase() + ' price not available for ' + symbol);
+                return;
+            }
+
+            // Set order type to LIMIT
+            orderTypeEl.value = 'LIMIT';
+
+            // Set the price
+            priceEl.value = price.toFixed(2);
+
+            console.log('Price set to:', priceEl.value);
+
+            // Update calculator
+            calculateOrderCost();
         }
 
         function setAccountPercent(percent) {
@@ -2059,6 +2374,9 @@
 
                 // Set the quantity
                 document.getElementById('orderQuantity').value = quantity;
+
+                // Update cost calculator
+                calculateOrderCost();
 
                 // Show confirmation
                 console.log(`Account: $${accountEquity.toFixed(2)}, ${percent}% = $${dollarAmount.toFixed(2)}, Price: $${currentPrice.toFixed(2)}, Qty: ${quantity}`);
@@ -2100,6 +2418,33 @@
             }
         }
 
+        // Order Cost Calculator
+        function calculateOrderCost() {
+            try {
+                const shares = parseInt(document.getElementById('orderQuantity')?.value) || 0;
+                const price = parseFloat(document.getElementById('orderPrice')?.value) || 0;
+
+                // Update shares display
+                document.getElementById('calcShares').textContent = shares.toLocaleString();
+
+                // Update price display
+                document.getElementById('calcPrice').textContent = `$${price.toFixed(2)}`;
+
+                // Calculate total cost (shares * price + commission)
+                let cost = shares * price;
+                const commission = Math.max(1, 0.005 * shares); // Min $1 or $0.005 per share
+                cost += commission;
+
+                // Update total display
+                document.getElementById('calcTotal').textContent = `$${cost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+                return cost;
+            } catch (error) {
+                console.error('Error calculating order cost:', error);
+                return 0;
+            }
+        }
+
         async function submitOrder(action) {
             const symbol = document.getElementById('orderSymbol').value;
             const quantity = document.getElementById('orderQuantity').value;
@@ -2109,14 +2454,16 @@
             const extendedHours = document.getElementById('extendedHours').checked;
             const autoSubmit = document.getElementById('autoSubmitOrders').checked;
 
-            // Validation
+            // Validation - suppress alerts if auto-submit is enabled
             if (!symbol || symbol.trim() === '') {
-                alert('Please enter a symbol');
+                if (!autoSubmit) alert('Please enter a symbol');
+                console.error('Validation error: No symbol entered');
                 return;
             }
 
             if (!quantity || parseInt(quantity) <= 0) {
-                alert('Please enter a valid quantity');
+                if (!autoSubmit) alert('Please enter a valid quantity');
+                console.error('Validation error: Invalid quantity');
                 return;
             }
 
@@ -2135,7 +2482,8 @@
 
             // Validate price for limit orders
             if (orderType === 'LIMIT' && (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0)) {
-                alert('Please enter a valid limit price (not MARKET)');
+                if (!autoSubmit) alert('Please enter a valid limit price (not MARKET)');
+                console.error('Validation error: Invalid limit price');
                 return;
             }
 
@@ -2187,10 +2535,14 @@ Confirm order?`;
                             console.log(`✓ Order ${data.order_id} placed: ${side} ${quantity} ${symbol} @ ${orderType === 'MARKET' ? 'MARKET' : '$' + price}`);
                         }
 
-                        // Clear form
-                        document.getElementById('orderSymbol').value = '';
+                        // Clear form (but keep symbol for momentum trading)
+                        // document.getElementById('orderSymbol').value = ''; // KEEP SYMBOL
                         document.getElementById('orderQuantity').value = '';
-                        document.getElementById('orderPrice').value = 'MARKET';
+                        // Update price to current market price for next order
+                        const data = marketDataCache[symbol];
+                        if (data && data.bid && data.ask) {
+                            document.getElementById('orderPrice').value = ((data.bid + data.ask) / 2).toFixed(2);
+                        }
 
                         // Refresh orders display
                         await loadOrders();
@@ -2198,36 +2550,159 @@ Confirm order?`;
                     } else {
                         // Handle error response
                         const errorMsg = data.detail || data.message || 'Unknown error';
-                        alert(`✗ Failed to place order\n\n${errorMsg}`);
+                        if (!autoSubmit) {
+                            alert(`✗ Failed to place order\n\n${errorMsg}`);
+                        } else {
+                            console.error('✗ Order failed:', errorMsg);
+                        }
                     }
                 } catch (error) {
                     console.error('Order error:', error);
-                    alert(`✗ Failed to place order\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                    if (!autoSubmit) {
+                        alert(`✗ Failed to place order\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                    } else {
+                        console.error('✗ Order failed:', error.message);
+                    }
                 }
             }
         }
 
-        function closePosition(symbol, quantity) {
+        async function submitOrderAtPrice(side, priceType) {
+            const symbol = document.getElementById('orderSymbol').value;
+            const quantity = document.getElementById('orderQuantity').value;
+            const autoSubmit = document.getElementById('autoSubmitOrders')?.checked || false;
+
+            // Validation - suppress alerts if auto-submit is enabled
+            if (!symbol || symbol.trim() === '') {
+                if (!autoSubmit) alert('Please enter a symbol');
+                console.error('Validation error: No symbol entered');
+                return;
+            }
+
+            if (!quantity || parseInt(quantity) <= 0) {
+                if (!autoSubmit) alert('Please enter a valid quantity');
+                console.error('Validation error: Invalid quantity');
+                return;
+            }
+
+            // Get price from market data cache
+            const marketData = marketDataCache[symbol];
+            if (!marketData) {
+                if (!autoSubmit) alert('No market data available for ' + symbol + '\n\nPlease wait for data to load.');
+                console.error('Validation error: No market data for', symbol);
+                return;
+            }
+
+            let price;
+            if (priceType === 'BID') {
+                price = marketData.bid;
+                if (!price || price <= 0) {
+                    if (!autoSubmit) alert('Bid price not available');
+                    console.error('Validation error: Bid price not available');
+                    return;
+                }
+            } else if (priceType === 'ASK') {
+                price = marketData.ask;
+                if (!price || price <= 0) {
+                    if (!autoSubmit) alert('Ask price not available');
+                    console.error('Validation error: Ask price not available');
+                    return;
+                }
+            }
+
+            // Set order type to LIMIT and fill in the price
+            document.getElementById('orderType').value = 'LIMIT';
+            document.getElementById('orderPrice').value = price.toFixed(2);
+
+            // Submit the order using the regular submitOrder function
+            await submitOrder(side);
+        }
+
+        async function closePosition(symbol, quantity) {
             const side = quantity > 0 ? 'SELL' : 'BUY';
             const qty = Math.abs(quantity);
 
             if (window.confirm(`Close position in ${symbol}?\n\n${side} ${qty} shares at MARKET`)) {
-                console.log('Closing position:', symbol);
-                alert('✓ Position close order submitted!');
-                loadPositions();
+                try {
+                    console.log('Closing position:', symbol, side, qty);
+
+                    // Prepare market order to close position
+                    const orderRequest = {
+                        symbol: symbol,
+                        action: side,
+                        quantity: qty,
+                        order_type: 'MARKET',
+                        limit_price: null,
+                        stop_price: null,
+                        tif: 'DAY',
+                        extended_hours: false,
+                        exchange: 'SMART'
+                    };
+
+                    // Submit order to IBKR
+                    const response = await fetch(API_BASE_URL + '/api/ibkr/place-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderRequest)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        alert(`✓ Position close order placed!\n\nOrder ID: ${data.order_id}\n${side} ${qty} ${symbol} @ MARKET`);
+                        console.log(`✓ Close order ${data.order_id} placed: ${side} ${qty} ${symbol}`);
+
+                        // Refresh positions and orders
+                        await loadPositions();
+                        await loadOrders();
+                        await loadAccount();
+                    } else {
+                        const errorMsg = data.detail || data.message || 'Unknown error';
+                        alert(`✗ Failed to close position\n\n${errorMsg}`);
+                    }
+                } catch (error) {
+                    console.error('Close position error:', error);
+                    alert(`✗ Failed to close position\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                }
             }
         }
 
-        function cancelOrder(orderId) {
+        async function cancelOrder(orderId) {
             if (window.confirm('Cancel this order?')) {
-                console.log('Cancelling order:', orderId);
-                alert('✓ Order cancelled!');
-                loadOrders();
+                try {
+                    console.log('Cancelling order:', orderId);
+
+                    const response = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order_id: orderId })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        alert(`✓ Order cancelled!\n\nOrder ID: ${orderId}\nStatus: ${data.status || 'Cancelled'}`);
+                        console.log(`✓ Order ${orderId} cancelled`);
+
+                        // Refresh orders and account
+                        await loadOrders();
+                        await loadAccount();
+                    } else {
+                        const errorMsg = data.detail || data.message || 'Unknown error';
+                        alert(`✗ Failed to cancel order\n\n${errorMsg}`);
+                    }
+                } catch (error) {
+                    console.error('Cancel order error:', error);
+                    alert(`✗ Failed to cancel order\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                }
             }
         }
 
         async function cancelAllOrders() {
-            if (!window.confirm('⚠️ CANCEL ALL WORKING ORDERS?\n\nThis will cancel ALL open orders.\n\nAre you sure?')) {
+            const autoSubmit = document.getElementById('autoSubmitOrders')?.checked || false;
+
+            // Skip confirmation if auto-submit is enabled
+            if (!autoSubmit && !window.confirm('⚠️ CANCEL ALL WORKING ORDERS?\n\nThis will cancel ALL open orders.\n\nAre you sure?')) {
                 return;
             }
 
@@ -2237,7 +2712,8 @@ Confirm order?`;
                 const data = await response.json();
 
                 if (!data.orders || data.orders.length === 0) {
-                    alert('No orders to cancel');
+                    if (!autoSubmit) alert('No orders to cancel');
+                    console.log('No orders to cancel');
                     return;
                 }
 
@@ -2270,12 +2746,16 @@ Confirm order?`;
                 }
 
                 // Show results and refresh
-                alert(`✓ Cancel All Complete\n\nCancelled: ${cancelled}\nFailed: ${failed}`);
+                if (!autoSubmit) {
+                    alert(`✓ Cancel All Complete\n\nCancelled: ${cancelled}\nFailed: ${failed}`);
+                } else {
+                    console.log(`✓ Cancel All Complete - Cancelled: ${cancelled}, Failed: ${failed}`);
+                }
                 await loadOrders();
 
             } catch (error) {
                 console.error('Error cancelling all orders:', error);
-                alert(`❌ Error: ${error.message}`);
+                if (!autoSubmit) alert(`❌ Error: ${error.message}`);
             }
         }
 
@@ -2918,6 +3398,481 @@ Confirm order?`;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
+        //                     AI CONTROL PANEL FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let currentTrainingId = null;
+        let trainingCheckInterval = null;
+        let currentBacktestId = null;
+        let backtestCheckInterval = null;
+
+        // Tab switching
+        function switchAITab(tab) {
+            // Hide all tabs
+            document.getElementById('aiTrainingTab').style.display = 'none';
+            document.getElementById('aiPredictionsTab').style.display = 'none';
+            document.getElementById('aiBacktestTab').style.display = 'none';
+            document.getElementById('aiModelsTab').style.display = 'none';
+
+            // Reset all tab buttons
+            document.querySelectorAll('.ai-tab').forEach(btn => {
+                btn.style.background = '#1a1a1a';
+                btn.style.color = '#888';
+            });
+
+            // Show selected tab
+            if (tab === 'training') {
+                document.getElementById('aiTrainingTab').style.display = 'block';
+                document.getElementById('aiTabTraining').style.background = '#2d2d2d';
+                document.getElementById('aiTabTraining').style.color = '#fff';
+            } else if (tab === 'predictions') {
+                document.getElementById('aiPredictionsTab').style.display = 'block';
+                document.getElementById('aiTabPredictions').style.background = '#2d2d2d';
+                document.getElementById('aiTabPredictions').style.color = '#fff';
+            } else if (tab === 'backtest') {
+                document.getElementById('aiBacktestTab').style.display = 'block';
+                document.getElementById('aiTabBacktest').style.background = '#2d2d2d';
+                document.getElementById('aiTabBacktest').style.color = '#fff';
+            } else if (tab === 'models') {
+                document.getElementById('aiModelsTab').style.display = 'block';
+                document.getElementById('aiTabModels').style.background = '#2d2d2d';
+                document.getElementById('aiTabModels').style.color = '#fff';
+                loadModelsPerformance();
+            }
+        }
+
+        // TRAINING FUNCTIONS
+        async function trainModel() {
+            const symbol = document.getElementById('trainSymbol').value.toUpperCase();
+            const period = document.getElementById('trainPeriod').value;
+            const testSize = parseFloat(document.getElementById('trainTestSize').value) / 100;
+
+            if (!symbol) {
+                alert('Please enter a training symbol');
+                return;
+            }
+
+            try {
+                // Disable button
+                const btn = document.getElementById('trainModelBtn');
+                btn.disabled = true;
+                btn.textContent = '⏳ TRAINING...';
+
+                // Show training status
+                document.getElementById('trainingStatus').style.display = 'block';
+                document.getElementById('trainingMetrics').style.display = 'none';
+
+                const response = await fetch(API_BASE_URL + '/api/ai/models/train', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        period: period,
+                        test_size: testSize
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Training started:', data);
+
+                if (data.success && data.data.training_id) {
+                    currentTrainingId = data.data.training_id;
+
+                    // Start polling for progress
+                    if (trainingCheckInterval) clearInterval(trainingCheckInterval);
+                    trainingCheckInterval = setInterval(checkTrainingProgress, 1000);
+                } else {
+                    throw new Error('Failed to start training');
+                }
+
+            } catch (error) {
+                console.error('Error starting training:', error);
+                alert('Error starting training: ' + error.message);
+
+                // Re-enable button
+                const btn = document.getElementById('trainModelBtn');
+                btn.disabled = false;
+                btn.textContent = '🚀 START TRAINING';
+            }
+        }
+
+        async function checkTrainingProgress() {
+            if (!currentTrainingId) return;
+
+            try {
+                // Get training session status from server
+                const response = await fetch(API_BASE_URL + '/api/ai/models/train/' + currentTrainingId + '/status');
+
+                if (!response.ok) {
+                    // Session might not exist yet, continue polling
+                    return;
+                }
+
+                const data = await response.json();
+                const session = data.session || {};
+
+                // Update progress bar
+                const progress = session.progress || 0;
+                document.getElementById('trainingProgressBar').style.width = progress + '%';
+                document.getElementById('trainingProgressText').textContent = progress + '%';
+
+                // Update status text
+                const statusText = session.status || 'training';
+                document.getElementById('trainingStatusText').textContent = statusText.replace('_', ' ').toUpperCase();
+
+                // Check if completed
+                if (session.status === 'completed') {
+                    clearInterval(trainingCheckInterval);
+                    trainingCheckInterval = null;
+
+                    // Show metrics
+                    if (session.metrics) {
+                        document.getElementById('trainAccuracy').textContent = (session.metrics.accuracy * 100).toFixed(2) + '%';
+                        document.getElementById('trainSamples').textContent = session.metrics.samples || 0;
+                        document.getElementById('trainingMetrics').style.display = 'block';
+                    }
+
+                    // Re-enable button
+                    const btn = document.getElementById('trainModelBtn');
+                    btn.disabled = false;
+                    btn.textContent = '🚀 START TRAINING';
+
+                    alert('✓ Training completed!\n\nAccuracy: ' + (session.metrics.accuracy * 100).toFixed(2) + '%\nSamples: ' + session.metrics.samples);
+
+                } else if (session.status === 'failed') {
+                    clearInterval(trainingCheckInterval);
+                    trainingCheckInterval = null;
+
+                    document.getElementById('trainingStatusText').textContent = 'FAILED: ' + (session.error || 'Unknown error');
+
+                    // Re-enable button
+                    const btn = document.getElementById('trainModelBtn');
+                    btn.disabled = false;
+                    btn.textContent = '🚀 START TRAINING';
+
+                    alert('✗ Training failed: ' + (session.error || 'Unknown error'));
+                }
+
+            } catch (error) {
+                console.error('Error checking training progress:', error);
+            }
+        }
+
+        // PREDICTION FUNCTIONS
+        async function predictWorklist() {
+            const worklistDiv = document.getElementById('worklistPredictions');
+            worklistDiv.innerHTML = '<div class="empty-state" style="padding: 20px;">Loading predictions...</div>';
+
+            try {
+                // Get worklist
+                const worklistResponse = await fetch(API_BASE_URL + '/api/worklist');
+                const worklistData = await worklistResponse.json();
+
+                if (!worklistData.success || !worklistData.data.length) {
+                    worklistDiv.innerHTML = '<div class="empty-state" style="padding: 20px;">Worklist is empty</div>';
+                    return;
+                }
+
+                let html = '';
+
+                // Get predictions for each symbol
+                for (const item of worklistData.data) {
+                    const symbol = item.symbol;
+
+                    try {
+                        const predResponse = await fetch(API_BASE_URL + '/api/ai/predict', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ symbol: symbol })
+                        });
+
+                        const predData = await predResponse.json();
+
+                        // Determine color
+                        let signalColor = '#888';
+                        if (predData.signal && predData.signal.includes('BULLISH')) signalColor = '#22c55e';
+                        else if (predData.signal && predData.signal.includes('BEARISH')) signalColor = '#ef4444';
+
+                        html += `
+                            <div style="padding: 8px; margin-bottom: 6px; background: #252525; border-radius: 3px; border-left: 3px solid ${signalColor};">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <div style="font-size: 14px; font-weight: 700; color: #fff;">${symbol}</div>
+                                    <div style="font-size: 13px; font-weight: 600; color: ${signalColor};">${predData.signal || 'NEUTRAL'}</div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
+                                    <div>
+                                        <span style="color: #666;">Confidence:</span>
+                                        <span style="color: #aaa; font-weight: 600;">${(predData.confidence * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div>
+                                        <span style="color: #666;">Prob Up:</span>
+                                        <span style="color: #aaa; font-weight: 600;">${(predData.prob_up * 100).toFixed(1)}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                    } catch (error) {
+                        console.error('Error predicting', symbol, ':', error);
+                        html += `
+                            <div style="padding: 8px; margin-bottom: 6px; background: #252525; border-radius: 3px;">
+                                <div style="font-size: 14px; font-weight: 700; color: #fff;">${symbol}</div>
+                                <div style="font-size: 11px; color: #ef4444;">Prediction failed</div>
+                            </div>
+                        `;
+                    }
+                }
+
+                worklistDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error getting worklist predictions:', error);
+                worklistDiv.innerHTML = '<div class="empty-state" style="padding: 20px;">Error loading predictions</div>';
+            }
+        }
+
+        async function predictSingle() {
+            const symbol = document.getElementById('singlePredictSymbol').value.toUpperCase();
+
+            if (!symbol) {
+                alert('Please enter a symbol');
+                return;
+            }
+
+            const resultDiv = document.getElementById('singlePredictionResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div style="padding: 12px; text-align: center; color: #888;">Loading...</div>';
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/ai/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol })
+                });
+
+                const data = await response.json();
+
+                // Determine color
+                let signalColor = '#888';
+                if (data.signal && data.signal.includes('BULLISH')) signalColor = '#22c55e';
+                else if (data.signal && data.signal.includes('BEARISH')) signalColor = '#ef4444';
+
+                resultDiv.innerHTML = `
+                    <div style="padding: 12px; background: #252525; border-radius: 4px; border-left: 4px solid ${signalColor};">
+                        <div style="font-size: 18px; font-weight: 700; color: ${signalColor}; margin-bottom: 8px; text-align: center;">
+                            ${data.signal || 'NEUTRAL'}
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 10px; color: #666; margin-bottom: 2px;">CONFIDENCE</div>
+                                <div style="font-size: 20px; font-weight: 700; color: #fff;">${(data.confidence * 100).toFixed(1)}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 10px; color: #666; margin-bottom: 2px;">PROB UP</div>
+                                <div style="font-size: 20px; font-weight: 700; color: #22c55e;">${(data.prob_up * 100).toFixed(1)}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 10px; color: #666; margin-bottom: 2px;">PROB DOWN</div>
+                                <div style="font-size: 20px; font-weight: 700; color: #ef4444;">${(data.prob_down * 100).toFixed(1)}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 10px; color: #666; margin-bottom: 2px;">TIMESTAMP</div>
+                                <div style="font-size: 11px; color: #aaa;">${new Date(data.timestamp).toLocaleTimeString()}</div>
+                            </div>
+                        </div>
+                        ${data.signal_detail ? `<div style="margin-top: 8px; padding: 6px; background: #1a1a1a; border-radius: 3px; font-size: 11px; color: #888; text-align: center;">${data.signal_detail}</div>` : ''}
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Error getting prediction:', error);
+                resultDiv.innerHTML = '<div style="padding: 12px; color: #ef4444; text-align: center;">Prediction failed: ' + error.message + '</div>';
+            }
+        }
+
+        // BACKTEST FUNCTIONS
+        async function runBacktest() {
+            const strategy = document.getElementById('backtestStrategy').value;
+            const symbols = document.getElementById('backtestSymbols').value.split(',').map(s => s.trim().toUpperCase());
+            const startDate = document.getElementById('backtestStartDate').value;
+            const endDate = document.getElementById('backtestEndDate').value;
+            const capital = parseFloat(document.getElementById('backtestCapital').value);
+            const positionSize = parseFloat(document.getElementById('backtestPositionSize').value) / 100;
+
+            if (!symbols.length || !startDate || !endDate) {
+                alert('Please fill in all backtest parameters');
+                return;
+            }
+
+            try {
+                // Disable button
+                const btn = document.getElementById('runBacktestBtn');
+                btn.disabled = true;
+                btn.textContent = '⏳ RUNNING...';
+
+                // Show results section
+                document.getElementById('backtestResults').style.display = 'block';
+                document.getElementById('backtestMetrics').innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">Running backtest...</div>';
+
+                const response = await fetch(API_BASE_URL + '/api/backtest/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        strategy: strategy,
+                        symbols: symbols,
+                        start_date: startDate,
+                        end_date: endDate,
+                        initial_capital: capital,
+                        position_size_pct: positionSize
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Backtest started:', data);
+
+                if (data.success && data.data.backtest_id) {
+                    currentBacktestId = data.data.backtest_id;
+
+                    // Start polling for results
+                    if (backtestCheckInterval) clearInterval(backtestCheckInterval);
+                    backtestCheckInterval = setInterval(checkBacktestResults, 2000);
+                } else {
+                    throw new Error('Failed to start backtest');
+                }
+
+            } catch (error) {
+                console.error('Error starting backtest:', error);
+                alert('Error starting backtest: ' + error.message);
+
+                // Re-enable button
+                const btn = document.getElementById('runBacktestBtn');
+                btn.disabled = false;
+                btn.textContent = '📊 RUN BACKTEST';
+            }
+        }
+
+        async function checkBacktestResults() {
+            if (!currentBacktestId) return;
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/backtest/' + currentBacktestId + '/results');
+                const data = await response.json();
+
+                if (!data.success) return;
+
+                const bt = data.data;
+
+                // Check if completed
+                if (bt.status === 'completed') {
+                    clearInterval(backtestCheckInterval);
+                    backtestCheckInterval = null;
+
+                    // Display metrics
+                    const metrics = bt.metrics;
+                    document.getElementById('backtestMetrics').innerHTML = `
+                        <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                            <div style="font-size: 10px; color: #666;">TOTAL RETURN</div>
+                            <div style="font-size: 20px; font-weight: 700; color: ${metrics.total_return >= 0 ? '#22c55e' : '#ef4444'};">
+                                ${metrics.total_return >= 0 ? '+' : ''}${metrics.total_return.toFixed(2)}%
+                            </div>
+                        </div>
+                        <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                            <div style="font-size: 10px; color: #666;">SHARPE RATIO</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #60a5fa;">${metrics.sharpe_ratio.toFixed(2)}</div>
+                        </div>
+                        <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                            <div style="font-size: 10px; color: #666;">MAX DRAWDOWN</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #ef4444;">${metrics.max_drawdown.toFixed(2)}%</div>
+                        </div>
+                        <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                            <div style="font-size: 10px; color: #666;">WIN RATE</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #22c55e;">${(metrics.win_rate * 100).toFixed(1)}%</div>
+                        </div>
+                        <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                            <div style="font-size: 10px; color: #666;">TOTAL TRADES</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #fff;">${metrics.total_trades}</div>
+                        </div>
+                        <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                            <div style="font-size: 10px; color: #666;">PROFITABLE</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #22c55e;">${metrics.profitable_trades}</div>
+                        </div>
+                    `;
+
+                    // Re-enable button
+                    const btn = document.getElementById('runBacktestBtn');
+                    btn.disabled = false;
+                    btn.textContent = '📊 RUN BACKTEST';
+
+                    alert('✓ Backtest completed!\n\nTotal Return: ' + metrics.total_return.toFixed(2) + '%\nWin Rate: ' + (metrics.win_rate * 100).toFixed(1) + '%');
+                }
+
+            } catch (error) {
+                console.error('Error checking backtest results:', error);
+            }
+        }
+
+        // Open AI Control Panel window
+        function openAIControlPanel() {
+            // Check if window already exists
+            const existing = windows.find(w => w.id === 'aicontrol');
+            if (existing) {
+                existing.focus();
+                return;
+            }
+
+            // Create new AI Control Panel window (centered, large size)
+            createWindow('aicontrol', '🤖 AI CONTROL PANEL', windowTemplates.aicontrol, 300, 100, 680, 600);
+        }
+
+        // MODELS PERFORMANCE
+        async function loadModelsPerformance() {
+            const perfDiv = document.getElementById('modelsPerformance');
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/ai/models/performance');
+                const data = await response.json();
+
+                if (!data.success || !data.data || !data.data.length) {
+                    perfDiv.innerHTML = '<div class="empty-state" style="padding: 20px; font-size: 13px;">No models available yet.<br>Train a model first!</div>';
+                    return;
+                }
+
+                let html = '';
+                for (const model of data.data) {
+                    html += `
+                        <div style="padding: 10px; margin-bottom: 8px; background: #252525; border-radius: 4px; border-left: 3px solid #60a5fa;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <div style="font-size: 14px; font-weight: 700; color: #fff;">${model.name}</div>
+                                <div style="font-size: 11px; color: #888;">${model.type}</div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 11px; margin-bottom: 6px;">
+                                <div>
+                                    <span style="color: #666;">Accuracy:</span>
+                                    <span style="color: #22c55e; font-weight: 600;">${(model.accuracy * 100).toFixed(1)}%</span>
+                                </div>
+                                <div>
+                                    <span style="color: #666;">Win Rate:</span>
+                                    <span style="color: #22c55e; font-weight: 600;">${(model.win_rate * 100).toFixed(1)}%</span>
+                                </div>
+                                <div>
+                                    <span style="color: #666;">Sharpe:</span>
+                                    <span style="color: #60a5fa; font-weight: 600;">${model.sharpe_ratio.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 10px; color: #666;">Trades: ${model.total_trades} (${model.profitable_trades} profitable) • Avg Profit: $${model.avg_profit.toFixed(2)}</div>
+                        </div>
+                    `;
+                }
+
+                perfDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading models performance:', error);
+                perfDiv.innerHTML = '<div class="empty-state" style="padding: 20px; color: #ef4444;">Error loading models</div>';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
         //                     CONNECTION MANAGEMENT
         // ═══════════════════════════════════════════════════════════════════════
 
@@ -2943,15 +3898,20 @@ Confirm order?`;
 
         async function checkStatus() {
             try {
-                const data = await quietFetch('/api/ibkr/status');
+                // Check IBKR status
+                const ibkrResponse = await fetch(API_BASE_URL + '/api/ibkr/status');
+                const ibkrData = await ibkrResponse.json();
+
+                console.log('IBKR Status:', ibkrData);
 
                 const ibkrDot = document.getElementById('ibkrStatus');
                 const ibkrText = document.getElementById('ibkrStatusText');
 
-                if (data && data.connected) {
+                if (ibkrData && ibkrData.connected) {
                     ibkrDot.classList.add('connected');
                     ibkrText.textContent = 'Connected';
                     apiAvailable = true;
+                    console.log('✓ IBKR indicator set to CONNECTED');
                 } else {
                     ibkrDot.classList.remove('connected');
                     if (apiAvailable === false) {
@@ -2959,9 +3919,29 @@ Confirm order?`;
                     } else {
                         ibkrText.textContent = 'Disconnected';
                     }
+                    console.log('✗ IBKR indicator set to DISCONNECTED');
+                }
+
+                // Check AI/Claude status
+                const healthResponse = await fetch(API_BASE_URL + '/health');
+                const healthData = await healthResponse.json();
+
+                console.log('Claude Available:', healthData.claude_available);
+
+                const aiDot = document.getElementById('aiStatus');
+                const aiText = document.getElementById('aiStatusText');
+
+                if (healthData && healthData.claude_available) {
+                    aiDot.classList.add('connected');
+                    aiText.textContent = 'Online';
+                    console.log('✓ AI indicator set to ONLINE');
+                } else {
+                    aiDot.classList.remove('connected');
+                    aiText.textContent = 'Offline';
+                    console.log('✗ AI indicator set to OFFLINE');
                 }
             } catch (error) {
-                // Silently fail - quietFetch handles logging
+                console.error('Status check error:', error);
             }
         }
 
@@ -3023,7 +4003,7 @@ Confirm order?`;
             });
         }
 
-        function saveCurrentLayout() {
+        function saveAsCustomLayout() {
             const layout = windows.map(w => ({
                 id: w.id,
                 title: w.title,
@@ -3033,9 +4013,14 @@ Confirm order?`;
                 height: w.height,
                 minimized: w.minimized
             }));
-            localStorage.setItem('tradingLayout', JSON.stringify(layout));
+            localStorage.setItem('customLayout', JSON.stringify(layout));
             localStorage.setItem('watchlist', JSON.stringify(watchlist));
-            alert('✓ Layout saved successfully!');
+            alert('✓ Custom layout saved!\n\nClick "📐 Custom" to load it anytime.');
+        }
+
+        function saveCurrentLayout() {
+            // Deprecated - redirects to saveAsCustomLayout
+            saveAsCustomLayout();
         }
 
         // Auto-submit setting functions
@@ -3056,7 +4041,10 @@ Confirm order?`;
             windows.forEach(w => w.close());
             windows = [];
 
-            if (name === 'default') loadDefaultLayout();
+            if (name === 'custom') {
+                loadCustomLayout();
+            }
+            else if (name === 'default') loadDefaultLayout();
             else if (name === 'trading') loadTradingLayout();
             else if (name === 'analysis') loadAnalysisLayout();
             else if (name === 'scalping') loadScalpingLayout();
@@ -3126,6 +4114,30 @@ Confirm order?`;
             createWindow('orders', 'WORKING ORDERS', windowTemplates.orders, 710, 620, 700, 80);
             createWindow('watchlist', 'WATCHLIST', windowTemplates.watchlist, 1420, 10, 200, 400);
             createWindow('account', 'ACCOUNT', windowTemplates.account, 1420, 420, 200, 280);
+        }
+
+        function loadCustomLayout() {
+            const savedLayout = localStorage.getItem('customLayout');
+            if (savedLayout) {
+                try {
+                    const layout = JSON.parse(savedLayout);
+                    console.log('Loading custom layout with', layout.length, 'windows');
+                    layout.forEach(w => {
+                        createWindow(w.id, w.title, windowTemplates[w.id] || '', w.width, w.height, w.x, w.y);
+                        if (w.minimized) {
+                            const window = windows.find(win => win.id === w.id);
+                            if (window) window.minimize();
+                        }
+                    });
+                } catch (e) {
+                    console.error('Failed to load custom layout:', e);
+                    alert('Failed to load custom layout. Loading default instead.');
+                    loadDefaultLayout();
+                }
+            } else {
+                alert('No custom layout saved.\n\nArrange windows and click "💾 Save as Custom" to create one.');
+                loadDefaultLayout();
+            }
         }
 
         function resetLayout() {
@@ -3239,8 +4251,29 @@ Confirm order?`;
             // Load auto-submit orders setting
             loadAutoSubmitSetting();
 
-            // Load default layout
-            loadLayout('default');
+            // Load saved custom layout first, then check old saved layout, or default
+            const customLayout = localStorage.getItem('customLayout');
+            const oldSavedLayout = localStorage.getItem('tradingLayout');
+
+            if (customLayout) {
+                console.log('Loading custom layout...');
+                loadLayout('custom');
+            } else if (oldSavedLayout) {
+                console.log('Loading old saved layout (migrating to custom)...');
+                // Migrate old layout to custom
+                try {
+                    localStorage.setItem('customLayout', oldSavedLayout);
+                    localStorage.removeItem('tradingLayout');
+                    loadLayout('custom');
+                } catch (e) {
+                    console.error('Failed to migrate layout:', e);
+                    loadLayout('default');
+                }
+            } else {
+                // Load default layout if no saved layout
+                console.log('Loading default layout...');
+                loadLayout('default');
+            }
 
             // Subscribe to all watchlist symbols
             console.log('📊 Subscribing to market data...');

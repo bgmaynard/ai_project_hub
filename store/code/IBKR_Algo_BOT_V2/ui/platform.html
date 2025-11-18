@@ -1335,7 +1335,8 @@
 
         let currentSymbol = 'AAPL';
         let updateInterval;
-        let watchlist = ['AAPL', 'TSLA', 'SPY', 'QQQ'];
+        // Watchlist loaded from server API (syncs with complete_platform.html)
+        let watchlist = [];
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -1349,7 +1350,7 @@
             // Auto-refresh every 2 seconds
             updateInterval = setInterval(() => {
                 loadData();
-                updateWatchlistPrices();
+                loadWatchlist();  // Sync worklist with server
                 loadAccountInfo();
             }, 2000);
 
@@ -1641,8 +1642,28 @@
             }
         }
 
-        // Watchlist Functions
-        function loadWatchlist() {
+        // Watchlist Functions - Now synced with server API
+        async function loadWatchlist() {
+            console.log('🔄 NEW CODE LOADING - Fetching worklist from server API...');
+            try {
+                // Fetch worklist from server (same as complete_platform.html)
+                const response = await fetch(API_BASE_URL + '/api/worklist');
+                console.log('✅ Worklist API response:', response.status);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    // Extract just the symbols from worklist
+                    watchlist = data.data.map(item => item.symbol);
+                } else {
+                    // Fallback to empty if API fails
+                    watchlist = [];
+                }
+            } catch (error) {
+                console.error('Failed to load worklist from server:', error);
+                // Keep existing watchlist on error
+            }
+
+            // Update display
             let html = '';
             watchlist.forEach(symbol => {
                 html += `
@@ -1749,14 +1770,31 @@
             loadWatchlist(); // Refresh to update active state
         }
 
-        function addToWatchlist() {
+        async function addToWatchlist() {
             const input = document.getElementById('watchlistInput');
             const symbol = input.value.toUpperCase().trim();
-            
+
             if (symbol && !watchlist.includes(symbol)) {
-                watchlist.push(symbol);
-                loadWatchlist();
-                input.value = '';
+                try {
+                    // Add to server worklist (syncs with complete_platform.html)
+                    const response = await fetch(API_BASE_URL + '/api/worklist/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbol: symbol, exchange: 'SMART' })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        // Reload worklist from server
+                        await loadWatchlist();
+                        input.value = '';
+                    } else {
+                        alert('Failed to add symbol: ' + (data.detail || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Failed to add to worklist:', error);
+                    alert('Failed to add symbol to worklist');
+                }
             }
         }
 
@@ -1765,17 +1803,17 @@
             const orderType = document.getElementById('orderType')?.value || 'LIMIT';
             const priceRow = document.getElementById('priceRow');
             const stopRow = document.getElementById('stopRow');
-            
-            priceRow?.style?.display = 'none';
-            stopRow.style.display = 'none';
-            
+
+            if (priceRow) priceRow.style.display = 'none';
+            if (stopRow) stopRow.style.display = 'none';
+
             if (orderType === 'LIMIT') {
-                priceRow?.style?.display = 'block';
+                if (priceRow) priceRow.style.display = 'block';
             } else if (orderType === 'STOP') {
-                stopRow.style.display = 'block';
+                if (stopRow) stopRow.style.display = 'block';
             } else if (orderType === 'STOP_LIMIT') {
-                priceRow?.style?.display = 'block';
-                stopRow.style.display = 'block';
+                if (priceRow) priceRow.style.display = 'block';
+                if (stopRow) stopRow.style.display = 'block';
             }
         }
 

@@ -10,7 +10,7 @@ Features:
 - Claude analysis with real market data
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -177,6 +177,37 @@ if risk_router:
 if monitoring_router:
     app.include_router(monitoring_router)
     logger.info("✓ Monitoring Dashboard API endpoints loaded")
+
+# ═══════════════════════════════════════════════════════════════════════
+#                     STARTUP EVENT - AUTO-CONNECT TO IBKR
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.on_event("startup")
+async def startup_event():
+    """Auto-connect to IBKR on server startup if enabled in .env"""
+    auto_connect = os.getenv("IBKR_AUTO_CONNECT", "false").lower() == "true"
+
+    if not auto_connect:
+        logger.info("IBKR auto-connect disabled (set IBKR_AUTO_CONNECT=true in .env to enable)")
+        return
+
+    if not IBKR_AVAILABLE:
+        logger.warning("IBKR auto-connect failed: ib_insync not installed")
+        return
+
+    # Get connection parameters from environment
+    host = os.getenv("IBKR_HOST", "127.0.0.1")
+    port = int(os.getenv("IBKR_PORT", "7497"))
+    client_id = int(os.getenv("IBKR_CLIENT_ID", "1"))
+
+    logger.info(f"Attempting to auto-connect to IBKR at {host}:{port}...")
+
+    try:
+        result = await data_bus.connect_ibkr(host, port, client_id)
+        logger.info(f"✓ Auto-connected to IBKR successfully on port {port}")
+    except Exception as e:
+        logger.warning(f"✗ Auto-connect to IBKR failed: {e}")
+        logger.info("You can manually connect via the UI or /api/ibkr/connect endpoint")
 
 # ═══════════════════════════════════════════════════════════════════════
 #                     MARKET DATA BUS
@@ -1395,6 +1426,11 @@ class TrainingConfig(BaseModel):
     validation_split: float
     hyperparameters: Dict[str, Any]
 
+class SimpleTrainingConfig(BaseModel):
+    symbol: str
+    period: str = "2y"
+    test_size: float = 0.2
+
 class BacktestConfig(BaseModel):
     strategy: str
     symbols: List[str]
@@ -1406,7 +1442,7 @@ class BacktestConfig(BaseModel):
     take_profit_pct: Optional[float] = None
 
 @app.post("/api/ai/models/train")
-async def train_model(config: TrainingConfig):
+async def train_model(config: SimpleTrainingConfig, background_tasks: BackgroundTasks):
     """Start model training"""
     training_id = f"train_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
@@ -1419,8 +1455,8 @@ async def train_model(config: TrainingConfig):
         "metrics": {}
     }
 
-    # Simulate training in background (in production, use actual training)
-    asyncio.create_task(simulate_training(training_id))
+    # Run actual training in background using BackgroundTasks (fixes event loop issue)
+    background_tasks.add_task(run_actual_training, training_id, config)
 
     return {
         "success": True,
@@ -1430,8 +1466,59 @@ async def train_model(config: TrainingConfig):
         }
     }
 
+def run_actual_training(training_id: str, config: TrainingConfig):
+    """Run actual AI predictor training (non-async to avoid event loop issues)"""
+    import time
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        if training_id not in training_sessions:
+            return
+
+        logger.info(f"Starting training for {training_id} on symbol {config.symbol}")
+
+        # Update progress
+        training_sessions[training_id]["progress"] = 10
+        training_sessions[training_id]["status"] = "downloading_data"
+
+        if ai_predictor:
+            # Train the actual model
+            training_sessions[training_id]["progress"] = 30
+            training_sessions[training_id]["status"] = "training"
+
+            result = ai_predictor.train(
+                symbol=config.symbol,
+                period=config.period,
+                test_size=0.2
+            )
+
+            # Update with real metrics
+            training_sessions[training_id]["progress"] = 100
+            training_sessions[training_id]["status"] = "completed"
+            training_sessions[training_id]["metrics"] = {
+                "accuracy": result.get("metrics", {}).get("accuracy", 0),
+                "samples": result.get("samples", 0),
+                "model_path": result.get("model_path", "")
+            }
+            training_sessions[training_id]["completed_at"] = datetime.now().isoformat()
+
+            logger.info(f"Training completed for {training_id}: {result['metrics']['accuracy']:.2%} accuracy")
+        else:
+            # Fallback to simulation if predictor not available
+            training_sessions[training_id]["status"] = "failed"
+            training_sessions[training_id]["error"] = "AI predictor not available"
+
+    except Exception as e:
+        logger.error(f"Training failed for {training_id}: {e}")
+        if training_id in training_sessions:
+            training_sessions[training_id]["status"] = "failed"
+            training_sessions[training_id]["error"] = str(e)
+            training_sessions[training_id]["completed_at"] = datetime.now().isoformat()
+
 async def simulate_training(training_id: str):
-    """Simulate training progress"""
+    """Simulate training progress (deprecated - use run_actual_training)"""
     for progress in range(0, 101, 10):
         await asyncio.sleep(1)
         if training_id in training_sessions:
@@ -1445,6 +1532,17 @@ async def simulate_training(training_id: str):
 
     if training_id in training_sessions:
         training_sessions[training_id]["status"] = "completed"
+
+@app.get("/api/ai/models/train/{training_id}/status")
+async def get_training_status(training_id: str):
+    """Get training session status"""
+    if training_id not in training_sessions:
+        raise HTTPException(status_code=404, detail="Training session not found")
+
+    return {
+        "success": True,
+        "session": training_sessions[training_id]
+    }
 
 @app.get("/api/ai/models/train/{training_id}/insights")
 async def get_training_insights(training_id: str):
@@ -2236,6 +2334,7 @@ async def generate_worklist_prediction(symbol: str):
 async def get_scanner_presets():
     """Get available IBKR scanner presets"""
     presets = [
+        {"id": "WARRIOR_GAPPERS", "name": "🎯 Warrior Trading Gappers", "description": "Top 10 gappers: $2-$20, 5x volume, 10%+ gain, high volume"},
         {"id": "TOP_PERC_GAIN", "name": "Top % Gainers", "description": "Stocks with highest % gains"},
         {"id": "TOP_PERC_LOSE", "name": "Top % Losers", "description": "Stocks with highest % losses"},
         {"id": "MOST_ACTIVE", "name": "Most Active", "description": "Stocks with highest volume"},
@@ -2256,7 +2355,22 @@ async def run_ibkr_scanner(request: Dict[str, Any]):
     location_code = request.get("location", "STK.US.MAJOR")
     num_rows = request.get("num_rows", 50)
 
-    if not data_bus.connected or not data_bus.ib:
+    # Special handling for Warrior Trading Gappers preset
+    if scan_code == "WARRIOR_GAPPERS":
+        scan_code = "TOP_PERC_GAIN"  # Use % gainers as base
+        num_rows = 10  # Top 10 only
+        # Filters will be applied via ScannerSubscription below
+
+    # Enhanced connection check
+    is_connected = False
+    if data_bus.ib:
+        try:
+            is_connected = data_bus.ib.isConnected()
+            logger.info(f"Scanner: IBKR connection check - data_bus.connected={data_bus.connected}, ib.isConnected()={is_connected}")
+        except:
+            is_connected = False
+
+    if not is_connected:
         # Return mock data if not connected
         mock_results = [
             {
@@ -2309,9 +2423,10 @@ async def run_ibkr_scanner(request: Dict[str, Any]):
         }
 
     try:
-        # Use IBKR scanner
-        from ib_insync import ScannerSubscription
+        # Use IBKR scanner with async version to avoid event loop conflicts
+        from ib_insync import ScannerSubscription, TagValue
 
+        # Create scanner subscription with Warrior Trading filters if applicable
         sub = ScannerSubscription(
             instrument=instrument,
             locationCode=location_code,
@@ -2319,28 +2434,79 @@ async def run_ibkr_scanner(request: Dict[str, Any]):
             numberOfRows=num_rows
         )
 
-        scanner_data = data_bus.ib.reqScannerData(sub)
+        # Apply Warrior Trading filters: $2-$20, 1M+ volume, 10%+ gain
+        original_scan_code = request.get("scan_code", "")
+        filter_options = []
+        if original_scan_code == "WARRIOR_GAPPERS":
+            filter_options = [
+                TagValue("priceAbove", "2"),        # Min price $2
+                TagValue("priceBelow", "20"),       # Max price $20
+                TagValue("volumeAbove", "1000000"), # 1M+ volume (high volume)
+                TagValue("changePercAbove", "10"),  # Up 10%+ for the day
+            ]
 
-        # Wait for data
-        await asyncio.sleep(2)
+        # Use async version to avoid "event loop already running" error
+        if filter_options:
+            scanner_data = await data_bus.ib.reqScannerDataAsync(sub, [], filter_options)
+        else:
+            scanner_data = await data_bus.ib.reqScannerDataAsync(sub)
+
+        # Give scanner time to populate results
+        await asyncio.sleep(1)
 
         results = []
-        for i, data in enumerate(scanner_data[:num_rows]):
-            results.append({
-                "rank": data.rank if hasattr(data, 'rank') else i + 1,
-                "symbol": data.contractDetails.contract.symbol,
-                "contract_id": data.contractDetails.contract.conId,
-                "distance": data.distance if hasattr(data, 'distance') else 0,
-                "benchmark": data.benchmark if hasattr(data, 'benchmark') else 0,
-                "projection": data.projection if hasattr(data, 'projection') else 0,
-                "price": 0,  # Would need separate quote request
-                "change": 0,
-                "change_percent": 0,
-                "volume": 0
-            })
+        if scanner_data and len(scanner_data) > 0:
+            for i, data in enumerate(scanner_data[:num_rows]):
+                try:
+                    results.append({
+                        "rank": data.rank if hasattr(data, 'rank') else i + 1,
+                        "symbol": data.contractDetails.contract.symbol,
+                        "contract_id": data.contractDetails.contract.conId,
+                        "distance": data.distance if hasattr(data, 'distance') else 0,
+                        "benchmark": data.benchmark if hasattr(data, 'benchmark') else 0,
+                        "projection": data.projection if hasattr(data, 'projection') else 0,
+                        "price": 0,  # Would need separate quote request
+                        "change": 0,
+                        "change_percent": 0,
+                        "volume": 0
+                    })
+                except Exception as item_error:
+                    logger.warning(f"Skipping scanner result {i}: {item_error}")
+                    continue
 
         # Cancel scanner subscription
-        data_bus.ib.cancelScannerSubscription(sub)
+        try:
+            data_bus.ib.cancelScannerSubscription(sub)
+        except:
+            pass  # Ignore cancellation errors
+
+        if not results:
+            # If no results from IBKR, return mock data
+            logger.warning("No scanner results from IBKR, returning mock data")
+            mock_results = [
+                {
+                    "rank": 1,
+                    "symbol": "NVDA",
+                    "contract_id": 4815747,
+                    "distance": 5.8,
+                    "benchmark": 100.0,
+                    "projection": 105.8,
+                    "price": 485.50,
+                    "change": 5.8,
+                    "change_percent": 1.21,
+                    "volume": 45234567
+                }
+            ]
+            return {
+                "success": True,
+                "data": {
+                    "scan_code": scan_code,
+                    "results": mock_results,
+                    "count": len(mock_results),
+                    "source": "mock_data_fallback",
+                    "message": "IBKR scanner returned no results, showing mock data"
+                }
+            }
 
         return {
             "success": True,
@@ -2353,8 +2519,32 @@ async def run_ibkr_scanner(request: Dict[str, Any]):
         }
 
     except Exception as e:
-        logger.error(f"Scanner failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Scanner failed: {e}", exc_info=True)
+        # Return mock data instead of error
+        mock_results = [
+            {
+                "rank": 1,
+                "symbol": "NVDA",
+                "contract_id": 4815747,
+                "distance": 5.8,
+                "benchmark": 100.0,
+                "projection": 105.8,
+                "price": 485.50,
+                "change": 5.8,
+                "change_percent": 1.21,
+                "volume": 45234567
+            }
+        ]
+        return {
+            "success": True,
+            "data": {
+                "scan_code": scan_code,
+                "results": mock_results,
+                "count": len(mock_results),
+                "source": "mock_data_error_fallback",
+                "message": f"Scanner error: {str(e)}. Showing mock data."
+            }
+        }
 
 @app.post("/api/scanner/ibkr/add-to-worklist")
 async def add_scanner_results_to_worklist(request: Dict[str, Any]):
