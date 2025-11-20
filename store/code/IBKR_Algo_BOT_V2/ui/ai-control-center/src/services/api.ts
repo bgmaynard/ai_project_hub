@@ -4,6 +4,7 @@ import type {
   ModelPerformance,
   BacktestConfig,
   BacktestResponse,
+  BacktestResults,
   AlertConfig,
   TradingViewPush,
   ClaudeInsights,

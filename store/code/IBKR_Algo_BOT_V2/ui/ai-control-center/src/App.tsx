@@ -8,12 +8,14 @@ import ClaudeOrchestrator from './components/ClaudeOrchestrator';
 import DailyReview from './components/DailyReview';
 import OptimizationAdvisor from './components/OptimizationAdvisor';
 import Worklist from './components/Worklist';
+import WarriorTrading from './components/WarriorTrading';
 
 // Navigation component
 const Navigation: React.FC = () => {
   const location = useLocation();
 
   const navItems = [
+    { path: '/warrior', label: 'Warrior Trading', icon: '⚡' },
     { path: '/worklist', label: 'Worklist', icon: '📋' },
     { path: '/models', label: 'Model Management', icon: '🤖' },
     { path: '/backtest', label: 'Backtesting Lab', icon: '🔬' },
@@ -21,11 +23,11 @@ const Navigation: React.FC = () => {
     { path: '/tradingview', label: 'TradingView Hub', icon: '📈' },
     { path: '/claude', label: 'Claude AI', icon: '🧠' },
     { path: '/daily-review', label: 'Daily Review', icon: '📊' },
-    { path: '/optimizer', label: 'Optimizer', icon: '⚡' },
+    { path: '/optimizer', label: 'Optimizer', icon: '🔧' },
   ];
 
   const externalLink = {
-    url: '../complete_platform.html',
+    url: '/complete_platform.html',
     label: 'Trading Platform',
     icon: '💹'
   };
@@ -101,7 +103,8 @@ function App() {
     <Router>
       <AppLayout>
         <Routes>
-          <Route path="/" element={<Navigate to="/worklist" replace />} />
+          <Route path="/" element={<Navigate to="/warrior" replace />} />
+          <Route path="/warrior" element={<WarriorTrading />} />
           <Route path="/worklist" element={<Worklist />} />
           <Route path="/models" element={<ModelManagement />} />
           <Route path="/backtest" element={<Backtesting />} />
@@ -110,7 +113,7 @@ function App() {
           <Route path="/claude" element={<ClaudeOrchestrator />} />
           <Route path="/daily-review" element={<DailyReview />} />
           <Route path="/optimizer" element={<OptimizationAdvisor />} />
-          <Route path="*" element={<Navigate to="/worklist" replace />} />
+          <Route path="*" element={<Navigate to="/warrior" replace />} />
         </Routes>
       </AppLayout>
     </Router>

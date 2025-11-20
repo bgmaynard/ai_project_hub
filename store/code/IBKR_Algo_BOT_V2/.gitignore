@@ -1,0 +1,4 @@
+
+# Backup directories (nested backups cause path length issues)
+*/_install_backups/
+*/_backups/

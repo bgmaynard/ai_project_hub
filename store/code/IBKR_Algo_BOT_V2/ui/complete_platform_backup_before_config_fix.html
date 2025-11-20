@@ -77,141 +77,6 @@
             50% { opacity: 0.5; }
         }
 
-        /* Price flash animation for synchronized updates */
-        @keyframes priceFlash {
-            0%, 100% { background-color: transparent; }
-            50% { background-color: rgba(96, 165, 250, 0.3); }
-        }
-
-        .price-flash {
-            animation: priceFlash 0.5s ease;
-        }
-
-        /* Configuration Dialog Styles */
-        .config-dialog-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-        }
-
-        .config-dialog-overlay.show {
-            display: flex;
-        }
-
-        .config-dialog {
-            background: #1a1a1a;
-            border: 2px solid #007acc;
-            border-radius: 4px;
-            padding: 20px;
-            min-width: 400px;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
-        }
-
-        .config-dialog-header {
-            font-size: 18px;
-            font-weight: 700;
-            color: #007acc;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #333;
-        }
-
-        .config-dialog-body {
-            margin-bottom: 20px;
-        }
-
-        .config-dialog-footer {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .config-input {
-            width: 100%;
-            padding: 10px;
-            background: #252525;
-            border: 1px solid #404040;
-            color: #fff;
-            font-size: 14px;
-            border-radius: 3px;
-            margin-bottom: 10px;
-        }
-
-        .config-input:focus {
-            outline: none;
-            border-color: #007acc;
-        }
-
-        .config-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            background: #252525;
-            border: 1px solid #333;
-            border-radius: 3px;
-            margin-bottom: 8px;
-        }
-
-        .config-list-item:hover {
-            background: #2d2d2d;
-        }
-
-        .config-list-item-name {
-            font-weight: 600;
-            color: #fff;
-            flex: 1;
-        }
-
-        .config-list-item-date {
-            font-size: 11px;
-            color: #888;
-            margin-right: 10px;
-        }
-
-        .config-list-item-actions {
-            display: flex;
-            gap: 5px;
-        }
-
-        .config-btn-small {
-            padding: 4px 8px;
-            font-size: 12px;
-            border: none;
-            border-radius: 2px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .config-btn-load {
-            background: #22c55e;
-            color: #000;
-        }
-
-        .config-btn-rename {
-            background: #60a5fa;
-            color: #000;
-        }
-
-        .config-btn-delete {
-            background: #ef4444;
-            color: #fff;
-        }
-
-        .config-btn-small:hover {
-            opacity: 0.8;
-        }
-
         /* Menu Bar */
         .menu-bar {
             background: #252525;
@@ -878,30 +743,13 @@
 
     <!-- Menu Bar -->
     <div class="menu-bar">
-        <div class="menu-item" onclick="toggleDropdown('layouts-dropdown')">
-            📐 LAYOUTS
-            <div class="dropdown" id="layouts-dropdown">
-                <strong>Preset Layouts</strong>
-                <a href="#" onclick="event.preventDefault(); loadLayout('default')">📊 Default</a>
-                <a href="#" onclick="event.preventDefault(); loadLayout('trading')">⚡ Trading</a>
-                <a href="#" onclick="event.preventDefault(); loadLayout('analysis')">📈 Analysis</a>
-                <a href="#" onclick="event.preventDefault(); loadLayout('scalping')">🎯 Scalping</a>
-                <hr>
-                <a href="#" onclick="event.preventDefault(); resetLayout()">🔄 Reset to Default</a>
-            </div>
-        </div>
-        <div class="menu-item" onclick="toggleDropdown('configs-dropdown')" style="background: #1e3a8a;">
-            💾 CONFIGURATIONS
-            <div class="dropdown" id="configs-dropdown">
-                <strong>Saved Configurations</strong>
-                <div id="savedConfigsList" style="max-height: 300px; overflow-y: auto;">
-                    <!-- Dynamically populated -->
-                </div>
-                <hr>
-                <a href="#" onclick="event.preventDefault(); showSaveConfigDialog()">💾 Save Current As...</a>
-                <a href="#" onclick="event.preventDefault(); showManageConfigsDialog()">⚙️ Manage Configurations</a>
-            </div>
-        </div>
+        <div class="menu-item" onclick="loadLayout('default')">📊 Default</div>
+        <div class="menu-item" onclick="loadLayout('trading')">⚡ Trading</div>
+        <div class="menu-item" onclick="loadLayout('analysis')">📈 Analysis</div>
+        <div class="menu-item" onclick="loadLayout('scalping')">🎯 Scalping</div>
+        <div class="menu-item" onclick="loadLayout('custom')" style="background: #1a4d2e;">📐 Custom</div>
+        <div class="menu-item" onclick="saveAsCustomLayout()" style="background: #1e3a8a;">💾 Save as Custom</div>
+        <div class="menu-item" onclick="resetLayout()">🔄 Reset</div>
         <div class="menu-item" onclick="toggleDropdown('switch-ui-dropdown')">
             🖥️ Switch UI
             <div class="dropdown" id="switch-ui-dropdown">
@@ -911,177 +759,12 @@
                 <a href="complete_platform.html">🖥️ Complete Platform (Current)</a>
             </div>
         </div>
-        <div class="menu-item" onclick="toggleDropdown('charts-dropdown')">
-            📊 CHARTS
-            <div class="dropdown" id="charts-dropdown">
-                <strong>Add Chart</strong>
-                <a href="#" onclick="event.preventDefault(); addChart('1')">📊 1 Minute</a>
-                <a href="#" onclick="event.preventDefault(); addChart('5')">📊 5 Minutes</a>
-                <a href="#" onclick="event.preventDefault(); addChart('15')">📊 15 Minutes</a>
-                <a href="#" onclick="event.preventDefault(); addChart('60')">📊 1 Hour</a>
-                <a href="#" onclick="event.preventDefault(); addChart('240')">📊 4 Hours</a>
-                <a href="#" onclick="event.preventDefault(); addChart('D')">📊 Daily</a>
-                <a href="#" onclick="event.preventDefault(); addChart('W')">📊 Weekly</a>
-                <hr>
-                <a href="#" onclick="event.preventDefault(); showAddChartDialog()">⚙️ Custom Chart...</a>
-            </div>
-        </div>
-        <div class="menu-item" onclick="toggleDropdown('tradingview-dropdown')" style="background: #2563eb;">
-            📺 TRADINGVIEW
-            <div class="dropdown" id="tradingview-dropdown">
-                <strong>Open in TradingView Desktop</strong>
-                <a href="#" onclick="event.preventDefault(); openInTradingView(currentSymbol)">📺 Open Current Symbol</a>
-                <a href="#" onclick="event.preventDefault(); copySymbolToClipboard()">📋 Copy Symbol to Clipboard</a>
-                <hr>
-                <strong>Webhook Integration</strong>
-                <a href="#" onclick="event.preventDefault(); showWebhookInfo()">⚡ Webhook URL & Setup</a>
-                <a href="#" onclick="event.preventDefault(); showWebhookLogs()">📊 View Webhook Logs</a>
-                <a href="#" onclick="event.preventDefault(); testWebhook()">🧪 Test Webhook</a>
-                <hr>
-                <strong>Watchlist Sync</strong>
-                <a href="#" onclick="event.preventDefault(); exportWatchlist()">⬇️ Export Watchlist</a>
-                <a href="#" onclick="event.preventDefault(); showSetupGuide()">📚 Setup Guide</a>
-            </div>
-        </div>
         <div class="menu-item" onclick="connectToIBKR()">🔌 Connect IBKR</div>
         <div class="menu-item" onclick="openAIControlPanel()" style="background: #1e40af;">🤖 AI Control</div>
     </div>
 
     <!-- Workspace -->
     <div class="workspace" id="workspace"></div>
-
-    <!-- Configuration Dialogs -->
-    <div class="config-dialog-overlay" id="saveConfigDialog">
-        <div class="config-dialog">
-            <div class="config-dialog-header">💾 Save Configuration</div>
-            <div class="config-dialog-body">
-                <label style="display: block; margin-bottom: 8px; color: #888; font-size: 14px;">Configuration Name:</label>
-                <input type="text" class="config-input" id="configNameInput" placeholder="e.g., My Trading Setup" />
-                <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                    This will save the current window layout and watchlist.
-                </div>
-            </div>
-            <div class="config-dialog-footer">
-                <button class="btn btn-secondary" onclick="closeSaveConfigDialog()">Cancel</button>
-                <button class="btn btn-buy" onclick="saveConfiguration()">💾 Save</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="config-dialog-overlay" id="manageConfigsDialog">
-        <div class="config-dialog">
-            <div class="config-dialog-header">⚙️ Manage Configurations</div>
-            <div class="config-dialog-body">
-                <div id="manageConfigsList">
-                    <!-- Dynamically populated -->
-                </div>
-                <div id="noConfigsMessage" style="text-align: center; padding: 40px 20px; color: #666;">
-                    No saved configurations yet.<br>
-                    <small>Save your first configuration from the CONFIGURATIONS menu!</small>
-                </div>
-            </div>
-            <div class="config-dialog-footer">
-                <button class="btn btn-secondary" onclick="closeManageConfigsDialog()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="config-dialog-overlay" id="addChartDialog">
-        <div class="config-dialog">
-            <div class="config-dialog-header">📊 Add Chart</div>
-            <div class="config-dialog-body">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 8px; color: #888; font-size: 14px;">Timeframe:</label>
-                    <select class="config-input" id="chartTimeframe">
-                        <option value="1">1 Minute</option>
-                        <option value="5" selected>5 Minutes</option>
-                        <option value="15">15 Minutes</option>
-                        <option value="30">30 Minutes</option>
-                        <option value="60">1 Hour</option>
-                        <option value="240">4 Hours</option>
-                        <option value="D">Daily</option>
-                        <option value="W">Weekly</option>
-                        <option value="M">Monthly</option>
-                    </select>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 8px; color: #888; font-size: 14px;">Chart Style:</label>
-                    <select class="config-input" id="chartStyle">
-                        <option value="1" selected>Candles</option>
-                        <option value="0">Bars</option>
-                        <option value="9">Heikin Ashi</option>
-                        <option value="3">Line</option>
-                        <option value="8">Area</option>
-                    </select>
-                </div>
-                <div style="font-size: 12px; color: #666; margin-top: 10px;">
-                    Chart will be created for current symbol: <span id="chartSymbolPreview" style="color: #007acc; font-weight: 700;">AAPL</span>
-                </div>
-            </div>
-            <div class="config-dialog-footer">
-                <button class="btn btn-secondary" onclick="closeAddChartDialog()">Cancel</button>
-                <button class="btn btn-buy" onclick="createCustomChart()">📊 Add Chart</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- TradingView Webhook Info Dialog -->
-    <div class="config-dialog-overlay" id="webhookInfoDialog">
-        <div class="config-dialog" style="max-width: 700px;">
-            <div class="config-dialog-header">⚡ TradingView Webhook Setup</div>
-            <div class="config-dialog-body">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 8px; color: #007acc; font-size: 14px; font-weight: 700;">Webhook URL:</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="text" class="config-input" id="webhookUrl" readonly value="http://127.0.0.1:9101/api/tradingview/webhook" style="flex: 1; font-family: monospace; font-size: 13px;">
-                        <button class="btn btn-secondary" onclick="copyWebhookUrl()" style="padding: 10px 15px;">📋 Copy</button>
-                    </div>
-                </div>
-                <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
-                    <div style="font-size: 13px; color: #888; font-weight: 700; margin-bottom: 10px;">ALERT MESSAGE FORMAT:</div>
-                    <pre style="background: #252525; padding: 10px; border-radius: 3px; font-size: 12px; color: #22c55e; overflow-x: auto; margin: 0;">{
-  "action": "{{strategy.order.action}}",
-  "symbol": "{{ticker}}",
-  "price": {{close}},
-  "confidence": 0.85,
-  "target": {{close}} * 1.05,
-  "stop": {{close}} * 0.98
-}</pre>
-                </div>
-                <div style="font-size: 12px; color: #666;">
-                    <strong style="color: #007acc;">Setup Steps:</strong><br>
-                    1. Open TradingView Desktop<br>
-                    2. Create an alert on your chart<br>
-                    3. Set "Webhook URL" to the URL above<br>
-                    4. Paste the alert message format<br>
-                    5. Test with the "Test Webhook" button below
-                </div>
-            </div>
-            <div class="config-dialog-footer">
-                <button class="btn btn-secondary" onclick="closeWebhookInfoDialog()">Close</button>
-                <button class="btn btn-buy" onclick="openTradingViewSetupGuide()">📚 Full Guide</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- TradingView Webhook Logs Dialog -->
-    <div class="config-dialog-overlay" id="webhookLogsDialog">
-        <div class="config-dialog" style="max-width: 800px;">
-            <div class="config-dialog-header">📊 Webhook Activity Logs</div>
-            <div class="config-dialog-body">
-                <div id="webhookLogsList" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px;">
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        Loading webhook logs...
-                    </div>
-                </div>
-            </div>
-            <div class="config-dialog-footer">
-                <button class="btn btn-danger" onclick="clearWebhookLogs()">🗑️ Clear Logs</button>
-                <button class="btn btn-secondary" onclick="closeWebhookLogsDialog()">Close</button>
-                <button class="btn btn-buy" onclick="refreshWebhookLogs()">🔄 Refresh</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Halt Indicator (DISABLED - Now in quote window) -->
     <div id="haltIndicator" style="display: none;"></div>
@@ -1111,204 +794,7 @@
         let zIndexCounter = 100;
         let currentSymbol = 'AAPL';
         let watchlist = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA', 'SPY', 'QQQ'];
-
-        // CENTRALIZED MARKET DATA STORE - Single source of truth for all prices
-        const marketDataStore = {
-            data: {},
-            subscribers: [],
-
-            update(symbol, newData) {
-                const existing = this.data[symbol] || {};
-                this.data[symbol] = {
-                    ...existing,
-                    ...newData,
-                    timestamp: Date.now()
-                };
-                this.notifySubscribers(symbol);
-                // Also update legacy cache for compatibility
-                marketDataCache[symbol] = this.data[symbol];
-            },
-
-            get(symbol) {
-                return this.data[symbol] || null;
-            },
-
-            subscribe(callback) {
-                this.subscribers.push(callback);
-            },
-
-            notifySubscribers(symbol) {
-                const data = this.data[symbol];
-                this.subscribers.forEach(callback => {
-                    try { callback(symbol, data); } catch (e) { console.error('[SYNC]', e); }
-                });
-            },
-
-            isFresh(symbol) {
-                const data = this.data[symbol];
-                return data && data.timestamp && (Date.now() - data.timestamp) < 5000;
-            }
-        };
-
-        // UNIFIED REFRESH SYSTEM - Updates store and notifies all components
-        let unifiedRefreshInterval = null;
-
-        function startUnifiedRefresh() {
-            // Clear any existing interval
-            if (unifiedRefreshInterval) {
-                clearInterval(unifiedRefreshInterval);
-            }
-
-            // Refresh every 2 seconds for synchronized updates
-            unifiedRefreshInterval = setInterval(async () => {
-                if (currentSymbol) {
-                    await fetchAndUpdateStore(currentSymbol);
-                }
-
-                // Also refresh worklist if it's being displayed
-                if (document.getElementById('worklistDisplay')) {
-                    await refreshWorklistPrices();
-                }
-            }, 2000);
-        }
-
-        async function fetchAndUpdateStore(symbol) {
-            try {
-                const apiData = await apiFetch(`/api/price/${symbol}`);
-                if (apiData && apiData.data) {
-                    const d = apiData.data;
-                    marketDataStore.update(symbol, {
-                        last: d.last,
-                        bid: d.bid,
-                        ask: d.ask,
-                        volume: d.volume,
-                        high: d.high,
-                        low: d.low,
-                        open: d.open,
-                        close: d.close,
-                        bidSize: d.bidSize,
-                        askSize: d.askSize,
-                        change: d.change,
-                        changePercent: d.changePercent
-                    });
-                    console.log(`[SYNC] ${symbol} updated from unified refresh: $${d.last?.toFixed(2)}`);
-                }
-            } catch (error) {
-                console.error('[SYNC] Error in unified refresh:', error);
-            }
-        }
-
-        async function refreshWorklistPrices() {
-            try {
-                const response = await fetch(API_BASE_URL + '/api/worklist');
-                const result = await response.json();
-                if (result.success && result.data) {
-                    result.data.forEach(item => {
-                        marketDataStore.update(item.symbol, {
-                            last: item.current_price,
-                            bid: item.bid,
-                            ask: item.ask,
-                            volume: item.volume,
-                            change: item.change,
-                            change_percent: item.change_percent
-                        });
-                    });
-                }
-            } catch (error) {
-                console.error('[SYNC] Error refreshing worklist:', error);
-            }
-        }
-
-        // Subscribe all components to store updates
-        marketDataStore.subscribe((symbol, data) => {
-            // Update Quote panel if this is current symbol
-            if (symbol === currentSymbol) {
-                updateQuotePanelFromStore(symbol, data);
-                updateOrderPanelFromStore(symbol, data);
-            }
-
-            // Update worklist row for this symbol
-            updateWorklistRowFromStore(symbol, data);
-        });
-
-        function updateQuotePanelFromStore(symbol, data) {
-            if (!data) return;
-
-            safeUpdate('bidPrice', data.bid?.toFixed(2) || '--');
-            safeUpdate('askPrice', data.ask?.toFixed(2) || '--');
-            safeUpdate('lastPrice', data.last?.toFixed(2) || '--');
-            safeUpdate('volumePrice', data.volume?.toLocaleString() || '--');
-            safeUpdate('highPrice', data.high?.toFixed(2) || '--');
-            safeUpdate('lowPrice', data.low?.toFixed(2) || '--');
-            safeUpdate('openPrice', data.open?.toFixed(2) || '--');
-            safeUpdate('closePrice', data.close?.toFixed(2) || '--');
-
-            if (data.bid) safeUpdate('bidSize', `x ${data.bidSize || 0}`);
-            if (data.ask) safeUpdate('askSize', `x ${data.askSize || 0}`);
-
-            // Calculate and display change
-            if (data.last && data.close) {
-                const change = data.last - data.close;
-                const changePct = ((change / data.close) * 100).toFixed(2);
-                const changeEl = document.getElementById('priceChange');
-                if (changeEl) {
-                    changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct}%)`;
-                    changeEl.className = change >= 0 ? 'quote-stat-label positive' : 'quote-stat-label negative';
-                }
-            }
-        }
-
-        function updateOrderPanelFromStore(symbol, data) {
-            if (!data) return;
-
-            safeUpdate('marketBid', data.bid?.toFixed(2) || '--');
-            safeUpdate('marketLast', data.last?.toFixed(2) || '--');
-            safeUpdate('marketAsk', data.ask?.toFixed(2) || '--');
-
-            // Auto-set limit price to mid (only if field is not focused and empty/invalid)
-            const orderTypeEl = document.getElementById('orderType');
-            const orderPriceEl = document.getElementById('orderPrice');
-            if (data.bid && data.ask && data.bid > 0 && data.ask > 0 && orderTypeEl && orderTypeEl.value === 'LIMIT') {
-                if (document.activeElement !== orderPriceEl &&
-                    (!orderPriceEl.value || orderPriceEl.value === '' || parseFloat(orderPriceEl.value) <= 0)) {
-                    const mid = ((data.bid + data.ask) / 2).toFixed(2);
-                    safeUpdate('orderPrice', mid);
-                }
-            }
-        }
-
-        function updateWorklistRowFromStore(symbol, data) {
-            if (!data) return;
-
-            // Find the row in worklist table
-            const rows = document.querySelectorAll('#worklistDisplay tbody tr');
-            rows.forEach(row => {
-                const symbolCell = row.querySelector('td:first-child');
-                if (symbolCell && symbolCell.textContent.includes(symbol)) {
-                    // Update price cell (second column)
-                    const priceCell = row.querySelector('td:nth-child(2)');
-                    if (priceCell && data.last) {
-                        const isFresh = marketDataStore.isFresh(symbol);
-                        const liveIndicator = isFresh ? '<span style="color: #22c55e; margin-left: 4px;" title="Live data">🟢</span>' :
-                                              '<span style="color: #eab308; margin-left: 4px;" title="Delayed">🟡</span>';
-                        priceCell.innerHTML = `${data.last.toFixed(2)}${liveIndicator}`;
-
-                        // Add flash animation
-                        priceCell.classList.add('price-flash');
-                        setTimeout(() => priceCell.classList.remove('price-flash'), 500);
-                    }
-
-                    // Update change cell (third column)
-                    const changeCell = row.querySelector('td:nth-child(3)');
-                    if (changeCell && data.change_percent !== undefined) {
-                        const changeClass = data.change_percent >= 0 ? 'positive' : 'negative';
-                        changeCell.innerHTML = `<span class="${changeClass}">${data.change_percent.toFixed(2)}%</span>`;
-                    }
-                }
-            });
-        }
-
-        let marketDataCache = {}; // Legacy cache
+        let marketDataCache = {};
         let positionsCache = [];
         let ordersCache = [];
         let apiAvailable = null; // null = unknown, true = available, false = demo mode
@@ -2004,9 +1490,6 @@
                         <button id="aiTabModels" class="ai-tab" onclick="switchAITab('models')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
                             🎯 MODELS
                         </button>
-                        <button id="aiTabBot" class="ai-tab" onclick="switchAITab('bot')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🤖 BOT TRADING
-                        </button>
                     </div>
 
                     <!-- TRAINING TAB -->
@@ -2016,13 +1499,8 @@
 
                             <div style="margin-bottom: 8px;">
                                 <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Training Symbol</label>
-                                <div style="display: flex; gap: 6px;">
-                                    <input type="text" id="trainSymbol" value="SPY" placeholder="SPY, AAPL, etc."
-                                           style="flex: 1; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
-                                    <button onclick="loadWorklistSymbol('trainSymbol')" style="padding: 6px 12px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; white-space: nowrap;">
-                                        📋 Worklist
-                                    </button>
-                                </div>
+                                <input type="text" id="trainSymbol" value="SPY" placeholder="SPY, AAPL, etc."
+                                       style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
                             </div>
 
                             <div style="margin-bottom: 8px;">
@@ -2120,13 +1598,8 @@
 
                             <div style="margin-bottom: 8px;">
                                 <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Symbols (comma separated)</label>
-                                <div style="display: flex; gap: 6px;">
-                                    <input type="text" id="backtestSymbols" value="AAPL,MSFT,GOOGL" placeholder="AAPL,MSFT,GOOGL"
-                                           style="flex: 1; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
-                                    <button onclick="loadWorklistSymbols('backtestSymbols')" style="padding: 6px 12px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; white-space: nowrap;">
-                                        📋 Worklist
-                                    </button>
-                                </div>
+                                <input type="text" id="backtestSymbols" value="AAPL,MSFT,GOOGL" placeholder="AAPL,MSFT,GOOGL"
+                                       style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
                             </div>
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
@@ -2155,12 +1628,8 @@
                                 </div>
                             </div>
 
-                            <div style="margin-top: 8px; padding: 8px; background: #2d2d2d; border-left: 3px solid #f59e0b; border-radius: 3px; font-size: 11px; color: #f59e0b;">
-                                ⚠️ <strong>Note:</strong> Backtest currently returns simulated results (always 65% win rate, 150 trades). Real backtesting implementation coming soon.
-                            </div>
-
                             <button id="runBacktestBtn" class="btn btn-buy" onclick="runBacktest()" style="width: 100%; font-size: 14px; padding: 10px; margin-top: 8px;">
-                                📊 RUN BACKTEST (DEMO)
+                                📊 RUN BACKTEST
                             </button>
                         </div>
 
@@ -2183,122 +1652,6 @@
                             <div id="modelsPerformance">
                                 <div class="empty-state" style="padding: 20px; font-size: 13px;">No models available yet.<br>Train a model first!</div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- BOT TRADING TAB -->
-                    <div id="aiBotTab" class="ai-tab-content" style="display: none;">
-                        <!-- Bot Status -->
-                        <div style="padding: 12px; background: #1a1a1a; border: 2px solid #007acc; border-radius: 4px; margin-bottom: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <div style="font-size: 14px; color: #007acc; font-weight: 700;">🤖 BOT STATUS</div>
-                                <div id="botStatusIndicator" style="display: flex; align-items: center; gap: 6px; padding: 4px 12px; background: #252525; border-radius: 3px;">
-                                    <div style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></div>
-                                    <span style="font-size: 12px; font-weight: 600; color: #ef4444;">STOPPED</span>
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;">
-                                <div style="padding: 8px; background: #252525; border-radius: 3px;">
-                                    <div style="font-size: 11px; color: #888;">RUNNING</div>
-                                    <div id="botRunning" style="font-size: 16px; font-weight: 600; color: #ef4444;">FALSE</div>
-                                </div>
-                                <div style="padding: 8px; background: #252525; border-radius: 3px;">
-                                    <div style="font-size: 11px; color: #888;">TRADING</div>
-                                    <div id="botEnabled" style="font-size: 16px; font-weight: 600; color: #ef4444;">FALSE</div>
-                                </div>
-                                <div style="padding: 8px; background: #252525; border-radius: 3px;">
-                                    <div style="font-size: 11px; color: #888;">SIGNALS</div>
-                                    <div id="botSignals" style="font-size: 16px; font-weight: 600; color: #007acc;">0</div>
-                                </div>
-                                <div style="padding: 8px; background: #252525; border-radius: 3px;">
-                                    <div style="font-size: 11px; color: #888;">TRADES</div>
-                                    <div id="botTrades" style="font-size: 16px; font-weight: 600; color: #007acc;">0</div>
-                                </div>
-                                <div style="padding: 8px; background: #252525; border-radius: 3px;">
-                                    <div style="font-size: 11px; color: #888;">POSITIONS</div>
-                                    <div id="botPositions" style="font-size: 16px; font-weight: 600; color: #007acc;">0</div>
-                                </div>
-                                <div style="padding: 8px; background: #252525; border-radius: 3px;">
-                                    <div style="font-size: 11px; color: #888;">DAILY P&L</div>
-                                    <div id="botPnL" style="font-size: 16px; font-weight: 600; color: #888;">$0.00</div>
-                                </div>
-                            </div>
-
-                            <!-- Control Buttons -->
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-                                <button onclick="startBot()" style="padding: 10px; background: #22c55e; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
-                                    ▶️ START BOT
-                                </button>
-                                <button onclick="stopBot()" style="padding: 10px; background: #ef4444; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
-                                    ⏹️ STOP BOT
-                                </button>
-                                <button onclick="enableBotTrading()" style="padding: 10px; background: #3b82f6; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
-                                    ✅ ENABLE TRADING
-                                </button>
-                                <button onclick="disableBotTrading()" style="padding: 10px; background: #f59e0b; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
-                                    ⏸️ PAUSE TRADING
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Risk Limits -->
-                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #ef4444; border-radius: 4px; margin-bottom: 12px;">
-                            <div style="font-size: 13px; color: #ef4444; margin-bottom: 8px; font-weight: 700;">⚠️ RISK LIMITS</div>
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 11px;">
-                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
-                                    <div style="color: #888;">MAX/TRADE</div>
-                                    <div id="botMaxRisk" style="font-weight: 600; color: #ef4444;">$50</div>
-                                </div>
-                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
-                                    <div style="color: #888;">DAILY LIMIT</div>
-                                    <div id="botDailyLimit" style="font-weight: 600; color: #ef4444;">$500</div>
-                                </div>
-                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
-                                    <div style="color: #888;">WEEKLY LIMIT</div>
-                                    <div id="botWeeklyLimit" style="font-weight: 600; color: #ef4444;">$3,500</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- WORKLIST (Shared with Platform) -->
-                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <div style="font-size: 13px; color: #888; font-weight: 700;">📋 WORKLIST (Shared)</div>
-                                <button onclick="syncWorklistWithScanner()" style="padding: 4px 10px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 600;">
-                                    🔄 Add Scanner
-                                </button>
-                            </div>
-                            <div id="botWorklist" style="font-size: 12px; color: #007acc; font-weight: 600;">
-                                Loading...
-                            </div>
-                            <div id="worklistCount" style="font-size: 10px; color: #666; margin-top: 6px;">
-                                0 symbols
-                            </div>
-                            <div style="font-size: 10px; color: #666; margin-top: 4px; padding-top: 4px; border-top: 1px solid #333;">
-                                💡 Same worklist used for training, backtesting, predictions & bot trading
-                            </div>
-                        </div>
-
-                        <!-- Recent Signals -->
-                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
-                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">🔔 RECENT SIGNALS</div>
-                            <div id="botSignalsList" style="max-height: 150px; overflow-y: auto; font-size: 11px;">
-                                <div class="empty-state" style="padding: 20px; font-size: 12px;">No signals yet. Bot will generate signals when it finds opportunities.</div>
-                            </div>
-                        </div>
-
-                        <!-- Open Positions -->
-                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;">
-                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">📊 OPEN POSITIONS</div>
-                            <div id="botOpenPositions" style="max-height: 200px; overflow-y: auto; font-size: 11px;">
-                                <div class="empty-state" style="padding: 20px; font-size: 12px;">No open positions</div>
-                            </div>
-                        </div>
-
-                        <!-- Auto-refresh notice -->
-                        <div style="margin-top: 12px; padding: 8px; background: #252525; border-left: 3px solid #007acc; border-radius: 3px; font-size: 11px; color: #888;">
-                            ℹ️ Status updates every 5 seconds automatically
                         </div>
                     </div>
                 </div>
@@ -2549,20 +1902,6 @@
 
                 const d = apiData.data;
 
-                // UPDATE CENTRALIZED STORE FIRST - This will trigger all subscribers
-                marketDataStore.update(currentSymbol, {
-                    last: d.last,
-                    bid: d.bid,
-                    ask: d.ask,
-                    volume: d.volume,
-                    high: d.high,
-                    low: d.low,
-                    open: d.open,
-                    close: d.close,
-                    bidSize: d.bidSize,
-                    askSize: d.askSize
-                });
-
                 // Update UI elements safely
                 safeUpdate('bidPrice', d.bid?.toFixed(2) || '--');
                 safeUpdate('askPrice', d.ask?.toFixed(2) || '--');
@@ -2599,7 +1938,7 @@
                     }
                 }
 
-                // Legacy cache already updated by store.update()
+                marketDataCache[currentSymbol] = d;
 
                 // Update market price display in order panel
                 safeUpdate('marketBid', d.bid?.toFixed(2) || '--');
@@ -3433,19 +2772,6 @@ Confirm order?`;
 
                 if (data.success && data.data) {
                     worklistData = data.data;
-
-                    // UPDATE CENTRALIZED STORE for each symbol
-                    worklistData.forEach(item => {
-                        marketDataStore.update(item.symbol, {
-                            last: item.current_price,
-                            bid: item.bid,
-                            ask: item.ask,
-                            volume: item.volume,
-                            change: item.change,
-                            change_percent: item.change_percent
-                        });
-                    });
-
                     updateWorklistDisplay();
                     updateWorklistStats();
                 }
@@ -3466,12 +2792,9 @@ Confirm order?`;
             let html = '<table class="data-table" style="font-size: 13px;"><thead><tr><th style="padding: 4px 6px;">Symbol</th><th style="padding: 4px 6px; text-align: right;">Price</th><th style="padding: 4px 6px; text-align: right;">Change</th><th style="padding: 4px 6px; text-align: center;">Pred</th><th style="padding: 4px 6px; text-align: right;">Conf</th><th style="padding: 4px 6px; text-align: center;">Action</th></tr></thead><tbody>';
 
             for (const item of worklistData) {
-                // GET PRICE FROM CENTRALIZED STORE (not from item)
-                const storeData = marketDataStore.get(item.symbol);
-                const isFresh = marketDataStore.isFresh(item.symbol);
-                const price = storeData?.last ? `$${storeData.last.toFixed(2)}` : '-';
-                const change = storeData?.change_percent !== undefined ? storeData.change_percent.toFixed(2) + '%' : '-';
-                const changeClass = storeData?.change_percent !== undefined && storeData.change_percent >= 0 ? 'positive' : 'negative';
+                const price = item.current_price ? `$${item.current_price.toFixed(2)}` : '-';
+                const change = item.change_percent !== undefined ? item.change_percent.toFixed(2) + '%' : '-';
+                const changeClass = item.change_percent !== undefined && item.change_percent >= 0 ? 'positive' : 'negative';
 
                 let predBadge = '-';
                 if (item.prediction === 'UP') {
@@ -3481,10 +2804,7 @@ Confirm order?`;
                 }
 
                 const confidence = item.confidence ? item.confidence.toFixed(0) + '%' : '-';
-                // Live indicator: green dot if fresh, red if stale
-                const liveIndicator = isFresh ? '<span style="color: #22c55e; margin-left: 4px;" title="Live data (fresh)">🟢</span>' :
-                                      (storeData ? '<span style="color: #eab308; margin-left: 4px;" title="Data delayed">🟡</span>' :
-                                       '<span style="color: #ef4444; margin-left: 4px;" title="No data">🔴</span>');
+                const liveIndicator = !item.has_live_data ? '<span style="color: #eab308; margin-left: 4px;" title="No live data">⚠</span>' : '';
 
                 html += `
                     <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="font-size: 13px;">
@@ -4093,7 +3413,6 @@ Confirm order?`;
             document.getElementById('aiPredictionsTab').style.display = 'none';
             document.getElementById('aiBacktestTab').style.display = 'none';
             document.getElementById('aiModelsTab').style.display = 'none';
-            document.getElementById('aiBotTab').style.display = 'none';
 
             // Reset all tab buttons
             document.querySelectorAll('.ai-tab').forEach(btn => {
@@ -4119,12 +3438,6 @@ Confirm order?`;
                 document.getElementById('aiTabModels').style.background = '#2d2d2d';
                 document.getElementById('aiTabModels').style.color = '#fff';
                 loadModelsPerformance();
-            } else if (tab === 'bot') {
-                document.getElementById('aiBotTab').style.display = 'block';
-                document.getElementById('aiTabBot').style.background = '#2d2d2d';
-                document.getElementById('aiTabBot').style.color = '#fff';
-                updateBotStatus();
-                startBotStatusRefresh();
             }
         }
 
@@ -4690,57 +4003,7 @@ Confirm order?`;
             });
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
-        //                     CONFIGURATION MANAGEMENT SYSTEM
-        // ═══════════════════════════════════════════════════════════════════════
-
-        function getAllConfigurations() {
-            const configs = localStorage.getItem('dashboardConfigurations');
-            return configs ? JSON.parse(configs) : {};
-        }
-
-        function saveAllConfigurations(configs) {
-            localStorage.setItem('dashboardConfigurations', JSON.stringify(configs));
-        }
-
-        function showSaveConfigDialog() {
-            document.getElementById('configNameInput').value = '';
-            document.getElementById('saveConfigDialog').classList.add('show');
-
-            const input = document.getElementById('configNameInput');
-            input.focus();
-
-            // Add Enter key handler
-            input.onkeypress = function(e) {
-                if (e.key === 'Enter') {
-                    saveConfiguration();
-                }
-            };
-
-            // Close the dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function closeSaveConfigDialog() {
-            document.getElementById('saveConfigDialog').classList.remove('show');
-        }
-
-        function saveConfiguration() {
-            const name = document.getElementById('configNameInput').value.trim();
-
-            if (!name) {
-                alert('Please enter a configuration name.');
-                return;
-            }
-
-            const configs = getAllConfigurations();
-
-            if (configs[name]) {
-                if (!confirm(`Configuration "${name}" already exists. Overwrite it?`)) {
-                    return;
-                }
-            }
-
+        function saveAsCustomLayout() {
             const layout = windows.map(w => ({
                 id: w.id,
                 title: w.title,
@@ -4750,453 +4013,14 @@ Confirm order?`;
                 height: w.height,
                 minimized: w.minimized
             }));
-
-            configs[name] = {
-                windows: layout,
-                watchlist: [...watchlist],
-                timestamp: new Date().toISOString()
-            };
-
-            saveAllConfigurations(configs);
-            closeSaveConfigDialog();
-            updateSavedConfigsList();
-
-            console.log(`✓ Configuration "${name}" saved with ${layout.length} windows`);
-            alert(`✓ Configuration "${name}" saved successfully!`);
-        }
-
-        function loadConfiguration(name) {
-            const configs = getAllConfigurations();
-            const config = configs[name];
-
-            if (!config) {
-                alert(`Configuration "${name}" not found.`);
-                return;
-            }
-
-            console.log(`Loading configuration: ${name}`);
-
-            // Close all current windows
-            windows.forEach(w => w.close());
-            windows = [];
-
-            // Restore watchlist
-            if (config.watchlist) {
-                watchlist = [...config.watchlist];
-                localStorage.setItem('watchlist', JSON.stringify(watchlist));
-            }
-
-            // Restore windows
-            config.windows.forEach(w => {
-                const template = windowTemplates[w.id] || windowTemplates[w.id.replace(/\d+$/, '')] || '';
-                createWindow(w.id, w.title, template, w.x, w.y, w.width, w.height);
-                if (w.minimized) {
-                    const window = windows.find(win => win.id === w.id);
-                    if (window) window.minimize();
-                }
-            });
-
-            // Refresh data
-            setTimeout(() => {
-                loadPrice();
-                loadLevel2();
-                loadTimeSales();
-                loadPositions();
-                loadOrders();
-                loadAccount();
-                loadWorklist();
-
-                // Initialize charts
-                windows.forEach(win => {
-                    if (win.id.startsWith('chart')) {
-                        const chartId = win.id.replace('chart', '');
-                        initChart(chartId, currentSymbol);
-                    }
-                });
-            }, 1000);
-
-            // Close dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-
-            console.log(`✓ Configuration "${name}" loaded`);
-        }
-
-        function deleteConfiguration(name) {
-            if (!confirm(`Delete configuration "${name}"?`)) {
-                return;
-            }
-
-            const configs = getAllConfigurations();
-            delete configs[name];
-            saveAllConfigurations(configs);
-            updateSavedConfigsList();
-            updateManageConfigsList();
-
-            console.log(`✗ Configuration "${name}" deleted`);
-            alert(`✓ Configuration "${name}" deleted.`);
-        }
-
-        function renameConfiguration(oldName) {
-            const newName = prompt(`Rename configuration "${oldName}" to:`, oldName);
-
-            if (!newName || newName === oldName) {
-                return;
-            }
-
-            const configs = getAllConfigurations();
-
-            if (configs[newName]) {
-                alert(`Configuration "${newName}" already exists.`);
-                return;
-            }
-
-            configs[newName] = configs[oldName];
-            configs[newName].timestamp = new Date().toISOString();
-            delete configs[oldName];
-
-            saveAllConfigurations(configs);
-            updateSavedConfigsList();
-            updateManageConfigsList();
-
-            console.log(`✓ Configuration renamed: "${oldName}" → "${newName}"`);
-            alert(`✓ Configuration renamed to "${newName}".`);
-        }
-
-        function updateSavedConfigsList() {
-            const configs = getAllConfigurations();
-            const configNames = Object.keys(configs).sort();
-            const listDiv = document.getElementById('savedConfigsList');
-
-            if (configNames.length === 0) {
-                listDiv.innerHTML = '<div style="padding: 10px; text-align: center; color: #666; font-size: 13px;">No saved configurations</div>';
-                return;
-            }
-
-            let html = '';
-            configNames.forEach(name => {
-                const config = configs[name];
-                const date = new Date(config.timestamp).toLocaleDateString();
-                const windowCount = config.windows.length;
-
-                html += `
-                    <a href="#" onclick="event.preventDefault(); loadConfiguration('${name.replace(/'/g, "\\'")}')">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>${name}</span>
-                            <span style="font-size: 11px; color: #666;">${windowCount} windows</span>
-                        </div>
-                    </a>
-                `;
-            });
-
-            listDiv.innerHTML = html;
-        }
-
-        function showManageConfigsDialog() {
-            updateManageConfigsList();
-            document.getElementById('manageConfigsDialog').classList.add('show');
-            // Close the dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function closeManageConfigsDialog() {
-            document.getElementById('manageConfigsDialog').classList.remove('show');
-        }
-
-        function updateManageConfigsList() {
-            const configs = getAllConfigurations();
-            const configNames = Object.keys(configs).sort();
-            const listDiv = document.getElementById('manageConfigsList');
-            const noConfigsMsg = document.getElementById('noConfigsMessage');
-
-            if (configNames.length === 0) {
-                listDiv.style.display = 'none';
-                noConfigsMsg.style.display = 'block';
-                return;
-            }
-
-            listDiv.style.display = 'block';
-            noConfigsMsg.style.display = 'none';
-
-            let html = '';
-            configNames.forEach(name => {
-                const config = configs[name];
-                const date = new Date(config.timestamp).toLocaleString();
-                const windowCount = config.windows.length;
-                const watchlistCount = config.watchlist ? config.watchlist.length : 0;
-
-                html += `
-                    <div class="config-list-item">
-                        <div>
-                            <div class="config-list-item-name">${name}</div>
-                            <div class="config-list-item-date">
-                                ${date} • ${windowCount} windows • ${watchlistCount} symbols
-                            </div>
-                        </div>
-                        <div class="config-list-item-actions">
-                            <button class="config-btn-small config-btn-load" onclick="loadConfiguration('${name.replace(/'/g, "\\'")}'); closeManageConfigsDialog();">
-                                📂 Load
-                            </button>
-                            <button class="config-btn-small config-btn-rename" onclick="renameConfiguration('${name.replace(/'/g, "\\'")}')">
-                                ✏️ Rename
-                            </button>
-                            <button class="config-btn-small config-btn-delete" onclick="deleteConfiguration('${name.replace(/'/g, "\\'")}')">
-                                🗑️ Delete
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-
-            listDiv.innerHTML = html;
-        }
-
-        // Legacy function - kept for backward compatibility
-        function saveAsCustomLayout() {
-            showSaveConfigDialog();
+            localStorage.setItem('customLayout', JSON.stringify(layout));
+            localStorage.setItem('watchlist', JSON.stringify(watchlist));
+            alert('✓ Custom layout saved!\n\nClick "📐 Custom" to load it anytime.');
         }
 
         function saveCurrentLayout() {
-            showSaveConfigDialog();
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        //                     MULTI-CHART MANAGEMENT
-        // ═══════════════════════════════════════════════════════════════════════
-
-        function getTimeframeName(interval) {
-            const names = {
-                '1': '1min',
-                '5': '5min',
-                '15': '15min',
-                '30': '30min',
-                '60': '1h',
-                '240': '4h',
-                'D': 'Daily',
-                'W': 'Weekly',
-                'M': 'Monthly'
-            };
-            return names[interval] || interval;
-        }
-
-        function addChart(interval = '5', style = '1') {
-            chartCounter++;
-            const chartId = `chart${chartCounter}`;
-            const timeframeName = getTimeframeName(interval);
-            const title = `CHART ${chartCounter} - ${currentSymbol} (${timeframeName})`;
-
-            // Calculate position (cascade new charts)
-            const baseX = 300 + (chartCounter - 1) * 30;
-            const baseY = 100 + (chartCounter - 1) * 30;
-
-            // Create chart window
-            const chartWindow = createWindow(
-                chartId,
-                title,
-                windowTemplates.chart(chartCounter),
-                baseX,
-                baseY,
-                700,
-                500
-            );
-
-            // Initialize TradingView chart after a short delay
-            setTimeout(() => {
-                initChart(chartCounter.toString(), currentSymbol, interval, style);
-            }, 500);
-
-            // Close dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-
-            console.log(`✓ Added chart ${chartCounter} with ${timeframeName} timeframe`);
-        }
-
-        function showAddChartDialog() {
-            document.getElementById('chartSymbolPreview').textContent = currentSymbol;
-            document.getElementById('addChartDialog').classList.add('show');
-            // Close the dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function closeAddChartDialog() {
-            document.getElementById('addChartDialog').classList.remove('show');
-        }
-
-        function createCustomChart() {
-            const interval = document.getElementById('chartTimeframe').value;
-            const style = document.getElementById('chartStyle').value;
-
-            addChart(interval, style);
-            closeAddChartDialog();
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        //                     TRADINGVIEW DESKTOP INTEGRATION
-        // ═══════════════════════════════════════════════════════════════════════
-
-        async function openInTradingView(symbol) {
-            try {
-                const response = await fetch(API_BASE_URL + `/api/tradingview/open/${symbol}`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    console.log(`✓ Opened ${symbol} in TradingView Desktop`);
-                    alert(`Opening ${symbol} in TradingView Desktop...`);
-                } else {
-                    alert('Could not open TradingView Desktop. Make sure it is installed.');
-                }
-            } catch (error) {
-                console.error('Error opening TradingView:', error);
-                // Fallback: open TradingView web
-                window.open(`https://www.tradingview.com/chart/?symbol=${symbol}`, '_blank');
-            }
-
-            // Close dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function copySymbolToClipboard() {
-            navigator.clipboard.writeText(currentSymbol).then(() => {
-                alert(`✓ ${currentSymbol} copied to clipboard!\n\nPaste it in TradingView Desktop.`);
-                console.log(`Copied ${currentSymbol} to clipboard`);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-            });
-
-            // Close dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function showWebhookInfo() {
-            document.getElementById('webhookInfoDialog').classList.add('show');
-            // Close the dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function closeWebhookInfoDialog() {
-            document.getElementById('webhookInfoDialog').classList.remove('show');
-        }
-
-        function copyWebhookUrl() {
-            const url = document.getElementById('webhookUrl').value;
-            navigator.clipboard.writeText(url).then(() => {
-                alert('✓ Webhook URL copied to clipboard!');
-            });
-        }
-
-        async function showWebhookLogs() {
-            document.getElementById('webhookLogsDialog').classList.add('show');
-            await refreshWebhookLogs();
-            // Close the dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function closeWebhookLogsDialog() {
-            document.getElementById('webhookLogsDialog').classList.remove('show');
-        }
-
-        async function refreshWebhookLogs() {
-            try {
-                const response = await fetch(API_BASE_URL + '/api/tradingview/webhook-logs');
-                const data = await response.json();
-
-                const logsList = document.getElementById('webhookLogsList');
-
-                if (data.logs && data.logs.length > 0) {
-                    let html = '';
-                    data.logs.reverse().forEach(log => {
-                        const timestamp = new Date(log.timestamp).toLocaleString();
-                        const typeColor = log.type === 'incoming' ? '#22c55e' :
-                                         log.type === 'error' ? '#ef4444' : '#60a5fa';
-
-                        html += `
-                            <div style="margin-bottom: 10px; padding: 10px; background: #1a1a1a; border-left: 3px solid ${typeColor}; border-radius: 3px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                    <span style="color: ${typeColor}; font-weight: 700;">${log.type.toUpperCase()}</span>
-                                    <span style="color: #666;">${timestamp}</span>
-                                </div>
-                                <pre style="margin: 0; color: #aaa; font-size: 11px; white-space: pre-wrap;">${JSON.stringify(log.data, null, 2)}</pre>
-                            </div>
-                        `;
-                    });
-                    logsList.innerHTML = html;
-                } else {
-                    logsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">No webhook activity yet.<br><small>Set up alerts in TradingView to see activity here.</small></div>';
-                }
-            } catch (error) {
-                console.error('Error loading webhook logs:', error);
-                document.getElementById('webhookLogsList').innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Error loading logs</div>';
-            }
-        }
-
-        async function clearWebhookLogs() {
-            if (!confirm('Clear all webhook logs?')) {
-                return;
-            }
-
-            try {
-                await fetch(API_BASE_URL + '/api/tradingview/webhook-logs', {
-                    method: 'DELETE'
-                });
-                alert('✓ Webhook logs cleared');
-                await refreshWebhookLogs();
-            } catch (error) {
-                console.error('Error clearing logs:', error);
-                alert('Error clearing logs');
-            }
-        }
-
-        async function testWebhook() {
-            try {
-                const response = await fetch(API_BASE_URL + '/api/tradingview/test-webhook', {
-                    method: 'POST'
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    alert('✓ Test webhook received successfully!\n\nCheck "View Webhook Logs" to see the test alert.');
-                    console.log('Test webhook response:', data);
-                } else {
-                    alert('✗ Test webhook failed');
-                }
-            } catch (error) {
-                console.error('Error testing webhook:', error);
-                alert('✗ Error testing webhook: ' + error.message);
-            }
-
-            // Close dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function exportWatchlist() {
-            // Export watchlist in TradingView format
-            const tvWatchlist = watchlist.join(',');
-            const blob = new Blob([tvWatchlist], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'tradingview_watchlist.txt';
-            a.click();
-            URL.revokeObjectURL(url);
-
-            alert('✓ Watchlist exported!\n\nYou can import this in TradingView Desktop.');
-            console.log('Exported watchlist:', tvWatchlist);
-
-            // Close dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function showSetupGuide() {
-            // Open setup guide in new window
-            window.open('TRADINGVIEW_SETUP_GUIDE.html', '_blank');
-
-            // Close dropdown
-            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
-        }
-
-        function openTradingViewSetupGuide() {
-            window.open('TRADINGVIEW_SETUP_GUIDE.html', '_blank');
+            // Deprecated - redirects to saveAsCustomLayout
+            saveAsCustomLayout();
         }
 
         // Auto-submit setting functions
@@ -5330,9 +4154,8 @@ Confirm order?`;
         // TradingView Chart Management
         let chartWidgets = {};
         let chartInstances = {};
-        let chartCounter = 0; // Track number of charts created
 
-        function initChart(id, symbol, interval = '5', style = '1') {
+        function initChart(id, symbol) {
             const containerId = `chart-${id}`;
             const container = document.getElementById(containerId);
             if (!container) {
@@ -5342,18 +4165,9 @@ Confirm order?`;
 
             // Check if TradingView is available
             if (typeof TradingView === 'undefined') {
-                console.error('TradingView library not loaded');
-                container.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center;">
-                    <div style="font-size: 16px; color: #ef4444; margin-bottom: 10px;">⚠️ TradingView Not Available</div>
-                    <div style="font-size: 13px; color: #888;">
-                        The TradingView charting library failed to load.<br>
-                        <small>Check your internet connection or browser console for errors.</small>
-                    </div>
-                </div>`;
+                container.innerHTML = '<div class="empty-state">TradingView Desktop required. Please open TradingView Desktop app.</div>';
                 return;
             }
-
-            console.log(`Initializing chart ${id} for ${symbol} (${interval})`);
 
             try {
                 // Clear container and clean up old widget
@@ -5374,10 +4188,10 @@ Confirm order?`;
                     "width": "100%",
                     "height": "100%",
                     "symbol": `NASDAQ:${symbol}`,
-                    "interval": interval,
+                    "interval": "5",
                     "timezone": "America/New_York",
                     "theme": "dark",
-                    "style": style,
+                    "style": "1",
                     "locale": "en",
                     "toolbar_bg": "#1a1a1a",
                     "enable_publishing": false,
@@ -5391,7 +4205,7 @@ Confirm order?`;
                     "save_image": false,
                     "onChartReady": function() {
                         chartInstances[id] = chartWidgets[id].chart();
-                        console.log(`Chart ${id} ready for ${symbol} (${interval})`);
+                        console.log(`Chart ${id} ready for ${symbol}`);
                     }
                 });
             } catch (e) {
@@ -5427,13 +4241,6 @@ Confirm order?`;
 
         window.addEventListener('load', async () => {
             console.log('%c🚀 IBKR Professional Trading Platform', 'color: #007acc; font-size: 18px; font-weight: bold;');
-
-            // Start unified price refresh system
-            startUnifiedRefresh();
-            console.log('[SYNC] Unified refresh system started (updates every 2 seconds)');
-
-            // Initialize configuration system
-            updateSavedConfigsList();
 
             // Load saved watchlist
             const savedWatchlist = localStorage.getItem('watchlist');
@@ -5525,395 +4332,6 @@ Confirm order?`;
                 });
             }
         });
-
-        // ═══════════════════════════════════════════════════════════════════════
-        //                     BOT TRADING CONTROL FUNCTIONS
-        // ═══════════════════════════════════════════════════════════════════════
-
-        let botStatusRefreshInterval = null;
-
-        async function startBot() {
-            try {
-                // Try to start bot
-                let response = await fetch(`${API_BASE_URL}/api/bot/start`, { method: 'POST' });
-                let data = await response.json();
-
-                // If bot not initialized, initialize it first
-                if (!response.ok && data.detail && data.detail.includes('not initialized')) {
-                    console.log('Bot not initialized, initializing now...');
-
-                    // Initialize bot
-                    const initResponse = await fetch(`${API_BASE_URL}/api/bot/init`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-
-                    if (!initResponse.ok) {
-                        alert('❌ Failed to initialize bot. Check IBKR connection.');
-                        return;
-                    }
-
-                    // Try starting again
-                    response = await fetch(`${API_BASE_URL}/api/bot/start`, { method: 'POST' });
-                    data = await response.json();
-                }
-
-                if (response.ok) {
-                    alert('✅ Bot Started Successfully!\n\nNow click "✅ ENABLE TRADING" to activate trading.');
-                    await updateBotStatus();
-                } else {
-                    alert('❌ Failed to start bot: ' + (data.detail || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Error starting bot:', error);
-                alert('❌ Error starting bot: ' + error.message);
-            }
-        }
-
-        async function stopBot() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/bot/stop`, { method: 'POST' });
-                const data = await response.json();
-                if (response.ok) {
-                    alert('⏹️ Bot Stopped');
-                    await updateBotStatus();
-                } else {
-                    alert('❌ Failed to stop bot: ' + data.detail);
-                }
-            } catch (error) {
-                console.error('Error stopping bot:', error);
-                alert('❌ Error stopping bot');
-            }
-        }
-
-        async function enableBotTrading() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/bot/enable`, { method: 'POST' });
-                const data = await response.json();
-                if (response.ok) {
-                    alert('✅ Trading Enabled');
-                    await updateBotStatus();
-                } else {
-                    alert('❌ Failed to enable trading: ' + data.detail);
-                }
-            } catch (error) {
-                console.error('Error enabling trading:', error);
-                alert('❌ Error enabling trading');
-            }
-        }
-
-        async function disableBotTrading() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/bot/disable`, { method: 'POST' });
-                const data = await response.json();
-                if (response.ok) {
-                    alert('⏸️ Trading Paused');
-                    await updateBotStatus();
-                } else {
-                    alert('❌ Failed to pause trading: ' + data.detail);
-                }
-            } catch (error) {
-                console.error('Error pausing trading:', error);
-                alert('❌ Error pausing trading');
-            }
-        }
-
-        async function updateBotStatus() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/bot/status`);
-                if (!response.ok) return;
-                const data = await response.json();
-
-                const indicator = document.getElementById('botStatusIndicator');
-                if (indicator) {
-                    const dot = indicator.querySelector('div');
-                    const text = indicator.querySelector('span');
-                    if (data.running && data.enabled) {
-                        dot.style.background = '#22c55e';
-                        text.style.color = '#22c55e';
-                        text.textContent = 'TRADING';
-                    } else if (data.running) {
-                        dot.style.background = '#f59e0b';
-                        text.style.color = '#f59e0b';
-                        text.textContent = 'MONITORING';
-                    } else {
-                        dot.style.background = '#ef4444';
-                        text.style.color = '#ef4444';
-                        text.textContent = 'STOPPED';
-                    }
-                }
-
-                const runningEl = document.getElementById('botRunning');
-                if (runningEl) {
-                    runningEl.textContent = data.running ? 'TRUE' : 'FALSE';
-                    runningEl.style.color = data.running ? '#22c55e' : '#ef4444';
-                }
-
-                const enabledEl = document.getElementById('botEnabled');
-                if (enabledEl) {
-                    enabledEl.textContent = data.enabled ? 'TRUE' : 'FALSE';
-                    enabledEl.style.color = data.enabled ? '#22c55e' : '#ef4444';
-                }
-
-                if (document.getElementById('botSignals')) document.getElementById('botSignals').textContent = data.total_signals_generated || 0;
-                if (document.getElementById('botTrades')) document.getElementById('botTrades').textContent = data.total_trades_executed || 0;
-                if (document.getElementById('botPositions')) document.getElementById('botPositions').textContent = data.trading_engine?.open_positions || 0;
-
-                const pnlEl = document.getElementById('botPnL');
-                if (pnlEl && data.trading_engine) {
-                    const pnl = data.trading_engine.daily_pnl || 0;
-                    pnlEl.textContent = `$${pnl.toFixed(2)}`;
-                    pnlEl.style.color = pnl > 0 ? '#22c55e' : pnl < 0 ? '#ef4444' : '#888';
-                }
-
-                if (data.trading_engine) {
-                    if (document.getElementById('botDailyLimit')) document.getElementById('botDailyLimit').textContent = `$${data.trading_engine.daily_loss_limit || 500}`;
-                    if (document.getElementById('botWeeklyLimit')) document.getElementById('botWeeklyLimit').textContent = `$${data.trading_engine.weekly_loss_limit?.toFixed(0) || 3500}`;
-                }
-
-                // Fetch and display shared WORKLIST (not bot's internal watchlist)
-                const worklistEl = document.getElementById('botWorklist');
-                const countEl = document.getElementById('worklistCount');
-                if (worklistEl) {
-                    try {
-                        const worklistResponse = await fetch(`${API_BASE_URL}/api/worklist`);
-                        if (worklistResponse.ok) {
-                            const worklistData = await worklistResponse.json();
-                            const symbols = worklistData.data.map(item => item.symbol);
-                            worklistEl.textContent = symbols.length > 0 ? symbols.join(', ') : 'Empty - Add symbols from scanner';
-                            if (countEl) {
-                                countEl.textContent = `${symbols.length} symbols`;
-                                countEl.style.color = symbols.length > 0 ? '#4ade80' : '#666';
-                            }
-                        }
-                    } catch (err) {
-                        console.log('Could not fetch worklist:', err);
-                    }
-                }
-
-                const positionsEl = document.getElementById('botOpenPositions');
-                if (positionsEl && data.trading_engine?.positions) {
-                    const positions = data.trading_engine.positions;
-                    if (Object.keys(positions).length === 0) {
-                        positionsEl.innerHTML = '<div class="empty-state" style="padding: 20px; font-size: 12px;">No open positions</div>';
-                    } else {
-                        let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
-                        for (const [symbol, pos] of Object.entries(positions)) {
-                            const pnl = pos.unrealized_pnl || 0;
-                            const pnlColor = pnl > 0 ? '#22c55e' : pnl < 0 ? '#ef4444' : '#888';
-                            html += `<div style="padding: 8px; background: #252525; border-radius: 3px; border-left: 3px solid ${pnlColor};"><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-weight: 600; color: #fff;">${symbol}</span><span style="color: ${pnlColor}; font-weight: 600;">$${pnl.toFixed(2)}</span></div><div style="display: flex; justify-content: space-between; font-size: 10px; color: #888;"><span>${pos.shares} shares @ $${pos.entry_price?.toFixed(2)}</span><span>Stop: $${pos.stop_loss?.toFixed(2)}</span></div></div>`;
-                        }
-                        html += '</div>';
-                        positionsEl.innerHTML = html;
-                    }
-                }
-            } catch (error) {
-                console.error('Error updating bot status:', error);
-            }
-        }
-
-        function startBotStatusRefresh() {
-            if (botStatusRefreshInterval) clearInterval(botStatusRefreshInterval);
-            botStatusRefreshInterval = setInterval(updateBotStatus, 5000);
-        }
-
-        function stopBotStatusRefresh() {
-            if (botStatusRefreshInterval) {
-                clearInterval(botStatusRefreshInterval);
-                botStatusRefreshInterval = null;
-            }
-        }
-
-        // Load a single symbol from worklist (for training/predictions)
-        async function loadWorklistSymbol(inputId) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/worklist`);
-                if (!response.ok) throw new Error('Failed to fetch worklist');
-
-                const data = await response.json();
-                const symbols = data.data.map(item => item.symbol);
-
-                if (symbols.length === 0) {
-                    alert('⚠️ Worklist is empty!\n\nAdd symbols from scanner first.');
-                    return;
-                }
-
-                // Create a custom dropdown dialog
-                const inputEl = document.getElementById(inputId);
-                const rect = inputEl.getBoundingClientRect();
-
-                // Create dropdown container
-                const dropdown = document.createElement('div');
-                dropdown.id = 'worklistDropdown';
-                dropdown.style.cssText = `
-                    position: fixed;
-                    top: ${rect.bottom + 5}px;
-                    left: ${rect.left}px;
-                    width: ${rect.width}px;
-                    max-height: 300px;
-                    overflow-y: auto;
-                    background: #252525;
-                    border: 2px solid #007acc;
-                    border-radius: 4px;
-                    z-index: 10000;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                `;
-
-                // Add title
-                dropdown.innerHTML = `
-                    <div style="padding: 8px; background: #007acc; color: white; font-weight: 600; font-size: 12px; position: sticky; top: 0;">
-                        📋 Select from Worklist (${symbols.length} symbols)
-                    </div>
-                `;
-
-                // Add symbol options
-                symbols.forEach((symbol, idx) => {
-                    const option = document.createElement('div');
-                    option.style.cssText = `
-                        padding: 10px;
-                        cursor: pointer;
-                        border-bottom: 1px solid #333;
-                        color: #fff;
-                        font-size: 14px;
-                        font-weight: 600;
-                    `;
-                    option.textContent = symbol;
-                    option.onmouseover = () => option.style.background = '#007acc';
-                    option.onmouseout = () => option.style.background = 'transparent';
-                    option.onclick = () => {
-                        inputEl.value = symbol;
-                        document.body.removeChild(dropdown);
-                    };
-                    dropdown.appendChild(option);
-                });
-
-                // Close on click outside
-                const closeDropdown = (e) => {
-                    if (!dropdown.contains(e.target) && e.target !== inputEl) {
-                        document.body.removeChild(dropdown);
-                        document.removeEventListener('click', closeDropdown);
-                    }
-                };
-
-                setTimeout(() => document.addEventListener('click', closeDropdown), 100);
-
-                document.body.appendChild(dropdown);
-
-            } catch (error) {
-                console.error('Error loading worklist symbol:', error);
-                alert('❌ Failed to load worklist');
-            }
-        }
-
-        // Load all symbols from worklist (for backtesting)
-        async function loadWorklistSymbols(inputId) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/worklist`);
-                if (!response.ok) throw new Error('Failed to fetch worklist');
-
-                const data = await response.json();
-                const symbols = data.data.map(item => item.symbol);
-
-                if (symbols.length === 0) {
-                    alert('⚠️ Worklist is empty!\n\nAdd symbols from scanner first.');
-                    return;
-                }
-
-                const inputEl = document.getElementById(inputId);
-                if (inputEl) {
-                    inputEl.value = symbols.join(',');
-                    alert(`✅ Loaded ${symbols.length} symbols from worklist!\n\n${symbols.slice(0, 10).join(', ')}${symbols.length > 10 ? '...' : ''}`);
-                }
-            } catch (error) {
-                console.error('Error loading worklist symbols:', error);
-                alert('❌ Failed to load worklist');
-            }
-        }
-
-        // Add scanner results to shared WORKLIST
-        async function syncWorklistWithScanner() {
-            try {
-                console.log('Adding scanner symbols to WORKLIST...');
-
-                // Fetch scanner results
-                const response = await fetch(`${API_BASE_URL}/api/scanner/results`);
-                if (!response.ok) {
-                    throw new Error(`Scanner API returned ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('Scanner data:', data);
-
-                if (!data.symbols || data.symbols.length === 0) {
-                    alert('⚠️ No symbols found in scanner. Run a scan first.');
-                    return;
-                }
-
-                // Extract unique symbols from scanner (momentum stocks)
-                const scannerSymbols = [...new Set(data.symbols.map(s => s.symbol))];
-                console.log(`Found ${scannerSymbols.length} symbols in scanner`);
-
-                // Get current worklist to avoid duplicates
-                const worklistResponse = await fetch(`${API_BASE_URL}/api/worklist`);
-                const worklistData = await worklistResponse.json();
-                const existingSymbols = new Set(worklistData.data.map(item => item.symbol));
-
-                // Filter out symbols already in worklist
-                const newSymbols = scannerSymbols.filter(s => !existingSymbols.has(s));
-
-                if (newSymbols.length === 0) {
-                    alert(`✅ All ${scannerSymbols.length} scanner symbols already in worklist!\n\nNo new symbols to add.`);
-                    return;
-                }
-
-                // Add new symbols to worklist
-                let addedCount = 0;
-                const errors = [];
-
-                for (const symbol of newSymbols) {
-                    try {
-                        const addResponse = await fetch(`${API_BASE_URL}/api/worklist/add`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ symbol: symbol })
-                        });
-
-                        if (addResponse.ok) {
-                            addedCount++;
-                        } else {
-                            errors.push(symbol);
-                        }
-                    } catch (err) {
-                        errors.push(symbol);
-                    }
-                }
-
-                // Refresh bot status to show updated worklist
-                await updateBotStatus();
-
-                // Show results
-                const totalInWorklist = existingSymbols.size + addedCount;
-                let message = `✅ Worklist updated!\n\n`;
-                message += `• Added: ${addedCount} new symbols\n`;
-                message += `• Already had: ${existingSymbols.size} symbols\n`;
-                message += `• Total in worklist: ${totalInWorklist}\n\n`;
-
-                if (addedCount > 0) {
-                    message += `New momentum stocks:\n${newSymbols.slice(0, 10).join(', ')}${newSymbols.length > 10 ? '...' : ''}`;
-                }
-
-                if (errors.length > 0) {
-                    message += `\n\n⚠️ Failed to add: ${errors.join(', ')}`;
-                }
-
-                alert(message);
-
-            } catch (error) {
-                console.error('Error syncing worklist:', error);
-                alert(`❌ Failed to sync: ${error.message}`);
-            }
-        }
-
     </script>
 </body>
 </html>

@@ -20,7 +20,12 @@
       "Bash(taskkill //F //PID 3184)",
       "Bash(cat:*)",
       "Bash(git rm:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(timeout 5 cmd:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(timeout 10 curl:*)"
     ],
     "deny": [],
     "ask": []

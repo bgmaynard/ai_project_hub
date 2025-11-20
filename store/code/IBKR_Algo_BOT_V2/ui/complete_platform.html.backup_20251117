@@ -1,0 +1,3472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBKR Professional Trading Platform</title>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-size: 15px;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: #1e1e1e;
+            border-bottom: 2px solid #007acc;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 40px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10000;
+        }
+
+        .top-bar-left h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #007acc;
+            letter-spacing: 1px;
+        }
+
+        .top-bar-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: #252525;
+            border: 1px solid #404040;
+            border-radius: 3px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #22c55e;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Menu Bar */
+        .menu-bar {
+            background: #252525;
+            border-bottom: 1px solid #404040;
+            padding: 0 12px;
+            display: flex;
+            gap: 0;
+            height: 28px;
+            position: fixed;
+            top: 40px;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+        }
+
+        .menu-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #b0b0b0;
+            border-right: 1px solid #404040;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+        }
+
+        .menu-item:hover {
+            background: #007acc;
+            color: #ffffff;
+        }
+
+        /* Dropdown Menu */
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            min-width: 220px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+        }
+
+        .dropdown.show {
+            display: block;
+        }
+
+        .dropdown a {
+            display: block;
+            padding: 10px 15px;
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 14px;
+            border-bottom: 1px solid #404040;
+            transition: background 0.2s;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+
+        .dropdown a:hover {
+            background: #007acc;
+            color: #ffffff;
+        }
+
+        .dropdown strong {
+            display: block;
+            padding: 8px 15px;
+            color: #007acc;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .dropdown hr {
+            border: none;
+            border-top: 1px solid #404040;
+            margin: 0;
+        }
+
+        /* Workspace */
+        .workspace {
+            position: fixed;
+            top: 68px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0a0a0a;
+            overflow: hidden;
+        }
+
+        /* Draggable Window */
+        .window {
+            position: absolute;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+            min-width: 200px;
+            min-height: 150px;
+        }
+
+        .window.active {
+            border-color: #007acc;
+            box-shadow: 0 8px 32px rgba(0, 122, 204, 0.4);
+        }
+
+        .window-header {
+            background: #2d2d2d;
+            padding: 6px 10px;
+            border-bottom: 1px solid #404040;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            user-select: none;
+        }
+
+        .window.active .window-header {
+            background: #007acc;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .window-btn {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 2px;
+            transition: background 0.2s;
+            font-weight: bold;
+        }
+
+        .window-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .window-btn.minimize { color: #fbbf24; }
+        .window-btn.maximize { color: #22c55e; }
+        .window-btn.close { color: #ef4444; }
+
+        .window-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: #1a1a1a;
+        }
+
+        /* Resize Handles */
+        .resize-handle {
+            position: absolute;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .resize-handle.n { top: 0; left: 0; right: 0; height: 5px; cursor: ns-resize; }
+        .resize-handle.s { bottom: 0; left: 0; right: 0; height: 5px; cursor: ns-resize; }
+        .resize-handle.e { top: 0; right: 0; bottom: 0; width: 5px; cursor: ew-resize; }
+        .resize-handle.w { top: 0; left: 0; bottom: 0; width: 5px; cursor: ew-resize; }
+        .resize-handle.ne { top: 0; right: 0; width: 10px; height: 10px; cursor: nesw-resize; }
+        .resize-handle.nw { top: 0; left: 0; width: 10px; height: 10px; cursor: nwse-resize; }
+        .resize-handle.se { bottom: 0; right: 0; width: 10px; height: 10px; cursor: nwse-resize; }
+        .resize-handle.sw { bottom: 0; left: 0; width: 10px; height: 10px; cursor: nesw-resize; }
+
+        /* Layout Controls */
+        .layout-controls {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            gap: 6px;
+            z-index: 9998;
+        }
+
+        .layout-btn {
+            padding: 8px 12px;
+            background: #2d2d2d;
+            border: 1px solid #007acc;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .layout-btn:hover {
+            background: #007acc;
+        }
+
+        /* Data Table Styles */
+        .data-table {
+            width: 100%;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .data-table thead {
+            background: #2d2d2d;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table th {
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: 700;
+            color: #888;
+            border-bottom: 1px solid #404040;
+            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #252525;
+        }
+
+        .data-table tr:hover {
+            background: #252525;
+        }
+
+        .data-table .clickable {
+            cursor: pointer;
+        }
+
+        .data-table .clickable:hover {
+            background: #007acc;
+        }
+
+        /* Module Specific Styles */
+        .module-content {
+            padding: 8px;
+        }
+
+        /* Quote Display */
+        .quote-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 8px;
+            background: #1e1e1e;
+        }
+
+        .quote-stat {
+            padding: 6px 8px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 2px;
+        }
+
+        .quote-stat-label {
+            font-size: 13px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+
+        .quote-stat-value {
+            font-size: 17px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        .positive { color: #22c55e !important; }
+        .negative { color: #ef4444 !important; }
+        .neutral { color: #888 !important; }
+
+        /* Level 2 */
+        .level2-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: #404040;
+            font-family: 'Courier New', monospace;
+            height: 100%;
+        }
+
+        .level2-column {
+            background: #1a1a1a;
+            overflow-y: auto;
+        }
+
+        .level2-header {
+            display: grid;
+            grid-template-columns: 50px 70px 70px 50px;
+            padding: 6px 4px;
+            font-size: 13px;
+            font-weight: 700;
+            background: #2d2d2d;
+            border-bottom: 1px solid #404040;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        .level2-header div {
+            text-align: center;
+            color: #888;
+        }
+
+        .level2-row {
+            display: grid;
+            grid-template-columns: 50px 70px 70px 50px;
+            padding: 3px 4px;
+            font-size: 14px;
+            border-bottom: 1px solid #222;
+            position: relative;
+        }
+
+        .level2-row:hover {
+            background: #252525;
+        }
+
+        .level2-row div {
+            text-align: center;
+            padding: 2px;
+        }
+
+        .level2-row.clickable {
+            cursor: pointer;
+        }
+
+        .level2-price {
+            font-weight: 700;
+        }
+
+        /* Order Entry */
+        .order-entry-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .order-field {
+            margin-bottom: 10px;
+        }
+
+        .order-field label {
+            display: block;
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .order-field input,
+        .order-field select {
+            width: 100%;
+            padding: 6px 8px;
+            background: #252525;
+            border: 1px solid #404040;
+            color: #fff;
+            font-size: 15px;
+            border-radius: 2px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .order-field input:focus,
+        .order-field select:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        .quantity-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .qty-btn {
+            padding: 6px;
+            background: #252525;
+            border: 1px solid #404040;
+            color: #888;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .qty-btn:hover {
+            background: #404040;
+            color: #fff;
+        }
+
+        .price-controls {
+            display: grid;
+            grid-template-columns: 40px 1fr 40px;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .price-btn {
+            padding: 6px;
+            background: #252525;
+            border: 1px solid #404040;
+            color: #007acc;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .price-btn:hover {
+            background: #007acc;
+            color: #fff;
+        }
+
+        .order-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn {
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 3px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-buy {
+            background: #22c55e;
+            color: #000;
+        }
+
+        .btn-buy:hover {
+            background: #16a34a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-sell {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-sell:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-secondary {
+            background: #404040;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #525252;
+        }
+
+        .btn-danger {
+            background: #991b1b;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #7f1d1d;
+        }
+
+        /* Watchlist */
+        .watchlist-item {
+            display: grid;
+            grid-template-columns: 60px 1fr 60px;
+            padding: 6px 8px;
+            border-bottom: 1px solid #252525;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .watchlist-item:hover {
+            background: #252525;
+        }
+
+        .watchlist-item.active {
+            background: #007acc;
+        }
+
+        .watchlist-symbol {
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .watchlist-price {
+            text-align: right;
+        }
+
+        .watchlist-change {
+            text-align: right;
+            font-size: 13px;
+        }
+
+        /* Account */
+        .account-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 8px;
+        }
+
+        .account-stat {
+            padding: 6px 8px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 2px;
+        }
+
+        .account-stat-label {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        .account-stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Time & Sales */
+        .timesales-row {
+            display: grid;
+            grid-template-columns: 70px 80px 60px 40px;
+            padding: 4px 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-bottom: 1px solid #222;
+        }
+
+        .timesales-row:hover {
+            background: #252525;
+        }
+
+        .timesales-time { color: #666; }
+        .timesales-price { text-align: right; font-weight: 700; }
+        .timesales-size { text-align: right; color: #888; }
+        .timesales-side { text-align: center; font-size: 13px; }
+
+        .empty-state {
+            padding: 30px 20px;
+            text-align: center;
+            color: #555;
+            font-style: italic;
+            font-size: 15px;
+        }
+
+        /* Chart */
+        .chart-container {
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
+            background: #1a1a1a;
+        }
+
+        /* Position Badge */
+        .pos-badge {
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .pos-badge.long {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .pos-badge.short {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        /* Action Button */
+        .action-btn {
+            padding: 4px 8px;
+            font-size: 13px;
+            background: #404040;
+            border: 1px solid #555;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #007acc;
+            border-color: #007acc;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <h1>⚡ IBKR PROFESSIONAL TRADING PLATFORM</h1>
+        </div>
+        <div class="top-bar-right">
+            <div class="status-item">
+                <div class="status-dot" id="ibkrStatus"></div>
+                <span>IBKR: <strong id="ibkrStatusText">Disconnected</strong></span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="aiStatus"></div>
+                <span>AI: <strong id="aiStatusText">Offline</strong></span>
+            </div>
+            <div class="status-item">
+                <span>Current: <strong id="currentSymbolDisplay">AAPL</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Bar -->
+    <div class="menu-bar">
+        <div class="menu-item" onclick="loadLayout('default')">📊 Default</div>
+        <div class="menu-item" onclick="loadLayout('trading')">⚡ Trading</div>
+        <div class="menu-item" onclick="loadLayout('analysis')">📈 Analysis</div>
+        <div class="menu-item" onclick="loadLayout('scalping')">🎯 Scalping</div>
+        <div class="menu-item" onclick="loadLayout('custom')" style="background: #1a4d2e;">📐 Custom</div>
+        <div class="menu-item" onclick="saveAsCustomLayout()" style="background: #1e3a8a;">💾 Save as Custom</div>
+        <div class="menu-item" onclick="resetLayout()">🔄 Reset</div>
+        <div class="menu-item" onclick="toggleDropdown('switch-ui-dropdown')">
+            🖥️ Switch UI
+            <div class="dropdown" id="switch-ui-dropdown">
+                <strong>Available Dashboards</strong>
+                <a href="http://localhost:8000/ui/monitor.html" target="_blank">🎛️ Monitor Dashboard</a>
+                <a href="platform.html" target="_blank">📊 Trading Platform</a>
+                <a href="complete_platform.html">🖥️ Complete Platform (Current)</a>
+            </div>
+        </div>
+        <div class="menu-item" onclick="connectToIBKR()">🔌 Connect IBKR</div>
+    </div>
+
+    <!-- Workspace -->
+    <div class="workspace" id="workspace"></div>
+
+    <!-- Halt Indicator (DISABLED - Now in quote window) -->
+    <div id="haltIndicator" style="display: none;"></div>
+
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+            50% { opacity: 0.85; transform: translateX(-50%) scale(1.02); }
+        }
+    </style>
+
+    <!-- Layout Controls -->
+    <div class="layout-controls">
+        <button class="layout-btn" onclick="tileWindows()">⊞ Tile</button>
+        <button class="layout-btn" onclick="cascadeWindows()">⧉ Cascade</button>
+        <button class="layout-btn" onclick="minimizeAll()">▼ Min All</button>
+        <button class="layout-btn" onclick="restoreAll()">▲ Restore</button>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     GLOBAL STATE
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let windows = [];
+        let activeWindow = null;
+        let zIndexCounter = 100;
+        let currentSymbol = 'AAPL';
+        let watchlist = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA', 'SPY', 'QQQ'];
+        let marketDataCache = {};
+        let positionsCache = [];
+        let ordersCache = [];
+        let apiAvailable = null; // null = unknown, true = available, false = demo mode
+        let demoModeLogged = false;
+        const API_BASE_URL = 'http://127.0.0.1:9101'; // API server base URL
+
+        // Halt Detection State
+        let haltState = {
+            isHalted: false,
+            haltTime: null,
+            haltPrice: null,
+            resumeTime: null,
+            lastUpdateTime: null,
+            symbol: null
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     WINDOW MANAGEMENT
+        // ═══════════════════════════════════════════════════════════════════════
+
+        class DraggableWindow {
+            constructor(id, title, content, x, y, width, height) {
+                this.id = id;
+                this.title = title;
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.minimized = false;
+                this.maximized = false;
+                this.savedState = null;
+                this.element = null;
+                this.create(content);
+            }
+
+            create(content) {
+                const win = document.createElement('div');
+                win.className = 'window';
+                win.id = `window-${this.id}`;
+                win.style.left = this.x + 'px';
+                win.style.top = this.y + 'px';
+                win.style.width = this.width + 'px';
+                win.style.height = this.height + 'px';
+                win.style.zIndex = ++zIndexCounter;
+
+                win.innerHTML = `
+                    <div class="window-header">
+                        <span>${this.title}</span>
+                        <div class="window-controls">
+                            <div class="window-btn minimize" onclick="minimizeWindow('${this.id}')">−</div>
+                            <div class="window-btn maximize" onclick="maximizeWindow('${this.id}')">□</div>
+                            <div class="window-btn close" onclick="closeWindow('${this.id}')">×</div>
+                        </div>
+                    </div>
+                    <div class="window-content">${content}</div>
+                    <div class="resize-handle n"></div>
+                    <div class="resize-handle s"></div>
+                    <div class="resize-handle e"></div>
+                    <div class="resize-handle w"></div>
+                    <div class="resize-handle ne"></div>
+                    <div class="resize-handle nw"></div>
+                    <div class="resize-handle se"></div>
+                    <div class="resize-handle sw"></div>
+                `;
+
+                this.element = win;
+                document.getElementById('workspace').appendChild(win);
+                this.setupDrag();
+                this.setupResize();
+                win.addEventListener('mousedown', () => this.activate());
+            }
+
+            setupDrag() {
+                const header = this.element.querySelector('.window-header');
+                let isDragging = false;
+                let startX, startY, startLeft, startTop;
+
+                header.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('window-btn')) return;
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startLeft = this.x;
+                    startTop = this.y;
+                    this.activate();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    this.x = startLeft + e.clientX - startX;
+                    this.y = startTop + e.clientY - startY;
+                    this.element.style.left = this.x + 'px';
+                    this.element.style.top = this.y + 'px';
+                });
+
+                document.addEventListener('mouseup', () => isDragging = false);
+            }
+
+            setupResize() {
+                const handles = this.element.querySelectorAll('.resize-handle');
+                handles.forEach(handle => {
+                    let isResizing = false;
+                    let startX, startY, startWidth, startHeight, startLeft, startTop;
+                    const direction = handle.className.split(' ')[1];
+
+                    handle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        isResizing = true;
+                        startX = e.clientX;
+                        startY = e.clientY;
+                        startWidth = this.width;
+                        startHeight = this.height;
+                        startLeft = this.x;
+                        startTop = this.y;
+                        this.activate();
+                    });
+
+                    document.addEventListener('mousemove', (e) => {
+                        if (!isResizing) return;
+                        const dx = e.clientX - startX;
+                        const dy = e.clientY - startY;
+
+                        if (direction.includes('e')) this.width = Math.max(200, startWidth + dx);
+                        if (direction.includes('w')) {
+                            const newWidth = Math.max(200, startWidth - dx);
+                            if (newWidth > 200) {
+                                this.width = newWidth;
+                                this.x = startLeft + dx;
+                            }
+                        }
+                        if (direction.includes('s')) this.height = Math.max(150, startHeight + dy);
+                        if (direction.includes('n')) {
+                            const newHeight = Math.max(150, startHeight - dy);
+                            if (newHeight > 150) {
+                                this.height = newHeight;
+                                this.y = startTop + dy;
+                            }
+                        }
+
+                        this.updatePosition();
+                    });
+
+                    document.addEventListener('mouseup', () => isResizing = false);
+                });
+            }
+
+            updatePosition() {
+                this.element.style.left = this.x + 'px';
+                this.element.style.top = this.y + 'px';
+                this.element.style.width = this.width + 'px';
+                this.element.style.height = this.height + 'px';
+            }
+
+            activate() {
+                windows.forEach(w => w.element.classList.remove('active'));
+                this.element.classList.add('active');
+                this.element.style.zIndex = ++zIndexCounter;
+                activeWindow = this;
+            }
+
+            minimize() {
+                if (!this.minimized) {
+                    this.element.style.display = 'none';
+                    this.minimized = true;
+                }
+            }
+
+            restore() {
+                if (this.minimized) {
+                    this.element.style.display = 'flex';
+                    this.minimized = false;
+                    this.activate();
+                }
+                if (this.maximized) {
+                    if (this.savedState) {
+                        this.x = this.savedState.x;
+                        this.y = this.savedState.y;
+                        this.width = this.savedState.width;
+                        this.height = this.savedState.height;
+                        this.updatePosition();
+                    }
+                    this.maximized = false;
+                }
+            }
+
+            maximize() {
+                if (!this.maximized) {
+                    this.savedState = { x: this.x, y: this.y, width: this.width, height: this.height };
+                    const workspace = document.getElementById('workspace');
+                    this.x = 0;
+                    this.y = 0;
+                    this.width = workspace.clientWidth;
+                    this.height = workspace.clientHeight;
+                    this.updatePosition();
+                    this.maximized = true;
+                } else {
+                    this.restore();
+                }
+            }
+
+            close() {
+                this.element.remove();
+                windows = windows.filter(w => w.id !== this.id);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     WINDOW TEMPLATES
+        // ═══════════════════════════════════════════════════════════════════════
+
+        const windowTemplates = {
+            quote: `
+                <div class="quote-grid">
+                    <div class="quote-stat">
+                        <div class="quote-stat-label">Bid</div>
+                        <div class="quote-stat-value positive" id="bidPrice">--</div>
+                        <div class="quote-stat-label" style="margin-top: 2px;" id="bidSize">--</div>
+                    </div>
+                    <div class="quote-stat">
+                        <div class="quote-stat-label">Ask</div>
+                        <div class="quote-stat-value negative" id="askPrice">--</div>
+                        <div class="quote-stat-label" style="margin-top: 2px;" id="askSize">--</div>
+                    </div>
+                    <div class="quote-stat">
+                        <div class="quote-stat-label">Last</div>
+                        <div class="quote-stat-value" id="lastPrice" style="color: #60a5fa;">--</div>
+                        <div class="quote-stat-label" id="priceChange">--</div>
+                    </div>
+                    <div class="quote-stat">
+                        <div class="quote-stat-label">Volume</div>
+                        <div class="quote-stat-value neutral" id="volumePrice">--</div>
+                    </div>
+                    <div class="quote-stat">
+                        <div class="quote-stat-label">High</div>
+                        <div class="quote-stat-value neutral" id="highPrice">--</div>
+                    </div>
+                    <div class="quote-stat">
+                        <div class="quote-stat-label">Low</div>
+                        <div class="quote-stat-value neutral" id="lowPrice">--</div>
+                    </div>
+                    <div class="quote-stat">
+                        <div class="quote-stat-label">Open</div>
+                        <div class="quote-stat-value neutral" id="openPrice">--</div>
+                    </div>
+                    <div class="quote-stat">
+                        <div class="quote-stat-label">Prev Close</div>
+                        <div class="quote-stat-value neutral" id="closePrice">--</div>
+                    </div>
+                </div>
+
+                <!-- Halt Indicator -->
+                <div style="padding: 8px;">
+                    <div id="quoteHaltIndicator" style="display: none; padding: 6px; border-radius: 4px; text-align: center; background: #dc2626; color: white; box-sizing: border-box; overflow: hidden; width: 100%;">
+                        <div style="font-size: 13px; font-weight: bold;" id="quoteHaltTitle">🛑 HALT</div>
+                        <div id="quoteHaltInfo" style="font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                    </div>
+                </div>
+            `,
+
+            level2: `
+                <div class="level2-container">
+                    <div class="level2-column">
+                        <div class="level2-header">
+                            <div>MM</div>
+                            <div>SIZE</div>
+                            <div>BID</div>
+                            <div>ORD</div>
+                        </div>
+                        <div id="bidsDisplay"></div>
+                    </div>
+                    <div class="level2-column">
+                        <div class="level2-header">
+                            <div>ORD</div>
+                            <div>ASK</div>
+                            <div>SIZE</div>
+                            <div>MM</div>
+                        </div>
+                        <div id="asksDisplay"></div>
+                    </div>
+                </div>
+            `,
+
+            timesales: `
+                <div style="padding: 4px 0;">
+                    <div class="timesales-row" style="background: #2d2d2d; position: sticky; top: 0;">
+                        <div style="color: #888; font-weight: 700;">TIME</div>
+                        <div style="color: #888; font-weight: 700;">PRICE</div>
+                        <div style="color: #888; font-weight: 700;">SIZE</div>
+                        <div style="color: #888; font-weight: 700;">SIDE</div>
+                    </div>
+                    <div id="timesalesDisplay"></div>
+                </div>
+            `,
+
+            order: `
+                <div class="module-content">
+                    <div class="order-field">
+                        <label>Symbol</label>
+                        <input type="text" id="orderSymbol" value="AAPL" readonly
+                               style="text-transform: uppercase; background: #1a1a1a; font-weight: 700; font-size: 17px;">
+                    </div>
+
+                    <div class="quantity-buttons">
+                        <button class="qty-btn" onclick="setQuantity(100)">100</button>
+                        <button class="qty-btn" onclick="setQuantity(200)">200</button>
+                        <button class="qty-btn" onclick="setQuantity(500)">500</button>
+                        <button class="qty-btn" onclick="setQuantity(1000)">1K</button>
+                    </div>
+
+                    <div style="margin: 8px 0 4px 0; font-size: 13px; color: #888; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">
+                        % of Account Value
+                    </div>
+                    <div class="quantity-buttons">
+                        <button class="qty-btn" onclick="setAccountPercent(10)" style="background: #1a4d2e;">10%</button>
+                        <button class="qty-btn" onclick="setAccountPercent(25)" style="background: #1a4d2e;">25%</button>
+                        <button class="qty-btn" onclick="setAccountPercent(50)" style="background: #2d5a3d;">50%</button>
+                        <button class="qty-btn" onclick="setAccountPercent(100)" style="background: #3d6a4d;">100%</button>
+                    </div>
+
+                    <div class="order-entry-grid">
+                        <div class="order-field">
+                            <label>Quantity</label>
+                            <input type="number" id="orderQuantity" value="100" min="1">
+                        </div>
+                        <div class="order-field">
+                            <label>Order Type</label>
+                            <select id="orderType" onchange="handleOrderTypeChange()">
+                                <option value="MARKET">Market</option>
+                                <option value="LIMIT" selected>Limit</option>
+                                <option value="STOP">Stop</option>
+                                <option value="STOP_LIMIT">Stop Limit</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="price-controls">
+                        <button class="price-btn" onclick="adjustPrice(-0.01)">−</button>
+                        <div class="order-field" style="margin: 0;">
+                            <label>Limit Price</label>
+                            <input type="text" id="orderPrice" value="" placeholder="Enter limit price">
+                        </div>
+                        <button class="price-btn" onclick="adjustPrice(0.01)">+</button>
+                    </div>
+
+                    <div class="order-field">
+                        <label>Time In Force</label>
+                        <select id="orderTIF">
+                            <option value="DAY">Day</option>
+                            <option value="GTC">GTC</option>
+                            <option value="IOC">IOC</option>
+                            <option value="FOK">FOK</option>
+                        </select>
+                    </div>
+
+                    <div class="order-field" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="extendedHours" style="width: auto; margin: 0;">
+                        <label for="extendedHours" style="margin: 0; cursor: pointer; font-size: 15px;">
+                            Extended Hours (Pre-Market/After-Hours)
+                        </label>
+                    </div>
+
+                    <div class="order-field" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="autoSubmitOrders" style="width: auto; margin: 0;" onchange="saveAutoSubmitSetting(this.checked)">
+                        <label for="autoSubmitOrders" style="margin: 0; cursor: pointer; font-size: 15px; color: #fbbf24;">
+                            ⚡ Auto-Submit Orders (No Confirmations)
+                        </label>
+                    </div>
+
+                    <div class="order-buttons">
+                        <button class="btn btn-buy" onclick="submitOrder('BUY')">BUY</button>
+                        <button class="btn btn-sell" onclick="submitOrder('SELL')">SELL</button>
+                    </div>
+
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #333;">
+                        <button class="btn btn-secondary" onclick="submitOrder('BUY_MARKET')" style="width: 100%; margin-bottom: 6px;">
+                            BUY MARKET
+                        </button>
+                        <button class="btn btn-secondary" onclick="submitOrder('SELL_MARKET')" style="width: 100%;">
+                            SELL MARKET
+                        </button>
+                    </div>
+                </div>
+            `,
+
+            positions: `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Qty</th>
+                            <th>Avg Price</th>
+                            <th>Current</th>
+                            <th>P&L</th>
+                            <th>P&L %</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positionsDisplay">
+                        <tr><td colspan="8" class="empty-state">No open positions</td></tr>
+                    </tbody>
+                </table>
+            `,
+
+            orders: `
+                <div style="padding: 6px 8px; border-bottom: 1px solid #333; display: flex; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="cancelAllOrders()"
+                            style="padding: 4px 12px; font-size: 14px; font-weight: 600;">
+                        CANCEL ALL ORDERS
+                    </button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Qty</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersDisplay">
+                        <tr><td colspan="8" class="empty-state">No working orders</td></tr>
+                    </tbody>
+                </table>
+            `,
+
+            watchlist: `
+                <div style="padding: 6px 8px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 13px; color: #888; text-transform: uppercase;">Shared Worklist</div>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="btn btn-secondary" onclick="showScannerDialog()"
+                                style="padding: 4px 8px; font-size: 13px; font-weight: 600;">SCANNER</button>
+                        <button class="btn btn-secondary" onclick="showAddSymbolDialog()"
+                                style="padding: 4px 8px; font-size: 13px; font-weight: 600;">+ ADD</button>
+                        <button class="btn btn-secondary" onclick="clearWorklist()"
+                                style="padding: 4px 8px; font-size: 13px; font-weight: 600; background: #7f1d1d;">CLEAR ALL</button>
+                    </div>
+                </div>
+                <div id="worklistStats" style="padding: 6px 8px; background: #1a1a1a; border-bottom: 1px solid #333; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+                    <div style="background: #252525; padding: 4px 6px; border-radius: 2px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 2px;">SYMBOLS</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #fff;" id="statsTotal">0</div>
+                    </div>
+                    <div style="background: #252525; padding: 4px 6px; border-radius: 2px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 2px;">LIVE</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #22c55e;" id="statsLive">0</div>
+                    </div>
+                    <div style="background: #252525; padding: 4px 6px; border-radius: 2px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 2px;">BULLISH</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #22c55e;" id="statsBullish">0</div>
+                    </div>
+                    <div style="background: #252525; padding: 4px 6px; border-radius: 2px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 2px;">BEARISH</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #ef4444;" id="statsBearish">0</div>
+                    </div>
+                </div>
+                <div id="watchlistDisplay" style="overflow-y: auto; max-height: calc(100% - 90px);">
+                    <div class="empty-state">Loading worklist...</div>
+                </div>
+            `,
+
+            account: `
+                <div style="padding: 8px; border-bottom: 1px solid #333; background: #1a1a1a;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <div>
+                            <div style="font-size: 13px; color: #888; letter-spacing: 0.5px;">IBKR ACCOUNT</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #00a69c;" id="accountNumber">DU0000000</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 13px; color: #888; letter-spacing: 0.5px;">TYPE</div>
+                            <div style="font-size: 15px; font-weight: 600; color: #e4e5e7;" id="accountType">Unknown</div>
+                        </div>
+                    </div>
+                    <div id="accountWarnings" style="font-size: 13px; padding: 4px; border-radius: 2px; display: none;"></div>
+                    <div id="dayTradesInfo" style="font-size: 13px; color: #888; margin-top: 4px; display: none;"></div>
+                </div>
+                <div class="account-grid">
+                    <div class="account-stat">
+                        <div class="account-stat-label">Equity</div>
+                        <div class="account-stat-value neutral" id="equityValue">$0.00</div>
+                    </div>
+                    <div class="account-stat">
+                        <div class="account-stat-label">Buying Power</div>
+                        <div class="account-stat-value neutral" id="buyingPower">$0.00</div>
+                    </div>
+                    <div class="account-stat">
+                        <div class="account-stat-label">Cash</div>
+                        <div class="account-stat-value neutral" id="cashBalance">$0.00</div>
+                    </div>
+                    <div class="account-stat">
+                        <div class="account-stat-label">Day P&L</div>
+                        <div class="account-stat-value" id="dayPL">$0.00</div>
+                    </div>
+                    <div class="account-stat">
+                        <div class="account-stat-label">Total P&L</div>
+                        <div class="account-stat-value" id="totalPL">$0.00</div>
+                    </div>
+                    <div class="account-stat">
+                        <div class="account-stat-label">Margin Used</div>
+                        <div class="account-stat-value neutral" id="marginUsed">$0.00</div>
+                    </div>
+                    <div class="account-stat">
+                        <div class="account-stat-label">Positions</div>
+                        <div class="account-stat-value neutral" id="positionCount">0</div>
+                    </div>
+                    <div class="account-stat" id="dayTradesStat" style="display: none;">
+                        <div class="account-stat-label">Day Trades</div>
+                        <div class="account-stat-value neutral" id="dayTradesRemaining">-</div>
+                    </div>
+                </div>
+            `,
+
+            bot: `
+                <div class="module-content" style="padding: 8px; overflow-y: auto; max-height: 100%;">
+                    <!-- Bot Status Header -->
+                    <div style="text-align: center; margin-bottom: 12px; padding: 12px; background: #1a1a1a; border-radius: 4px;">
+                        <div style="font-size: 13px; color: #888; margin-bottom: 4px; letter-spacing: 1px;">AUTONOMOUS BOT STATUS</div>
+                        <div id="botStatusText" style="font-size: 24px; font-weight: 700; color: #ef4444; margin-bottom: 4px;">NOT INITIALIZED</div>
+                        <div id="botStatusSubtext" style="font-size: 13px; color: #888;">Click INIT to initialize bot</div>
+                    </div>
+
+                    <!-- Control Buttons -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                        <button id="initBotBtn" class="btn btn-secondary" onclick="initBot()" style="font-size: 14px; padding: 8px;">⚙️ INIT</button>
+                        <button id="startBotBtn" class="btn btn-buy" onclick="startAutonomousBot()" disabled style="font-size: 14px; padding: 8px;">▶ START</button>
+                        <button id="stopBotBtn" class="btn btn-sell" onclick="stopAutonomousBot()" disabled style="font-size: 14px; padding: 8px;">⏹ STOP</button>
+                        <button id="enableBotBtn" class="btn btn-secondary" onclick="enableBot()" disabled style="font-size: 14px; padding: 8px;">✓ ENABLE</button>
+                    </div>
+
+                    <!-- Statistics Grid -->
+                    <div id="botStatsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                        <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
+                            <div style="font-size: 12px; color: #888;">SIGNALS</div>
+                            <div id="botSignals" style="font-size: 17px; font-weight: 700; color: #60a5fa;">0</div>
+                        </div>
+                        <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
+                            <div style="font-size: 12px; color: #888;">TRADES</div>
+                            <div id="botTrades" style="font-size: 17px; font-weight: 700; color: #22c55e;">0</div>
+                        </div>
+                        <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
+                            <div style="font-size: 12px; color: #888;">POSITIONS</div>
+                            <div id="botPositions" style="font-size: 17px; font-weight: 700; color: #fbbf24;">0</div>
+                        </div>
+                        <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
+                            <div style="font-size: 12px; color: #888;">DAILY P&L (5%)</div>
+                            <div id="botDailyPnl" style="font-size: 17px; font-weight: 700;">$0.00</div>
+                        </div>
+                    </div>
+
+                    <!-- 3-5-7 Risk Management Display -->
+                    <div style="padding: 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px; margin-bottom: 8px;">
+                        <div style="font-size: 13px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">3-5-7 RISK MANAGEMENT</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                            <div style="padding: 4px;">
+                                <div style="font-size: 12px; color: #888;">WEEKLY P&L (7%)</div>
+                                <div id="botWeeklyPnl" style="font-size: 16px; font-weight: 700;">$0.00</div>
+                            </div>
+                            <div style="padding: 4px;">
+                                <div style="font-size: 12px; color: #888;">MAX RISK/TRADE (3%)</div>
+                                <div id="botMaxRisk" style="font-size: 16px; font-weight: 700; color: #888;">$0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuration Section -->
+                    <div style="padding: 8px; background: #252525; border: 1px solid #333; border-radius: 3px; margin-bottom: 8px;">
+                        <div style="font-size: 13px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">CONFIGURATION</div>
+
+                        <div style="margin-bottom: 6px;">
+                            <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Watchlist</label>
+                            <input type="text" id="botWatchlist" value="AAPL,MSFT,GOOGL,TSLA,NVDA"
+                                   style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
+                            <div>
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Max Position $</label>
+                                <input type="number" id="botMaxPosition" value="5000" min="100" step="100"
+                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Daily Loss $</label>
+                                <input type="number" id="botDailyLoss" value="500" min="50" step="50"
+                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                            <div>
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Min Prob %</label>
+                                <input type="number" id="botMinProb" value="60" min="50" max="100" step="1"
+                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 2px;">Max Positions</label>
+                                <input type="number" id="botMaxPositions" value="5" min="1" max="20" step="1"
+                                       style="width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 2px;">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-secondary" onclick="updateBotConfig()" style="width: 100%; margin-top: 6px; font-size: 13px; padding: 5px;">
+                            UPDATE CONFIG
+                        </button>
+                    </div>
+
+                    <!-- Recent Predictions -->
+                    <div style="padding: 8px; background: #252525; border: 1px solid #333; border-radius: 3px; margin-bottom: 8px;">
+                        <div style="font-size: 13px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">RECENT PREDICTIONS</div>
+                        <div id="botPredictionsDisplay" style="max-height: 120px; overflow-y: auto; font-size: 13px;">
+                            <div class="empty-state" style="padding: 16px; font-size: 13px;">No predictions yet</div>
+                        </div>
+                    </div>
+
+                    <!-- Open Positions -->
+                    <div style="padding: 8px; background: #252525; border: 1px solid #333; border-radius: 3px;">
+                        <div style="font-size: 13px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">OPEN POSITIONS</div>
+                        <div id="botPositionsDisplay" style="max-height: 120px; overflow-y: auto; font-size: 13px;">
+                            <div class="empty-state" style="padding: 16px; font-size: 13px;">No positions</div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            ai: `
+                <div class="module-content">
+                    <div id="aiPredictionDisplay" class="empty-state">Click PREDICT for AI analysis</div>
+                    <button class="btn btn-secondary" onclick="getPrediction()" style="width: 100%; margin-top: 12px;">
+                        🤖 GET AI PREDICTION
+                    </button>
+                </div>
+            `,
+
+            chart: (id) => `
+                <div id="chart-${id}" class="chart-container">
+                    <div class="empty-state">Chart will load here</div>
+                </div>
+            `
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     SYMBOL MANAGEMENT
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function setCurrentSymbol(symbol) {
+            currentSymbol = symbol.toUpperCase();
+            document.getElementById('currentSymbolDisplay').textContent = currentSymbol;
+            document.getElementById('orderSymbol').value = currentSymbol;
+
+            // Subscribe to market data for new symbol
+            subscribeToSymbol(currentSymbol);
+
+            // Update all windows titles
+            windows.forEach(win => {
+                if (win.id === 'quote') {
+                    win.title = `QUOTE - ${currentSymbol}`;
+                    win.element.querySelector('.window-header span').textContent = win.title;
+                } else if (win.id === 'level2') {
+                    win.title = `LEVEL II - ${currentSymbol}`;
+                    win.element.querySelector('.window-header span').textContent = win.title;
+                } else if (win.id.startsWith('chart')) {
+                    win.title = `CHART - ${currentSymbol}`;
+                    win.element.querySelector('.window-header span').textContent = win.title;
+                    // Update TradingView chart
+                    updateChart(win.id, currentSymbol);
+                }
+            });
+
+            // Refresh all market data
+            loadPrice();
+            loadLevel2();
+            loadTimeSales();
+            loadWorklist();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     API INTEGRATION
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // Helper function to safely update element
+        function safeUpdate(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                    el.value = value;
+                } else {
+                    el.textContent = value;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        // Helper function to fetch API with error handling
+        async function apiFetch(url) {
+            try {
+                const response = await fetch(API_BASE_URL + url);
+                if (response.ok) {
+                    apiAvailable = true;
+                    return await response.json();
+                } else if (response.status === 503) {
+                    if (!demoModeLogged) {
+                        console.log('%c⚠️ IBKR not connected. Please click "Connect IBKR" in the menu.', 'color: #ef4444; font-weight: bold;');
+                        demoModeLogged = true;
+                    }
+                    return null;
+                } else {
+                    apiAvailable = false;
+                    return null;
+                }
+            } catch (error) {
+                if (!demoModeLogged) {
+                    console.log('%c⚠️ API Server not available', 'color: #ef4444; font-weight: bold;');
+                    demoModeLogged = true;
+                }
+                return null;
+            }
+        }
+
+        // Subscribe to market data for a symbol
+        async function subscribeToSymbol(symbol) {
+            try {
+                await fetch(API_BASE_URL + '/api/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        exchange: 'SMART',
+                        data_types: ['quote', 'l2', 'trades']
+                    })
+                });
+                console.log(`✓ Subscribed to ${symbol}`);
+            } catch (error) {
+                console.error(`Error subscribing to ${symbol}:`, error);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     HALT DETECTION & MANAGEMENT
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function checkForHalt(symbol, data) {
+            const now = Date.now();
+
+            // Check if we're in regular market hours (9:30 AM - 4:00 PM ET)
+            const currentTime = new Date();
+            const hours = currentTime.getHours();
+            const minutes = currentTime.getMinutes();
+            const timeInMinutes = hours * 60 + minutes;
+
+            // Market hours: 9:30 AM (570 minutes) to 4:00 PM (960 minutes) ET
+            // Note: This assumes your local time is ET. Adjust if needed.
+            const marketOpen = 570;  // 9:30 AM
+            const marketClose = 960; // 4:00 PM
+            const isMarketHours = timeInMinutes >= marketOpen && timeInMinutes < marketClose;
+
+            // Only check for halts during market hours
+            // During pre-market/after-hours, bid/ask = 0 is normal, not a halt
+            if (!isMarketHours) {
+                // Not in market hours - don't detect halts
+                if (haltState.isHalted) {
+                    // Clear any existing halt state from previous session
+                    haltState.isHalted = false;
+                    hideHaltIndicator();
+                }
+                return;
+            }
+
+            // Detect halt conditions (ONLY during market hours):
+            // 1. Bid and Ask are both 0 or -1
+            // 2. OR no updates for more than 8 seconds
+            const isDataHalted = (data.bid <= 0 && data.ask <= 0) ||
+                                 (data.bid === -1 || data.ask === -1);
+
+            const timeSinceLastUpdate = haltState.lastUpdateTime ? now - haltState.lastUpdateTime : 0;
+            const isTimeoutHalt = timeSinceLastUpdate > 8000; // 8 seconds no update
+
+            if ((isDataHalted || isTimeoutHalt) && !haltState.isHalted) {
+                // Entering halt
+                haltState.isHalted = true;
+                haltState.haltTime = new Date();
+                haltState.haltPrice = data.last || marketDataCache[symbol]?.last || 0;
+                haltState.symbol = symbol;
+                haltState.resumeTime = null;
+
+                showHaltIndicator();
+                console.log(`🛑 HALT DETECTED: ${symbol} at $${haltState.haltPrice.toFixed(2)}`);
+
+            } else if (!isDataHalted && !isTimeoutHalt && haltState.isHalted && data.bid > 0 && data.ask > 0) {
+                // Resuming from halt
+                haltState.resumeTime = new Date();
+                const haltDuration = Math.floor((haltState.resumeTime - haltState.haltTime) / 1000);
+
+                console.log(`✅ RESUMED: ${symbol} after ${haltDuration}s halt`);
+
+                // Show resume notification briefly, then hide
+                updateHaltIndicator('resumed');
+                setTimeout(() => {
+                    haltState.isHalted = false;
+                    hideHaltIndicator();
+                }, 3000); // Show resume for 3 seconds
+            }
+
+            // Update last update time if we got valid data
+            if (data.bid > 0 || data.ask > 0 || data.last > 0) {
+                haltState.lastUpdateTime = now;
+            }
+
+            // Update halt indicator if already halted
+            if (haltState.isHalted && haltState.resumeTime === null) {
+                updateHaltIndicator('halted');
+            }
+        }
+
+        function showHaltIndicator() {
+            const indicator = document.getElementById('quoteHaltIndicator');
+            if (indicator) {
+                indicator.style.display = 'block';
+            }
+        }
+
+        function hideHaltIndicator() {
+            const indicator = document.getElementById('quoteHaltIndicator');
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+        }
+
+        function updateHaltIndicator(status) {
+            const indicator = document.getElementById('quoteHaltIndicator');
+            const titleEl = document.getElementById('quoteHaltTitle');
+            const infoEl = document.getElementById('quoteHaltInfo');
+
+            if (!indicator || !titleEl || !infoEl) return;
+
+            if (status === 'halted') {
+                const haltDuration = Math.floor((Date.now() - haltState.haltTime) / 1000);
+                const haltTimeStr = haltState.haltTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                titleEl.textContent = '🛑 HALT';
+                infoEl.innerHTML = `${haltTimeStr} • $${(haltState.haltPrice || 0).toFixed(2)} • ${haltDuration}s`;
+
+                indicator.style.background = 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
+                indicator.style.color = 'white';
+
+            } else if (status === 'resumed') {
+                const resumeTimeStr = haltState.resumeTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const haltDuration = Math.floor((haltState.resumeTime - haltState.haltTime) / 1000);
+
+                titleEl.textContent = '✅ RESUMED';
+                infoEl.innerHTML = `${resumeTimeStr} • ${haltDuration}s halt`;
+
+                indicator.style.background = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+                indicator.style.color = 'white';
+            }
+        }
+
+        async function loadPrice() {
+            try {
+                // Fetch ONLY from API
+                const apiData = await apiFetch(`/api/price/${currentSymbol}`);
+                if (!apiData || !apiData.data) {
+                    // Clear displays if no data
+                    safeUpdate('bidPrice', '--');
+                    safeUpdate('askPrice', '--');
+                    safeUpdate('lastPrice', '--');
+                    safeUpdate('volumePrice', '--');
+                    safeUpdate('highPrice', '--');
+                    safeUpdate('lowPrice', '--');
+                    safeUpdate('openPrice', '--');
+                    safeUpdate('closePrice', '--');
+                    safeUpdate('bidSize', '--');
+                    safeUpdate('askSize', '--');
+                    return;
+                }
+
+                const d = apiData.data;
+
+                // Update UI elements safely
+                safeUpdate('bidPrice', d.bid?.toFixed(2) || '--');
+                safeUpdate('askPrice', d.ask?.toFixed(2) || '--');
+                safeUpdate('lastPrice', d.last?.toFixed(2) || '--');
+                safeUpdate('volumePrice', d.volume?.toLocaleString() || '--');
+                safeUpdate('highPrice', d.high?.toFixed(2) || '--');
+                safeUpdate('lowPrice', d.low?.toFixed(2) || '--');
+                safeUpdate('openPrice', d.open?.toFixed(2) || '--');
+                safeUpdate('closePrice', d.close?.toFixed(2) || '--');
+
+                if (d.bid) safeUpdate('bidSize', `x ${d.bidSize || 0}`);
+                if (d.ask) safeUpdate('askSize', `x ${d.askSize || 0}`);
+
+                // Calculate and display change
+                if (d.last && d.close) {
+                    const change = d.last - d.close;
+                    const changePct = ((change / d.close) * 100).toFixed(2);
+                    const changeEl = document.getElementById('priceChange');
+                    if (changeEl) {
+                        changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct}%)`;
+                        changeEl.className = change >= 0 ? 'quote-stat-label positive' : 'quote-stat-label negative';
+                    }
+                }
+
+                // Auto-set limit price to mid (only if field is not focused and empty/invalid)
+                const orderTypeEl = document.getElementById('orderType');
+                const orderPriceEl = document.getElementById('orderPrice');
+                if (d.bid && d.ask && d.bid > 0 && d.ask > 0 && orderTypeEl && orderTypeEl.value === 'LIMIT') {
+                    // Only update if user is NOT currently typing (field not focused) and field is empty or invalid
+                    if (document.activeElement !== orderPriceEl &&
+                        (!orderPriceEl.value || orderPriceEl.value === '' || parseFloat(orderPriceEl.value) <= 0)) {
+                        const mid = ((d.bid + d.ask) / 2).toFixed(2);
+                        safeUpdate('orderPrice', mid);
+                    }
+                }
+
+                marketDataCache[currentSymbol] = d;
+
+                // Check for trading halt
+                checkForHalt(currentSymbol, d);
+            } catch (error) {
+                console.error('Error loading price:', error);
+            }
+        }
+
+        async function loadLevel2() {
+            try {
+                const bidsEl = document.getElementById('bidsDisplay');
+                const asksEl = document.getElementById('asksDisplay');
+
+                if (!bidsEl || !asksEl) return;
+
+                // Fetch ONLY from API
+                const apiData = await apiFetch(`/api/level2/${currentSymbol}`);
+                if (!apiData) {
+                    bidsEl.innerHTML = '<div class="empty-state">Connect to IBKR for Level 2 data</div>';
+                    asksEl.innerHTML = '<div class="empty-state">Connect to IBKR for Level 2 data</div>';
+                    return;
+                }
+
+                if (apiData.status === 'requesting') {
+                    bidsEl.innerHTML = '<div class="empty-state">Requesting Level 2 data...</div>';
+                    asksEl.innerHTML = '<div class="empty-state">Requesting Level 2 data...</div>';
+                    return;
+                }
+
+                const data = apiData;
+
+                let bidsHtml = '';
+                if (data.bids && data.bids.length > 0) {
+                    data.bids.slice(0, 20).forEach((bid, i) => {
+                        bidsHtml += `
+                            <div class="level2-row clickable" onclick="setOrderPrice(${bid.price}, 'BUY')">
+                                <div>${bid.market_maker || ''}</div>
+                                <div style="color: #22c55e;">${bid.size}</div>
+                                <div class="level2-price" style="color: #22c55e; font-weight: 700;">${bid.price.toFixed(2)}</div>
+                                <div style="color: #666;">1</div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    bidsHtml = '<div class="empty-state">No bid data</div>';
+                }
+
+                let asksHtml = '';
+                if (data.asks && data.asks.length > 0) {
+                    data.asks.slice(0, 20).forEach((ask, i) => {
+                        asksHtml += `
+                            <div class="level2-row clickable" onclick="setOrderPrice(${ask.price}, 'SELL')">
+                                <div style="color: #666;">1</div>
+                                <div class="level2-price" style="color: #ef4444; font-weight: 700;">${ask.price.toFixed(2)}</div>
+                                <div style="color: #ef4444;">${ask.size}</div>
+                                <div>${ask.market_maker || ''}</div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    asksHtml = '<div class="empty-state">No ask data</div>';
+                }
+
+                bidsEl.innerHTML = bidsHtml;
+                asksEl.innerHTML = asksHtml;
+            } catch (error) {
+                console.error('Error loading level2:', error);
+            }
+        }
+
+        async function loadTimeSales() {
+            try {
+                const displayEl = document.getElementById('timesalesDisplay');
+                if (!displayEl) return;
+
+                // Fetch ONLY from API
+                const apiData = await apiFetch(`/api/timesales/${currentSymbol}?limit=50`);
+                if (!apiData || !apiData.trades || apiData.trades.length === 0) {
+                    displayEl.innerHTML = '<div class="empty-state">No trade data available. Subscribe to symbol for updates.</div>';
+                    return;
+                }
+
+                const trades = apiData.trades;
+
+                let html = '';
+                if (trades.length > 0) {
+                    trades.forEach(trade => {
+                        const time = new Date(trade.timestamp).toLocaleTimeString('en-US', {
+                            hour12: false,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+                        const side = trade.price > (marketDataCache[currentSymbol]?.last || trade.price) ? 'BUY' : 'SELL';
+                        const sideColor = side === 'BUY' ? '#22c55e' : '#ef4444';
+
+                        html += `
+                            <div class="timesales-row">
+                                <div class="timesales-time">${time}</div>
+                                <div class="timesales-price" style="color: ${sideColor};">${trade.price.toFixed(2)}</div>
+                                <div class="timesales-size">${trade.size}</div>
+                                <div class="timesales-side" style="color: ${sideColor};">${side}</div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html = '<div class="empty-state">No trade data</div>';
+                }
+
+                displayEl.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading time & sales:', error);
+            }
+        }
+
+        async function loadPositions() {
+            try {
+                const displayEl = document.getElementById('positionsDisplay');
+                if (!displayEl) return;
+
+                // Fetch ONLY from API
+                const apiData = await apiFetch('/api/account');
+                if (!apiData || !apiData.positions) {
+                    displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">Connect to IBKR to view positions</td></tr>';
+                    return;
+                }
+
+                const positions = apiData.positions;
+
+                if (positions.length > 0) {
+                    let html = '';
+                    positions.forEach(pos => {
+                        const pnl = pos.unrealized_pnl || 0;
+                        const pnlPct = pos.avg_cost ? ((pnl / (pos.avg_cost * Math.abs(pos.quantity))) * 100).toFixed(2) : 0;
+                        const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+                        const side = pos.quantity > 0 ? 'LONG' : 'SHORT';
+                        const sideClass = pos.quantity > 0 ? 'long' : 'short';
+
+                        html += `
+                            <tr class="clickable" onclick="setCurrentSymbol('${pos.symbol}')">
+                                <td><strong>${pos.symbol}</strong></td>
+                                <td><span class="pos-badge ${sideClass}">${side}</span></td>
+                                <td>${Math.abs(pos.quantity)}</td>
+                                <td>$${pos.avg_cost?.toFixed(2) || '0.00'}</td>
+                                <td>$${((pos.market_value || 0) / Math.abs(pos.quantity)).toFixed(2)}</td>
+                                <td class="${pnlClass}">$${pnl.toFixed(2)}</td>
+                                <td class="${pnlClass}">${pnlPct}%</td>
+                                <td><button class="action-btn" onclick="closePosition('${pos.symbol}', ${pos.quantity}); event.stopPropagation();">Close</button></td>
+                            </tr>
+                        `;
+                    });
+                    displayEl.innerHTML = html;
+                    positionsCache = positions;
+                } else {
+                    displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">No open positions</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading positions:', error);
+            }
+        }
+
+        async function loadOrders() {
+            const displayEl = document.getElementById('ordersDisplay');
+            console.log('loadOrders called, displayEl:', displayEl);
+            if (!displayEl) {
+                console.error('ordersDisplay element not found!');
+                return;
+            }
+
+            try {
+                // Fetch real orders from IBKR
+                const response = await fetch(API_BASE_URL + '/api/ibkr/orders');
+                const data = await response.json();
+                console.log('Orders API response:', data);
+
+                if (data.orders && data.orders.length > 0) {
+                    console.log(`Building HTML for ${data.orders.length} orders...`);
+                    let html = '';
+                    data.orders.forEach(order => {
+                        const priceDisplay = order.limit_price ? `$${order.limit_price.toFixed(2)}` :
+                                           order.stop_price ? `STOP $${order.stop_price.toFixed(2)}` : 'MKT';
+                        html += `
+                            <tr>
+                                <td>${order.order_id}</td>
+                                <td><strong onclick="selectSymbol('${order.symbol}')" style="cursor: pointer; color: #00c9ff;">${order.symbol}</strong></td>
+                                <td class="${order.action === 'BUY' ? 'positive' : 'negative'}">${order.action}</td>
+                                <td>${order.quantity}</td>
+                                <td>${order.order_type}</td>
+                                <td>${priceDisplay}</td>
+                                <td>${order.status}</td>
+                                <td>
+                                    <button class="action-btn" onclick="cancelOrderIBKR(${order.order_id})">Cancel</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    console.log('Built HTML string (first 500 chars):', html.substring(0, 500));
+                    console.log('Element before update:', displayEl.innerHTML);
+                    console.log('Setting innerHTML...');
+                    displayEl.innerHTML = html;
+                    console.log('After innerHTML update, element now contains:', displayEl.innerHTML.substring(0, 500));
+                    console.log('Element child count:', displayEl.children.length);
+                } else {
+                    console.log('No orders in response, showing empty state');
+                    displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">No working orders</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                displayEl.innerHTML = '<tr><td colspan="8" class="empty-state" style="color: #ef4444;">❌ Error loading orders</td></tr>';
+            }
+        }
+
+        async function cancelOrderIBKR(orderId) {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    console.log(`✓ Order ${orderId} cancelled`);
+                    await loadOrders(); // Refresh orders display
+                } else {
+                    alert(`❌ Failed to cancel order: ${data.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error cancelling order:', error);
+                alert(`❌ Error cancelling order: ${error.message}`);
+            }
+        }
+
+        async function loadAccount() {
+            try {
+                // Fetch ONLY from API
+                const accountData = await apiFetch('/api/account');
+                if (!accountData || !accountData.summary) {
+                    safeUpdate('accountNumber', '--');
+                    safeUpdate('accountType', '--');
+                    safeUpdate('equityValue', '--');
+                    safeUpdate('buyingPower', '--');
+                    safeUpdate('cashBalance', '--');
+                    safeUpdate('marginUsed', '--');
+                    safeUpdate('dayPL', '--');
+                    safeUpdate('totalPL', '--');
+                    safeUpdate('positionCount', '0');
+                    return;
+                }
+
+                if (accountData.summary) {
+                    const s = accountData.summary;
+
+                    // Update account number and type
+                    safeUpdate('accountNumber', s.account_id || 'DU1234567');
+                    safeUpdate('accountType', s.account_type || 'Unknown');
+
+                    // Update financial values
+                    safeUpdate('equityValue', `$${(s.net_liquidation || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                    safeUpdate('buyingPower', `$${(s.buying_power || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                    safeUpdate('cashBalance', `$${(s.total_cash || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                    safeUpdate('marginUsed', `$${((s.net_liquidation - s.total_cash) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+
+                    const dayPL = accountData.total_unrealized_pnl || 0;
+                    const dayPLEl = document.getElementById('dayPL');
+                    if (dayPLEl) {
+                        dayPLEl.textContent = `$${dayPL.toFixed(2)}`;
+                        dayPLEl.className = dayPL >= 0 ? 'account-stat-value positive' : 'account-stat-value negative';
+                    }
+
+                    const totalPL = accountData.total_realized_pnl || 0;
+                    const totalPLEl = document.getElementById('totalPL');
+                    if (totalPLEl) {
+                        totalPLEl.textContent = `$${totalPL.toFixed(2)}`;
+                        totalPLEl.className = totalPL >= 0 ? 'account-stat-value positive' : 'account-stat-value negative';
+                    }
+
+                    safeUpdate('positionCount', accountData.positions?.length || 0);
+
+                    // Handle day trades info for PDT accounts
+                    const dayTradesStat = document.getElementById('dayTradesStat');
+                    const dayTradesInfo = document.getElementById('dayTradesInfo');
+                    const accountWarnings = document.getElementById('accountWarnings');
+
+                    if (s.is_pdt) {
+                        // Show day trades remaining
+                        if (dayTradesStat) dayTradesStat.style.display = 'block';
+                        if (s.day_trades_remaining !== null && s.day_trades_remaining !== undefined) {
+                            safeUpdate('dayTradesRemaining', `${s.day_trades_remaining} Left`);
+
+                            if (dayTradesInfo) {
+                                dayTradesInfo.style.display = 'block';
+                                dayTradesInfo.innerHTML = `Pattern Day Trader Account: ${s.day_trades_remaining} day trades remaining this week`;
+                            }
+
+                            // Show warning if running low
+                            if (s.day_trades_remaining <= 1 && accountWarnings) {
+                                accountWarnings.style.display = 'block';
+                                accountWarnings.style.background = '#7f1d1d';
+                                accountWarnings.style.color = '#fca5a5';
+                                accountWarnings.innerHTML = s.day_trades_remaining === 0
+                                    ? '⚠️ DAY TRADE LIMIT REACHED - No day trades remaining!'
+                                    : '⚠️ WARNING - Only 1 day trade remaining!';
+                            }
+                        }
+                    } else {
+                        if (dayTradesStat) dayTradesStat.style.display = 'none';
+                    }
+
+                    // Show account capability warnings
+                    if (s.account_capabilities && accountWarnings) {
+                        const caps = s.account_capabilities;
+                        if (caps.includes('NO_SHORT_SELLING')) {
+                            accountWarnings.style.display = 'block';
+                            accountWarnings.style.background = '#1e3a8a';
+                            accountWarnings.style.color = '#93c5fd';
+                            accountWarnings.innerHTML = '⚠️ SHORT SELLING DISABLED for this account type';
+                        }
+                        if (caps.includes('T+2_SETTLEMENT')) {
+                            if (dayTradesInfo) {
+                                dayTradesInfo.style.display = 'block';
+                                dayTradesInfo.innerHTML = 'Cash Account: T+2 settlement applies - avoid good faith violations';
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading account:', error);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     TRADING FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function setQuantity(qty) {
+            document.getElementById('orderQuantity').value = qty;
+        }
+
+        function setAccountPercent(percent) {
+            const symbol = document.getElementById('orderSymbol').value;
+            const priceEl = document.getElementById('orderPrice');
+
+            // Get account equity value
+            let accountEquity = 100000; // Default value
+            if (accountData && accountData.summary && accountData.summary.net_liquidation) {
+                accountEquity = accountData.summary.net_liquidation;
+            }
+
+            // Get current price (try limit price first, then market data)
+            let currentPrice = parseFloat(priceEl.value) || 0;
+
+            // If no price in order form, try to get from market data cache
+            if (currentPrice === 0 || priceEl.value === 'MARKET') {
+                const data = marketDataCache[symbol];
+                if (data && data.last) {
+                    currentPrice = data.last;
+                } else if (data && data.bid && data.ask) {
+                    currentPrice = (data.bid + data.ask) / 2;
+                }
+            }
+
+            if (currentPrice > 0) {
+                // Calculate dollar amount based on percentage
+                const dollarAmount = accountEquity * (percent / 100);
+
+                // Calculate quantity (round down to whole shares)
+                const quantity = Math.floor(dollarAmount / currentPrice);
+
+                // Set the quantity
+                document.getElementById('orderQuantity').value = quantity;
+
+                // Show confirmation
+                console.log(`Account: $${accountEquity.toFixed(2)}, ${percent}% = $${dollarAmount.toFixed(2)}, Price: $${currentPrice.toFixed(2)}, Qty: ${quantity}`);
+            } else {
+                alert('Cannot calculate quantity: No price available for ' + symbol);
+            }
+        }
+
+        function adjustPrice(amount) {
+            const priceEl = document.getElementById('orderPrice');
+            const currentPrice = parseFloat(priceEl.value) || 0;
+            priceEl.value = (currentPrice + amount).toFixed(2);
+        }
+
+        function setOrderPrice(price, side) {
+            document.getElementById('orderPrice').value = price.toFixed(2);
+            // Optionally auto-focus quantity or submit
+        }
+
+        function handleOrderTypeChange() {
+            const type = document.getElementById('orderType').value;
+            const priceField = document.getElementById('orderPrice');
+
+            if (type === 'MARKET') {
+                priceField.disabled = true;
+                priceField.value = 'MARKET';
+            } else {
+                priceField.disabled = false;
+                if (priceField.value === 'MARKET' || priceField.value === '') {
+                    const data = marketDataCache[currentSymbol];
+                    if (data && data.bid && data.ask) {
+                        priceField.value = ((data.bid + data.ask) / 2).toFixed(2);
+                    } else {
+                        // Clear field if no market data available
+                        priceField.value = '';
+                        priceField.placeholder = 'Enter limit price';
+                    }
+                }
+            }
+        }
+
+        async function submitOrder(action) {
+            const symbol = document.getElementById('orderSymbol').value;
+            const quantity = document.getElementById('orderQuantity').value;
+            const type = document.getElementById('orderType').value;
+            const price = document.getElementById('orderPrice').value;
+            const tif = document.getElementById('orderTIF').value;
+            const extendedHours = document.getElementById('extendedHours').checked;
+            const autoSubmit = document.getElementById('autoSubmitOrders').checked;
+
+            // Validation
+            if (!symbol || symbol.trim() === '') {
+                alert('Please enter a symbol');
+                return;
+            }
+
+            if (!quantity || parseInt(quantity) <= 0) {
+                alert('Please enter a valid quantity');
+                return;
+            }
+
+            let side, orderType;
+
+            if (action === 'BUY_MARKET') {
+                side = 'BUY';
+                orderType = 'MARKET';
+            } else if (action === 'SELL_MARKET') {
+                side = 'SELL';
+                orderType = 'MARKET';
+            } else {
+                side = action;
+                orderType = type;
+            }
+
+            // Validate price for limit orders
+            if (orderType === 'LIMIT' && (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0)) {
+                alert('Please enter a valid limit price (not MARKET)');
+                return;
+            }
+
+            const orderDetails = `
+ORDER DETAILS:
+─────────────
+Side:     ${side}
+Symbol:   ${symbol}
+Quantity: ${quantity}
+Type:     ${orderType}
+Price:    ${orderType === 'MARKET' ? 'MARKET' : '$' + price}
+TIF:      ${tif}
+Extended: ${extendedHours ? 'YES (Pre/After Market)' : 'NO (Regular Hours)'}
+
+Confirm order?`;
+
+            // Check auto-submit setting - skip confirmation if enabled
+            if (autoSubmit || window.confirm(orderDetails)) {
+                try {
+                    // Prepare order request
+                    const orderRequest = {
+                        symbol: symbol.trim().toUpperCase(),
+                        action: side,
+                        quantity: parseInt(quantity),
+                        order_type: orderType,
+                        limit_price: orderType !== 'MARKET' ? parseFloat(price) : null,
+                        stop_price: null, // Add stop price support if needed
+                        tif: tif,
+                        extended_hours: extendedHours,
+                        exchange: 'SMART'
+                    };
+
+                    console.log('Placing order:', orderRequest);
+
+                    // Call API to place order
+                    const response = await fetch(API_BASE_URL + '/api/ibkr/place-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderRequest)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        // Show alert only if auto-submit is disabled (for faster trading)
+                        if (!autoSubmit) {
+                            alert(`✓ Order placed successfully!\n\nOrder ID: ${data.order_id}\nStatus: ${data.status}\n\n${data.message}`);
+                        } else {
+                            console.log(`✓ Order ${data.order_id} placed: ${side} ${quantity} ${symbol} @ ${orderType === 'MARKET' ? 'MARKET' : '$' + price}`);
+                        }
+
+                        // Clear form (but keep symbol for momentum trading)
+                        // document.getElementById('orderSymbol').value = ''; // KEEP SYMBOL
+                        document.getElementById('orderQuantity').value = '';
+                        // Update price to current market price for next order
+                        const data = marketDataCache[symbol];
+                        if (data && data.bid && data.ask) {
+                            document.getElementById('orderPrice').value = ((data.bid + data.ask) / 2).toFixed(2);
+                        }
+
+                        // Refresh orders display
+                        await loadOrders();
+                        await loadAccount();
+                    } else {
+                        // Handle error response
+                        const errorMsg = data.detail || data.message || 'Unknown error';
+                        alert(`✗ Failed to place order\n\n${errorMsg}`);
+                    }
+                } catch (error) {
+                    console.error('Order error:', error);
+                    alert(`✗ Failed to place order\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                }
+            }
+        }
+
+        async function closePosition(symbol, quantity) {
+            const side = quantity > 0 ? 'SELL' : 'BUY';
+            const qty = Math.abs(quantity);
+
+            if (window.confirm(`Close position in ${symbol}?\n\n${side} ${qty} shares at MARKET`)) {
+                try {
+                    console.log('Closing position:', symbol, side, qty);
+
+                    // Prepare market order to close position
+                    const orderRequest = {
+                        symbol: symbol,
+                        action: side,
+                        quantity: qty,
+                        order_type: 'MARKET',
+                        limit_price: null,
+                        stop_price: null,
+                        tif: 'DAY',
+                        extended_hours: false,
+                        exchange: 'SMART'
+                    };
+
+                    // Submit order to IBKR
+                    const response = await fetch(API_BASE_URL + '/api/ibkr/place-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderRequest)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        alert(`✓ Position close order placed!\n\nOrder ID: ${data.order_id}\n${side} ${qty} ${symbol} @ MARKET`);
+                        console.log(`✓ Close order ${data.order_id} placed: ${side} ${qty} ${symbol}`);
+
+                        // Refresh positions and orders
+                        await loadPositions();
+                        await loadOrders();
+                        await loadAccount();
+                    } else {
+                        const errorMsg = data.detail || data.message || 'Unknown error';
+                        alert(`✗ Failed to close position\n\n${errorMsg}`);
+                    }
+                } catch (error) {
+                    console.error('Close position error:', error);
+                    alert(`✗ Failed to close position\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                }
+            }
+        }
+
+        async function cancelOrder(orderId) {
+            if (window.confirm('Cancel this order?')) {
+                try {
+                    console.log('Cancelling order:', orderId);
+
+                    const response = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order_id: orderId })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        alert(`✓ Order cancelled!\n\nOrder ID: ${orderId}\nStatus: ${data.status || 'Cancelled'}`);
+                        console.log(`✓ Order ${orderId} cancelled`);
+
+                        // Refresh orders and account
+                        await loadOrders();
+                        await loadAccount();
+                    } else {
+                        const errorMsg = data.detail || data.message || 'Unknown error';
+                        alert(`✗ Failed to cancel order\n\n${errorMsg}`);
+                    }
+                } catch (error) {
+                    console.error('Cancel order error:', error);
+                    alert(`✗ Failed to cancel order\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                }
+            }
+        }
+
+        async function cancelAllOrders() {
+            if (!window.confirm('⚠️ CANCEL ALL WORKING ORDERS?\n\nThis will cancel ALL open orders.\n\nAre you sure?')) {
+                return;
+            }
+
+            try {
+                // Fetch all current orders
+                const response = await fetch(API_BASE_URL + '/api/ibkr/orders');
+                const data = await response.json();
+
+                if (!data.orders || data.orders.length === 0) {
+                    alert('No orders to cancel');
+                    return;
+                }
+
+                console.log(`Cancelling ${data.orders.length} orders...`);
+                let cancelled = 0;
+                let failed = 0;
+
+                // Cancel each order
+                for (const order of data.orders) {
+                    try {
+                        const cancelResponse = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ order_id: order.order_id })
+                        });
+
+                        const cancelData = await cancelResponse.json();
+
+                        if (cancelResponse.ok && cancelData.success) {
+                            cancelled++;
+                            console.log(`✓ Cancelled order ${order.order_id}`);
+                        } else {
+                            failed++;
+                            console.error(`✗ Failed to cancel order ${order.order_id}:`, cancelData.detail);
+                        }
+                    } catch (error) {
+                        failed++;
+                        console.error(`✗ Error cancelling order ${order.order_id}:`, error);
+                    }
+                }
+
+                // Show results and refresh
+                alert(`✓ Cancel All Complete\n\nCancelled: ${cancelled}\nFailed: ${failed}`);
+                await loadOrders();
+
+            } catch (error) {
+                console.error('Error cancelling all orders:', error);
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     WORKLIST MANAGEMENT (UNIFIED BACKEND)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let worklistData = [];
+
+        async function loadWorklist() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/worklist');
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    worklistData = data.data;
+                    updateWorklistDisplay();
+                    updateWorklistStats();
+                }
+            } catch (error) {
+                console.error('Failed to load worklist:', error);
+            }
+        }
+
+        async function updateWorklistDisplay() {
+            const display = document.getElementById('watchlistDisplay');
+            if (!display) return;
+
+            if (worklistData.length === 0) {
+                display.innerHTML = '<div class="empty-state" style="padding: 20px; text-align: center;"><div style="font-size: 28px; margin-bottom: 8px;">📋</div><div style="font-size: 15px;">No symbols in worklist</div><div style="font-size: 13px; color: #888; margin-top: 4px;">Use Scanner or Add Symbol</div></div>';
+                return;
+            }
+
+            let html = '<table class="data-table" style="font-size: 13px;"><thead><tr><th style="padding: 4px 6px;">Symbol</th><th style="padding: 4px 6px; text-align: right;">Price</th><th style="padding: 4px 6px; text-align: right;">Change</th><th style="padding: 4px 6px; text-align: center;">Pred</th><th style="padding: 4px 6px; text-align: right;">Conf</th><th style="padding: 4px 6px; text-align: center;">Action</th></tr></thead><tbody>';
+
+            for (const item of worklistData) {
+                const price = item.current_price ? `$${item.current_price.toFixed(2)}` : '-';
+                const change = item.change_percent !== undefined ? item.change_percent.toFixed(2) + '%' : '-';
+                const changeClass = item.change_percent !== undefined && item.change_percent >= 0 ? 'positive' : 'negative';
+
+                let predBadge = '-';
+                if (item.prediction === 'UP') {
+                    predBadge = '<span style="background: #166534; color: #22c55e; padding: 2px 6px; border-radius: 2px; font-size: 12px; font-weight: 700;">▲ UP</span>';
+                } else if (item.prediction === 'DOWN') {
+                    predBadge = '<span style="background: #7f1d1d; color: #ef4444; padding: 2px 6px; border-radius: 2px; font-size: 12px; font-weight: 700;">▼ DOWN</span>';
+                }
+
+                const confidence = item.confidence ? item.confidence.toFixed(0) + '%' : '-';
+                const liveIndicator = !item.has_live_data ? '<span style="color: #eab308; margin-left: 4px;" title="No live data">⚠</span>' : '';
+
+                html += `
+                    <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="font-size: 13px;">
+                        <td style="padding: 4px 6px;"><strong>${item.symbol}</strong>${liveIndicator}</td>
+                        <td style="padding: 4px 6px; text-align: right; font-family: monospace;">${price}</td>
+                        <td class="${changeClass}" style="padding: 4px 6px; text-align: right; font-family: monospace;">${change}</td>
+                        <td style="padding: 4px 6px; text-align: center;">${predBadge}</td>
+                        <td style="padding: 4px 6px; text-align: right; font-family: monospace;">${confidence}</td>
+                        <td style="padding: 4px 6px; text-align: center;">
+                            <button onclick="event.stopPropagation(); removeFromWorklist('${item.symbol}')"
+                                    style="background: #7f1d1d; color: #ef4444; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600;">✕</button>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            html += '</tbody></table>';
+            display.innerHTML = html;
+        }
+
+        function updateWorklistStats() {
+            const total = worklistData.length;
+            const live = worklistData.filter(w => w.has_live_data).length;
+            const bullish = worklistData.filter(w => w.prediction === 'UP').length;
+            const bearish = worklistData.filter(w => w.prediction === 'DOWN').length;
+
+            const safeUpdate = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+
+            safeUpdate('statsTotal', total);
+            safeUpdate('statsLive', live);
+            safeUpdate('statsBullish', bullish);
+            safeUpdate('statsBearish', bearish);
+        }
+
+        async function showAddSymbolDialog() {
+            const symbol = window.prompt('Enter symbol to add to worklist:', '');
+            if (!symbol) return;
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/worklist/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol.toUpperCase(), exchange: 'SMART' })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadWorklist();
+                    alert(`✓ ${symbol.toUpperCase()} added to worklist`);
+                } else {
+                    alert('Failed to add symbol: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Failed to add symbol:', error);
+                alert('Failed to add symbol');
+            }
+        }
+
+        async function removeFromWorklist(symbol) {
+            if (!window.confirm(`Remove ${symbol} from worklist?`)) return;
+
+            try {
+                const response = await fetch(API_BASE_URL + `/api/worklist/${symbol}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadWorklist();
+                } else {
+                    alert('Failed to remove symbol');
+                }
+            } catch (error) {
+                console.error('Failed to remove symbol:', error);
+                alert('Failed to remove symbol');
+            }
+        }
+
+        async function clearWorklist() {
+            if (!window.confirm('⚠️ Clear entire worklist?\n\nThis will remove all symbols.')) return;
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/worklist/clear', {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadWorklist();
+                    alert('✓ Worklist cleared');
+                } else {
+                    alert('Failed to clear worklist');
+                }
+            } catch (error) {
+                console.error('Failed to clear worklist:', error);
+                alert('Failed to clear worklist');
+            }
+        }
+
+        async function showScannerDialog() {
+            // Load scanner presets
+            try {
+                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/presets');
+                const data = await response.json();
+
+                if (!data.success || !data.data) {
+                    alert('Failed to load scanner presets');
+                    return;
+                }
+
+                const presets = data.data;
+                let options = presets.map(p => `<option value="${p.id}">${p.name} - ${p.description}</option>`).join('');
+
+                const html = `
+                    <div style="padding: 16px; background: #1a1a1a; border: 2px solid #007acc; border-radius: 4px; width: 400px;">
+                        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 18px;">IBKR Market Scanner</h3>
+                        <select id="scannerSelect" style="width: 100%; padding: 8px; background: #252525; color: #fff; border: 1px solid #404040; margin-bottom: 12px;">
+                            ${options}
+                        </select>
+                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                            <button onclick="closeScannerDialog()" class="btn btn-secondary">Cancel</button>
+                            <button onclick="runScanner()" class="btn btn-primary" style="background: #007acc;">Run Scanner</button>
+                        </div>
+                        <div id="scannerResults" style="margin-top: 12px; max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.id = 'scannerDialog';
+                dialog.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10000; box-shadow: 0 0 20px rgba(0,0,0,0.5);';
+                dialog.innerHTML = html;
+                document.body.appendChild(dialog);
+
+                // Add backdrop
+                const backdrop = document.createElement('div');
+                backdrop.id = 'scannerBackdrop';
+                backdrop.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999;';
+                backdrop.onclick = closeScannerDialog;
+                document.body.appendChild(backdrop);
+
+            } catch (error) {
+                console.error('Failed to load scanner presets:', error);
+                alert('Failed to load scanner presets');
+            }
+        }
+
+        function closeScannerDialog() {
+            const dialog = document.getElementById('scannerDialog');
+            const backdrop = document.getElementById('scannerBackdrop');
+            if (dialog) dialog.remove();
+            if (backdrop) backdrop.remove();
+        }
+
+        async function runScanner() {
+            const select = document.getElementById('scannerSelect');
+            const resultsDiv = document.getElementById('scannerResults');
+
+            if (!select || !resultsDiv) return;
+
+            resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Scanning...</div>';
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scan_code: select.value,
+                        instrument: 'STK',
+                        location: 'STK.US.MAJOR',
+                        num_rows: 50
+                    })
+                });
+
+                const data = await response.json();
+
+                console.log('Scanner response:', data);
+
+                if (data.success && data.data && data.data.results) {
+                    const results = data.data.results;
+                    console.log('Scanner results:', results);
+
+                    let html = `
+                        <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 14px; color: #888;">Found ${results.length} symbols</div>
+                            <button onclick="addAllScannerResults()" class="btn btn-primary" style="font-size: 14px; padding: 4px 12px; background: #007acc;">Add All to Worklist</button>
+                        </div>
+                        <table class="data-table" style="font-size: 13px;">
+                            <thead>
+                                <tr>
+                                    <th style="padding: 4px;">Rank</th>
+                                    <th style="padding: 4px;">Symbol</th>
+                                    <th style="padding: 4px; text-align: right;">Price</th>
+                                    <th style="padding: 4px; text-align: right;">Change %</th>
+                                    <th style="padding: 4px; text-align: right;">Volume</th>
+                                    <th style="padding: 4px; text-align: center;">
+                                        <input type="checkbox" id="selectAllScanner" onchange="toggleAllScannerResults(this.checked)">
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    results.forEach((r, i) => {
+                        const price = r.price ? r.price.toFixed(2) : 'N/A';
+                        const changePercent = r.change_percent !== undefined ? r.change_percent.toFixed(2) : '0.00';
+                        const volume = r.volume ? (r.volume / 1000000).toFixed(2) : '0.00';
+                        const changeClass = (r.change_percent || 0) >= 0 ? 'positive' : 'negative';
+
+                        html += `
+                            <tr>
+                                <td style="padding: 4px;">${r.rank || (i + 1)}</td>
+                                <td style="padding: 4px;"><strong>${r.symbol || 'N/A'}</strong></td>
+                                <td style="padding: 4px; text-align: right; font-family: monospace;">$${price}</td>
+                                <td class="${changeClass}" style="padding: 4px; text-align: right; font-family: monospace;">${changePercent}%</td>
+                                <td style="padding: 4px; text-align: right; font-family: monospace;">${volume}M</td>
+                                <td style="padding: 4px; text-align: center;">
+                                    <input type="checkbox" class="scanner-checkbox" value="${r.symbol}">
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                    resultsDiv.innerHTML = html;
+                } else {
+                    console.error('Scanner failed - invalid response:', data);
+                    resultsDiv.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444;">
+                        Scanner failed: ${data.message || data.detail || 'No results returned'}
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('Scanner error:', error);
+                resultsDiv.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444;">
+                    Scanner error: ${error.message}<br>
+                    <small style="color: #888;">Check console for details</small>
+                </div>`;
+            }
+        }
+
+        function toggleAllScannerResults(checked) {
+            document.querySelectorAll('.scanner-checkbox').forEach(cb => cb.checked = checked);
+        }
+
+        async function addAllScannerResults() {
+            const checkboxes = document.querySelectorAll('.scanner-checkbox:checked');
+            const symbols = Array.from(checkboxes).map(cb => cb.value);
+
+            if (symbols.length === 0) {
+                alert('No symbols selected');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/add-to-worklist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadWorklist();
+                    closeScannerDialog();
+                    alert(`✓ Added ${symbols.length} symbols to worklist`);
+                } else {
+                    alert('Failed to add symbols');
+                }
+            } catch (error) {
+                console.error('Failed to add scanner results:', error);
+                alert('Failed to add symbols');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     AUTONOMOUS BOT CONTROL FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let botStatusInterval = null;
+
+        async function initBot() {
+            try {
+                // Get config from UI
+                const watchlist = document.getElementById('botWatchlist').value.split(',').map(s => s.trim());
+                const config = {
+                    watchlist: watchlist,
+                    max_position_size_usd: parseFloat(document.getElementById('botMaxPosition').value),
+                    daily_loss_limit_usd: parseFloat(document.getElementById('botDailyLoss').value),
+                    min_probability_threshold: parseFloat(document.getElementById('botMinProb').value) / 100,
+                    max_positions: parseInt(document.getElementById('botMaxPositions').value)
+                };
+
+                const response = await fetch(API_BASE_URL + '/api/bot/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Bot initialized:', data);
+
+                    // Update UI
+                    document.getElementById('botStatusText').textContent = 'INITIALIZED';
+                    document.getElementById('botStatusText').style.color = '#fbbf24';
+                    document.getElementById('botStatusSubtext').textContent = 'Ready to start';
+
+                    // Enable controls
+                    document.getElementById('initBotBtn').disabled = true;
+                    document.getElementById('startBotBtn').disabled = false;
+                    document.getElementById('enableBotBtn').disabled = false;
+
+                    // Start polling status
+                    if (!botStatusInterval) {
+                        botStatusInterval = setInterval(updateBotStatus, 2000);
+                    }
+
+                    alert('✓ Bot initialized successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('✗ Failed to initialize bot: ' + error.detail);
+                }
+            } catch (error) {
+                console.error('Error initializing bot:', error);
+                alert('✗ Error initializing bot: ' + error.message);
+            }
+        }
+
+        async function startAutonomousBot() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/bot/start', { method: 'POST' });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Bot started:', data);
+
+                    document.getElementById('botStatusText').textContent = 'RUNNING';
+                    document.getElementById('botStatusText').style.color = '#22c55e';
+                    document.getElementById('botStatusSubtext').textContent = data.enabled ? 'Trading enabled' : 'Trading disabled (enable first)';
+
+                    document.getElementById('startBotBtn').disabled = true;
+                    document.getElementById('stopBotBtn').disabled = false;
+
+                    alert('✓ Bot started successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('✗ Failed to start bot: ' + error.detail);
+                }
+            } catch (error) {
+                console.error('Error starting bot:', error);
+                alert('✗ Error starting bot: ' + error.message);
+            }
+        }
+
+        async function stopAutonomousBot() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/bot/stop', { method: 'POST' });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Bot stopped:', data);
+
+                    document.getElementById('botStatusText').textContent = 'STOPPED';
+                    document.getElementById('botStatusText').style.color = '#ef4444';
+                    document.getElementById('botStatusSubtext').textContent = 'All positions closed';
+
+                    document.getElementById('startBotBtn').disabled = false;
+                    document.getElementById('stopBotBtn').disabled = true;
+
+                    alert('✓ Bot stopped successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('✗ Failed to stop bot: ' + error.detail);
+                }
+            } catch (error) {
+                console.error('Error stopping bot:', error);
+                alert('✗ Error stopping bot: ' + error.message);
+            }
+        }
+
+        async function enableBot() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/bot/enable', { method: 'POST' });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Bot enabled:', data);
+
+                    document.getElementById('botStatusSubtext').textContent = 'Trading ENABLED';
+                    document.getElementById('enableBotBtn').textContent = '✗ DISABLE';
+                    document.getElementById('enableBotBtn').onclick = disableBot;
+
+                    alert('✓ Trading enabled! Bot will now execute trades.');
+                } else {
+                    const error = await response.json();
+                    alert('✗ Failed to enable bot: ' + error.detail);
+                }
+            } catch (error) {
+                console.error('Error enabling bot:', error);
+                alert('✗ Error: ' + error.message);
+            }
+        }
+
+        async function disableBot() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/bot/disable', { method: 'POST' });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Bot disabled:', data);
+
+                    document.getElementById('botStatusSubtext').textContent = 'Trading DISABLED';
+                    document.getElementById('enableBotBtn').textContent = '✓ ENABLE';
+                    document.getElementById('enableBotBtn').onclick = enableBot;
+
+                    alert('✓ Trading disabled. Bot will continue running but not execute trades.');
+                } else {
+                    const error = await response.json();
+                    alert('✗ Failed to disable bot: ' + error.detail);
+                }
+            } catch (error) {
+                console.error('Error disabling bot:', error);
+                alert('✗ Error: ' + error.message);
+            }
+        }
+
+        async function updateBotConfig() {
+            try {
+                const watchlist = document.getElementById('botWatchlist').value.split(',').map(s => s.trim());
+                const config = {
+                    watchlist: watchlist,
+                    max_position_size_usd: parseFloat(document.getElementById('botMaxPosition').value),
+                    daily_loss_limit_usd: parseFloat(document.getElementById('botDailyLoss').value),
+                    min_probability_threshold: parseFloat(document.getElementById('botMinProb').value) / 100,
+                    max_positions: parseInt(document.getElementById('botMaxPositions').value)
+                };
+
+                const response = await fetch(API_BASE_URL + '/api/bot/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Config updated:', data);
+                    alert('✓ Configuration updated successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('✗ Failed to update config: ' + error.detail);
+                }
+            } catch (error) {
+                console.error('Error updating config:', error);
+                alert('✗ Error: ' + error.message);
+            }
+        }
+
+        async function updateBotStatus() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/bot/status');
+                if (!response.ok) return;
+
+                const data = await response.json();
+
+                // Update statistics
+                if (data.total_signals_generated !== undefined) {
+                    document.getElementById('botSignals').textContent = data.total_signals_generated;
+                }
+                if (data.total_trades_executed !== undefined) {
+                    document.getElementById('botTrades').textContent = data.total_trades_executed;
+                }
+                if (data.trading_engine && data.trading_engine.open_positions !== undefined) {
+                    document.getElementById('botPositions').textContent = data.trading_engine.open_positions;
+                }
+                if (data.trading_engine && data.trading_engine.daily_pnl !== undefined) {
+                    const pnl = data.trading_engine.daily_pnl;
+                    const pnlElem = document.getElementById('botDailyPnl');
+                    pnlElem.textContent = '$' + pnl.toFixed(2);
+                    pnlElem.style.color = pnl >= 0 ? '#22c55e' : '#ef4444';
+                }
+
+                // Update 3-5-7 risk management display
+                if (data.trading_engine && data.trading_engine.weekly_pnl !== undefined) {
+                    const weeklyPnl = data.trading_engine.weekly_pnl;
+                    const weeklyElem = document.getElementById('botWeeklyPnl');
+                    weeklyElem.textContent = '$' + weeklyPnl.toFixed(2);
+                    weeklyElem.style.color = weeklyPnl >= 0 ? '#22c55e' : '#ef4444';
+                }
+                if (data.config && data.config.account_size && data.config.max_risk_per_trade_pct) {
+                    const maxRiskPerTrade = (data.config.account_size * data.config.max_risk_per_trade_pct / 100).toFixed(2);
+                    document.getElementById('botMaxRisk').textContent = '$' + maxRiskPerTrade;
+                } else if (data.trading_engine && data.trading_engine.account_size && data.trading_engine.max_risk_per_trade_pct) {
+                    const maxRiskPerTrade = (data.trading_engine.account_size * data.trading_engine.max_risk_per_trade_pct / 100).toFixed(2);
+                    document.getElementById('botMaxRisk').textContent = '$' + maxRiskPerTrade;
+                }
+
+                // Update predictions display
+                if (data.last_predictions && Object.keys(data.last_predictions).length > 0) {
+                    const predictionsDiv = document.getElementById('botPredictionsDisplay');
+                    let html = '';
+                    for (const [symbol, pred] of Object.entries(data.last_predictions)) {
+                        const prob = (pred.p_final * 100).toFixed(1);
+                        const reliability = (pred.reliability * 100).toFixed(0);
+                        const color = pred.p_final > 0.5 ? '#22c55e' : pred.p_final < 0.5 ? '#ef4444' : '#888';
+
+                        html += `
+                            <div style="padding: 4px; margin-bottom: 4px; background: #1a1a1a; border-left: 3px solid ${color};">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="font-weight: 700;">${symbol}</span>
+                                    <span style="color: ${color};">${prob}%</span>
+                                </div>
+                                <div style="font-size: 12px; color: #888; margin-top: 2px;">
+                                    Reliability: ${reliability}% | ${new Date(pred.timestamp * 1000).toLocaleTimeString()}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    predictionsDiv.innerHTML = html;
+                }
+
+                // Update positions display
+                if (data.trading_engine && data.trading_engine.positions && Object.keys(data.trading_engine.positions).length > 0) {
+                    const positionsDiv = document.getElementById('botPositionsDisplay');
+                    let html = '';
+                    for (const [symbol, pos] of Object.entries(data.trading_engine.positions)) {
+                        const pnl = pos.unrealized_pnl || 0;
+                        const pnlPct = pos.unrealized_pnl_pct || 0;
+                        const pnlColor = pnl >= 0 ? '#22c55e' : '#ef4444';
+
+                        html += `
+                            <div style="padding: 4px; margin-bottom: 4px; background: #1a1a1a; border-left: 3px solid ${pnlColor};">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="font-weight: 700;">${symbol}</span>
+                                    <span style="color: ${pnlColor};">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span>
+                                </div>
+                                <div style="font-size: 12px; color: #888; margin-top: 2px;">
+                                    ${pos.quantity} @ $${pos.entry_price.toFixed(2)} | ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%
+                                </div>
+                            </div>
+                        `;
+                    }
+                    positionsDiv.innerHTML = html;
+                } else if (data.initialized) {
+                    document.getElementById('botPositionsDisplay').innerHTML = '<div class="empty-state" style="padding: 16px; font-size: 13px;">No positions</div>';
+                }
+
+            } catch (error) {
+                console.error('Error updating bot status:', error);
+            }
+        }
+
+        // Legacy function names for compatibility
+        async function startBot() {
+            return startAutonomousBot();
+        }
+
+        async function stopBot() {
+            return stopAutonomousBot();
+        }
+
+        async function getPrediction() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/ai/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: currentSymbol })
+                });
+                const data = await response.json();
+
+                const display = document.getElementById('aiPredictionDisplay');
+                const signal = data.signal || 'NEUTRAL';
+                const signalColor = signal === 'BUY' ? '#22c55e' : signal === 'SELL' ? '#ef4444' : '#888';
+
+                display.innerHTML = `
+                    <div style="padding: 16px; background: #252525; border: 1px solid #333; border-radius: 2px;">
+                        <div style="text-align: center; margin-bottom: 12px;">
+                            <div style="font-size: 28px; font-weight: 700; color: ${signalColor};">${signal}</div>
+                            <div style="font-size: 13px; color: #888; margin-top: 4px;">CONFIDENCE: ${data.confidence || 0}%</div>
+                        </div>
+                        <div style="font-size: 14px; color: #aaa; line-height: 1.4;">
+                            ${data.reason || 'No analysis available'}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error getting prediction:', error);
+                document.getElementById('aiPredictionDisplay').innerHTML = '<div class="empty-state">AI service unavailable</div>';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     CONNECTION MANAGEMENT
+        // ═══════════════════════════════════════════════════════════════════════
+
+        async function connectToIBKR() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/ibkr/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ host: '127.0.0.1', port: 7497, client_id: 1 })
+                });
+                const data = await response.json();
+
+                if (data.status === 'connected') {
+                    alert('✓ Connected to IBKR successfully!');
+                    checkStatus();
+                } else {
+                    alert('✗ Failed to connect to IBKR');
+                }
+            } catch (error) {
+                alert('✗ Connection error: ' + error.message);
+            }
+        }
+
+        async function checkStatus() {
+            try {
+                // Check IBKR status
+                const ibkrResponse = await fetch(API_BASE_URL + '/api/ibkr/status');
+                const ibkrData = await ibkrResponse.json();
+
+                console.log('IBKR Status:', ibkrData);
+
+                const ibkrDot = document.getElementById('ibkrStatus');
+                const ibkrText = document.getElementById('ibkrStatusText');
+
+                if (ibkrData && ibkrData.connected) {
+                    ibkrDot.classList.add('connected');
+                    ibkrText.textContent = 'Connected';
+                    apiAvailable = true;
+                    console.log('✓ IBKR indicator set to CONNECTED');
+                } else {
+                    ibkrDot.classList.remove('connected');
+                    if (apiAvailable === false) {
+                        ibkrText.textContent = 'Demo Mode';
+                    } else {
+                        ibkrText.textContent = 'Disconnected';
+                    }
+                    console.log('✗ IBKR indicator set to DISCONNECTED');
+                }
+
+                // Check AI/Claude status
+                const healthResponse = await fetch(API_BASE_URL + '/health');
+                const healthData = await healthResponse.json();
+
+                console.log('Claude Available:', healthData.claude_available);
+
+                const aiDot = document.getElementById('aiStatus');
+                const aiText = document.getElementById('aiStatusText');
+
+                if (healthData && healthData.claude_available) {
+                    aiDot.classList.add('connected');
+                    aiText.textContent = 'Online';
+                    console.log('✓ AI indicator set to ONLINE');
+                } else {
+                    aiDot.classList.remove('connected');
+                    aiText.textContent = 'Offline';
+                    console.log('✗ AI indicator set to OFFLINE');
+                }
+            } catch (error) {
+                console.error('Status check error:', error);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     WINDOW LAYOUT MANAGEMENT
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function createWindow(id, title, content, x, y, width, height) {
+            const win = new DraggableWindow(id, title, content, x, y, width, height);
+            windows.push(win);
+            return win;
+        }
+
+        function minimizeWindow(id) {
+            windows.find(w => w.id === id)?.minimize();
+        }
+
+        function maximizeWindow(id) {
+            windows.find(w => w.id === id)?.maximize();
+        }
+
+        function closeWindow(id) {
+            windows.find(w => w.id === id)?.close();
+        }
+
+        function minimizeAll() {
+            windows.forEach(w => w.minimize());
+        }
+
+        function restoreAll() {
+            windows.forEach(w => w.restore());
+        }
+
+        function tileWindows() {
+            const workspace = document.getElementById('workspace');
+            const cols = Math.ceil(Math.sqrt(windows.length));
+            const rows = Math.ceil(windows.length / cols);
+            const width = Math.floor(workspace.clientWidth / cols);
+            const height = Math.floor(workspace.clientHeight / rows);
+
+            windows.forEach((win, i) => {
+                win.x = (i % cols) * width;
+                win.y = Math.floor(i / cols) * height;
+                win.width = width - 4;
+                win.height = height - 4;
+                win.updatePosition();
+                win.restore();
+            });
+        }
+
+        function cascadeWindows() {
+            windows.forEach((win, i) => {
+                win.x = i * 35;
+                win.y = i * 35;
+                win.width = 600;
+                win.height = 450;
+                win.updatePosition();
+                win.restore();
+            });
+        }
+
+        function saveAsCustomLayout() {
+            const layout = windows.map(w => ({
+                id: w.id,
+                title: w.title,
+                x: w.x,
+                y: w.y,
+                width: w.width,
+                height: w.height,
+                minimized: w.minimized
+            }));
+            localStorage.setItem('customLayout', JSON.stringify(layout));
+            localStorage.setItem('watchlist', JSON.stringify(watchlist));
+            alert('✓ Custom layout saved!\n\nClick "📐 Custom" to load it anytime.');
+        }
+
+        function saveCurrentLayout() {
+            // Deprecated - redirects to saveAsCustomLayout
+            saveAsCustomLayout();
+        }
+
+        // Auto-submit setting functions
+        function saveAutoSubmitSetting(enabled) {
+            localStorage.setItem('autoSubmitOrders', enabled ? 'true' : 'false');
+            console.log('Auto-submit orders:', enabled ? 'ENABLED' : 'DISABLED');
+        }
+
+        function loadAutoSubmitSetting() {
+            const saved = localStorage.getItem('autoSubmitOrders');
+            const checkbox = document.getElementById('autoSubmitOrders');
+            if (checkbox && saved === 'true') {
+                checkbox.checked = true;
+            }
+        }
+
+        function loadLayout(name) {
+            windows.forEach(w => w.close());
+            windows = [];
+
+            if (name === 'custom') {
+                loadCustomLayout();
+            }
+            else if (name === 'default') loadDefaultLayout();
+            else if (name === 'trading') loadTradingLayout();
+            else if (name === 'analysis') loadAnalysisLayout();
+            else if (name === 'scalping') loadScalpingLayout();
+
+            setTimeout(() => {
+                loadPrice();
+                loadLevel2();
+                loadTimeSales();
+                loadPositions();
+                loadOrders();
+                loadAccount();
+                loadWorklist();
+
+                // Initialize any charts that were created
+                windows.forEach(win => {
+                    if (win.id.startsWith('chart')) {
+                        const chartId = win.id.replace('chart', '');
+                        initChart(chartId, currentSymbol);
+                    }
+                });
+            }, 1000);
+        }
+
+        function loadDefaultLayout() {
+            createWindow('watchlist', 'WATCHLIST', windowTemplates.watchlist, 10, 10, 250, 400);
+            createWindow('account', 'ACCOUNT', windowTemplates.account, 10, 420, 250, 280);
+            createWindow('quote', `QUOTE - ${currentSymbol}`, windowTemplates.quote, 270, 10, 450, 180);
+            createWindow('level2', `LEVEL II - ${currentSymbol}`, windowTemplates.level2, 270, 200, 450, 500);
+            createWindow('timesales', 'TIME & SALES', windowTemplates.timesales, 730, 10, 280, 400);
+            createWindow('order', 'ORDER ENTRY', windowTemplates.order, 730, 420, 280, 280);
+            createWindow('chart1', `CHART - ${currentSymbol}`, windowTemplates.chart('1'), 1020, 10, 600, 400);
+            createWindow('positions', 'POSITIONS', windowTemplates.positions, 1020, 420, 600, 140);
+            createWindow('orders', 'WORKING ORDERS', windowTemplates.orders, 1020, 570, 600, 130);
+        }
+
+        function loadTradingLayout() {
+            createWindow('quote', `QUOTE - ${currentSymbol}`, windowTemplates.quote, 10, 10, 400, 120);
+            createWindow('level2', `LEVEL II - ${currentSymbol}`, windowTemplates.level2, 10, 140, 400, 560);
+            createWindow('timesales', 'TIME & SALES', windowTemplates.timesales, 420, 10, 280, 400);
+            createWindow('order', 'ORDER ENTRY', windowTemplates.order, 420, 420, 280, 280);
+            createWindow('chart1', `CHART - ${currentSymbol}`, windowTemplates.chart('1'), 710, 10, 600, 500);
+            createWindow('positions', 'POSITIONS', windowTemplates.positions, 710, 520, 600, 90);
+            createWindow('orders', 'WORKING ORDERS', windowTemplates.orders, 710, 620, 600, 80);
+            createWindow('watchlist', 'WATCHLIST', windowTemplates.watchlist, 1320, 10, 280, 400);
+            createWindow('account', 'ACCOUNT', windowTemplates.account, 1320, 420, 280, 280);
+        }
+
+        function loadAnalysisLayout() {
+            createWindow('chart1', `CHART 1 - ${currentSymbol}`, windowTemplates.chart('1'), 10, 10, 800, 450);
+            createWindow('chart2', `CHART 2 - ${currentSymbol}`, windowTemplates.chart('2'), 820, 10, 800, 450);
+            createWindow('watchlist', 'WATCHLIST', windowTemplates.watchlist, 10, 470, 250, 400);
+            createWindow('level2', `LEVEL II - ${currentSymbol}`, windowTemplates.level2, 270, 470, 400, 400);
+            createWindow('timesales', 'TIME & SALES', windowTemplates.timesales, 680, 470, 300, 400);
+            createWindow('ai', 'AI ANALYSIS', windowTemplates.ai, 990, 470, 360, 200);
+            createWindow('bot', 'BOT CONTROL', windowTemplates.bot, 990, 680, 360, 190);
+            createWindow('account', 'ACCOUNT', windowTemplates.account, 1360, 470, 260, 200);
+            createWindow('order', 'ORDER ENTRY', windowTemplates.order, 1360, 680, 260, 190);
+        }
+
+        function loadScalpingLayout() {
+            createWindow('quote', `QUOTE - ${currentSymbol}`, windowTemplates.quote, 10, 10, 300, 120);
+            createWindow('level2', `LEVEL II - ${currentSymbol}`, windowTemplates.level2, 10, 140, 400, 560);
+            createWindow('order', 'ORDER ENTRY', windowTemplates.order, 420, 10, 280, 350);
+            createWindow('timesales', 'TIME & SALES', windowTemplates.timesales, 420, 370, 280, 330);
+            createWindow('chart1', `CHART - ${currentSymbol}`, windowTemplates.chart('1'), 710, 10, 700, 500);
+            createWindow('positions', 'POSITIONS', windowTemplates.positions, 710, 520, 700, 90);
+            createWindow('orders', 'WORKING ORDERS', windowTemplates.orders, 710, 620, 700, 80);
+            createWindow('watchlist', 'WATCHLIST', windowTemplates.watchlist, 1420, 10, 200, 400);
+            createWindow('account', 'ACCOUNT', windowTemplates.account, 1420, 420, 200, 280);
+        }
+
+        function loadCustomLayout() {
+            const savedLayout = localStorage.getItem('customLayout');
+            if (savedLayout) {
+                try {
+                    const layout = JSON.parse(savedLayout);
+                    console.log('Loading custom layout with', layout.length, 'windows');
+                    layout.forEach(w => {
+                        createWindow(w.id, w.title, windowTemplates[w.id] || '', w.width, w.height, w.x, w.y);
+                        if (w.minimized) {
+                            const window = windows.find(win => win.id === w.id);
+                            if (window) window.minimize();
+                        }
+                    });
+                } catch (e) {
+                    console.error('Failed to load custom layout:', e);
+                    alert('Failed to load custom layout. Loading default instead.');
+                    loadDefaultLayout();
+                }
+            } else {
+                alert('No custom layout saved.\n\nArrange windows and click "💾 Save as Custom" to create one.');
+                loadDefaultLayout();
+            }
+        }
+
+        function resetLayout() {
+            if (confirm('Reset to default layout?')) {
+                localStorage.removeItem('tradingLayout');
+                loadLayout('default');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     INITIALIZATION
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // TradingView Chart Management
+        let chartWidgets = {};
+        let chartInstances = {};
+
+        function initChart(id, symbol) {
+            const containerId = `chart-${id}`;
+            const container = document.getElementById(containerId);
+            if (!container) {
+                console.log(`Chart container ${containerId} not found`);
+                return;
+            }
+
+            // Check if TradingView is available
+            if (typeof TradingView === 'undefined') {
+                container.innerHTML = '<div class="empty-state">TradingView Desktop required. Please open TradingView Desktop app.</div>';
+                return;
+            }
+
+            try {
+                // Clear container and clean up old widget
+                container.innerHTML = '';
+
+                if (chartWidgets[id]) {
+                    try {
+                        chartWidgets[id].remove();
+                    } catch (e) {
+                        // Ignore removal errors - container is already cleared
+                    }
+                    delete chartWidgets[id];
+                    delete chartInstances[id];
+                }
+
+                // Create new widget
+                chartWidgets[id] = new TradingView.widget({
+                    "width": "100%",
+                    "height": "100%",
+                    "symbol": `NASDAQ:${symbol}`,
+                    "interval": "5",
+                    "timezone": "America/New_York",
+                    "theme": "dark",
+                    "style": "1",
+                    "locale": "en",
+                    "toolbar_bg": "#1a1a1a",
+                    "enable_publishing": false,
+                    "hide_side_toolbar": false,
+                    "allow_symbol_change": true,
+                    "container_id": containerId,
+                    "studies": ["MASimple@tv-basicstudies", "RSI@tv-basicstudies"],
+                    "backgroundColor": "#1a1a1a",
+                    "gridColor": "#2a2a2a",
+                    "hide_legend": false,
+                    "save_image": false,
+                    "onChartReady": function() {
+                        chartInstances[id] = chartWidgets[id].chart();
+                        console.log(`Chart ${id} ready for ${symbol}`);
+                    }
+                });
+            } catch (e) {
+                console.error('TradingView init error:', e);
+                container.innerHTML = '<div class="empty-state">TradingView Desktop connection required</div>';
+            }
+        }
+
+        function updateChart(winId, symbol) {
+            // Extract chart ID from window ID (e.g., 'chart1' -> '1')
+            const chartId = winId.replace('chart', '');
+
+            if (chartInstances[chartId]) {
+                try {
+                    // Use the chart instance to change symbol
+                    chartInstances[chartId].setSymbol(`NASDAQ:${symbol}`, function() {
+                        console.log(`Chart ${chartId} updated to ${symbol}`);
+                    });
+                } catch (e) {
+                    console.log('Chart update error, reinitializing:', e);
+                    initChart(chartId, symbol);
+                }
+            } else if (chartWidgets[chartId]) {
+                // Widget exists but no chart instance yet - reinit
+                console.log(`No chart instance for ${chartId}, reinitializing`);
+                initChart(chartId, symbol);
+            } else {
+                // No widget at all - initialize
+                console.log(`Creating chart ${chartId} for ${symbol}`);
+                initChart(chartId, symbol);
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            console.log('%c🚀 IBKR Professional Trading Platform', 'color: #007acc; font-size: 18px; font-weight: bold;');
+
+            // Load saved watchlist
+            const savedWatchlist = localStorage.getItem('watchlist');
+            if (savedWatchlist) {
+                watchlist = JSON.parse(savedWatchlist);
+            }
+
+            // Load auto-submit orders setting
+            loadAutoSubmitSetting();
+
+            // Load saved custom layout first, then check old saved layout, or default
+            const customLayout = localStorage.getItem('customLayout');
+            const oldSavedLayout = localStorage.getItem('tradingLayout');
+
+            if (customLayout) {
+                console.log('Loading custom layout...');
+                loadLayout('custom');
+            } else if (oldSavedLayout) {
+                console.log('Loading old saved layout (migrating to custom)...');
+                // Migrate old layout to custom
+                try {
+                    localStorage.setItem('customLayout', oldSavedLayout);
+                    localStorage.removeItem('tradingLayout');
+                    loadLayout('custom');
+                } catch (e) {
+                    console.error('Failed to migrate layout:', e);
+                    loadLayout('default');
+                }
+            } else {
+                // Load default layout if no saved layout
+                console.log('Loading default layout...');
+                loadLayout('default');
+            }
+
+            // Subscribe to all watchlist symbols
+            console.log('📊 Subscribing to market data...');
+            for (const symbol of watchlist) {
+                await subscribeToSymbol(symbol);
+            }
+
+            // Subscribe to current symbol
+            await subscribeToSymbol(currentSymbol);
+
+            // Start status check
+            checkStatus();
+            setInterval(checkStatus, 5000);
+
+            // Start data updates (every 2 seconds for real-time feel)
+            setInterval(() => {
+                loadPrice();
+                loadLevel2();
+                loadTimeSales();
+                loadPositions();
+                loadAccount();
+                loadWorklist();
+            }, 2000);
+
+            // Initialize order form price field based on selected order type
+            handleOrderTypeChange();
+
+            console.log('%c✓ Platform Ready', 'color: #22c55e; font-weight: bold;');
+            console.log('%c💡 Click symbols in watchlist • Click Level 2 prices to fill orders • Drag & resize windows', 'color: #888; font-size: 15px;');
+        });
+
+        // Dropdown menu functionality
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            const allDropdowns = document.querySelectorAll('.dropdown');
+
+            // Close all other dropdowns
+            allDropdowns.forEach(d => {
+                if (d.id !== dropdownId) {
+                    d.classList.remove('show');
+                }
+            });
+
+            // Toggle the clicked dropdown
+            dropdown.classList.toggle('show');
+
+            // Prevent event bubbling
+            event.stopPropagation();
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.menu-item')) {
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    d.classList.remove('show');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

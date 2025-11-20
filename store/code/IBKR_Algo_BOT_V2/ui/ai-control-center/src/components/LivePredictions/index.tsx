@@ -181,31 +181,31 @@ export const LivePredictions: React.FC = () => {
             <div className="grid grid-cols-4 gap-4">
           <div className="bg-ibkr-surface border border-ibkr-border rounded p-4">
             <p className="text-xs text-ibkr-text-secondary mb-1">Today's Predictions</p>
-            <p className="text-2xl font-bold text-ibkr-text">{stats.total_predictions}</p>
+            <p className="text-2xl font-bold text-ibkr-text">{stats.total_predictions || 0}</p>
           </div>
           <div className="bg-ibkr-surface border border-ibkr-border rounded p-4">
             <p className="text-xs text-ibkr-text-secondary mb-1">Correct Predictions</p>
-            <p className="text-2xl font-bold text-ibkr-success">{stats.correct_predictions}</p>
+            <p className="text-2xl font-bold text-ibkr-success">{stats.correct_predictions || 0}</p>
           </div>
           <div className="bg-ibkr-surface border border-ibkr-border rounded p-4">
             <p className="text-xs text-ibkr-text-secondary mb-1">Accuracy Rate</p>
             <p className="text-2xl font-bold text-ibkr-text">
-              {stats.accuracy_rate.toFixed(1)}%
+              {(stats.accuracy_rate || 0).toFixed(1)}%
             </p>
           </div>
           <div className="bg-ibkr-surface border border-ibkr-border rounded p-4">
             <p className="text-xs text-ibkr-text-secondary mb-1">Total Profit</p>
             <p className={`text-2xl font-bold ${
-              stats.total_profit >= 0 ? 'text-ibkr-success' : 'text-ibkr-error'
+              (stats.total_profit || 0) >= 0 ? 'text-ibkr-success' : 'text-ibkr-error'
             }`}>
-              {formatCurrency(stats.total_profit)}
+              {formatCurrency(stats.total_profit || 0)}
             </p>
           </div>
         </div>
       )}
 
       {/* Strategy Performance Breakdown */}
-      {stats && Object.keys(stats.by_strategy).length > 0 && (
+      {stats && stats.by_strategy && Object.keys(stats.by_strategy).length > 0 && (
         <div className="bg-ibkr-surface border border-ibkr-border rounded p-4">
           <h3 className="text-sm font-semibold text-ibkr-text mb-4">Performance by Strategy</h3>
           <div className="grid grid-cols-3 gap-4">
@@ -220,11 +220,11 @@ export const LivePredictions: React.FC = () => {
                   </div>
                   <div>
                     <p className={`text-lg font-bold ${
-                      data.accuracy >= 70 ? 'text-ibkr-success' :
-                      data.accuracy >= 50 ? 'text-blue-400' :
+                      (data.accuracy || 0) >= 70 ? 'text-ibkr-success' :
+                      (data.accuracy || 0) >= 50 ? 'text-blue-400' :
                       'text-ibkr-error'
                     }`}>
-                      {data.accuracy.toFixed(0)}%
+                      {(data.accuracy || 0).toFixed(0)}%
                     </p>
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export const LivePredictions: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-ibkr-text-secondary">Price:</span>
                     <span className="text-ibkr-text font-semibold">
-                      ${pred.price.toFixed(2)}
+                      ${(pred.price || 0).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -424,7 +424,7 @@ export const LivePredictions: React.FC = () => {
                     </span>
                   </td>
                   <td className="text-ibkr-text p-3 text-right">
-                    ${pred.price.toFixed(2)}
+                    ${(pred.price || 0).toFixed(2)}
                   </td>
                   <td className="p-3 text-center">
                     <span className={`font-semibold ${getConfidenceColor(pred.confidence)}`}>
