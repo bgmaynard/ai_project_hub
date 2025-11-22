@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IBKR Professional Trading Platform</title>
+    <title>ALPACA Professional Trading Platform</title>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
         * {
@@ -859,12 +859,12 @@
     <!-- Top Bar -->
     <div class="top-bar">
         <div class="top-bar-left">
-            <h1>⚡ IBKR PROFESSIONAL TRADING PLATFORM</h1>
+            <h1>âš¡ ALPACA PROFESSIONAL TRADING PLATFORM</h1>
         </div>
         <div class="top-bar-right">
             <div class="status-item">
-                <div class="status-dot" id="ibkrStatus"></div>
-                <span>IBKR: <strong id="ibkrStatusText">Disconnected</strong></span>
+                <div class="status-dot" id="ALPACAStatus"></div>
+                <span>ALPACA: <strong id="ALPACAStatusText">Disconnected</strong></span>
             </div>
             <div class="status-item">
                 <div class="status-dot" id="aiStatus"></div>
@@ -879,72 +879,72 @@
     <!-- Menu Bar -->
     <div class="menu-bar">
         <div class="menu-item" onclick="toggleDropdown('layouts-dropdown')">
-            📐 LAYOUTS
+            ðŸ“ LAYOUTS
             <div class="dropdown" id="layouts-dropdown">
                 <strong>Preset Layouts</strong>
-                <a href="#" onclick="event.preventDefault(); loadLayout('default')">📊 Default</a>
-                <a href="#" onclick="event.preventDefault(); loadLayout('trading')">⚡ Trading</a>
-                <a href="#" onclick="event.preventDefault(); loadLayout('analysis')">📈 Analysis</a>
-                <a href="#" onclick="event.preventDefault(); loadLayout('scalping')">🎯 Scalping</a>
+                <a href="#" onclick="event.preventDefault(); loadLayout('default')">ðŸ“Š Default</a>
+                <a href="#" onclick="event.preventDefault(); loadLayout('trading')">âš¡ Trading</a>
+                <a href="#" onclick="event.preventDefault(); loadLayout('analysis')">ðŸ“ˆ Analysis</a>
+                <a href="#" onclick="event.preventDefault(); loadLayout('scalping')">ðŸŽ¯ Scalping</a>
                 <hr>
-                <a href="#" onclick="event.preventDefault(); resetLayout()">🔄 Reset to Default</a>
+                <a href="#" onclick="event.preventDefault(); resetLayout()">ðŸ”„ Reset to Default</a>
             </div>
         </div>
         <div class="menu-item" onclick="toggleDropdown('configs-dropdown')" style="background: #1e3a8a;">
-            💾 CONFIGURATIONS
+            ðŸ’¾ CONFIGURATIONS
             <div class="dropdown" id="configs-dropdown">
                 <strong>Saved Configurations</strong>
                 <div id="savedConfigsList" style="max-height: 300px; overflow-y: auto;">
                     <!-- Dynamically populated -->
                 </div>
                 <hr>
-                <a href="#" onclick="event.preventDefault(); showSaveConfigDialog()">💾 Save Current As...</a>
-                <a href="#" onclick="event.preventDefault(); showManageConfigsDialog()">⚙️ Manage Configurations</a>
+                <a href="#" onclick="event.preventDefault(); showSaveConfigDialog()">ðŸ’¾ Save Current As...</a>
+                <a href="#" onclick="event.preventDefault(); showManageConfigsDialog()">âš™ï¸ Manage Configurations</a>
             </div>
         </div>
         <div class="menu-item" onclick="toggleDropdown('switch-ui-dropdown')">
-            🖥️ Switch UI
+            ðŸ–¥ï¸ Switch UI
             <div class="dropdown" id="switch-ui-dropdown">
                 <strong>Available Dashboards</strong>
-                <a href="http://localhost:8000/ui/monitor.html" target="_blank">🎛️ Monitor Dashboard</a>
-                <a href="platform.html" target="_blank">📊 Trading Platform</a>
-                <a href="complete_platform.html">🖥️ Complete Platform (Current)</a>
+                <a href="http://localhost:8000/ui/monitor.html" target="_blank">ðŸŽ›ï¸ Monitor Dashboard</a>
+                <a href="platform.html" target="_blank">ðŸ“Š Trading Platform</a>
+                <a href="complete_platform.html">ðŸ–¥ï¸ Complete Platform (Current)</a>
             </div>
         </div>
         <div class="menu-item" onclick="toggleDropdown('charts-dropdown')">
-            📊 CHARTS
+            ðŸ“Š CHARTS
             <div class="dropdown" id="charts-dropdown">
                 <strong>Add Chart</strong>
-                <a href="#" onclick="event.preventDefault(); addChart('1')">📊 1 Minute</a>
-                <a href="#" onclick="event.preventDefault(); addChart('5')">📊 5 Minutes</a>
-                <a href="#" onclick="event.preventDefault(); addChart('15')">📊 15 Minutes</a>
-                <a href="#" onclick="event.preventDefault(); addChart('60')">📊 1 Hour</a>
-                <a href="#" onclick="event.preventDefault(); addChart('240')">📊 4 Hours</a>
-                <a href="#" onclick="event.preventDefault(); addChart('D')">📊 Daily</a>
-                <a href="#" onclick="event.preventDefault(); addChart('W')">📊 Weekly</a>
+                <a href="#" onclick="event.preventDefault(); addChart('1')">ðŸ“Š 1 Minute</a>
+                <a href="#" onclick="event.preventDefault(); addChart('5')">ðŸ“Š 5 Minutes</a>
+                <a href="#" onclick="event.preventDefault(); addChart('15')">ðŸ“Š 15 Minutes</a>
+                <a href="#" onclick="event.preventDefault(); addChart('60')">ðŸ“Š 1 Hour</a>
+                <a href="#" onclick="event.preventDefault(); addChart('240')">ðŸ“Š 4 Hours</a>
+                <a href="#" onclick="event.preventDefault(); addChart('D')">ðŸ“Š Daily</a>
+                <a href="#" onclick="event.preventDefault(); addChart('W')">ðŸ“Š Weekly</a>
                 <hr>
-                <a href="#" onclick="event.preventDefault(); showAddChartDialog()">⚙️ Custom Chart...</a>
+                <a href="#" onclick="event.preventDefault(); showAddChartDialog()">âš™ï¸ Custom Chart...</a>
             </div>
         </div>
         <div class="menu-item" onclick="toggleDropdown('tradingview-dropdown')" style="background: #2563eb;">
-            📺 TRADINGVIEW
+            ðŸ“º TRADINGVIEW
             <div class="dropdown" id="tradingview-dropdown">
                 <strong>Open in TradingView Desktop</strong>
-                <a href="#" onclick="event.preventDefault(); openInTradingView(currentSymbol)">📺 Open Current Symbol</a>
-                <a href="#" onclick="event.preventDefault(); copySymbolToClipboard()">📋 Copy Symbol to Clipboard</a>
+                <a href="#" onclick="event.preventDefault(); openInTradingView(currentSymbol)">ðŸ“º Open Current Symbol</a>
+                <a href="#" onclick="event.preventDefault(); copySymbolToClipboard()">ðŸ“‹ Copy Symbol to Clipboard</a>
                 <hr>
                 <strong>Webhook Integration</strong>
-                <a href="#" onclick="event.preventDefault(); showWebhookInfo()">⚡ Webhook URL & Setup</a>
-                <a href="#" onclick="event.preventDefault(); showWebhookLogs()">📊 View Webhook Logs</a>
-                <a href="#" onclick="event.preventDefault(); testWebhook()">🧪 Test Webhook</a>
+                <a href="#" onclick="event.preventDefault(); showWebhookInfo()">âš¡ Webhook URL & Setup</a>
+                <a href="#" onclick="event.preventDefault(); showWebhookLogs()">ðŸ“Š View Webhook Logs</a>
+                <a href="#" onclick="event.preventDefault(); testWebhook()">ðŸ§ª Test Webhook</a>
                 <hr>
                 <strong>Watchlist Sync</strong>
-                <a href="#" onclick="event.preventDefault(); exportWatchlist()">⬇️ Export Watchlist</a>
-                <a href="#" onclick="event.preventDefault(); showSetupGuide()">📚 Setup Guide</a>
+                <a href="#" onclick="event.preventDefault(); exportWatchlist()">â¬‡ï¸ Export Watchlist</a>
+                <a href="#" onclick="event.preventDefault(); showSetupGuide()">ðŸ“š Setup Guide</a>
             </div>
         </div>
-        <div class="menu-item" onclick="connectToIBKR()">🔌 Connect IBKR</div>
-        <div class="menu-item" onclick="openAIControlPanel()" style="background: #1e40af;">🤖 AI Control</div>
+        <div class="menu-item" onclick="connectToALPACA()">ðŸ”Œ Connect ALPACA</div>
+        <div class="menu-item" onclick="openAIControlPanel()" style="background: #1e40af;">ðŸ¤– AI Control</div>
     </div>
 
     <!-- Workspace -->
@@ -953,7 +953,7 @@
     <!-- Configuration Dialogs -->
     <div class="config-dialog-overlay" id="saveConfigDialog">
         <div class="config-dialog">
-            <div class="config-dialog-header">💾 Save Configuration</div>
+            <div class="config-dialog-header">ðŸ’¾ Save Configuration</div>
             <div class="config-dialog-body">
                 <label style="display: block; margin-bottom: 8px; color: #888; font-size: 14px;">Configuration Name:</label>
                 <input type="text" class="config-input" id="configNameInput" placeholder="e.g., My Trading Setup" />
@@ -963,14 +963,14 @@
             </div>
             <div class="config-dialog-footer">
                 <button class="btn btn-secondary" onclick="closeSaveConfigDialog()">Cancel</button>
-                <button class="btn btn-buy" onclick="saveConfiguration()">💾 Save</button>
+                <button class="btn btn-buy" onclick="saveConfiguration()">ðŸ’¾ Save</button>
             </div>
         </div>
     </div>
 
     <div class="config-dialog-overlay" id="manageConfigsDialog">
         <div class="config-dialog">
-            <div class="config-dialog-header">⚙️ Manage Configurations</div>
+            <div class="config-dialog-header">âš™ï¸ Manage Configurations</div>
             <div class="config-dialog-body">
                 <div id="manageConfigsList">
                     <!-- Dynamically populated -->
@@ -988,7 +988,7 @@
 
     <div class="config-dialog-overlay" id="addChartDialog">
         <div class="config-dialog">
-            <div class="config-dialog-header">📊 Add Chart</div>
+            <div class="config-dialog-header">ðŸ“Š Add Chart</div>
             <div class="config-dialog-body">
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 8px; color: #888; font-size: 14px;">Timeframe:</label>
@@ -1020,7 +1020,7 @@
             </div>
             <div class="config-dialog-footer">
                 <button class="btn btn-secondary" onclick="closeAddChartDialog()">Cancel</button>
-                <button class="btn btn-buy" onclick="createCustomChart()">📊 Add Chart</button>
+                <button class="btn btn-buy" onclick="createCustomChart()">ðŸ“Š Add Chart</button>
             </div>
         </div>
     </div>
@@ -1028,13 +1028,13 @@
     <!-- TradingView Webhook Info Dialog -->
     <div class="config-dialog-overlay" id="webhookInfoDialog">
         <div class="config-dialog" style="max-width: 700px;">
-            <div class="config-dialog-header">⚡ TradingView Webhook Setup</div>
+            <div class="config-dialog-header">âš¡ TradingView Webhook Setup</div>
             <div class="config-dialog-body">
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 8px; color: #007acc; font-size: 14px; font-weight: 700;">Webhook URL:</label>
                     <div style="display: flex; gap: 5px;">
-                        <input type="text" class="config-input" id="webhookUrl" readonly value="http://127.0.0.1:9101/api/tradingview/webhook" style="flex: 1; font-family: monospace; font-size: 13px;">
-                        <button class="btn btn-secondary" onclick="copyWebhookUrl()" style="padding: 10px 15px;">📋 Copy</button>
+                        <input type="text" class="config-input" id="webhookUrl" readonly value="http://127.0.0.1:9100/api/tradingview/webhook" style="flex: 1; font-family: monospace; font-size: 13px;">
+                        <button class="btn btn-secondary" onclick="copyWebhookUrl()" style="padding: 10px 15px;">ðŸ“‹ Copy</button>
                     </div>
                 </div>
                 <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
@@ -1059,7 +1059,7 @@
             </div>
             <div class="config-dialog-footer">
                 <button class="btn btn-secondary" onclick="closeWebhookInfoDialog()">Close</button>
-                <button class="btn btn-buy" onclick="openTradingViewSetupGuide()">📚 Full Guide</button>
+                <button class="btn btn-buy" onclick="openTradingViewSetupGuide()">ðŸ“š Full Guide</button>
             </div>
         </div>
     </div>
@@ -1067,7 +1067,7 @@
     <!-- TradingView Webhook Logs Dialog -->
     <div class="config-dialog-overlay" id="webhookLogsDialog">
         <div class="config-dialog" style="max-width: 800px;">
-            <div class="config-dialog-header">📊 Webhook Activity Logs</div>
+            <div class="config-dialog-header">ðŸ“Š Webhook Activity Logs</div>
             <div class="config-dialog-body">
                 <div id="webhookLogsList" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px;">
                     <div style="text-align: center; padding: 40px; color: #666;">
@@ -1076,9 +1076,9 @@
                 </div>
             </div>
             <div class="config-dialog-footer">
-                <button class="btn btn-danger" onclick="clearWebhookLogs()">🗑️ Clear Logs</button>
+                <button class="btn btn-danger" onclick="clearWebhookLogs()">ðŸ—‘ï¸ Clear Logs</button>
                 <button class="btn btn-secondary" onclick="closeWebhookLogsDialog()">Close</button>
-                <button class="btn btn-buy" onclick="refreshWebhookLogs()">🔄 Refresh</button>
+                <button class="btn btn-buy" onclick="refreshWebhookLogs()">ðŸ”„ Refresh</button>
             </div>
         </div>
     </div>
@@ -1095,16 +1095,16 @@
 
     <!-- Layout Controls -->
     <div class="layout-controls">
-        <button class="layout-btn" onclick="tileWindows()">⊞ Tile</button>
-        <button class="layout-btn" onclick="cascadeWindows()">⧉ Cascade</button>
-        <button class="layout-btn" onclick="minimizeAll()">▼ Min All</button>
-        <button class="layout-btn" onclick="restoreAll()">▲ Restore</button>
+        <button class="layout-btn" onclick="tileWindows()">âŠž Tile</button>
+        <button class="layout-btn" onclick="cascadeWindows()">â§‰ Cascade</button>
+        <button class="layout-btn" onclick="minimizeAll()">â–¼ Min All</button>
+        <button class="layout-btn" onclick="restoreAll()">â–² Restore</button>
     </div>
 
     <script>
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     GLOBAL STATE
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         let windows = [];
         let activeWindow = null;
@@ -1289,8 +1289,8 @@
                     const priceCell = row.querySelector('td:nth-child(2)');
                     if (priceCell && data.last) {
                         const isFresh = marketDataStore.isFresh(symbol);
-                        const liveIndicator = isFresh ? '<span style="color: #22c55e; margin-left: 4px;" title="Live data">🟢</span>' :
-                                              '<span style="color: #eab308; margin-left: 4px;" title="Delayed">🟡</span>';
+                        const liveIndicator = isFresh ? '<span style="color: #22c55e; margin-left: 4px;" title="Live data">ðŸŸ¢</span>' :
+                                              '<span style="color: #eab308; margin-left: 4px;" title="Delayed">ðŸŸ¡</span>';
                         priceCell.innerHTML = `${data.last.toFixed(2)}${liveIndicator}`;
 
                         // Add flash animation
@@ -1313,7 +1313,7 @@
         let ordersCache = [];
         let apiAvailable = null; // null = unknown, true = available, false = demo mode
         let demoModeLogged = false;
-        const API_BASE_URL = 'http://127.0.0.1:9101'; // API server base URL
+        const API_BASE_URL = 'http://127.0.0.1:9100'; // Alpaca API server base URL
 
         // Halt Detection State
         let haltState = {
@@ -1325,9 +1325,9 @@
             symbol: null
         };
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     WINDOW MANAGEMENT
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         class DraggableWindow {
             constructor(id, title, content, x, y, width, height) {
@@ -1358,9 +1358,9 @@
                     <div class="window-header">
                         <span>${this.title}</span>
                         <div class="window-controls">
-                            <div class="window-btn minimize" onclick="minimizeWindow('${this.id}')">−</div>
-                            <div class="window-btn maximize" onclick="maximizeWindow('${this.id}')">□</div>
-                            <div class="window-btn close" onclick="closeWindow('${this.id}')">×</div>
+                            <div class="window-btn minimize" onclick="minimizeWindow('${this.id}')">âˆ’</div>
+                            <div class="window-btn maximize" onclick="maximizeWindow('${this.id}')">â–¡</div>
+                            <div class="window-btn close" onclick="closeWindow('${this.id}')">Ã—</div>
                         </div>
                     </div>
                     <div class="window-content">${content}</div>
@@ -1515,9 +1515,9 @@
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     WINDOW TEMPLATES
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         const windowTemplates = {
             quote: `
@@ -1563,7 +1563,7 @@
                 <!-- Halt Indicator -->
                 <div style="padding: 0 8px 8px 8px;">
                     <div id="quoteHaltIndicator" style="display: none; padding: 4px; border-radius: 3px; text-align: center; background: #dc2626; color: white; font-size: 11px;">
-                        <span id="quoteHaltTitle" style="font-weight: bold;">🛑 HALT</span>
+                        <span id="quoteHaltTitle" style="font-weight: bold;">ðŸ›‘ HALT</span>
                         <span id="quoteHaltInfo" style="font-size: 9px; margin-left: 6px;"></span>
                     </div>
                 </div>
@@ -1653,7 +1653,7 @@
                     </div>
 
                     <div class="price-controls">
-                        <button class="price-btn" onclick="adjustPrice(-0.01); calculateOrderCost();">−</button>
+                        <button class="price-btn" onclick="adjustPrice(-0.01); calculateOrderCost();">âˆ’</button>
                         <div class="order-field" style="margin: 0;">
                             <label>Limit Price</label>
                             <input type="text" id="orderPrice" value="" placeholder="Enter limit price" oninput="calculateOrderCost()">
@@ -1679,7 +1679,7 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <input type="checkbox" id="autoSubmitOrders" style="width: auto; margin: 0;" onchange="saveAutoSubmitSetting(this.checked)">
-                            <label for="autoSubmitOrders" style="margin: 0; cursor: pointer; font-size: 13px; color: #fbbf24;">⚡ Auto-Submit</label>
+                            <label for="autoSubmitOrders" style="margin: 0; cursor: pointer; font-size: 13px; color: #fbbf24;">âš¡ Auto-Submit</label>
                         </div>
                     </div>
 
@@ -1742,7 +1742,7 @@
                     <!-- Cancel All Button -->
                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #333;">
                         <button class="btn btn-secondary" onclick="cancelAllOrders()" style="width: 100%; background: #7f1d1d; color: #ef4444; font-size: 13px;">
-                            ❌ CANCEL ALL ORDERS
+                            âŒ CANCEL ALL ORDERS
                         </button>
                     </div>
                 </div>
@@ -1834,7 +1834,7 @@
                 <div style="padding: 6px 8px; border-bottom: 1px solid #333; background: #1a1a1a;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="font-size: 10px; color: #888;">
-                            <span id="accountNumber">DU0000000</span> • <span id="accountType">Unknown</span>
+                            <span id="accountNumber">DU0000000</span> â€¢ <span id="accountType">Unknown</span>
                         </div>
                         <div id="accountWarnings" style="font-size: 10px; padding: 2px 6px; border-radius: 2px; display: none;"></div>
                     </div>
@@ -1879,10 +1879,10 @@
 
                     <!-- Control Buttons -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                        <button id="initBotBtn" class="btn btn-secondary" onclick="initBot()" style="font-size: 14px; padding: 8px;">⚙️ INIT</button>
-                        <button id="startBotBtn" class="btn btn-buy" onclick="startAutonomousBot()" disabled style="font-size: 14px; padding: 8px;">▶ START</button>
-                        <button id="stopBotBtn" class="btn btn-sell" onclick="stopAutonomousBot()" disabled style="font-size: 14px; padding: 8px;">⏹ STOP</button>
-                        <button id="enableBotBtn" class="btn btn-secondary" onclick="enableBot()" disabled style="font-size: 14px; padding: 8px;">✓ ENABLE</button>
+                        <button id="initBotBtn" class="btn btn-secondary" onclick="initBot()" style="font-size: 14px; padding: 8px;">âš™ï¸ INIT</button>
+                        <button id="startBotBtn" class="btn btn-buy" onclick="startAutonomousBot()" disabled style="font-size: 14px; padding: 8px;">â–¶ START</button>
+                        <button id="stopBotBtn" class="btn btn-sell" onclick="stopAutonomousBot()" disabled style="font-size: 14px; padding: 8px;">â¹ STOP</button>
+                        <button id="enableBotBtn" class="btn btn-secondary" onclick="enableBot()" disabled style="font-size: 14px; padding: 8px;">âœ“ ENABLE</button>
                     </div>
 
                     <!-- Statistics Grid -->
@@ -1983,7 +1983,7 @@
                 <div class="module-content">
                     <div id="aiPredictionDisplay" class="empty-state">Click PREDICT for AI analysis</div>
                     <button class="btn btn-secondary" onclick="getPrediction()" style="width: 100%; margin-top: 12px;">
-                        🤖 GET AI PREDICTION
+                        ðŸ¤– GET AI PREDICTION
                     </button>
                 </div>
             `,
@@ -1993,19 +1993,19 @@
                     <!-- Tab Navigation -->
                     <div style="display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 2px solid #333;">
                         <button id="aiTabTraining" class="ai-tab active" onclick="switchAITab('training')" style="flex: 1; padding: 8px; background: #2d2d2d; border: none; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            📚 TRAINING
+                            ðŸ“š TRAINING
                         </button>
                         <button id="aiTabPredictions" class="ai-tab" onclick="switchAITab('predictions')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🔮 PREDICTIONS
+                            ðŸ”® PREDICTIONS
                         </button>
                         <button id="aiTabBacktest" class="ai-tab" onclick="switchAITab('backtest')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            📊 BACKTEST
+                            ðŸ“Š BACKTEST
                         </button>
                         <button id="aiTabModels" class="ai-tab" onclick="switchAITab('models')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🎯 MODELS
+                            ðŸŽ¯ MODELS
                         </button>
                         <button id="aiTabBot" class="ai-tab" onclick="switchAITab('bot')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🤖 BOT TRADING
+                            ðŸ¤– BOT TRADING
                         </button>
                     </div>
 
@@ -2020,7 +2020,7 @@
                                     <input type="text" id="trainSymbol" value="SPY" placeholder="SPY, AAPL, etc."
                                            style="flex: 1; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
                                     <button onclick="loadWorklistSymbol('trainSymbol')" style="padding: 6px 12px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; white-space: nowrap;">
-                                        📋 Worklist
+                                        ðŸ“‹ Worklist
                                     </button>
                                 </div>
                             </div>
@@ -2043,7 +2043,7 @@
                             </div>
 
                             <button id="trainModelBtn" class="btn btn-buy" onclick="trainModel()" style="width: 100%; font-size: 14px; padding: 10px; margin-top: 8px;">
-                                🚀 START TRAINING
+                                ðŸš€ START TRAINING
                             </button>
                         </div>
 
@@ -2080,7 +2080,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                 <div style="font-size: 13px; color: #888; font-weight: 700;">WORKLIST PREDICTIONS</div>
                                 <button class="btn btn-secondary" onclick="predictWorklist()" style="font-size: 11px; padding: 4px 8px;">
-                                    🔄 REFRESH
+                                    ðŸ”„ REFRESH
                                 </button>
                             </div>
                             <div id="worklistPredictions" style="max-height: 400px; overflow-y: auto;">
@@ -2124,7 +2124,7 @@
                                     <input type="text" id="backtestSymbols" value="AAPL,MSFT,GOOGL" placeholder="AAPL,MSFT,GOOGL"
                                            style="flex: 1; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
                                     <button onclick="loadWorklistSymbols('backtestSymbols')" style="padding: 6px 12px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; white-space: nowrap;">
-                                        📋 Worklist
+                                        ðŸ“‹ Worklist
                                     </button>
                                 </div>
                             </div>
@@ -2156,11 +2156,11 @@
                             </div>
 
                             <div style="margin-top: 8px; padding: 8px; background: #2d2d2d; border-left: 3px solid #f59e0b; border-radius: 3px; font-size: 11px; color: #f59e0b;">
-                                ⚠️ <strong>Note:</strong> Backtest currently returns simulated results (always 65% win rate, 150 trades). Real backtesting implementation coming soon.
+                                âš ï¸ <strong>Note:</strong> Backtest currently returns simulated results (always 65% win rate, 150 trades). Real backtesting implementation coming soon.
                             </div>
 
                             <button id="runBacktestBtn" class="btn btn-buy" onclick="runBacktest()" style="width: 100%; font-size: 14px; padding: 10px; margin-top: 8px;">
-                                📊 RUN BACKTEST (DEMO)
+                                ðŸ“Š RUN BACKTEST (DEMO)
                             </button>
                         </div>
 
@@ -2191,7 +2191,7 @@
                         <!-- Bot Status -->
                         <div style="padding: 12px; background: #1a1a1a; border: 2px solid #007acc; border-radius: 4px; margin-bottom: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <div style="font-size: 14px; color: #007acc; font-weight: 700;">🤖 BOT STATUS</div>
+                                <div style="font-size: 14px; color: #007acc; font-weight: 700;">ðŸ¤– BOT STATUS</div>
                                 <div id="botStatusIndicator" style="display: flex; align-items: center; gap: 6px; padding: 4px 12px; background: #252525; border-radius: 3px;">
                                     <div style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></div>
                                     <span style="font-size: 12px; font-weight: 600; color: #ef4444;">STOPPED</span>
@@ -2228,23 +2228,23 @@
                             <!-- Control Buttons -->
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
                                 <button onclick="startBot()" style="padding: 10px; background: #22c55e; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
-                                    ▶️ START BOT
+                                    â–¶ï¸ START BOT
                                 </button>
                                 <button onclick="stopBot()" style="padding: 10px; background: #ef4444; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
-                                    ⏹️ STOP BOT
+                                    â¹ï¸ STOP BOT
                                 </button>
                                 <button onclick="enableBotTrading()" style="padding: 10px; background: #3b82f6; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
-                                    ✅ ENABLE TRADING
+                                    âœ… ENABLE TRADING
                                 </button>
                                 <button onclick="disableBotTrading()" style="padding: 10px; background: #f59e0b; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
-                                    ⏸️ PAUSE TRADING
+                                    â¸ï¸ PAUSE TRADING
                                 </button>
                             </div>
                         </div>
 
                         <!-- Risk Limits -->
                         <div style="padding: 10px; background: #1a1a1a; border: 1px solid #ef4444; border-radius: 4px; margin-bottom: 12px;">
-                            <div style="font-size: 13px; color: #ef4444; margin-bottom: 8px; font-weight: 700;">⚠️ RISK LIMITS</div>
+                            <div style="font-size: 13px; color: #ef4444; margin-bottom: 8px; font-weight: 700;">âš ï¸ RISK LIMITS</div>
                             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 11px;">
                                 <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
                                     <div style="color: #888;">MAX/TRADE</div>
@@ -2264,9 +2264,9 @@
                         <!-- WORKLIST (Shared with Platform) -->
                         <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <div style="font-size: 13px; color: #888; font-weight: 700;">📋 WORKLIST (Shared)</div>
+                                <div style="font-size: 13px; color: #888; font-weight: 700;">ðŸ“‹ WORKLIST (Shared)</div>
                                 <button onclick="syncWorklistWithScanner()" style="padding: 4px 10px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 600;">
-                                    🔄 Add Scanner
+                                    ðŸ”„ Add Scanner
                                 </button>
                             </div>
                             <div id="botWorklist" style="font-size: 12px; color: #007acc; font-weight: 600;">
@@ -2276,13 +2276,13 @@
                                 0 symbols
                             </div>
                             <div style="font-size: 10px; color: #666; margin-top: 4px; padding-top: 4px; border-top: 1px solid #333;">
-                                💡 Same worklist used for training, backtesting, predictions & bot trading
+                                ðŸ’¡ Same worklist used for training, backtesting, predictions & bot trading
                             </div>
                         </div>
 
                         <!-- Recent Signals -->
                         <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
-                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">🔔 RECENT SIGNALS</div>
+                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">ðŸ”” RECENT SIGNALS</div>
                             <div id="botSignalsList" style="max-height: 150px; overflow-y: auto; font-size: 11px;">
                                 <div class="empty-state" style="padding: 20px; font-size: 12px;">No signals yet. Bot will generate signals when it finds opportunities.</div>
                             </div>
@@ -2290,7 +2290,7 @@
 
                         <!-- Open Positions -->
                         <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;">
-                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">📊 OPEN POSITIONS</div>
+                            <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">ðŸ“Š OPEN POSITIONS</div>
                             <div id="botOpenPositions" style="max-height: 200px; overflow-y: auto; font-size: 11px;">
                                 <div class="empty-state" style="padding: 20px; font-size: 12px;">No open positions</div>
                             </div>
@@ -2298,7 +2298,7 @@
 
                         <!-- Auto-refresh notice -->
                         <div style="margin-top: 12px; padding: 8px; background: #252525; border-left: 3px solid #007acc; border-radius: 3px; font-size: 11px; color: #888;">
-                            ℹ️ Status updates every 5 seconds automatically
+                            â„¹ï¸ Status updates every 5 seconds automatically
                         </div>
                     </div>
                 </div>
@@ -2311,9 +2311,9 @@
             `
         };
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     SYMBOL MANAGEMENT
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         function setCurrentSymbol(symbol) {
             currentSymbol = symbol.toUpperCase();
@@ -2346,9 +2346,9 @@
             loadWorklist();
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     API INTEGRATION
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         // Helper function to safely update element
         function safeUpdate(id, value) {
@@ -2373,7 +2373,7 @@
                     return await response.json();
                 } else if (response.status === 503) {
                     if (!demoModeLogged) {
-                        console.log('%c⚠️ IBKR not connected. Please click "Connect IBKR" in the menu.', 'color: #ef4444; font-weight: bold;');
+                        console.log('%câš ï¸ ALPACA not connected. Please click "Connect ALPACA" in the menu.', 'color: #ef4444; font-weight: bold;');
                         demoModeLogged = true;
                     }
                     return null;
@@ -2383,7 +2383,7 @@
                 }
             } catch (error) {
                 if (!demoModeLogged) {
-                    console.log('%c⚠️ API Server not available', 'color: #ef4444; font-weight: bold;');
+                    console.log('%câš ï¸ API Server not available', 'color: #ef4444; font-weight: bold;');
                     demoModeLogged = true;
                 }
                 return null;
@@ -2402,15 +2402,15 @@
                         data_types: ['quote', 'l2', 'trades']
                     })
                 });
-                console.log(`✓ Subscribed to ${symbol}`);
+                console.log(`âœ“ Subscribed to ${symbol}`);
             } catch (error) {
                 console.error(`Error subscribing to ${symbol}:`, error);
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     HALT DETECTION & MANAGEMENT
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         function checkForHalt(symbol, data) {
             const now = Date.now();
@@ -2457,14 +2457,14 @@
                 haltState.resumeTime = null;
 
                 showHaltIndicator();
-                console.log(`🛑 HALT DETECTED: ${symbol} at $${haltState.haltPrice.toFixed(2)}`);
+                console.log(`ðŸ›‘ HALT DETECTED: ${symbol} at $${haltState.haltPrice.toFixed(2)}`);
 
             } else if (!isDataHalted && !isTimeoutHalt && haltState.isHalted && data.bid > 0 && data.ask > 0) {
                 // Resuming from halt
                 haltState.resumeTime = new Date();
                 const haltDuration = Math.floor((haltState.resumeTime - haltState.haltTime) / 1000);
 
-                console.log(`✅ RESUMED: ${symbol} after ${haltDuration}s halt`);
+                console.log(`âœ… RESUMED: ${symbol} after ${haltDuration}s halt`);
 
                 // Show resume notification briefly, then hide
                 updateHaltIndicator('resumed');
@@ -2510,8 +2510,8 @@
                 const haltDuration = Math.floor((Date.now() - haltState.haltTime) / 1000);
                 const haltTimeStr = haltState.haltTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-                titleEl.textContent = '🛑 HALT';
-                infoEl.innerHTML = `${haltTimeStr} • $${(haltState.haltPrice || 0).toFixed(2)} • ${haltDuration}s`;
+                titleEl.textContent = 'ðŸ›‘ HALT';
+                infoEl.innerHTML = `${haltTimeStr} â€¢ $${(haltState.haltPrice || 0).toFixed(2)} â€¢ ${haltDuration}s`;
 
                 indicator.style.background = 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
                 indicator.style.color = 'white';
@@ -2520,8 +2520,8 @@
                 const resumeTimeStr = haltState.resumeTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 const haltDuration = Math.floor((haltState.resumeTime - haltState.haltTime) / 1000);
 
-                titleEl.textContent = '✅ RESUMED';
-                infoEl.innerHTML = `${resumeTimeStr} • ${haltDuration}s halt`;
+                titleEl.textContent = 'âœ… RESUMED';
+                infoEl.innerHTML = `${resumeTimeStr} â€¢ ${haltDuration}s halt`;
 
                 indicator.style.background = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
                 indicator.style.color = 'white';
@@ -2623,8 +2623,8 @@
                 // Fetch ONLY from API
                 const apiData = await apiFetch(`/api/level2/${currentSymbol}`);
                 if (!apiData) {
-                    bidsEl.innerHTML = '<div class="empty-state">Connect to IBKR for Level 2 data</div>';
-                    asksEl.innerHTML = '<div class="empty-state">Connect to IBKR for Level 2 data</div>';
+                    bidsEl.innerHTML = '<div class="empty-state">Connect to ALPACA for Level 2 data</div>';
+                    asksEl.innerHTML = '<div class="empty-state">Connect to ALPACA for Level 2 data</div>';
                     return;
                 }
 
@@ -2728,7 +2728,7 @@
                 // Fetch ONLY from API
                 const apiData = await apiFetch('/api/account');
                 if (!apiData || !apiData.positions) {
-                    displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">Connect to IBKR to view positions</td></tr>';
+                    displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">Connect to ALPACA to view positions</td></tr>';
                     return;
                 }
 
@@ -2775,8 +2775,8 @@
             }
 
             try {
-                // Fetch real orders from IBKR
-                const response = await fetch(API_BASE_URL + '/api/ibkr/orders');
+                // Fetch real orders from ALPACA
+                const response = await fetch(API_BASE_URL + '/api/alpaca/orders');
                 const data = await response.json();
                 console.log('Orders API response:', data);
 
@@ -2796,7 +2796,7 @@
                                 <td>${priceDisplay}</td>
                                 <td>${order.status}</td>
                                 <td>
-                                    <button class="action-btn" onclick="cancelOrderIBKR(${order.order_id})">Cancel</button>
+                                    <button class="action-btn" onclick="cancelOrderALPACA(${order.order_id})">Cancel</button>
                                 </td>
                             </tr>
                         `;
@@ -2813,13 +2813,13 @@
                 }
             } catch (error) {
                 console.error('Error loading orders:', error);
-                displayEl.innerHTML = '<tr><td colspan="8" class="empty-state" style="color: #ef4444;">❌ Error loading orders</td></tr>';
+                displayEl.innerHTML = '<tr><td colspan="8" class="empty-state" style="color: #ef4444;">âŒ Error loading orders</td></tr>';
             }
         }
 
-        async function cancelOrderIBKR(orderId) {
+        async function cancelOrderALPACA(orderId) {
             try {
-                const response = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/cancel-order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: orderId })
@@ -2828,14 +2828,14 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    console.log(`✓ Order ${orderId} cancelled`);
+                    console.log(`âœ“ Order ${orderId} cancelled`);
                     await loadOrders(); // Refresh orders display
                 } else {
-                    alert(`❌ Failed to cancel order: ${data.detail || 'Unknown error'}`);
+                    alert(`âŒ Failed to cancel order: ${data.detail || 'Unknown error'}`);
                 }
             } catch (error) {
                 console.error('Error cancelling order:', error);
-                alert(`❌ Error cancelling order: ${error.message}`);
+                alert(`âŒ Error cancelling order: ${error.message}`);
             }
         }
 
@@ -2907,8 +2907,8 @@
                                 accountWarnings.style.background = '#7f1d1d';
                                 accountWarnings.style.color = '#fca5a5';
                                 accountWarnings.innerHTML = s.day_trades_remaining === 0
-                                    ? '⚠️ DAY TRADE LIMIT REACHED - No day trades remaining!'
-                                    : '⚠️ WARNING - Only 1 day trade remaining!';
+                                    ? 'âš ï¸ DAY TRADE LIMIT REACHED - No day trades remaining!'
+                                    : 'âš ï¸ WARNING - Only 1 day trade remaining!';
                             }
                         }
                     } else {
@@ -2922,7 +2922,7 @@
                             accountWarnings.style.display = 'block';
                             accountWarnings.style.background = '#1e3a8a';
                             accountWarnings.style.color = '#93c5fd';
-                            accountWarnings.innerHTML = '⚠️ SHORT SELLING DISABLED for this account type';
+                            accountWarnings.innerHTML = 'âš ï¸ SHORT SELLING DISABLED for this account type';
                         }
                         if (caps.includes('T+2_SETTLEMENT')) {
                             if (dayTradesInfo) {
@@ -2937,9 +2937,9 @@
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     TRADING FUNCTIONS
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         function setQuantity(qty) {
             document.getElementById('orderQuantity').value = qty;
@@ -3150,7 +3150,7 @@
 
             const orderDetails = `
 ORDER DETAILS:
-─────────────
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Side:     ${side}
 Symbol:   ${symbol}
 Quantity: ${quantity}
@@ -3180,7 +3180,7 @@ Confirm order?`;
                     console.log('Placing order:', orderRequest);
 
                     // Call API to place order
-                    const response = await fetch(API_BASE_URL + '/api/ibkr/place-order', {
+                    const response = await fetch(API_BASE_URL + '/api/alpaca/place-order', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(orderRequest)
@@ -3191,9 +3191,9 @@ Confirm order?`;
                     if (response.ok && data.success) {
                         // Show alert only if auto-submit is disabled (for faster trading)
                         if (!autoSubmit) {
-                            alert(`✓ Order placed successfully!\n\nOrder ID: ${data.order_id}\nStatus: ${data.status}\n\n${data.message}`);
+                            alert(`âœ“ Order placed successfully!\n\nOrder ID: ${data.order_id}\nStatus: ${data.status}\n\n${data.message}`);
                         } else {
-                            console.log(`✓ Order ${data.order_id} placed: ${side} ${quantity} ${symbol} @ ${orderType === 'MARKET' ? 'MARKET' : '$' + price}`);
+                            console.log(`âœ“ Order ${data.order_id} placed: ${side} ${quantity} ${symbol} @ ${orderType === 'MARKET' ? 'MARKET' : '$' + price}`);
                         }
 
                         // Clear form (but keep symbol for momentum trading)
@@ -3212,17 +3212,17 @@ Confirm order?`;
                         // Handle error response
                         const errorMsg = data.detail || data.message || 'Unknown error';
                         if (!autoSubmit) {
-                            alert(`✗ Failed to place order\n\n${errorMsg}`);
+                            alert(`âœ— Failed to place order\n\n${errorMsg}`);
                         } else {
-                            console.error('✗ Order failed:', errorMsg);
+                            console.error('âœ— Order failed:', errorMsg);
                         }
                     }
                 } catch (error) {
                     console.error('Order error:', error);
                     if (!autoSubmit) {
-                        alert(`✗ Failed to place order\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                        alert(`âœ— Failed to place order\n\nError: ${error.message}\n\nMake sure ALPACA is connected.`);
                     } else {
-                        console.error('✗ Order failed:', error.message);
+                        console.error('âœ— Order failed:', error.message);
                     }
                 }
             }
@@ -3300,8 +3300,8 @@ Confirm order?`;
                         exchange: 'SMART'
                     };
 
-                    // Submit order to IBKR
-                    const response = await fetch(API_BASE_URL + '/api/ibkr/place-order', {
+                    // Submit order to ALPACA
+                    const response = await fetch(API_BASE_URL + '/api/alpaca/place-order', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(orderRequest)
@@ -3310,8 +3310,8 @@ Confirm order?`;
                     const data = await response.json();
 
                     if (response.ok && data.success) {
-                        alert(`✓ Position close order placed!\n\nOrder ID: ${data.order_id}\n${side} ${qty} ${symbol} @ MARKET`);
-                        console.log(`✓ Close order ${data.order_id} placed: ${side} ${qty} ${symbol}`);
+                        alert(`âœ“ Position close order placed!\n\nOrder ID: ${data.order_id}\n${side} ${qty} ${symbol} @ MARKET`);
+                        console.log(`âœ“ Close order ${data.order_id} placed: ${side} ${qty} ${symbol}`);
 
                         // Refresh positions and orders
                         await loadPositions();
@@ -3319,11 +3319,11 @@ Confirm order?`;
                         await loadAccount();
                     } else {
                         const errorMsg = data.detail || data.message || 'Unknown error';
-                        alert(`✗ Failed to close position\n\n${errorMsg}`);
+                        alert(`âœ— Failed to close position\n\n${errorMsg}`);
                     }
                 } catch (error) {
                     console.error('Close position error:', error);
-                    alert(`✗ Failed to close position\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                    alert(`âœ— Failed to close position\n\nError: ${error.message}\n\nMake sure ALPACA is connected.`);
                 }
             }
         }
@@ -3333,7 +3333,7 @@ Confirm order?`;
                 try {
                     console.log('Cancelling order:', orderId);
 
-                    const response = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                    const response = await fetch(API_BASE_URL + '/api/alpaca/cancel-order', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ order_id: orderId })
@@ -3342,19 +3342,19 @@ Confirm order?`;
                     const data = await response.json();
 
                     if (response.ok && data.success) {
-                        alert(`✓ Order cancelled!\n\nOrder ID: ${orderId}\nStatus: ${data.status || 'Cancelled'}`);
-                        console.log(`✓ Order ${orderId} cancelled`);
+                        alert(`âœ“ Order cancelled!\n\nOrder ID: ${orderId}\nStatus: ${data.status || 'Cancelled'}`);
+                        console.log(`âœ“ Order ${orderId} cancelled`);
 
                         // Refresh orders and account
                         await loadOrders();
                         await loadAccount();
                     } else {
                         const errorMsg = data.detail || data.message || 'Unknown error';
-                        alert(`✗ Failed to cancel order\n\n${errorMsg}`);
+                        alert(`âœ— Failed to cancel order\n\n${errorMsg}`);
                     }
                 } catch (error) {
                     console.error('Cancel order error:', error);
-                    alert(`✗ Failed to cancel order\n\nError: ${error.message}\n\nMake sure IBKR is connected.`);
+                    alert(`âœ— Failed to cancel order\n\nError: ${error.message}\n\nMake sure ALPACA is connected.`);
                 }
             }
         }
@@ -3363,13 +3363,13 @@ Confirm order?`;
             const autoSubmit = document.getElementById('autoSubmitOrders')?.checked || false;
 
             // Skip confirmation if auto-submit is enabled
-            if (!autoSubmit && !window.confirm('⚠️ CANCEL ALL WORKING ORDERS?\n\nThis will cancel ALL open orders.\n\nAre you sure?')) {
+            if (!autoSubmit && !window.confirm('âš ï¸ CANCEL ALL WORKING ORDERS?\n\nThis will cancel ALL open orders.\n\nAre you sure?')) {
                 return;
             }
 
             try {
                 // Fetch all current orders
-                const response = await fetch(API_BASE_URL + '/api/ibkr/orders');
+                const response = await fetch(API_BASE_URL + '/api/alpaca/orders');
                 const data = await response.json();
 
                 if (!data.orders || data.orders.length === 0) {
@@ -3385,7 +3385,7 @@ Confirm order?`;
                 // Cancel each order
                 for (const order of data.orders) {
                     try {
-                        const cancelResponse = await fetch(API_BASE_URL + '/api/ibkr/cancel-order', {
+                        const cancelResponse = await fetch(API_BASE_URL + '/api/alpaca/cancel-order', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ order_id: order.order_id })
@@ -3395,34 +3395,34 @@ Confirm order?`;
 
                         if (cancelResponse.ok && cancelData.success) {
                             cancelled++;
-                            console.log(`✓ Cancelled order ${order.order_id}`);
+                            console.log(`âœ“ Cancelled order ${order.order_id}`);
                         } else {
                             failed++;
-                            console.error(`✗ Failed to cancel order ${order.order_id}:`, cancelData.detail);
+                            console.error(`âœ— Failed to cancel order ${order.order_id}:`, cancelData.detail);
                         }
                     } catch (error) {
                         failed++;
-                        console.error(`✗ Error cancelling order ${order.order_id}:`, error);
+                        console.error(`âœ— Error cancelling order ${order.order_id}:`, error);
                     }
                 }
 
                 // Show results and refresh
                 if (!autoSubmit) {
-                    alert(`✓ Cancel All Complete\n\nCancelled: ${cancelled}\nFailed: ${failed}`);
+                    alert(`âœ“ Cancel All Complete\n\nCancelled: ${cancelled}\nFailed: ${failed}`);
                 } else {
-                    console.log(`✓ Cancel All Complete - Cancelled: ${cancelled}, Failed: ${failed}`);
+                    console.log(`âœ“ Cancel All Complete - Cancelled: ${cancelled}, Failed: ${failed}`);
                 }
                 await loadOrders();
 
             } catch (error) {
                 console.error('Error cancelling all orders:', error);
-                if (!autoSubmit) alert(`❌ Error: ${error.message}`);
+                if (!autoSubmit) alert(`âŒ Error: ${error.message}`);
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     WORKLIST MANAGEMENT (UNIFIED BACKEND)
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         let worklistData = [];
 
@@ -3459,7 +3459,7 @@ Confirm order?`;
             if (!display) return;
 
             if (worklistData.length === 0) {
-                display.innerHTML = '<div class="empty-state" style="padding: 20px; text-align: center;"><div style="font-size: 28px; margin-bottom: 8px;">📋</div><div style="font-size: 15px;">No symbols in worklist</div><div style="font-size: 13px; color: #888; margin-top: 4px;">Use Scanner or Add Symbol</div></div>';
+                display.innerHTML = '<div class="empty-state" style="padding: 20px; text-align: center;"><div style="font-size: 28px; margin-bottom: 8px;">ðŸ“‹</div><div style="font-size: 15px;">No symbols in worklist</div><div style="font-size: 13px; color: #888; margin-top: 4px;">Use Scanner or Add Symbol</div></div>';
                 return;
             }
 
@@ -3475,16 +3475,16 @@ Confirm order?`;
 
                 let predBadge = '-';
                 if (item.prediction === 'UP') {
-                    predBadge = '<span style="background: #166534; color: #22c55e; padding: 2px 6px; border-radius: 2px; font-size: 12px; font-weight: 700;">▲ UP</span>';
+                    predBadge = '<span style="background: #166534; color: #22c55e; padding: 2px 6px; border-radius: 2px; font-size: 12px; font-weight: 700;">â–² UP</span>';
                 } else if (item.prediction === 'DOWN') {
-                    predBadge = '<span style="background: #7f1d1d; color: #ef4444; padding: 2px 6px; border-radius: 2px; font-size: 12px; font-weight: 700;">▼ DOWN</span>';
+                    predBadge = '<span style="background: #7f1d1d; color: #ef4444; padding: 2px 6px; border-radius: 2px; font-size: 12px; font-weight: 700;">â–¼ DOWN</span>';
                 }
 
                 const confidence = item.confidence ? item.confidence.toFixed(0) + '%' : '-';
                 // Live indicator: green dot if fresh, red if stale
-                const liveIndicator = isFresh ? '<span style="color: #22c55e; margin-left: 4px;" title="Live data (fresh)">🟢</span>' :
-                                      (storeData ? '<span style="color: #eab308; margin-left: 4px;" title="Data delayed">🟡</span>' :
-                                       '<span style="color: #ef4444; margin-left: 4px;" title="No data">🔴</span>');
+                const liveIndicator = isFresh ? '<span style="color: #22c55e; margin-left: 4px;" title="Live data (fresh)">ðŸŸ¢</span>' :
+                                      (storeData ? '<span style="color: #eab308; margin-left: 4px;" title="Data delayed">ðŸŸ¡</span>' :
+                                       '<span style="color: #ef4444; margin-left: 4px;" title="No data">ðŸ”´</span>');
 
                 html += `
                     <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="font-size: 13px;">
@@ -3495,7 +3495,7 @@ Confirm order?`;
                         <td style="padding: 4px 6px; text-align: right; font-family: monospace;">${confidence}</td>
                         <td style="padding: 4px 6px; text-align: center;">
                             <button onclick="event.stopPropagation(); removeFromWorklist('${item.symbol}')"
-                                    style="background: #7f1d1d; color: #ef4444; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600;">✕</button>
+                                    style="background: #7f1d1d; color: #ef4444; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600;">âœ•</button>
                         </td>
                     </tr>
                 `;
@@ -3536,7 +3536,7 @@ Confirm order?`;
                 const data = await response.json();
                 if (data.success) {
                     await loadWorklist();
-                    alert(`✓ ${symbol.toUpperCase()} added to worklist`);
+                    alert(`âœ“ ${symbol.toUpperCase()} added to worklist`);
                 } else {
                     alert('Failed to add symbol: ' + (data.detail || 'Unknown error'));
                 }
@@ -3567,7 +3567,7 @@ Confirm order?`;
         }
 
         async function clearWorklist() {
-            if (!window.confirm('⚠️ Clear entire worklist?\n\nThis will remove all symbols.')) return;
+            if (!window.confirm('âš ï¸ Clear entire worklist?\n\nThis will remove all symbols.')) return;
 
             try {
                 const response = await fetch(API_BASE_URL + '/api/worklist/clear', {
@@ -3577,7 +3577,7 @@ Confirm order?`;
                 const data = await response.json();
                 if (data.success) {
                     await loadWorklist();
-                    alert('✓ Worklist cleared');
+                    alert('âœ“ Worklist cleared');
                 } else {
                     alert('Failed to clear worklist');
                 }
@@ -3590,7 +3590,7 @@ Confirm order?`;
         async function showScannerDialog() {
             // Load scanner presets
             try {
-                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/presets');
+                const response = await fetch(API_BASE_URL + '/api/scanner/ALPACA/presets');
                 const data = await response.json();
 
                 if (!data.success || !data.data) {
@@ -3603,7 +3603,7 @@ Confirm order?`;
 
                 const html = `
                     <div style="padding: 16px; background: #1a1a1a; border: 2px solid #007acc; border-radius: 4px; width: 400px;">
-                        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 18px;">IBKR Market Scanner</h3>
+                        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 18px;">ALPACA Market Scanner</h3>
                         <select id="scannerSelect" style="width: 100%; padding: 8px; background: #252525; color: #fff; border: 1px solid #404040; margin-bottom: 12px;">
                             ${options}
                         </select>
@@ -3650,7 +3650,7 @@ Confirm order?`;
             resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Scanning...</div>';
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/scan', {
+                const response = await fetch(API_BASE_URL + '/api/scanner/ALPACA/scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -3741,7 +3741,7 @@ Confirm order?`;
             }
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/scanner/ibkr/add-to-worklist', {
+                const response = await fetch(API_BASE_URL + '/api/scanner/ALPACA/add-to-worklist', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ symbols })
@@ -3751,7 +3751,7 @@ Confirm order?`;
                 if (data.success) {
                     await loadWorklist();
                     closeScannerDialog();
-                    alert(`✓ Added ${symbols.length} symbols to worklist`);
+                    alert(`âœ“ Added ${symbols.length} symbols to worklist`);
                 } else {
                     alert('Failed to add symbols');
                 }
@@ -3761,9 +3761,9 @@ Confirm order?`;
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     AUTONOMOUS BOT CONTROL FUNCTIONS
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         let botStatusInterval = null;
 
@@ -3804,14 +3804,14 @@ Confirm order?`;
                         botStatusInterval = setInterval(updateBotStatus, 2000);
                     }
 
-                    alert('✓ Bot initialized successfully!');
+                    alert('âœ“ Bot initialized successfully!');
                 } else {
                     const error = await response.json();
-                    alert('✗ Failed to initialize bot: ' + error.detail);
+                    alert('âœ— Failed to initialize bot: ' + error.detail);
                 }
             } catch (error) {
                 console.error('Error initializing bot:', error);
-                alert('✗ Error initializing bot: ' + error.message);
+                alert('âœ— Error initializing bot: ' + error.message);
             }
         }
 
@@ -3830,14 +3830,14 @@ Confirm order?`;
                     document.getElementById('startBotBtn').disabled = true;
                     document.getElementById('stopBotBtn').disabled = false;
 
-                    alert('✓ Bot started successfully!');
+                    alert('âœ“ Bot started successfully!');
                 } else {
                     const error = await response.json();
-                    alert('✗ Failed to start bot: ' + error.detail);
+                    alert('âœ— Failed to start bot: ' + error.detail);
                 }
             } catch (error) {
                 console.error('Error starting bot:', error);
-                alert('✗ Error starting bot: ' + error.message);
+                alert('âœ— Error starting bot: ' + error.message);
             }
         }
 
@@ -3856,14 +3856,14 @@ Confirm order?`;
                     document.getElementById('startBotBtn').disabled = false;
                     document.getElementById('stopBotBtn').disabled = true;
 
-                    alert('✓ Bot stopped successfully!');
+                    alert('âœ“ Bot stopped successfully!');
                 } else {
                     const error = await response.json();
-                    alert('✗ Failed to stop bot: ' + error.detail);
+                    alert('âœ— Failed to stop bot: ' + error.detail);
                 }
             } catch (error) {
                 console.error('Error stopping bot:', error);
-                alert('✗ Error stopping bot: ' + error.message);
+                alert('âœ— Error stopping bot: ' + error.message);
             }
         }
 
@@ -3876,17 +3876,17 @@ Confirm order?`;
                     console.log('Bot enabled:', data);
 
                     document.getElementById('botStatusSubtext').textContent = 'Trading ENABLED';
-                    document.getElementById('enableBotBtn').textContent = '✗ DISABLE';
+                    document.getElementById('enableBotBtn').textContent = 'âœ— DISABLE';
                     document.getElementById('enableBotBtn').onclick = disableBot;
 
-                    alert('✓ Trading enabled! Bot will now execute trades.');
+                    alert('âœ“ Trading enabled! Bot will now execute trades.');
                 } else {
                     const error = await response.json();
-                    alert('✗ Failed to enable bot: ' + error.detail);
+                    alert('âœ— Failed to enable bot: ' + error.detail);
                 }
             } catch (error) {
                 console.error('Error enabling bot:', error);
-                alert('✗ Error: ' + error.message);
+                alert('âœ— Error: ' + error.message);
             }
         }
 
@@ -3899,17 +3899,17 @@ Confirm order?`;
                     console.log('Bot disabled:', data);
 
                     document.getElementById('botStatusSubtext').textContent = 'Trading DISABLED';
-                    document.getElementById('enableBotBtn').textContent = '✓ ENABLE';
+                    document.getElementById('enableBotBtn').textContent = 'âœ“ ENABLE';
                     document.getElementById('enableBotBtn').onclick = enableBot;
 
-                    alert('✓ Trading disabled. Bot will continue running but not execute trades.');
+                    alert('âœ“ Trading disabled. Bot will continue running but not execute trades.');
                 } else {
                     const error = await response.json();
-                    alert('✗ Failed to disable bot: ' + error.detail);
+                    alert('âœ— Failed to disable bot: ' + error.detail);
                 }
             } catch (error) {
                 console.error('Error disabling bot:', error);
-                alert('✗ Error: ' + error.message);
+                alert('âœ— Error: ' + error.message);
             }
         }
 
@@ -3933,14 +3933,14 @@ Confirm order?`;
                 if (response.ok) {
                     const data = await response.json();
                     console.log('Config updated:', data);
-                    alert('✓ Configuration updated successfully!');
+                    alert('âœ“ Configuration updated successfully!');
                 } else {
                     const error = await response.json();
-                    alert('✗ Failed to update config: ' + error.detail);
+                    alert('âœ— Failed to update config: ' + error.detail);
                 }
             } catch (error) {
                 console.error('Error updating config:', error);
-                alert('✗ Error: ' + error.message);
+                alert('âœ— Error: ' + error.message);
             }
         }
 
@@ -4077,9 +4077,9 @@ Confirm order?`;
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     AI CONTROL PANEL FUNCTIONS
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         let currentTrainingId = null;
         let trainingCheckInterval = null;
@@ -4143,7 +4143,7 @@ Confirm order?`;
                 // Disable button
                 const btn = document.getElementById('trainModelBtn');
                 btn.disabled = true;
-                btn.textContent = '⏳ TRAINING...';
+                btn.textContent = 'â³ TRAINING...';
 
                 // Show training status
                 document.getElementById('trainingStatus').style.display = 'block';
@@ -4179,7 +4179,7 @@ Confirm order?`;
                 // Re-enable button
                 const btn = document.getElementById('trainModelBtn');
                 btn.disabled = false;
-                btn.textContent = '🚀 START TRAINING';
+                btn.textContent = 'ðŸš€ START TRAINING';
             }
         }
 
@@ -4222,9 +4222,9 @@ Confirm order?`;
                     // Re-enable button
                     const btn = document.getElementById('trainModelBtn');
                     btn.disabled = false;
-                    btn.textContent = '🚀 START TRAINING';
+                    btn.textContent = 'ðŸš€ START TRAINING';
 
-                    alert('✓ Training completed!\n\nAccuracy: ' + (session.metrics.accuracy * 100).toFixed(2) + '%\nSamples: ' + session.metrics.samples);
+                    alert('âœ“ Training completed!\n\nAccuracy: ' + (session.metrics.accuracy * 100).toFixed(2) + '%\nSamples: ' + session.metrics.samples);
 
                 } else if (session.status === 'failed') {
                     clearInterval(trainingCheckInterval);
@@ -4235,9 +4235,9 @@ Confirm order?`;
                     // Re-enable button
                     const btn = document.getElementById('trainModelBtn');
                     btn.disabled = false;
-                    btn.textContent = '🚀 START TRAINING';
+                    btn.textContent = 'ðŸš€ START TRAINING';
 
-                    alert('✗ Training failed: ' + (session.error || 'Unknown error'));
+                    alert('âœ— Training failed: ' + (session.error || 'Unknown error'));
                 }
 
             } catch (error) {
@@ -4395,7 +4395,7 @@ Confirm order?`;
                 // Disable button
                 const btn = document.getElementById('runBacktestBtn');
                 btn.disabled = true;
-                btn.textContent = '⏳ RUNNING...';
+                btn.textContent = 'â³ RUNNING...';
 
                 // Show results section
                 document.getElementById('backtestResults').style.display = 'block';
@@ -4434,7 +4434,7 @@ Confirm order?`;
                 // Re-enable button
                 const btn = document.getElementById('runBacktestBtn');
                 btn.disabled = false;
-                btn.textContent = '📊 RUN BACKTEST';
+                btn.textContent = 'ðŸ“Š RUN BACKTEST';
             }
         }
 
@@ -4488,9 +4488,9 @@ Confirm order?`;
                     // Re-enable button
                     const btn = document.getElementById('runBacktestBtn');
                     btn.disabled = false;
-                    btn.textContent = '📊 RUN BACKTEST';
+                    btn.textContent = 'ðŸ“Š RUN BACKTEST';
 
-                    alert('✓ Backtest completed!\n\nTotal Return: ' + metrics.total_return.toFixed(2) + '%\nWin Rate: ' + (metrics.win_rate * 100).toFixed(1) + '%');
+                    alert('âœ“ Backtest completed!\n\nTotal Return: ' + metrics.total_return.toFixed(2) + '%\nWin Rate: ' + (metrics.win_rate * 100).toFixed(1) + '%');
                 }
 
             } catch (error) {
@@ -4508,7 +4508,7 @@ Confirm order?`;
             }
 
             // Create new AI Control Panel window (centered, large size)
-            createWindow('aicontrol', '🤖 AI CONTROL PANEL', windowTemplates.aicontrol, 300, 100, 680, 600);
+            createWindow('aicontrol', 'ðŸ¤– AI CONTROL PANEL', windowTemplates.aicontrol, 300, 100, 680, 600);
         }
 
         // MODELS PERFORMANCE
@@ -4546,7 +4546,7 @@ Confirm order?`;
                                     <span style="color: #60a5fa; font-weight: 600;">${model.sharpe_ratio.toFixed(2)}</span>
                                 </div>
                             </div>
-                            <div style="font-size: 10px; color: #666;">Trades: ${model.total_trades} (${model.profitable_trades} profitable) • Avg Profit: $${model.avg_profit.toFixed(2)}</div>
+                            <div style="font-size: 10px; color: #666;">Trades: ${model.total_trades} (${model.profitable_trades} profitable) â€¢ Avg Profit: $${model.avg_profit.toFixed(2)}</div>
                         </div>
                     `;
                 }
@@ -4559,13 +4559,13 @@ Confirm order?`;
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     CONNECTION MANAGEMENT
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-        async function connectToIBKR() {
+        async function connectToALPACA() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/ibkr/connect', {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/connect', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ host: '127.0.0.1', port: 7497, client_id: 1 })
@@ -4573,40 +4573,40 @@ Confirm order?`;
                 const data = await response.json();
 
                 if (data.status === 'connected') {
-                    alert('✓ Connected to IBKR successfully!');
+                    alert('âœ“ Connected to ALPACA successfully!');
                     checkStatus();
                 } else {
-                    alert('✗ Failed to connect to IBKR');
+                    alert('âœ— Failed to connect to ALPACA');
                 }
             } catch (error) {
-                alert('✗ Connection error: ' + error.message);
+                alert('âœ— Connection error: ' + error.message);
             }
         }
 
         async function checkStatus() {
             try {
-                // Check IBKR status
-                const ibkrResponse = await fetch(API_BASE_URL + '/api/ibkr/status');
-                const ibkrData = await ibkrResponse.json();
+                // Check ALPACA status
+                const ALPACAResponse = await fetch(API_BASE_URL + '/api/alpaca/status');
+                const ALPACAData = await ALPACAResponse.json();
 
-                console.log('IBKR Status:', ibkrData);
+                console.log('ALPACA Status:', ALPACAData);
 
-                const ibkrDot = document.getElementById('ibkrStatus');
-                const ibkrText = document.getElementById('ibkrStatusText');
+                const ALPACADot = document.getElementById('ALPACAStatus');
+                const ALPACAText = document.getElementById('ALPACAStatusText');
 
-                if (ibkrData && ibkrData.connected) {
-                    ibkrDot.classList.add('connected');
-                    ibkrText.textContent = 'Connected';
+                if (ALPACAData && ALPACAData.connected) {
+                    ALPACADot.classList.add('connected');
+                    ALPACAText.textContent = 'Connected';
                     apiAvailable = true;
-                    console.log('✓ IBKR indicator set to CONNECTED');
+                    console.log('âœ“ ALPACA indicator set to CONNECTED');
                 } else {
-                    ibkrDot.classList.remove('connected');
+                    ALPACADot.classList.remove('connected');
                     if (apiAvailable === false) {
-                        ibkrText.textContent = 'Demo Mode';
+                        ALPACAText.textContent = 'Demo Mode';
                     } else {
-                        ibkrText.textContent = 'Disconnected';
+                        ALPACAText.textContent = 'Disconnected';
                     }
-                    console.log('✗ IBKR indicator set to DISCONNECTED');
+                    console.log('âœ— ALPACA indicator set to DISCONNECTED');
                 }
 
                 // Check AI/Claude status
@@ -4621,20 +4621,20 @@ Confirm order?`;
                 if (healthData && healthData.claude_available) {
                     aiDot.classList.add('connected');
                     aiText.textContent = 'Online';
-                    console.log('✓ AI indicator set to ONLINE');
+                    console.log('âœ“ AI indicator set to ONLINE');
                 } else {
                     aiDot.classList.remove('connected');
                     aiText.textContent = 'Offline';
-                    console.log('✗ AI indicator set to OFFLINE');
+                    console.log('âœ— AI indicator set to OFFLINE');
                 }
             } catch (error) {
                 console.error('Status check error:', error);
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     WINDOW LAYOUT MANAGEMENT
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         function createWindow(id, title, content, x, y, width, height) {
             const win = new DraggableWindow(id, title, content, x, y, width, height);
@@ -4690,9 +4690,9 @@ Confirm order?`;
             });
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     CONFIGURATION MANAGEMENT SYSTEM
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         function getAllConfigurations() {
             const configs = localStorage.getItem('dashboardConfigurations');
@@ -4761,8 +4761,8 @@ Confirm order?`;
             closeSaveConfigDialog();
             updateSavedConfigsList();
 
-            console.log(`✓ Configuration "${name}" saved with ${layout.length} windows`);
-            alert(`✓ Configuration "${name}" saved successfully!`);
+            console.log(`âœ“ Configuration "${name}" saved with ${layout.length} windows`);
+            alert(`âœ“ Configuration "${name}" saved successfully!`);
         }
 
         function loadConfiguration(name) {
@@ -4818,7 +4818,7 @@ Confirm order?`;
             // Close dropdown
             document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
 
-            console.log(`✓ Configuration "${name}" loaded`);
+            console.log(`âœ“ Configuration "${name}" loaded`);
         }
 
         function deleteConfiguration(name) {
@@ -4832,8 +4832,8 @@ Confirm order?`;
             updateSavedConfigsList();
             updateManageConfigsList();
 
-            console.log(`✗ Configuration "${name}" deleted`);
-            alert(`✓ Configuration "${name}" deleted.`);
+            console.log(`âœ— Configuration "${name}" deleted`);
+            alert(`âœ“ Configuration "${name}" deleted.`);
         }
 
         function renameConfiguration(oldName) {
@@ -4858,8 +4858,8 @@ Confirm order?`;
             updateSavedConfigsList();
             updateManageConfigsList();
 
-            console.log(`✓ Configuration renamed: "${oldName}" → "${newName}"`);
-            alert(`✓ Configuration renamed to "${newName}".`);
+            console.log(`âœ“ Configuration renamed: "${oldName}" â†’ "${newName}"`);
+            alert(`âœ“ Configuration renamed to "${newName}".`);
         }
 
         function updateSavedConfigsList() {
@@ -4929,18 +4929,18 @@ Confirm order?`;
                         <div>
                             <div class="config-list-item-name">${name}</div>
                             <div class="config-list-item-date">
-                                ${date} • ${windowCount} windows • ${watchlistCount} symbols
+                                ${date} â€¢ ${windowCount} windows â€¢ ${watchlistCount} symbols
                             </div>
                         </div>
                         <div class="config-list-item-actions">
                             <button class="config-btn-small config-btn-load" onclick="loadConfiguration('${name.replace(/'/g, "\\'")}'); closeManageConfigsDialog();">
-                                📂 Load
+                                ðŸ“‚ Load
                             </button>
                             <button class="config-btn-small config-btn-rename" onclick="renameConfiguration('${name.replace(/'/g, "\\'")}')">
-                                ✏️ Rename
+                                âœï¸ Rename
                             </button>
                             <button class="config-btn-small config-btn-delete" onclick="deleteConfiguration('${name.replace(/'/g, "\\'")}')">
-                                🗑️ Delete
+                                ðŸ—‘ï¸ Delete
                             </button>
                         </div>
                     </div>
@@ -4959,9 +4959,9 @@ Confirm order?`;
             showSaveConfigDialog();
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     MULTI-CHART MANAGEMENT
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         function getTimeframeName(interval) {
             const names = {
@@ -5007,7 +5007,7 @@ Confirm order?`;
             // Close dropdown
             document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
 
-            console.log(`✓ Added chart ${chartCounter} with ${timeframeName} timeframe`);
+            console.log(`âœ“ Added chart ${chartCounter} with ${timeframeName} timeframe`);
         }
 
         function showAddChartDialog() {
@@ -5029,9 +5029,9 @@ Confirm order?`;
             closeAddChartDialog();
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     TRADINGVIEW DESKTOP INTEGRATION
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         async function openInTradingView(symbol) {
             try {
@@ -5041,7 +5041,7 @@ Confirm order?`;
                 const data = await response.json();
 
                 if (data.success) {
-                    console.log(`✓ Opened ${symbol} in TradingView Desktop`);
+                    console.log(`âœ“ Opened ${symbol} in TradingView Desktop`);
                     alert(`Opening ${symbol} in TradingView Desktop...`);
                 } else {
                     alert('Could not open TradingView Desktop. Make sure it is installed.');
@@ -5058,7 +5058,7 @@ Confirm order?`;
 
         function copySymbolToClipboard() {
             navigator.clipboard.writeText(currentSymbol).then(() => {
-                alert(`✓ ${currentSymbol} copied to clipboard!\n\nPaste it in TradingView Desktop.`);
+                alert(`âœ“ ${currentSymbol} copied to clipboard!\n\nPaste it in TradingView Desktop.`);
                 console.log(`Copied ${currentSymbol} to clipboard`);
             }).catch(err => {
                 console.error('Failed to copy:', err);
@@ -5081,7 +5081,7 @@ Confirm order?`;
         function copyWebhookUrl() {
             const url = document.getElementById('webhookUrl').value;
             navigator.clipboard.writeText(url).then(() => {
-                alert('✓ Webhook URL copied to clipboard!');
+                alert('âœ“ Webhook URL copied to clipboard!');
             });
         }
 
@@ -5139,7 +5139,7 @@ Confirm order?`;
                 await fetch(API_BASE_URL + '/api/tradingview/webhook-logs', {
                     method: 'DELETE'
                 });
-                alert('✓ Webhook logs cleared');
+                alert('âœ“ Webhook logs cleared');
                 await refreshWebhookLogs();
             } catch (error) {
                 console.error('Error clearing logs:', error);
@@ -5155,14 +5155,14 @@ Confirm order?`;
                 const data = await response.json();
 
                 if (data.success) {
-                    alert('✓ Test webhook received successfully!\n\nCheck "View Webhook Logs" to see the test alert.');
+                    alert('âœ“ Test webhook received successfully!\n\nCheck "View Webhook Logs" to see the test alert.');
                     console.log('Test webhook response:', data);
                 } else {
-                    alert('✗ Test webhook failed');
+                    alert('âœ— Test webhook failed');
                 }
             } catch (error) {
                 console.error('Error testing webhook:', error);
-                alert('✗ Error testing webhook: ' + error.message);
+                alert('âœ— Error testing webhook: ' + error.message);
             }
 
             // Close dropdown
@@ -5180,7 +5180,7 @@ Confirm order?`;
             a.click();
             URL.revokeObjectURL(url);
 
-            alert('✓ Watchlist exported!\n\nYou can import this in TradingView Desktop.');
+            alert('âœ“ Watchlist exported!\n\nYou can import this in TradingView Desktop.');
             console.log('Exported watchlist:', tvWatchlist);
 
             // Close dropdown
@@ -5311,7 +5311,7 @@ Confirm order?`;
                     loadDefaultLayout();
                 }
             } else {
-                alert('No custom layout saved.\n\nArrange windows and click "💾 Save as Custom" to create one.');
+                alert('No custom layout saved.\n\nArrange windows and click "ðŸ’¾ Save as Custom" to create one.');
                 loadDefaultLayout();
             }
         }
@@ -5323,9 +5323,9 @@ Confirm order?`;
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     INITIALIZATION
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         // TradingView Chart Management
         let chartWidgets = {};
@@ -5344,7 +5344,7 @@ Confirm order?`;
             if (typeof TradingView === 'undefined') {
                 console.error('TradingView library not loaded');
                 container.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center;">
-                    <div style="font-size: 16px; color: #ef4444; margin-bottom: 10px;">⚠️ TradingView Not Available</div>
+                    <div style="font-size: 16px; color: #ef4444; margin-bottom: 10px;">âš ï¸ TradingView Not Available</div>
                     <div style="font-size: 13px; color: #888;">
                         The TradingView charting library failed to load.<br>
                         <small>Check your internet connection or browser console for errors.</small>
@@ -5426,7 +5426,7 @@ Confirm order?`;
         }
 
         window.addEventListener('load', async () => {
-            console.log('%c🚀 IBKR Professional Trading Platform', 'color: #007acc; font-size: 18px; font-weight: bold;');
+            console.log('%cðŸš€ ALPACA Professional Trading Platform', 'color: #007acc; font-size: 18px; font-weight: bold;');
 
             // Start unified price refresh system
             startUnifiedRefresh();
@@ -5469,7 +5469,7 @@ Confirm order?`;
             }
 
             // Subscribe to all watchlist symbols
-            console.log('📊 Subscribing to market data...');
+            console.log('ðŸ“Š Subscribing to market data...');
             for (const symbol of watchlist) {
                 await subscribeToSymbol(symbol);
             }
@@ -5494,8 +5494,8 @@ Confirm order?`;
             // Initialize order form price field based on selected order type
             handleOrderTypeChange();
 
-            console.log('%c✓ Platform Ready', 'color: #22c55e; font-weight: bold;');
-            console.log('%c💡 Click symbols in watchlist • Click Level 2 prices to fill orders • Drag & resize windows', 'color: #888; font-size: 15px;');
+            console.log('%câœ“ Platform Ready', 'color: #22c55e; font-weight: bold;');
+            console.log('%cðŸ’¡ Click symbols in watchlist â€¢ Click Level 2 prices to fill orders â€¢ Drag & resize windows', 'color: #888; font-size: 15px;');
         });
 
         // Dropdown menu functionality
@@ -5526,9 +5526,9 @@ Confirm order?`;
             }
         });
 
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         //                     BOT TRADING CONTROL FUNCTIONS
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         let botStatusRefreshInterval = null;
 
@@ -5549,7 +5549,7 @@ Confirm order?`;
                     });
 
                     if (!initResponse.ok) {
-                        alert('❌ Failed to initialize bot. Check IBKR connection.');
+                        alert('âŒ Failed to initialize bot. Check ALPACA connection.');
                         return;
                     }
 
@@ -5559,14 +5559,14 @@ Confirm order?`;
                 }
 
                 if (response.ok) {
-                    alert('✅ Bot Started Successfully!\n\nNow click "✅ ENABLE TRADING" to activate trading.');
+                    alert('âœ… Bot Started Successfully!\n\nNow click "âœ… ENABLE TRADING" to activate trading.');
                     await updateBotStatus();
                 } else {
-                    alert('❌ Failed to start bot: ' + (data.detail || 'Unknown error'));
+                    alert('âŒ Failed to start bot: ' + (data.detail || 'Unknown error'));
                 }
             } catch (error) {
                 console.error('Error starting bot:', error);
-                alert('❌ Error starting bot: ' + error.message);
+                alert('âŒ Error starting bot: ' + error.message);
             }
         }
 
@@ -5575,14 +5575,14 @@ Confirm order?`;
                 const response = await fetch(`${API_BASE_URL}/api/bot/stop`, { method: 'POST' });
                 const data = await response.json();
                 if (response.ok) {
-                    alert('⏹️ Bot Stopped');
+                    alert('â¹ï¸ Bot Stopped');
                     await updateBotStatus();
                 } else {
-                    alert('❌ Failed to stop bot: ' + data.detail);
+                    alert('âŒ Failed to stop bot: ' + data.detail);
                 }
             } catch (error) {
                 console.error('Error stopping bot:', error);
-                alert('❌ Error stopping bot');
+                alert('âŒ Error stopping bot');
             }
         }
 
@@ -5591,14 +5591,14 @@ Confirm order?`;
                 const response = await fetch(`${API_BASE_URL}/api/bot/enable`, { method: 'POST' });
                 const data = await response.json();
                 if (response.ok) {
-                    alert('✅ Trading Enabled');
+                    alert('âœ… Trading Enabled');
                     await updateBotStatus();
                 } else {
-                    alert('❌ Failed to enable trading: ' + data.detail);
+                    alert('âŒ Failed to enable trading: ' + data.detail);
                 }
             } catch (error) {
                 console.error('Error enabling trading:', error);
-                alert('❌ Error enabling trading');
+                alert('âŒ Error enabling trading');
             }
         }
 
@@ -5607,14 +5607,14 @@ Confirm order?`;
                 const response = await fetch(`${API_BASE_URL}/api/bot/disable`, { method: 'POST' });
                 const data = await response.json();
                 if (response.ok) {
-                    alert('⏸️ Trading Paused');
+                    alert('â¸ï¸ Trading Paused');
                     await updateBotStatus();
                 } else {
-                    alert('❌ Failed to pause trading: ' + data.detail);
+                    alert('âŒ Failed to pause trading: ' + data.detail);
                 }
             } catch (error) {
                 console.error('Error pausing trading:', error);
-                alert('❌ Error pausing trading');
+                alert('âŒ Error pausing trading');
             }
         }
 
@@ -5734,7 +5734,7 @@ Confirm order?`;
                 const symbols = data.data.map(item => item.symbol);
 
                 if (symbols.length === 0) {
-                    alert('⚠️ Worklist is empty!\n\nAdd symbols from scanner first.');
+                    alert('âš ï¸ Worklist is empty!\n\nAdd symbols from scanner first.');
                     return;
                 }
 
@@ -5762,7 +5762,7 @@ Confirm order?`;
                 // Add title
                 dropdown.innerHTML = `
                     <div style="padding: 8px; background: #007acc; color: white; font-weight: 600; font-size: 12px; position: sticky; top: 0;">
-                        📋 Select from Worklist (${symbols.length} symbols)
+                        ðŸ“‹ Select from Worklist (${symbols.length} symbols)
                     </div>
                 `;
 
@@ -5801,7 +5801,7 @@ Confirm order?`;
 
             } catch (error) {
                 console.error('Error loading worklist symbol:', error);
-                alert('❌ Failed to load worklist');
+                alert('âŒ Failed to load worklist');
             }
         }
 
@@ -5815,18 +5815,18 @@ Confirm order?`;
                 const symbols = data.data.map(item => item.symbol);
 
                 if (symbols.length === 0) {
-                    alert('⚠️ Worklist is empty!\n\nAdd symbols from scanner first.');
+                    alert('âš ï¸ Worklist is empty!\n\nAdd symbols from scanner first.');
                     return;
                 }
 
                 const inputEl = document.getElementById(inputId);
                 if (inputEl) {
                     inputEl.value = symbols.join(',');
-                    alert(`✅ Loaded ${symbols.length} symbols from worklist!\n\n${symbols.slice(0, 10).join(', ')}${symbols.length > 10 ? '...' : ''}`);
+                    alert(`âœ… Loaded ${symbols.length} symbols from worklist!\n\n${symbols.slice(0, 10).join(', ')}${symbols.length > 10 ? '...' : ''}`);
                 }
             } catch (error) {
                 console.error('Error loading worklist symbols:', error);
-                alert('❌ Failed to load worklist');
+                alert('âŒ Failed to load worklist');
             }
         }
 
@@ -5845,7 +5845,7 @@ Confirm order?`;
                 console.log('Scanner data:', data);
 
                 if (!data.symbols || data.symbols.length === 0) {
-                    alert('⚠️ No symbols found in scanner. Run a scan first.');
+                    alert('âš ï¸ No symbols found in scanner. Run a scan first.');
                     return;
                 }
 
@@ -5862,7 +5862,7 @@ Confirm order?`;
                 const newSymbols = scannerSymbols.filter(s => !existingSymbols.has(s));
 
                 if (newSymbols.length === 0) {
-                    alert(`✅ All ${scannerSymbols.length} scanner symbols already in worklist!\n\nNo new symbols to add.`);
+                    alert(`âœ… All ${scannerSymbols.length} scanner symbols already in worklist!\n\nNo new symbols to add.`);
                     return;
                 }
 
@@ -5893,27 +5893,29 @@ Confirm order?`;
 
                 // Show results
                 const totalInWorklist = existingSymbols.size + addedCount;
-                let message = `✅ Worklist updated!\n\n`;
-                message += `• Added: ${addedCount} new symbols\n`;
-                message += `• Already had: ${existingSymbols.size} symbols\n`;
-                message += `• Total in worklist: ${totalInWorklist}\n\n`;
+                let message = `âœ… Worklist updated!\n\n`;
+                message += `â€¢ Added: ${addedCount} new symbols\n`;
+                message += `â€¢ Already had: ${existingSymbols.size} symbols\n`;
+                message += `â€¢ Total in worklist: ${totalInWorklist}\n\n`;
 
                 if (addedCount > 0) {
                     message += `New momentum stocks:\n${newSymbols.slice(0, 10).join(', ')}${newSymbols.length > 10 ? '...' : ''}`;
                 }
 
                 if (errors.length > 0) {
-                    message += `\n\n⚠️ Failed to add: ${errors.join(', ')}`;
+                    message += `\n\nâš ï¸ Failed to add: ${errors.join(', ')}`;
                 }
 
                 alert(message);
 
             } catch (error) {
                 console.error('Error syncing worklist:', error);
-                alert(`❌ Failed to sync: ${error.message}`);
+                alert(`âŒ Failed to sync: ${error.message}`);
             }
         }
 
     </script>
 </body>
 </html>
+
+
