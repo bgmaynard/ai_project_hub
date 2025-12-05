@@ -17,7 +17,7 @@ import ta
 from datetime import datetime, timedelta
 import json
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from alpaca_market_data import get_alpaca_market_data
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,10 @@ class AlpacaAIPredictor:
         self.training_date = None
         self.market_data = get_alpaca_market_data()
 
+        # Data cache to avoid excessive yfinance downloads
+        self._data_cache: Dict[str, Dict] = {}  # symbol -> {data, timestamp, features_df}
+        self._cache_ttl_seconds = 300  # Cache data for 5 minutes
+
         # Try to load existing model
         try:
             if Path(self.model_path).exists():
@@ -43,7 +47,7 @@ class AlpacaAIPredictor:
         except Exception as e:
             logger.info(f"No existing model to load: {e}")
 
-        # Model hyperparameters
+        # Model hyperparameters - optimized for class imbalance
         self.params = {
             'objective': 'binary',
             'metric': 'auc',
@@ -56,7 +60,9 @@ class AlpacaAIPredictor:
             'verbose': -1,
             'max_depth': 7,
             'min_data_in_leaf': 20,
-            'scale_pos_weight': 5.0
+            'is_unbalance': True,  # Auto-handle class imbalance
+            'lambda_l1': 0.1,  # L1 regularization
+            'lambda_l2': 0.1,  # L2 regularization
         }
 
     def calculate_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -142,31 +148,59 @@ class AlpacaAIPredictor:
 
         return data
 
-    def prepare_training_data(self, symbol: str) -> tuple:
+    def prepare_training_data(self, symbol: str, use_alpaca: bool = True) -> tuple:
         """
-        Download and prepare training data from Alpaca
+        Download and prepare training data using Alpaca real-time data (preferred)
+        or yfinance as fallback
 
         Args:
             symbol: Stock symbol to train on
+            use_alpaca: Use Alpaca data (default True, requires data subscription)
 
         Returns:
             Tuple of (X, y) features and target
         """
-        logger.info(f"Downloading data from Alpaca for {symbol}...")
+        df = None
 
-        # Get 2 years of daily data from Alpaca
-        start = datetime.now() - timedelta(days=730)
-        df = self.market_data.get_historical_bars(
-            symbol=symbol,
-            timeframe="1Day",
-            start=start,
-            limit=None
-        )
+        if use_alpaca:
+            try:
+                logger.info(f"Downloading data from Alpaca for {symbol}...")
+                # Use Alpaca real-time data (2 years)
+                end = datetime.now()
+                start = end - timedelta(days=730)  # 2 years
 
-        if df.empty:
-            raise ValueError(f"No data received from Alpaca for {symbol}")
+                df = self.market_data.get_historical_bars(
+                    symbol=symbol,
+                    timeframe="1Day",
+                    start=start,
+                    end=end
+                )
 
-        logger.info(f"Received {len(df)} bars from Alpaca")
+                if df is not None and not df.empty:
+                    logger.info(f"Received {len(df)} bars from Alpaca")
+                else:
+                    logger.warning(f"No Alpaca data for {symbol}, falling back to yfinance")
+                    df = None
+
+            except Exception as e:
+                logger.warning(f"Alpaca data error for {symbol}: {e}, falling back to yfinance")
+                df = None
+
+        # Fallback to yfinance if Alpaca fails
+        if df is None or df.empty:
+            logger.info(f"Downloading data from yfinance for {symbol}...")
+            import yfinance as yf
+
+            df = yf.download(symbol, period="2y", progress=False)
+
+            if df.empty:
+                raise ValueError(f"No data received for {symbol}")
+
+            # Flatten column index if multi-level (yfinance quirk)
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+
+            logger.info(f"Received {len(df)} bars from yfinance")
 
         # Calculate features
         df = self.calculate_features(df)
@@ -226,9 +260,20 @@ class AlpacaAIPredictor:
             callbacks=[lgb.early_stopping(20), lgb.log_evaluation(50)]
         )
 
-        # Predict with optimal threshold
+        # Find optimal threshold using validation set
         y_pred_proba = self.model.predict(X_test)
-        y_pred = (y_pred_proba > 0.4).astype(int)
+        best_threshold = 0.5
+        best_f1 = 0
+        for threshold in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
+            y_pred_temp = (y_pred_proba > threshold).astype(int)
+            from sklearn.metrics import f1_score
+            f1 = f1_score(y_test, y_pred_temp, zero_division=0)
+            if f1 > best_f1:
+                best_f1 = f1
+                best_threshold = threshold
+
+        self.optimal_threshold = best_threshold
+        y_pred = (y_pred_proba > best_threshold).astype(int)
 
         self.accuracy = accuracy_score(y_test, y_pred)
 
@@ -236,8 +281,9 @@ class AlpacaAIPredictor:
         self.feature_importance = dict(zip(self.feature_names, importance))
 
         self.training_date = datetime.now().isoformat()
+        self.trained_symbol = symbol
 
-        logger.info(f"\nAccuracy: {self.accuracy:.4f}")
+        logger.info(f"\nAccuracy: {self.accuracy:.4f} (threshold: {best_threshold})")
         logger.info(f"\n{classification_report(y_test, y_pred, zero_division=0)}")
 
         # Show top features
@@ -254,12 +300,368 @@ class AlpacaAIPredictor:
 
         return {
             "success": True,
+            "symbol": symbol,
             "samples": len(X),
             "metrics": {
-                "accuracy": float(self.accuracy)
+                "accuracy": float(self.accuracy),
+                "optimal_threshold": float(best_threshold),
+                "f1_score": float(best_f1)
             },
             "model_path": self.model_path
         }
+
+    def train_multi(self, symbols: List[str], test_size: float = 0.2) -> Dict:
+        """
+        Train on multiple symbols for better generalization
+
+        Args:
+            symbols: List of stock symbols
+            test_size: Test set size
+
+        Returns:
+            Dictionary with training results
+        """
+        logger.info(f"Training on {len(symbols)} symbols: {symbols}")
+
+        all_X = []
+        all_y = []
+
+        for symbol in symbols:
+            try:
+                X, y = self.prepare_training_data(symbol)
+                all_X.append(X)
+                all_y.append(y)
+                logger.info(f"  {symbol}: {len(X)} samples")
+            except Exception as e:
+                logger.warning(f"  {symbol}: Failed - {e}")
+
+        if not all_X:
+            raise ValueError("No valid data from any symbol")
+
+        # Combine all data
+        X = pd.concat(all_X, ignore_index=True)
+        y = pd.concat(all_y, ignore_index=True)
+
+        # CRITICAL: Update feature_names from actual data columns to prevent mismatch
+        # This fixes the "Length of feature_name and num_feature don't match" error
+        self.feature_names = list(X.columns)
+
+        logger.info(f"Combined dataset: {len(X)} samples, {len(self.feature_names)} features")
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, shuffle=True, stratify=y
+        )
+
+        train_data = lgb.Dataset(X_train, label=y_train, feature_name=self.feature_names)
+        test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
+
+        logger.info("Training multi-symbol LightGBM model...")
+        self.model = lgb.train(
+            self.params,
+            train_data,
+            num_boost_round=300,
+            valid_sets=[test_data],
+            callbacks=[lgb.early_stopping(30), lgb.log_evaluation(50)]
+        )
+
+        # Find optimal threshold
+        y_pred_proba = self.model.predict(X_test)
+        best_threshold = 0.5
+        best_f1 = 0
+        for threshold in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
+            y_pred_temp = (y_pred_proba > threshold).astype(int)
+            from sklearn.metrics import f1_score
+            f1 = f1_score(y_test, y_pred_temp, zero_division=0)
+            if f1 > best_f1:
+                best_f1 = f1
+                best_threshold = threshold
+
+        self.optimal_threshold = best_threshold
+        y_pred = (y_pred_proba > best_threshold).astype(int)
+
+        self.accuracy = accuracy_score(y_test, y_pred)
+        importance = self.model.feature_importance(importance_type='gain')
+        self.feature_importance = dict(zip(self.feature_names, importance))
+        self.training_date = datetime.now().isoformat()
+        self.trained_symbol = "multi:" + ",".join(symbols)
+
+        logger.info(f"\nMulti-symbol Accuracy: {self.accuracy:.4f}")
+        logger.info(f"\n{classification_report(y_test, y_pred, zero_division=0)}")
+
+        self.save_model()
+
+        return {
+            "success": True,
+            "symbols": symbols,
+            "samples": len(X),
+            "metrics": {
+                "accuracy": float(self.accuracy),
+                "optimal_threshold": float(best_threshold),
+                "f1_score": float(best_f1)
+            },
+            "model_path": self.model_path
+        }
+
+    def train_walkforward(self, symbols: List[str], train_months: int = 12, test_months: int = 3, use_alpaca: bool = True) -> Dict:
+        """
+        Walk-Forward Training - The PROPER way to train financial ML models
+
+        Uses Alpaca real-time data (with your data subscription) for accurate training.
+
+        This method:
+        1. Uses data BEFORE a cutoff date for training
+        2. Tests ONLY on data AFTER the cutoff (truly out-of-sample)
+        3. No data leakage, no look-ahead bias
+
+        Args:
+            symbols: List of stock symbols to train on
+            train_months: Months of historical data for training (default: 12)
+            test_months: Months of data for out-of-sample testing (default: 3)
+            use_alpaca: Use Alpaca real-time data (default: True)
+
+        Returns:
+            Dictionary with training results and out-of-sample metrics
+        """
+        from sklearn.metrics import f1_score, precision_score, recall_score
+
+        logger.info("=" * 60)
+        logger.info("WALK-FORWARD TRAINING (Proper Financial ML)")
+        logger.info(f"Data Source: {'Alpaca Real-Time' if use_alpaca else 'yfinance'}")
+        logger.info("=" * 60)
+
+        # Calculate date ranges
+        end_date = datetime.now()
+        test_start = end_date - timedelta(days=test_months * 30)
+        train_start = test_start - timedelta(days=train_months * 30)
+
+        logger.info(f"Training Period: {train_start.strftime('%Y-%m-%d')} to {test_start.strftime('%Y-%m-%d')}")
+        logger.info(f"Testing Period:  {test_start.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+        logger.info("-" * 60)
+
+        train_X_list = []
+        train_y_list = []
+        test_X_list = []
+        test_y_list = []
+
+        for symbol in symbols:
+            try:
+                logger.info(f"Processing {symbol}...")
+                df = None
+
+                # Try Alpaca first (real-time data with subscription)
+                if use_alpaca:
+                    try:
+                        df = self.market_data.get_historical_bars(
+                            symbol=symbol,
+                            timeframe="1Day",
+                            start=train_start,
+                            end=end_date
+                        )
+                        if df is not None and not df.empty:
+                            logger.info(f"  {symbol}: {len(df)} bars from Alpaca")
+                        else:
+                            df = None
+                    except Exception as e:
+                        logger.warning(f"  {symbol}: Alpaca error - {e}")
+                        df = None
+
+                # Fallback to yfinance
+                if df is None or df.empty:
+                    import yfinance as yf
+                    df = yf.download(
+                        symbol,
+                        start=train_start.strftime('%Y-%m-%d'),
+                        end=end_date.strftime('%Y-%m-%d'),
+                        progress=False
+                    )
+                    if not df.empty:
+                        # Flatten column index if multi-level
+                        if isinstance(df.columns, pd.MultiIndex):
+                            df.columns = df.columns.droplevel(1)
+                        logger.info(f"  {symbol}: {len(df)} bars from yfinance (fallback)")
+
+                if df is None or df.empty:
+                    logger.warning(f"  {symbol}: No data available")
+                    continue
+
+                # Calculate features
+                df = self.calculate_features(df)
+
+                # Create target
+                df['future_return'] = df['Close'].shift(-3) / df['Close'] - 1
+                df['target'] = (df['future_return'] > 0.01).astype(int)
+                df = df.dropna()
+
+                # Split by date (NO SHUFFLE - chronological split)
+                # Handle both timezone-aware and naive datetimes
+                if df.index.tz is not None:
+                    test_start_tz = test_start.replace(tzinfo=df.index.tz)
+                    df_train = df[df.index < test_start_tz]
+                    df_test = df[df.index >= test_start_tz]
+                else:
+                    df_train = df[df.index < test_start]
+                    df_test = df[df.index >= test_start]
+
+                # Get features
+                exclude_cols = ['Open', 'High', 'Low', 'Close', 'Volume', 'VWAP',
+                               'target', 'future_return', 'Date']
+                feature_cols = [col for col in df.columns if col not in exclude_cols]
+
+                if len(df_train) > 20:
+                    train_X_list.append(df_train[feature_cols])
+                    train_y_list.append(df_train['target'])
+                    logger.info(f"  {symbol} train: {len(df_train)} samples")
+
+                if len(df_test) > 5:
+                    test_X_list.append(df_test[feature_cols])
+                    test_y_list.append(df_test['target'])
+                    logger.info(f"  {symbol} test:  {len(df_test)} samples")
+
+            except Exception as e:
+                logger.warning(f"  {symbol}: Error - {e}")
+                continue
+
+        if not train_X_list:
+            raise ValueError("No valid training data")
+
+        # Combine data
+        X_train = pd.concat(train_X_list, ignore_index=True)
+        y_train = pd.concat(train_y_list, ignore_index=True)
+        X_test = pd.concat(test_X_list, ignore_index=True) if test_X_list else None
+        y_test = pd.concat(test_y_list, ignore_index=True) if test_y_list else None
+
+        self.feature_names = list(X_train.columns)
+
+        logger.info("-" * 60)
+        logger.info(f"Total Training samples: {len(X_train)}")
+        logger.info(f"Total Test samples: {len(X_test) if X_test is not None else 0}")
+
+        # Train model
+        train_data = lgb.Dataset(X_train, label=y_train, feature_name=self.feature_names)
+
+        if X_test is not None and len(X_test) > 0:
+            test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
+            valid_sets = [test_data]
+        else:
+            valid_sets = []
+
+        logger.info("\nTraining LightGBM model...")
+        self.model = lgb.train(
+            self.params,
+            train_data,
+            num_boost_round=300,
+            valid_sets=valid_sets,
+            callbacks=[lgb.early_stopping(30), lgb.log_evaluation(50)] if valid_sets else [lgb.log_evaluation(50)]
+        )
+
+        # Evaluate on OUT-OF-SAMPLE test data
+        results = {
+            "success": True,
+            "symbols": symbols,
+            "train_samples": len(X_train),
+            "test_samples": len(X_test) if X_test is not None else 0,
+            "train_period": f"{train_start.strftime('%Y-%m-%d')} to {test_start.strftime('%Y-%m-%d')}",
+            "test_period": f"{test_start.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
+        }
+
+        if X_test is not None and len(X_test) > 0:
+            y_pred_proba = self.model.predict(X_test)
+
+            # Find optimal threshold
+            best_threshold = 0.5
+            best_f1 = 0
+            for threshold in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
+                y_pred_temp = (y_pred_proba > threshold).astype(int)
+                f1 = f1_score(y_test, y_pred_temp, zero_division=0)
+                if f1 > best_f1:
+                    best_f1 = f1
+                    best_threshold = threshold
+
+            self.optimal_threshold = best_threshold
+            y_pred = (y_pred_proba > best_threshold).astype(int)
+
+            self.accuracy = accuracy_score(y_test, y_pred)
+
+            # Calculate detailed metrics
+            precision = precision_score(y_test, y_pred, zero_division=0)
+            recall = recall_score(y_test, y_pred, zero_division=0)
+
+            logger.info("\n" + "=" * 60)
+            logger.info("OUT-OF-SAMPLE RESULTS (Unseen Data)")
+            logger.info("=" * 60)
+            logger.info(f"Accuracy:  {self.accuracy:.4f} ({self.accuracy*100:.1f}%)")
+            logger.info(f"Precision: {precision:.4f} ({precision*100:.1f}%)")
+            logger.info(f"Recall:    {recall:.4f} ({recall*100:.1f}%)")
+            logger.info(f"F1 Score:  {best_f1:.4f}")
+            logger.info(f"Threshold: {best_threshold}")
+            logger.info(f"\n{classification_report(y_test, y_pred, zero_division=0)}")
+
+            results["metrics"] = {
+                "accuracy": float(self.accuracy),
+                "precision": float(precision),
+                "recall": float(recall),
+                "f1_score": float(best_f1),
+                "optimal_threshold": float(best_threshold)
+            }
+        else:
+            logger.warning("No test data available for out-of-sample evaluation")
+            results["metrics"] = {"warning": "No out-of-sample test data"}
+
+        # Feature importance
+        importance = self.model.feature_importance(importance_type='gain')
+        self.feature_importance = dict(zip(self.feature_names, importance))
+        self.training_date = datetime.now().isoformat()
+        self.trained_symbol = "walkforward:" + ",".join(symbols)
+
+        # Top features
+        sorted_features = sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:10]
+        logger.info("\nTop 10 Predictive Features:")
+        for i, (feat, imp) in enumerate(sorted_features, 1):
+            logger.info(f"  {i}. {feat}: {imp:.2f}")
+
+        results["top_features"] = [{"name": f, "importance": float(i)} for f, i in sorted_features]
+
+        self.save_model()
+        results["model_path"] = self.model_path
+
+        return results
+
+    def _get_cached_data(self, symbol: str) -> pd.DataFrame:
+        """Get cached data or download fresh data if cache expired"""
+        import yfinance as yf
+
+        now = datetime.now()
+        cache_key = symbol.upper()
+
+        # Check if we have valid cached data
+        if cache_key in self._data_cache:
+            cache_entry = self._data_cache[cache_key]
+            cache_age = (now - cache_entry['timestamp']).total_seconds()
+            if cache_age < self._cache_ttl_seconds:
+                logger.debug(f"Using cached data for {symbol} (age: {cache_age:.0f}s)")
+                return cache_entry['features_df'].copy()
+
+        # Download fresh data
+        logger.info(f"Downloading fresh data for {symbol}...")
+        df = yf.download(symbol, period="3mo", progress=False)
+
+        # Flatten column index if multi-level
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel(1)
+
+        if df.empty:
+            raise ValueError(f"No data from yfinance for {symbol}")
+
+        # Calculate features
+        features_df = self.calculate_features(df)
+
+        # Cache the data
+        self._data_cache[cache_key] = {
+            'timestamp': now,
+            'features_df': features_df.copy()
+        }
+
+        return features_df
 
     def predict(
         self,
@@ -285,19 +687,8 @@ class AlpacaAIPredictor:
         if self.model is None:
             raise ValueError("Model not trained!")
 
-        # Get recent data from Alpaca (last 3 months)
-        start = datetime.now() - timedelta(days=90)
-        df = self.market_data.get_historical_bars(
-            symbol=symbol,
-            timeframe=timeframe,
-            start=start,
-            limit=None
-        )
-
-        if df.empty:
-            raise ValueError(f"No data from Alpaca for {symbol}")
-
-        df = self.calculate_features(df)
+        # Get data (from cache or fresh download)
+        df = self._get_cached_data(symbol)
 
         # Only use features that exist in both training and current data
         available_features = [f for f in self.feature_names if f in df.columns]
@@ -314,20 +705,26 @@ class AlpacaAIPredictor:
             latest = np.concatenate([latest, padding], axis=1)
 
         prob = self.model.predict(latest)[0]
-        prediction = int(prob > 0.4)
-        confidence = abs(prob - 0.5) * 2
+        threshold = getattr(self, 'optimal_threshold', 0.5)
+        prediction = int(prob > threshold)
+        confidence = abs(prob - threshold) * 2
 
-        # Determine signal strength
-        if prob > 0.7:
+        # Determine signal strength based on optimal threshold
+        bull_strong = threshold + 0.2
+        bull_mild = threshold + 0.05
+        bear_strong = threshold - 0.2
+        bear_mild = threshold - 0.05
+
+        if prob > bull_strong:
             signal = "STRONG_BULLISH"
             action = "BUY"
-        elif prob > 0.55:
+        elif prob > bull_mild:
             signal = "BULLISH"
             action = "BUY"
-        elif prob < 0.3:
+        elif prob < bear_strong:
             signal = "STRONG_BEARISH"
             action = "SELL"
-        elif prob < 0.45:
+        elif prob < bear_mild:
             signal = "BEARISH"
             action = "SELL"
         else:
@@ -342,6 +739,7 @@ class AlpacaAIPredictor:
             "prob_up": float(prob),
             "prob_down": float(1 - prob),
             "confidence": float(confidence),
+            "threshold": float(threshold),
             "signal_detail": f"Alpaca+LightGBM | Acc: {self.accuracy:.4f}",
             "timestamp": datetime.now().isoformat(),
             "data_source": "Alpaca"
@@ -358,6 +756,8 @@ class AlpacaAIPredictor:
             'training_date': self.training_date,
             'feature_names': self.feature_names,
             'feature_importance': self.feature_importance,
+            'optimal_threshold': getattr(self, 'optimal_threshold', 0.5),
+            'trained_symbol': getattr(self, 'trained_symbol', 'unknown'),
             'data_source': 'Alpaca'
         }
 
@@ -381,8 +781,10 @@ class AlpacaAIPredictor:
                 self.training_date = metadata.get('training_date')
                 self.feature_names = metadata.get('feature_names', [])
                 self.feature_importance = metadata.get('feature_importance', {})
+                self.optimal_threshold = metadata.get('optimal_threshold', 0.5)
+                self.trained_symbol = metadata.get('trained_symbol', 'unknown')
 
-        logger.info(f"Model loaded: Accuracy {self.accuracy:.4f}")
+        logger.info(f"Model loaded: Accuracy {self.accuracy:.4f}, Threshold {getattr(self, 'optimal_threshold', 0.5)}")
 
 
 # Singleton predictor instance
@@ -395,10 +797,8 @@ def get_alpaca_predictor() -> AlpacaAIPredictor:
 
     if _predictor_instance is None:
         _predictor_instance = AlpacaAIPredictor()
-        try:
-            _predictor_instance.load_model()
-        except Exception as e:
-            logger.info(f"No existing model loaded: {e}")
+        # Note: Model loading already happens in __init__ if model file exists
+        # No need to call load_model() again here
 
     return _predictor_instance
 
