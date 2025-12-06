@@ -106,6 +106,14 @@ class BotConfig:
     lock_in_profit_at: float = 2.0       # Lock in profit once gain reaches this %
     lock_in_trail_percent: float = 1.5   # Tighter trailing stop after locking profit
 
+    # END-OF-DAY LIQUIDATION (Small Cap Momentum Strategy)
+    # Close all positions before market close to avoid overnight gap risk
+    eod_liquidation_enabled: bool = True  # Enable end-of-day position closing
+    eod_liquidation_time: str = "15:45"   # Time to start liquidation (ET) - 15 min before close
+    no_new_entries_after: str = "15:30"   # Stop opening new positions after this time (ET)
+    friday_early_close: bool = True       # Close even earlier on Fridays (avoid weekend risk)
+    friday_liquidation_time: str = "15:30" # Friday liquidation time (ET)
+
     # ORDER RATE LIMITING
     min_order_interval_seconds: int = 5  # Minimum seconds between orders for same symbol
     max_orders_per_symbol: int = 2       # Maximum pending orders per symbol
@@ -790,11 +798,26 @@ class BotManager:
                 logger.debug(f"Order rate limited for {symbol}: {elapsed:.1f}s < {self.config.min_order_interval_seconds}s")
                 return False
 
-        # Check pending orders count
-        pending = self.pending_orders_count.get(symbol, 0)
-        if pending >= self.config.max_orders_per_symbol:
-            logger.debug(f"Max pending orders for {symbol}: {pending} >= {self.config.max_orders_per_symbol}")
-            return False
+        # CRITICAL: Check ACTUAL open orders from Alpaca, not stale counter
+        # The pending_orders_count was never being decremented, causing orders to get stuck
+        try:
+            open_orders = self.connector.get_orders(status="open", limit=50)
+            actual_pending = sum(1 for o in open_orders if o.get("symbol") == symbol)
+
+            # Sync our counter with reality
+            if actual_pending != self.pending_orders_count.get(symbol, 0):
+                logger.debug(f"Syncing pending orders for {symbol}: counter={self.pending_orders_count.get(symbol, 0)} actual={actual_pending}")
+                self.pending_orders_count[symbol] = actual_pending
+
+            if actual_pending >= self.config.max_orders_per_symbol:
+                logger.debug(f"Max pending orders for {symbol}: {actual_pending} >= {self.config.max_orders_per_symbol}")
+                return False
+        except Exception as e:
+            logger.warning(f"Could not check open orders for {symbol}: {e}")
+            # Fall back to counter if API fails
+            pending = self.pending_orders_count.get(symbol, 0)
+            if pending >= self.config.max_orders_per_symbol:
+                return False
 
         return True
 
@@ -806,6 +829,105 @@ class BotManager:
     def _record_order_filled(self, symbol: str):
         """Record that an order was filled"""
         self.pending_orders_count[symbol] = max(0, self.pending_orders_count.get(symbol, 0) - 1)
+
+    # ========================================================================
+    # END-OF-DAY LIQUIDATION (Small Cap Momentum - No Overnight Risk)
+    # ========================================================================
+
+    def _get_current_et_time(self):
+        """Get current time in Eastern timezone"""
+        import pytz
+        et_tz = pytz.timezone('US/Eastern')
+        return datetime.now(et_tz)
+
+    def _is_eod_liquidation_time(self) -> bool:
+        """
+        Check if it's time to liquidate all positions.
+        Returns True if we should close everything.
+        """
+        if not self.config.eod_liquidation_enabled:
+            return False
+
+        now_et = self._get_current_et_time()
+        current_time = now_et.strftime("%H:%M")
+        day_of_week = now_et.weekday()  # Monday=0, Friday=4
+
+        # Friday: use earlier liquidation time
+        if day_of_week == 4 and self.config.friday_early_close:
+            liquidation_time = self.config.friday_liquidation_time
+        else:
+            liquidation_time = self.config.eod_liquidation_time
+
+        return current_time >= liquidation_time
+
+    def _should_block_new_entries(self) -> bool:
+        """
+        Check if we should stop opening new positions.
+        Returns True if too late in the day for new entries.
+        """
+        if not self.config.eod_liquidation_enabled:
+            return False
+
+        now_et = self._get_current_et_time()
+        current_time = now_et.strftime("%H:%M")
+
+        return current_time >= self.config.no_new_entries_after
+
+    async def _liquidate_all_positions(self, connector, reason: str = "eod_liquidation") -> List[Dict]:
+        """
+        Liquidate all positions for end-of-day.
+        Uses EMERGENCY sell (market order during regular hours) for fast execution.
+        """
+        results = []
+        positions = connector.get_positions()
+
+        if not positions:
+            logger.info(f"📤 EOD Liquidation: No positions to close")
+            return results
+
+        logger.warning(f"🌙 EOD LIQUIDATION TRIGGERED: Closing {len(positions)} positions - {reason}")
+
+        for position in positions:
+            symbol = position.get("symbol")
+            quantity = int(abs(float(position.get("qty") or position.get("quantity", 0))))
+
+            if quantity <= 0:
+                continue
+
+            try:
+                # Use EMERGENCY=True for fastest execution (market order during regular hours)
+                order = connector.place_smart_order(
+                    symbol=symbol,
+                    quantity=quantity,
+                    side="SELL",
+                    emergency=True  # Fast execution - use market order if possible
+                )
+
+                if order and order.get("order_id"):
+                    result = {
+                        "symbol": symbol,
+                        "quantity": quantity,
+                        "order_id": order.get("order_id"),
+                        "status": "submitted",
+                        "reason": reason,
+                        "order_type": order.get("order_type", "unknown")
+                    }
+                    results.append(result)
+                    logger.info(f"🌙 EOD SELL: {symbol} x{quantity} - {order.get('order_type', 'unknown')} order")
+
+                    # Cleanup tracking
+                    self._cleanup_position_tracking(symbol)
+
+            except Exception as e:
+                logger.error(f"EOD Liquidation failed for {symbol}: {e}")
+                results.append({
+                    "symbol": symbol,
+                    "quantity": quantity,
+                    "status": "error",
+                    "error": str(e)
+                })
+
+        return results
 
     def _update_position_tracking(self, symbol: str, current_price: float, entry_price: float):
         """Update position tracking for trailing stops"""
@@ -1017,21 +1139,45 @@ class BotManager:
         """
         exit_signals = []
 
+        # USE CENTRALIZED DATA BUS FOR ALL MARKET DATA (ORDER INTEGRITY!)
+        from market_data_bus import get_market_data_bus
+        data_bus = get_market_data_bus()
+
         for symbol, position in self.current_positions.items():
             try:
-                # Get current price
-                quote = market_data.get_latest_quote(symbol)
+                # Get current price from centralized data bus
+                quote = data_bus.get_quote(symbol, require_bid_ask=True)
+
                 if not quote:
+                    logger.warning(f"No valid quote from data bus for {symbol} - skipping exit check")
                     continue
 
-                current_price = quote.get("last") or quote.get("bid") or quote.get("ask", 0)
-                if not current_price:
+                # Use bid price for exits (what buyers are offering)
+                current_price = quote.get("bid") or quote.get("ask", 0)
+                if not current_price or current_price <= 0:
                     continue
 
-                entry_price = float(position.get("avg_entry_price", current_price))
+                # Get entry price from position data - use avg_price (Alpaca field name)
+                entry_price = float(position.get("avg_price") or position.get("avg_entry_price") or current_price)
 
-                # Update tracking
+                # Update tracking (this will initialize if needed)
                 self._update_position_tracking(symbol, current_price, entry_price)
+
+                # EMERGENCY CHECK: If already down more than initial_stop_percent, EXIT IMMEDIATELY!
+                loss_pct = ((current_price - entry_price) / entry_price) * 100
+                if loss_pct <= -self.config.initial_stop_percent:
+                    logger.error(f"🚨 EMERGENCY STOP for {symbol}: Loss of {loss_pct:.1f}% exceeds -{self.config.initial_stop_percent}%!")
+                    exit_signals.append({
+                        "symbol": symbol,
+                        "action": "SELL",
+                        "reason": "emergency_stop",
+                        "details": f"Loss of {loss_pct:.1f}% exceeds initial stop of -{self.config.initial_stop_percent}%",
+                        "urgency": "HIGH",
+                        "current_price": current_price,
+                        "entry_price": entry_price,
+                        "quantity": int(position.get("qty") or position.get("quantity", 0))
+                    })
+                    continue
 
                 # Check trailing stop
                 stop_check = self._check_trailing_stop(symbol, current_price)
@@ -1046,7 +1192,7 @@ class BotManager:
                         "urgency": stop_check.get("urgency", "MEDIUM"),
                         "current_price": current_price,
                         "entry_price": entry_price,
-                        "quantity": int(position.get("qty", 0))
+                        "quantity": int(position.get("qty") or position.get("quantity", 0))
                     })
                     continue
 
@@ -1331,6 +1477,21 @@ class BotManager:
                 self.current_positions = {p["symbol"]: p for p in positions}
 
                 # ============================================================
+                # END-OF-DAY LIQUIDATION CHECK (Small Cap Momentum Strategy)
+                # Close all positions before market close to avoid overnight gap risk
+                # ============================================================
+                if self._is_eod_liquidation_time() and positions:
+                    logger.warning("🌙 EOD LIQUIDATION TIME - Closing all positions to avoid overnight risk")
+                    liquidation_results = await self._liquidate_all_positions(connector, reason="eod_close")
+                    if liquidation_results:
+                        logger.info(f"EOD Liquidation: {len(liquidation_results)} positions closed")
+                        for result in liquidation_results:
+                            logger.info(f"  - {result['symbol']}: {result['status']}")
+                    # After liquidation, continue loop to let orders fill
+                    await asyncio.sleep(self.config.cycle_interval_seconds)
+                    continue
+
+                # ============================================================
                 # CHECK POSITIONS FOR TRAILING STOP / REVERSAL EXITS (PRIORITY)
                 # ============================================================
                 if self.config.trailing_stop_enabled and positions:
@@ -1346,23 +1507,19 @@ class BotManager:
                             continue
 
                         try:
-                            # Execute exit with MARKET order for urgency
-                            if exit_sig["urgency"] == "HIGH":
-                                order = connector.place_market_order(
-                                    symbol=symbol,
-                                    quantity=exit_sig["quantity"],
-                                    side="sell"
-                                )
-                            else:
-                                # Use limit for less urgent exits
-                                quote = market_data.get_latest_quote(symbol)
-                                limit_price = round(quote.get("bid", exit_sig["current_price"]) * 0.998, 2)
-                                order = connector.place_limit_order(
-                                    symbol=symbol,
-                                    quantity=exit_sig["quantity"],
-                                    side="sell",
-                                    limit_price=limit_price
-                                )
+                            # ============================================================
+                            # USE SMART ORDER WITH EMERGENCY FLAG FOR STOP LOSS EXITS
+                            # - HIGH urgency (emergency stop): emergency=True (use BID, market during regular hours)
+                            # - Normal urgency (take profit, trailing stop): emergency=False (use ASK for better exit)
+                            # - All orders are LIMIT with extended_hours=True (never get stuck)
+                            # ============================================================
+                            is_emergency = exit_sig["urgency"] == "HIGH"
+                            order = connector.place_smart_order(
+                                symbol=symbol,
+                                quantity=exit_sig["quantity"],
+                                side="SELL",
+                                emergency=is_emergency
+                            )
 
                             if order and order.get("order_id"):
                                 self._record_order_placed(symbol)
@@ -1468,6 +1625,17 @@ class BotManager:
                         logger.warning(f"Prediction failed for {symbol}: {e}")
 
                 # ============================================================
+                # BLOCK NEW ENTRIES NEAR MARKET CLOSE (Small Cap Momentum)
+                # Stop opening new positions late in day to avoid overnight risk
+                # ============================================================
+                if self._should_block_new_entries():
+                    now_et = self._get_current_et_time()
+                    logger.info(f"⏰ Blocking new entries after {self.config.no_new_entries_after} ET (current: {now_et.strftime('%H:%M')})")
+                    # Still process exit signals (trailing stops, take profit) but skip new entries
+                    await asyncio.sleep(self.config.cycle_interval_seconds)
+                    continue
+
+                # ============================================================
                 # COMBINE AI SIGNALS + NEWS TRIGGERS (News gets priority)
                 # ============================================================
                 all_signals = news_signals + signals
@@ -1496,26 +1664,41 @@ class BotManager:
                         await asyncio.sleep(self.config.cycle_interval_seconds)
                         continue
 
-                    # Start execution tracking
-                    market_data = get_alpaca_market_data()
-                    quote = market_data.get_latest_quote(best["symbol"])
-                    market_price = quote.get("last", 0) if quote else 0
+                    # ============================================================
+                    # USE SMART ORDER - MOMENTUM STRATEGY
+                    # - ALL orders are LIMIT with extended_hours=True
+                    # - BUY: Uses ASK price (hit the ask, ride momentum)
+                    # - SELL: Uses ASK price (better exit while momentum carries)
+                    # - Pricing handled inside place_smart_order from Schwab data bus
+                    # ============================================================
+                    from market_data_bus import get_market_data_bus
+                    data_bus = get_market_data_bus()
 
-                    # Place LIMIT order for better fills (avoid slippage)
-                    # Use bid for sells, ask for buys to get filled quickly
-                    if best["action"].upper() == "BUY":
-                        # For buys: use ask price (or slightly above for faster fill)
-                        limit_price = round(quote.get("ask", market_price) * 1.001, 2)  # 0.1% above ask
-                    else:
-                        # For sells: use bid price (or slightly below for faster fill)
-                        limit_price = round(quote.get("bid", market_price) * 0.999, 2)  # 0.1% below bid
+                    # Get quote for logging/tracking (order uses quote internally)
+                    quote = data_bus.get_quote(best["symbol"])
+                    if not quote:
+                        logger.error(f"No valid quote from data bus for {best['symbol']} - SKIPPING ORDER")
+                        await asyncio.sleep(self.config.cycle_interval_seconds)
+                        continue
 
-                    order = connector.place_limit_order(
+                    market_price = quote.get("ask") if best["action"].upper() == "BUY" else quote.get("bid")
+                    if not market_price or market_price < 0.50:
+                        logger.error(f"Invalid price ${market_price} for {best['symbol']} - SKIPPING ORDER")
+                        await asyncio.sleep(self.config.cycle_interval_seconds)
+                        continue
+
+                    logger.info(f"Entry order for {best['symbol']}: bid=${quote.get('bid', 0):.2f} ask=${quote.get('ask', 0):.2f} (source: {quote.get('source', 'schwab')})")
+
+                    # Place smart order - handles pricing strategy internally
+                    order = connector.place_smart_order(
                         symbol=best["symbol"],
                         quantity=self.config.position_size,
-                        side=best["action"].lower(),
-                        limit_price=limit_price
+                        side=best["action"].upper(),
+                        emergency=False  # Normal entry, not emergency
                     )
+
+                    # Get limit price from order response for tracking
+                    limit_price = order.get("limit_price", market_price)
 
                     if order and order.get("order_id"):
                         order_id = order["order_id"]
