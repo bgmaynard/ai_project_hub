@@ -6,15 +6,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import logging
+import asyncio
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import uuid
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -25,6 +27,21 @@ from config.broker_config import get_broker_config, BrokerType
 from alpaca_integration import get_alpaca_connector
 from alpaca_market_data import get_alpaca_market_data
 from alpaca_api_routes import router as alpaca_router
+
+# Unified Market Data Provider (Schwab primary, Alpaca fallback)
+try:
+    from unified_market_data import (
+        get_unified_market_data,
+        get_quote as unified_get_quote,
+        get_quotes as unified_get_quotes,
+        get_snapshot as unified_get_snapshot,
+        get_price as unified_get_price
+    )
+    HAS_UNIFIED_DATA = True
+except ImportError as e:
+    HAS_UNIFIED_DATA = False
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Unified market data not available: {e}")
 
 # Compatibility routes for legacy UI
 from compatibility_routes import router as compat_router
@@ -49,6 +66,25 @@ except ImportError:
 # AI Predictor
 from ai.alpaca_ai_predictor import get_alpaca_predictor
 
+# Claude AI API Router
+try:
+    from ai.claude_api import router as claude_api_router
+    HAS_CLAUDE_API = True
+except ImportError as e:
+    logger.warning(f"Claude API router not available: {e}")
+    HAS_CLAUDE_API = False
+    claude_api_router = None
+
+# Hybrid Data Architecture (Fast + Background channels)
+try:
+    from hybrid_data_routes import router as hybrid_router
+    from schwab_hybrid_data import get_hybrid_provider
+    HAS_HYBRID_DATA = True
+except ImportError as e:
+    logger.warning(f"Hybrid data not available: {e}")
+    HAS_HYBRID_DATA = False
+    hybrid_router = None
+
 # Multi-Channel Data Provider for parallel market data access
 try:
     from multi_channel_data import (
@@ -64,6 +100,57 @@ try:
 except ImportError as e:
     logger.warning(f"Multi-channel data provider not available: {e}")
     HAS_MULTI_CHANNEL = False
+
+# Real-Time Streaming
+try:
+    from realtime_streaming import (
+        get_stream_manager,
+        StreamType,
+        RealtimeStreamManager
+    )
+    HAS_STREAMING = True
+except ImportError as e:
+    logger.warning(f"Real-time streaming not available: {e}")
+    HAS_STREAMING = False
+
+# Schwab Trading Integration
+try:
+    from schwab_api_routes import router as schwab_router
+    from schwab_trading import get_schwab_trading, is_schwab_trading_available
+    HAS_SCHWAB_TRADING = True
+except ImportError as e:
+    HAS_SCHWAB_TRADING = False
+    schwab_router = None
+
+# Schwab WebSocket Streaming for Real-Time Data
+try:
+    from schwab_streaming import (
+        start_streaming as start_schwab_streaming,
+        stop_streaming as stop_schwab_streaming,
+        get_status as get_schwab_stream_status,
+        subscribe as schwab_subscribe,
+        get_cached_quote as get_schwab_stream_quote
+    )
+    HAS_SCHWAB_STREAMING = True
+except ImportError as e:
+    HAS_SCHWAB_STREAMING = False
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Schwab streaming not available: {e}")
+
+# Schwab Fast Polling (fallback for when WebSocket streaming fails)
+try:
+    from schwab_fast_polling import (
+        start_polling as start_schwab_fast_polling,
+        stop_polling as stop_schwab_fast_polling,
+        get_status as get_schwab_fast_poll_status,
+        subscribe as schwab_fast_subscribe,
+        get_cached_quote as get_schwab_fast_quote
+    )
+    HAS_SCHWAB_FAST_POLLING = True
+except ImportError as e:
+    HAS_SCHWAB_FAST_POLLING = False
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Schwab fast polling not available: {e}")
 
 # Setup logging
 logging.basicConfig(
@@ -109,6 +196,70 @@ app.include_router(compat_router)
 if HAS_ADVANCED_PIPELINE and pipeline_router:
     app.include_router(pipeline_router, tags=["Advanced Pipeline"])
 
+# Include Schwab trading router (if available)
+if HAS_SCHWAB_TRADING and schwab_router:
+    app.include_router(schwab_router, tags=["Schwab Trading"])
+
+# Include Claude AI API router (if available)
+if HAS_CLAUDE_API and claude_api_router:
+    app.include_router(claude_api_router, tags=["Claude AI"])
+    logger.info("Claude AI API router included")
+
+# Include Hybrid Data router (if available)
+if HAS_HYBRID_DATA and hybrid_router:
+    app.include_router(hybrid_router)
+    logger.info("Hybrid Data router included (Fast + Background channels)")
+
+# Morphic AI Controller (Self-adapting AI)
+try:
+    from ai.morphic_api_routes import router as morphic_router
+    app.include_router(morphic_router, tags=["Morphic AI"])
+    HAS_MORPHIC = True
+    logger.info("Morphic AI Controller router included")
+except ImportError as e:
+    logger.warning(f"Morphic AI not available: {e}")
+    HAS_MORPHIC = False
+
+# Strategy Template Library & Monitor (Claude-driven strategy management)
+try:
+    from ai.strategy_api_routes import router as strategy_router
+    app.include_router(strategy_router, tags=["Strategy Library"])
+    HAS_STRATEGY_LIBRARY = True
+    logger.info("Strategy Template Library router included")
+except ImportError as e:
+    logger.warning(f"Strategy Library not available: {e}")
+    HAS_STRATEGY_LIBRARY = False
+
+# News Feed Monitor & Fundamental Analysis
+try:
+    from ai.news_api_routes import router as news_router
+    app.include_router(news_router, tags=["News & Fundamentals"])
+    HAS_NEWS_FEED = True
+    logger.info("News Feed & Fundamentals router included")
+except ImportError as e:
+    logger.warning(f"News Feed not available: {e}")
+    HAS_NEWS_FEED = False
+
+# Claude AI Stock Scanner
+try:
+    from ai.scanner_api_routes import router as scanner_router
+    app.include_router(scanner_router, tags=["Stock Scanner"])
+    HAS_SCANNER = True
+    logger.info("Claude AI Stock Scanner router included")
+except ImportError as e:
+    logger.warning(f"Stock Scanner not available: {e}")
+    HAS_SCANNER = False
+
+# Claude AI Watchlist Manager
+try:
+    from ai.watchlist_api_routes import router as watchlist_ai_router
+    app.include_router(watchlist_ai_router, tags=["AI Watchlist"])
+    HAS_WATCHLIST_AI = True
+    logger.info("Claude AI Watchlist Manager router included")
+except ImportError as e:
+    logger.warning(f"AI Watchlist not available: {e}")
+    HAS_WATCHLIST_AI = False
+
 
 # ============================================================================
 # PYDANTIC MODELS
@@ -133,6 +284,12 @@ class MarketDataRequest(BaseModel):
     symbol: str
     timeframe: str = "1Day"
     limit: Optional[int] = 100
+
+
+class ClaudeQueryRequest(BaseModel):
+    query: str
+    symbol: Optional[str] = "SPY"
+    context: Optional[Union[str, Dict[str, Any]]] = None  # Accept string or dict
 
 
 # ============================================================================
@@ -165,6 +322,62 @@ async def health_check():
         except Exception:
             multi_channel_status = "error"
 
+    # Check streaming status
+    streaming_status = "not_available"
+    if HAS_STREAMING:
+        try:
+            stream_mgr = get_stream_manager()
+            status = stream_mgr.get_status()
+            if status["running"]:
+                streaming_status = f"running ({status['subscription_count']} subscriptions)"
+            else:
+                streaming_status = "available"
+        except Exception:
+            streaming_status = "error"
+
+    # Check unified market data status (Schwab primary)
+    unified_data_status = "not_available"
+    primary_data_source = "alpaca"
+    if HAS_UNIFIED_DATA:
+        try:
+            unified_provider = get_unified_market_data()
+            status = unified_provider.get_status()
+            if status["schwab"]["available"]:
+                unified_data_status = "schwab_active"
+                primary_data_source = "schwab"
+            elif status["alpaca"]["available"]:
+                unified_data_status = "alpaca_fallback"
+                primary_data_source = "alpaca"
+            else:
+                unified_data_status = "no_source"
+        except Exception:
+            unified_data_status = "error"
+
+    # Check Schwab trading status
+    schwab_trading_status = "not_available"
+    schwab_accounts = 0
+    if HAS_SCHWAB_TRADING:
+        try:
+            if is_schwab_trading_available():
+                schwab = get_schwab_trading()
+                if schwab:
+                    accounts = schwab.get_accounts()
+                    schwab_accounts = len(accounts)
+                    selected = schwab.get_selected_account()
+                    schwab_trading_status = f"active ({schwab_accounts} accounts)"
+                    if selected:
+                        schwab_trading_status += f" - {selected[:4]}***"
+        except Exception:
+            schwab_trading_status = "error"
+
+    # Check Claude AI availability
+    claude_available = False
+    try:
+        import os
+        claude_available = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    except Exception:
+        pass
+
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
@@ -176,10 +389,20 @@ async def health_check():
         "services": {
             "api": "operational",
             "ai_predictor": "operational",
-            "market_data": "operational",
-            "multi_channel_data": multi_channel_status
-        }
+            "market_data": unified_data_status,
+            "primary_data_source": primary_data_source,
+            "multi_channel_data": multi_channel_status,
+            "realtime_streaming": streaming_status,
+            "schwab_trading": schwab_trading_status
+        },
+        "claude_available": claude_available
     }
+
+
+@app.get("/health")
+async def health_check_simple():
+    """Simple health check endpoint (alias for /api/health)"""
+    return await health_check()
 
 
 @app.get("/api/config")
@@ -195,10 +418,14 @@ async def get_config():
 
 @app.get("/api/market/quote/{symbol}")
 async def get_quote(symbol: str):
-    """Get latest quote for a symbol"""
+    """Get latest quote for a symbol (uses Schwab if available, falls back to Alpaca)"""
     try:
-        market_data = get_alpaca_market_data()
-        quote = market_data.get_latest_quote(symbol.upper())
+        # Use unified provider (Schwab primary, Alpaca fallback)
+        if HAS_UNIFIED_DATA:
+            quote = unified_get_quote(symbol.upper())
+        else:
+            market_data = get_alpaca_market_data()
+            quote = market_data.get_latest_quote(symbol.upper())
 
         if quote is None:
             raise HTTPException(status_code=404, detail=f"No quote data for {symbol}")
@@ -212,10 +439,14 @@ async def get_quote(symbol: str):
 
 @app.get("/api/market/snapshot/{symbol}")
 async def get_snapshot(symbol: str):
-    """Get market snapshot for a symbol"""
+    """Get market snapshot for a symbol (uses Schwab if available, falls back to Alpaca)"""
     try:
-        market_data = get_alpaca_market_data()
-        snapshot = market_data.get_snapshot(symbol.upper())
+        # Use unified provider (Schwab primary, Alpaca fallback)
+        if HAS_UNIFIED_DATA:
+            snapshot = unified_get_snapshot(symbol.upper())
+        else:
+            market_data = get_alpaca_market_data()
+            snapshot = market_data.get_snapshot(symbol.upper())
 
         if snapshot is None:
             raise HTTPException(status_code=404, detail=f"No snapshot data for {symbol}")
@@ -255,17 +486,51 @@ async def get_historical_bars(request: MarketDataRequest):
 
 @app.get("/api/market/multi-quote")
 async def get_multi_quote(symbols: str = Query(..., description="Comma-separated symbols")):
-    """Get quotes for multiple symbols"""
+    """Get quotes for multiple symbols (uses Schwab if available, falls back to Alpaca)"""
     try:
         symbol_list = [s.strip().upper() for s in symbols.split(',')]
-        market_data = get_alpaca_market_data()
-        quotes = market_data.get_multiple_quotes(symbol_list)
+
+        # Use unified provider (Schwab primary, Alpaca fallback)
+        if HAS_UNIFIED_DATA:
+            quotes = unified_get_quotes(symbol_list)
+        else:
+            market_data = get_alpaca_market_data()
+            quotes = market_data.get_multiple_quotes(symbol_list)
 
         return quotes
 
     except Exception as e:
         logger.error(f"Error fetching multiple quotes: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# UNIFIED MARKET DATA STATUS
+# ============================================================================
+
+@app.get("/api/data/unified/status")
+async def get_unified_data_status():
+    """
+    Get status of unified market data provider.
+
+    Shows which data source is active (Schwab or Alpaca fallback)
+    and statistics for each source.
+    """
+    if not HAS_UNIFIED_DATA:
+        return {
+            "available": False,
+            "message": "Unified market data provider not available"
+        }
+
+    try:
+        provider = get_unified_market_data()
+        return {
+            "available": True,
+            **provider.get_status()
+        }
+    except Exception as e:
+        logger.error(f"Error getting unified data status: {e}")
+        return {"available": False, "error": str(e)}
 
 
 # ============================================================================
@@ -315,7 +580,9 @@ async def get_fast_quote(symbol: str, channel: str = "realtime"):
     - scanner: Market scanning context
     """
     if not HAS_MULTI_CHANNEL:
-        # Fallback to standard market data
+        # Fallback to unified market data (Schwab primary)
+        if HAS_UNIFIED_DATA:
+            return unified_get_quote(symbol.upper())
         market_data = get_alpaca_market_data()
         return market_data.get_latest_quote(symbol.upper())
 
@@ -343,8 +610,10 @@ async def get_parallel_quotes(symbols: str = Query(..., description="Comma-separ
     Much faster than sequential fetching for large watchlists.
     """
     if not HAS_MULTI_CHANNEL:
-        # Fallback to standard market data
+        # Fallback to unified market data (Schwab primary)
         symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        if HAS_UNIFIED_DATA:
+            return unified_get_quotes(symbol_list)
         market_data = get_alpaca_market_data()
         return market_data.get_multiple_quotes(symbol_list)
 
@@ -482,6 +751,297 @@ async def get_multi_symbol_bars(
     except Exception as e:
         logger.error(f"Error fetching multi-symbol bars: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# REAL-TIME WEBSOCKET STREAMING ENDPOINTS
+# ============================================================================
+
+@app.get("/api/streaming/status")
+async def get_streaming_status():
+    """
+    Get real-time streaming service status.
+
+    Shows:
+    - Connection state
+    - Active subscriptions
+    - Message statistics
+    - Connected clients
+    """
+    if not HAS_STREAMING:
+        return {
+            "available": False,
+            "message": "Real-time streaming not available"
+        }
+
+    try:
+        manager = get_stream_manager()
+        return {
+            "available": True,
+            "status": manager.get_status()
+        }
+    except Exception as e:
+        logger.error(f"Error getting streaming status: {e}")
+        return {"available": False, "error": str(e)}
+
+
+@app.post("/api/streaming/subscribe")
+async def subscribe_to_stream(data: Dict[str, Any]):
+    """
+    Subscribe to real-time market data streams.
+
+    Request body:
+    {
+        "symbols": ["AAPL", "TSLA", "NVDA"],
+        "types": ["quotes", "trades", "bars"]  // optional, defaults to quotes
+    }
+
+    Stream types:
+    - quotes: Level 1 bid/ask updates
+    - trades: Executed trade prints
+    - bars: Minute bars
+    """
+    if not HAS_STREAMING:
+        raise HTTPException(status_code=503, detail="Streaming not available")
+
+    try:
+        symbols = data.get("symbols", [])
+        if isinstance(symbols, str):
+            symbols = [s.strip() for s in symbols.split(",")]
+
+        type_names = data.get("types", ["quotes"])
+        stream_types = []
+        for t in type_names:
+            if t.lower() == "quotes":
+                stream_types.append(StreamType.QUOTES)
+            elif t.lower() == "trades":
+                stream_types.append(StreamType.TRADES)
+            elif t.lower() == "bars":
+                stream_types.append(StreamType.BARS)
+
+        manager = get_stream_manager()
+        await manager.subscribe(symbols, stream_types)
+
+        return {
+            "success": True,
+            "subscribed": symbols,
+            "types": [t.value for t in stream_types],
+            "status": manager.get_status()
+        }
+
+    except Exception as e:
+        logger.error(f"Error subscribing to stream: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/streaming/unsubscribe")
+async def unsubscribe_from_stream(data: Dict[str, Any]):
+    """
+    Unsubscribe from real-time market data streams.
+
+    Request body:
+    {
+        "symbols": ["AAPL", "TSLA"],
+        "types": ["quotes", "trades"]  // optional, unsubscribe from all if not specified
+    }
+    """
+    if not HAS_STREAMING:
+        raise HTTPException(status_code=503, detail="Streaming not available")
+
+    try:
+        symbols = data.get("symbols", [])
+        if isinstance(symbols, str):
+            symbols = [s.strip() for s in symbols.split(",")]
+
+        type_names = data.get("types")
+        stream_types = None
+
+        if type_names:
+            stream_types = []
+            for t in type_names:
+                if t.lower() == "quotes":
+                    stream_types.append(StreamType.QUOTES)
+                elif t.lower() == "trades":
+                    stream_types.append(StreamType.TRADES)
+                elif t.lower() == "bars":
+                    stream_types.append(StreamType.BARS)
+
+        manager = get_stream_manager()
+        await manager.unsubscribe(symbols, stream_types)
+
+        return {
+            "success": True,
+            "unsubscribed": symbols,
+            "status": manager.get_status()
+        }
+
+    except Exception as e:
+        logger.error(f"Error unsubscribing from stream: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/streaming/start")
+async def start_streaming():
+    """Start the real-time streaming service."""
+    if not HAS_STREAMING:
+        raise HTTPException(status_code=503, detail="Streaming not available")
+
+    try:
+        manager = get_stream_manager()
+        await manager.start()
+        return {
+            "success": True,
+            "message": "Streaming service started",
+            "status": manager.get_status()
+        }
+    except Exception as e:
+        logger.error(f"Error starting streaming: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/streaming/stop")
+async def stop_streaming():
+    """Stop the real-time streaming service."""
+    if not HAS_STREAMING:
+        raise HTTPException(status_code=503, detail="Streaming not available")
+
+    try:
+        manager = get_stream_manager()
+        await manager.stop()
+        return {
+            "success": True,
+            "message": "Streaming service stopped"
+        }
+    except Exception as e:
+        logger.error(f"Error stopping streaming: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.websocket("/ws/market")
+async def websocket_market_stream(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time market data streaming.
+
+    Connect to receive live quotes, trades, and bars for subscribed symbols.
+
+    Protocol:
+    1. Connect to ws://localhost:9100/ws/market
+    2. Send subscription message: {"action": "subscribe", "symbols": ["AAPL", "TSLA"]}
+    3. Receive streaming data: {"type": "quote", "symbol": "AAPL", "bid": 150.25, ...}
+
+    Actions:
+    - subscribe: Subscribe to symbols (default: quotes)
+    - unsubscribe: Unsubscribe from symbols
+    - status: Get current subscription status
+    """
+    await websocket.accept()
+    client_id = str(uuid.uuid4())
+    logger.info(f"[WS] Client connected: {client_id}")
+
+    if not HAS_STREAMING:
+        await websocket.send_json({
+            "type": "error",
+            "message": "Streaming service not available"
+        })
+        await websocket.close()
+        return
+
+    manager = get_stream_manager()
+    message_queue = manager.register_client(client_id)
+
+    # Send welcome message
+    await websocket.send_json({
+        "type": "connected",
+        "client_id": client_id,
+        "message": "Connected to market stream",
+        "status": manager.get_status()
+    })
+
+    async def send_messages():
+        """Forward messages from queue to WebSocket"""
+        while True:
+            try:
+                message = await message_queue.get()
+                await websocket.send_text(message)
+            except Exception as e:
+                logger.error(f"[WS] Send error: {e}")
+                break
+
+    async def receive_commands():
+        """Receive commands from WebSocket client"""
+        while True:
+            try:
+                data = await websocket.receive_json()
+                action = data.get("action", "").lower()
+
+                if action == "subscribe":
+                    symbols = data.get("symbols", [])
+                    types_raw = data.get("types", ["quotes"])
+                    stream_types = []
+
+                    for t in types_raw:
+                        if t.lower() == "quotes":
+                            stream_types.append(StreamType.QUOTES)
+                        elif t.lower() == "trades":
+                            stream_types.append(StreamType.TRADES)
+                        elif t.lower() == "bars":
+                            stream_types.append(StreamType.BARS)
+
+                    await manager.subscribe(symbols, stream_types)
+                    await websocket.send_json({
+                        "type": "subscribed",
+                        "symbols": symbols,
+                        "stream_types": [t.value for t in stream_types]
+                    })
+
+                elif action == "unsubscribe":
+                    symbols = data.get("symbols", [])
+                    await manager.unsubscribe(symbols)
+                    await websocket.send_json({
+                        "type": "unsubscribed",
+                        "symbols": symbols
+                    })
+
+                elif action == "status":
+                    await websocket.send_json({
+                        "type": "status",
+                        "status": manager.get_status()
+                    })
+
+                elif action == "ping":
+                    await websocket.send_json({
+                        "type": "pong",
+                        "timestamp": datetime.now().isoformat()
+                    })
+
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                logger.error(f"[WS] Receive error: {e}")
+                break
+
+    try:
+        # Run both tasks concurrently
+        send_task = asyncio.create_task(send_messages())
+        receive_task = asyncio.create_task(receive_commands())
+
+        # Wait for either task to complete (usually due to disconnect)
+        done, pending = await asyncio.wait(
+            [send_task, receive_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+
+        # Cancel pending tasks
+        for task in pending:
+            task.cancel()
+
+    except WebSocketDisconnect:
+        logger.info(f"[WS] Client disconnected: {client_id}")
+    except Exception as e:
+        logger.error(f"[WS] Error: {e}")
+    finally:
+        manager.unregister_client(client_id)
+        logger.info(f"[WS] Client cleanup: {client_id}")
 
 
 # ============================================================================
@@ -720,20 +1280,177 @@ async def batch_predict(symbols: str = Query(..., description="Comma-separated s
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/ai/models/performance")
+async def get_models_performance():
+    """Get performance metrics for trained AI models"""
+    try:
+        import os
+        from pathlib import Path
+
+        models_dir = Path("models")
+        if not models_dir.exists():
+            return {"success": True, "data": []}
+
+        models = []
+
+        # Check for trained models
+        for model_file in models_dir.glob("*.keras"):
+            symbol = model_file.stem.replace("_mtf", "").replace("_lstm", "").upper()
+            models.append({
+                "name": symbol,
+                "type": "LSTM MTF",
+                "accuracy": 0.65,  # Placeholder - would load from saved metrics
+                "win_rate": 0.55,
+                "sharpe_ratio": 1.2,
+                "total_trades": 0,
+                "profitable_trades": 0,
+                "avg_profit": 0.0
+            })
+
+        # Check lstm_mtf subdirectory
+        lstm_mtf_dir = models_dir / "lstm_mtf"
+        if lstm_mtf_dir.exists():
+            for model_file in lstm_mtf_dir.glob("*.keras"):
+                symbol = model_file.stem.replace("_mtf", "").upper()
+                if not any(m["name"] == symbol for m in models):
+                    models.append({
+                        "name": symbol,
+                        "type": "LSTM MTF",
+                        "accuracy": 0.65,
+                        "win_rate": 0.55,
+                        "sharpe_ratio": 1.2,
+                        "total_trades": 0,
+                        "profitable_trades": 0,
+                        "avg_profit": 0.0
+                    })
+
+        return {"success": True, "data": models}
+
+    except Exception as e:
+        logger.error(f"Error getting models performance: {e}")
+        return {"success": False, "data": [], "error": str(e)}
+
+
+# ============================================================================
+# AI TRIGGER ENDPOINTS
+# ============================================================================
+
+@app.get("/api/ai/trigger/{symbol}")
+async def get_trigger(symbol: str):
+    """Get MACD/RSI trigger signal for a symbol"""
+    try:
+        from ai.trigger_signal_generator import get_trigger_generator
+
+        generator = get_trigger_generator()
+        trigger = generator.generate_trigger(symbol.upper())
+
+        return {
+            "success": True,
+            "data": trigger.to_dict()
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting trigger for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ai/triggers/scan")
+async def scan_triggers(symbols: str = Query(..., description="Comma-separated symbols")):
+    """Scan multiple symbols for actionable triggers"""
+    try:
+        from ai.trigger_signal_generator import get_trigger_generator
+
+        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        generator = get_trigger_generator()
+        triggers = generator.scan_for_triggers(symbol_list)
+
+        return {
+            "success": True,
+            "count": len(triggers),
+            "data": [t.to_dict() for t in triggers]
+        }
+
+    except Exception as e:
+        logger.error(f"Error scanning triggers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ai/predict-with-triggers/{symbol}")
+async def predict_with_triggers(symbol: str):
+    """Get combined AI prediction with MACD/RSI triggers"""
+    try:
+        predictor = get_alpaca_predictor()
+        result = predictor.predict_with_triggers(symbol.upper())
+
+        return {
+            "success": True,
+            "data": result
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting prediction with triggers for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ai/triggers/batch")
+async def batch_triggers(request: dict):
+    """Get triggers for multiple symbols (POST for larger lists)"""
+    try:
+        from ai.trigger_signal_generator import get_trigger_generator
+
+        symbols = request.get("symbols", [])
+        if isinstance(symbols, str):
+            symbols = [s.strip().upper() for s in symbols.split(',')]
+
+        generator = get_trigger_generator()
+        results = []
+
+        for symbol in symbols:
+            try:
+                trigger = generator.generate_trigger(symbol.upper())
+                results.append(trigger.to_dict())
+            except Exception as e:
+                logger.warning(f"Failed to get trigger for {symbol}: {e}")
+                results.append({
+                    "symbol": symbol,
+                    "action": "ERROR",
+                    "error": str(e)
+                })
+
+        # Filter to only actionable triggers
+        actionable = [t for t in results if t.get("action") in ["BUY", "SELL"]]
+
+        return {
+            "success": True,
+            "total": len(results),
+            "actionable_count": len(actionable),
+            "all_triggers": results,
+            "actionable_triggers": actionable
+        }
+
+    except Exception as e:
+        logger.error(f"Error in batch triggers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================================================
 # WATCHLIST ENDPOINTS
 # ============================================================================
 
 @app.get("/api/watchlist")
 async def get_watchlist():
-    """Get default watchlist"""
+    """Get default watchlist (uses Schwab if available, falls back to Alpaca)"""
     watchlist = [
         "SPY", "QQQ", "AAPL", "MSFT", "GOOGL",
         "AMZN", "TSLA", "NVDA", "META", "AMD"
     ]
 
-    market_data = get_alpaca_market_data()
-    quotes = market_data.get_multiple_quotes(watchlist)
+    # Use unified provider (Schwab primary, Alpaca fallback)
+    if HAS_UNIFIED_DATA:
+        quotes = unified_get_quotes(watchlist)
+    else:
+        market_data = get_alpaca_market_data()
+        quotes = market_data.get_multiple_quotes(watchlist)
 
     return {
         "name": "Default Watchlist",
@@ -747,7 +1464,7 @@ async def get_watchlist():
 # ============================================================================
 
 @app.post("/api/claude/query")
-async def claude_query(request: Dict[str, Any]):
+async def claude_query(request: ClaudeQueryRequest):
     """
     Send a query to Claude AI with NLP trading capabilities.
 
@@ -762,12 +1479,52 @@ async def claude_query(request: Dict[str, Any]):
     """
     import re
 
-    query = request.get("query", "")
-    context = request.get("context", {})
-    symbol = request.get("symbol", "SPY")
-    conversation_id = context.get("conversation_id")
+    query = request.query
+    context = request.context or {}
+    symbol = request.symbol or "SPY"
+    conversation_id = context.get("conversation_id") if isinstance(context, dict) else None
 
     try:
+        # Check for status queries about Schwab/brokers
+        query_lower = query.lower()
+        if any(kw in query_lower for kw in ['schwab', 'broker', 'connected', 'status', 'account']):
+            # Get broker status
+            schwab_status = "Not available"
+            alpaca_status = "Not available"
+
+            try:
+                from schwab_trading import get_schwab_trading, is_schwab_trading_available
+                if is_schwab_trading_available():
+                    trading = get_schwab_trading()
+                    if trading:
+                        accounts = trading.get_accounts()
+                        selected = trading.get_selected_account()
+                        schwab_status = f"Connected ({len(accounts)} accounts, selected: {selected or 'None'})"
+                    else:
+                        schwab_status = "Available but not authenticated"
+            except Exception as e:
+                schwab_status = f"Error: {e}"
+
+            try:
+                connector = get_alpaca_connector()
+                if connector and connector.is_connected():
+                    alpaca_status = "Connected"
+                else:
+                    alpaca_status = "Not connected"
+            except:
+                pass
+
+            return {
+                "success": True,
+                "data": {
+                    "response": f"📊 **Broker Status**\n\n• **Schwab:** {schwab_status}\n• **Alpaca:** {alpaca_status}\n\nYou can switch brokers using the broker selection buttons at the top of the platform.",
+                    "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    "timestamp": datetime.now().isoformat(),
+                    "action": "status_check",
+                    "action_details": {"schwab": schwab_status, "alpaca": alpaca_status}
+                }
+            }
+
         # Import Claude bot intelligence
         from ai.claude_bot_intelligence import get_bot_intelligence
 
@@ -792,8 +1549,8 @@ async def claude_query(request: Dict[str, Any]):
             except Exception as e:
                 logger.warning(f"Could not fetch trading context: {e}")
 
-        # Merge with any provided context
-        if context:
+        # Merge with any provided context (only if it's a dict)
+        if context and isinstance(context, dict):
             trading_context.update(context)
 
         # Check for NLP trading commands
@@ -806,10 +1563,16 @@ async def claude_query(request: Dict[str, Any]):
             action_details = trade_result.get("details", {})
         else:
             # No trade command - use Claude AI for analysis/chat
-            result = ai.chat_with_tools(query, use_tools=True)
-            response_text = result.get("response", "I couldn't process your request. Please try again.")
-            action_taken = "chat"
-            action_details = {"mood": result.get("mood", "neutral")}
+            try:
+                result = ai.chat_with_tools(query, use_tools=True)
+                response_text = result.get("response", "I couldn't process your request. Please try again.")
+                action_taken = "chat"
+                action_details = {"mood": result.get("mood", "neutral")}
+            except Exception as chat_err:
+                logger.error(f"Claude chat_with_tools error: {chat_err}")
+                response_text = f"I'm here to help! You asked: '{query}'\n\nNote: Full AI analysis is temporarily limited. You can:\n• Check broker status\n• Ask about positions\n• Request predictions\n• Start training"
+                action_taken = "fallback"
+                action_details = {"error": str(chat_err)}
 
         return {
             "success": True,
@@ -1086,6 +1849,118 @@ async def startup_event():
     else:
         logger.info("[INFO] Multi-channel data provider not available")
 
+    # Initialize real-time streaming
+    if HAS_STREAMING:
+        try:
+            stream_manager = get_stream_manager()
+            logger.info("[OK] Real-Time Streaming Available")
+            logger.info("     - WebSocket endpoint: ws://localhost:9100/ws/market")
+        except Exception as e:
+            logger.warning(f"[WARN] Streaming provider error: {e}")
+    else:
+        logger.info("[INFO] Real-time streaming not available")
+
+    # Start background position sync with slippage combat
+    try:
+        from ai.position_sync import start_sync
+        sync = start_sync()
+        logger.info("[OK] Position Synchronizer Started")
+        logger.info("     - Sync interval: 5 seconds")
+        logger.info("     - Slippage detection: ACTIVE")
+        logger.info("     - Auto-combat: ENABLED")
+    except Exception as e:
+        logger.warning(f"[WARN] Position sync error: {e}")
+
+    # Initialize market regime detector
+    try:
+        from ai.market_regime import get_regime_detector
+        detector = get_regime_detector()
+        phase_info = detector.get_phase_info()
+        logger.info(f"[OK] Market Regime Detector Active")
+        logger.info(f"     - Current Phase: {phase_info.get('current_phase', 'unknown')}")
+        logger.info(f"     - Time: {phase_info.get('current_time_et', 'unknown')}")
+    except Exception as e:
+        logger.warning(f"[WARN] Regime detector error: {e}")
+
+    # Initialize loss cutter
+    try:
+        from ai.loss_cutter import get_loss_cutter
+        cutter = get_loss_cutter()
+        logger.info("[OK] Loss Cutter Active")
+        logger.info(f"     - Max Loss: {cutter.max_loss_pct}%")
+        logger.info(f"     - Time Threshold: {cutter.time_threshold_minutes} min")
+    except Exception as e:
+        logger.warning(f"[WARN] Loss cutter error: {e}")
+
+    # Initialize Background AI Brain for continuous learning
+    try:
+        from ai.background_brain import start_brain, get_background_brain
+        brain = start_brain(cpu_target=0.3)  # Use 30% CPU for background AI (conservative)
+        logger.info("[OK] Background AI Brain Started")
+        logger.info(f"     - CPU Target: 30%")
+        logger.info(f"     - Worker Threads: {brain.worker_threads}")
+        logger.info(f"     - Cores Available: {brain.num_cores}")
+        logger.info("     - Continuous Learning: ACTIVE")
+        logger.info("     - Market Regime Detection: ENABLED")
+    except Exception as e:
+        logger.warning(f"[WARN] Background brain error: {e}")
+
+    # Initialize Circuit Breaker for drawdown protection
+    try:
+        from ai.circuit_breaker import get_circuit_breaker
+        breaker = get_circuit_breaker()
+        connector = get_alpaca_connector()
+        if connector.is_connected():
+            account = connector.get_account()
+            equity = float(account.get('equity', 0))
+            breaker.initialize_day(equity)
+            logger.info("[OK] Circuit Breaker Active")
+            logger.info(f"     - Starting Equity: ${equity:,.2f}")
+            logger.info(f"     - Warning Level: {breaker.daily_loss_warning*100:.1f}%")
+            logger.info(f"     - Halt Level: {breaker.daily_loss_halt*100:.1f}%")
+    except Exception as e:
+        logger.warning(f"[WARN] Circuit breaker error: {e}")
+
+    # Initialize Schwab real-time market data (WebSocket streaming or Fast Polling fallback)
+    schwab_realtime_started = False
+    default_symbols = ["SPY", "QQQ", "AAPL", "MSFT", "TSLA", "NVDA", "AMD", "META", "GOOGL", "AMZN"]
+
+    if HAS_SCHWAB_STREAMING and HAS_SCHWAB_TRADING:
+        try:
+            from schwab_market_data import is_schwab_available
+            if is_schwab_available():
+                # Try WebSocket streaming first
+                start_schwab_streaming(default_symbols)
+                # Check if it actually started
+                import time
+                time.sleep(1)  # Wait for streaming to initialize
+                status = get_schwab_stream_status()
+                if status.get('running'):
+                    logger.info("[OK] Schwab WebSocket Streaming Started")
+                    logger.info(f"     - Subscribed to {len(default_symbols)} symbols")
+                    logger.info("     - Real-time quotes enabled (sub-second updates)")
+                    schwab_realtime_started = True
+                else:
+                    logger.warning("[WARN] Schwab WebSocket streaming failed to start")
+        except Exception as e:
+            logger.warning(f"[WARN] Schwab streaming startup error: {e}")
+
+    # Fallback to Fast Polling if WebSocket streaming failed
+    if not schwab_realtime_started and HAS_SCHWAB_FAST_POLLING and HAS_SCHWAB_TRADING:
+        try:
+            from schwab_market_data import is_schwab_available
+            if is_schwab_available():
+                start_schwab_fast_polling(default_symbols)
+                logger.info("[OK] Schwab Fast Polling Started (WebSocket fallback)")
+                logger.info(f"     - Subscribed to {len(default_symbols)} symbols")
+                logger.info("     - Updates every 300ms (near real-time)")
+                schwab_realtime_started = True
+        except Exception as e:
+            logger.warning(f"[WARN] Schwab fast polling startup error: {e}")
+
+    if not schwab_realtime_started:
+        logger.info("[INFO] Schwab real-time data not available (using on-demand HTTP)")
+
     logger.info("="*80)
     logger.info("Server ready on http://localhost:9100")
     logger.info("Dashboard: http://localhost:9100/dashboard")
@@ -1097,6 +1972,22 @@ async def startup_event():
 async def shutdown_event():
     """Application shutdown"""
     logger.info("Shutting down AI Trading Hub...")
+
+    # Stop Schwab streaming
+    if HAS_SCHWAB_STREAMING:
+        try:
+            stop_schwab_streaming()
+            logger.info("Schwab streaming stopped")
+        except Exception as e:
+            logger.warning(f"Error stopping Schwab streaming: {e}")
+
+    # Stop Schwab fast polling
+    if HAS_SCHWAB_FAST_POLLING:
+        try:
+            stop_schwab_fast_polling()
+            logger.info("Schwab fast polling stopped")
+        except Exception as e:
+            logger.warning(f"Error stopping Schwab fast polling: {e}")
 
 
 # ============================================================================

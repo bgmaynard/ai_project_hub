@@ -745,6 +745,74 @@ class AlpacaAIPredictor:
             "data_source": "Alpaca"
         }
 
+    def predict_with_triggers(self, symbol: str) -> Dict:
+        """
+        Enhanced prediction that combines LightGBM with MACD/RSI trigger signals.
+
+        Returns a comprehensive signal including:
+        - LightGBM prediction
+        - Technical trigger (BREAKOUT/REVERSION/RSI_EXTREME)
+        - Combined action with stop loss and take profit levels
+
+        Args:
+            symbol: Stock symbol
+
+        Returns:
+            Dictionary with enhanced prediction including triggers
+        """
+        # Get base LightGBM prediction
+        base_pred = self.predict(symbol)
+
+        # Get trigger signal
+        try:
+            from ai.trigger_signal_generator import get_trigger_generator
+            trigger_gen = get_trigger_generator()
+            trigger = trigger_gen.generate_trigger(symbol)
+
+            # Combine signals
+            combined_action = base_pred['action']
+            combined_confidence = base_pred['confidence']
+
+            # If trigger agrees with ML, boost confidence
+            if trigger.action == base_pred['action'] and trigger.action != "HOLD":
+                combined_confidence = min(1.0, (base_pred['confidence'] + trigger.confidence) / 1.5)
+                combined_action = trigger.action
+
+            # If trigger has strong signal but ML is neutral, consider trigger
+            elif trigger.action != "HOLD" and trigger.confidence > 0.6 and base_pred['action'] == "HOLD":
+                combined_action = trigger.action
+                combined_confidence = trigger.confidence * 0.8  # Slight discount for ML disagreement
+
+            return {
+                **base_pred,
+                "combined_action": combined_action,
+                "combined_confidence": float(combined_confidence),
+                "trigger": {
+                    "action": trigger.action,
+                    "type": trigger.trigger_type,
+                    "confidence": float(trigger.confidence),
+                    "entry_price": trigger.entry_price,
+                    "stop_loss": trigger.stop_loss,
+                    "take_profit": trigger.take_profit,
+                    "rsi": trigger.rsi_value,
+                    "macd": trigger.macd_value,
+                    "bb_position": trigger.bb_position
+                },
+                "has_trigger": trigger.action != "HOLD",
+                "signals_agree": trigger.action == base_pred['action']
+            }
+
+        except Exception as e:
+            logger.warning(f"Trigger generation failed: {e}")
+            return {
+                **base_pred,
+                "combined_action": base_pred['action'],
+                "combined_confidence": base_pred['confidence'],
+                "trigger": None,
+                "has_trigger": False,
+                "signals_agree": False
+            }
+
     def save_model(self):
         """Save model and metadata"""
         Path(self.model_path).parent.mkdir(parents=True, exist_ok=True)
