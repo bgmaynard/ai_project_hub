@@ -16,19 +16,19 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #0a0a0a;
             color: #e0e0e0;
-            font-size: 15px;
+            font-size: 12px;
             overflow: hidden;
         }
 
-        /* Top Bar */
+        /* Top Bar - Compact */
         .top-bar {
             background: #1e1e1e;
             border-bottom: 2px solid #007acc;
-            padding: 8px 12px;
+            padding: 4px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 40px;
+            height: 32px;
             position: fixed;
             top: 0;
             left: 0;
@@ -37,7 +37,7 @@
         }
 
         .top-bar-left h1 {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 600;
             color: #007acc;
             letter-spacing: 1px;
@@ -45,19 +45,19 @@
 
         .top-bar-right {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
-            font-size: 14px;
+            font-size: 11px;
         }
 
         .status-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
+            gap: 4px;
+            padding: 2px 6px;
             background: #252525;
             border: 1px solid #404040;
-            border-radius: 3px;
+            border-radius: 2px;
         }
 
         .status-dot {
@@ -212,25 +212,25 @@
             opacity: 0.8;
         }
 
-        /* Menu Bar */
+        /* Menu Bar - Compact */
         .menu-bar {
             background: #252525;
             border-bottom: 1px solid #404040;
-            padding: 0 12px;
+            padding: 0 8px;
             display: flex;
             gap: 0;
-            height: 28px;
+            height: 22px;
             position: fixed;
-            top: 40px;
+            top: 32px;
             left: 0;
             right: 0;
             z-index: 9999;
         }
 
         .menu-item {
-            padding: 6px 12px;
+            padding: 4px 10px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 600;
             color: #b0b0b0;
             border-right: 1px solid #404040;
@@ -295,10 +295,10 @@
             margin: 0;
         }
 
-        /* Workspace */
+        /* Workspace - Adjusted for compact header */
         .workspace {
             position: fixed;
-            top: 68px;
+            top: 54px;
             left: 0;
             right: 0;
             bottom: 0;
@@ -325,13 +325,13 @@
 
         .window-header {
             background: #2d2d2d;
-            padding: 6px 10px;
+            padding: 3px 8px;
             border-bottom: 1px solid #404040;
-            font-size: 14px;
+            font-size: 10px;
             font-weight: 700;
             color: #ffffff;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.5px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -349,13 +349,13 @@
         }
 
         .window-btn {
-            width: 18px;
-            height: 18px;
+            width: 14px;
+            height: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 12px;
             border-radius: 2px;
             transition: background 0.2s;
             font-weight: bold;
@@ -419,11 +419,11 @@
             background: #007acc;
         }
 
-        /* Data Table Styles */
+        /* Data Table Styles - Compact */
         .data-table {
             width: 100%;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: 11px;
         }
 
         .data-table thead {
@@ -434,18 +434,18 @@
         }
 
         .data-table th {
-            padding: 6px 8px;
+            padding: 3px 5px;
             text-align: left;
             font-weight: 700;
             color: #888;
             border-bottom: 1px solid #404040;
             text-transform: uppercase;
-            font-size: 13px;
-            letter-spacing: 0.5px;
+            font-size: 9px;
+            letter-spacing: 0.3px;
         }
 
         .data-table td {
-            padding: 5px 8px;
+            padding: 2px 5px;
             border-bottom: 1px solid #252525;
         }
 
@@ -461,36 +461,36 @@
             background: #007acc;
         }
 
-        /* Module Specific Styles */
+        /* Module Specific Styles - Compact */
         .module-content {
-            padding: 8px;
+            padding: 4px;
         }
 
-        /* Quote Display */
+        /* Quote Display - Compact */
         .quote-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            padding: 8px;
+            gap: 3px;
+            padding: 4px;
             background: #1e1e1e;
         }
 
         .quote-stat {
-            padding: 6px 8px;
+            padding: 3px 5px;
             background: #252525;
             border: 1px solid #333;
             border-radius: 2px;
         }
 
         .quote-stat-label {
-            font-size: 13px;
+            font-size: 9px;
             color: #888;
             text-transform: uppercase;
-            margin-bottom: 3px;
+            margin-bottom: 1px;
         }
 
         .quote-stat-value {
-            font-size: 17px;
+            font-size: 12px;
             font-weight: 700;
             font-family: 'Courier New', monospace;
         }
@@ -516,9 +516,9 @@
 
         .level2-header {
             display: grid;
-            grid-template-columns: 50px 70px 70px 50px;
-            padding: 6px 4px;
-            font-size: 13px;
+            grid-template-columns: 40px 60px 60px 40px;
+            padding: 3px 2px;
+            font-size: 9px;
             font-weight: 700;
             background: #2d2d2d;
             border-bottom: 1px solid #404040;
@@ -534,9 +534,9 @@
 
         .level2-row {
             display: grid;
-            grid-template-columns: 50px 70px 70px 50px;
-            padding: 3px 4px;
-            font-size: 14px;
+            grid-template-columns: 40px 60px 60px 40px;
+            padding: 1px 2px;
+            font-size: 10px;
             border-bottom: 1px solid #222;
             position: relative;
         }
@@ -558,23 +558,23 @@
             font-weight: 700;
         }
 
-        /* Order Entry */
+        /* Order Entry - Compact */
         .order-entry-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 4px;
+            margin-bottom: 4px;
         }
 
         .order-field {
-            margin-bottom: 10px;
+            margin-bottom: 4px;
         }
 
         .order-field label {
             display: block;
-            font-size: 13px;
+            font-size: 9px;
             color: #888;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             text-transform: uppercase;
             font-weight: 600;
         }
@@ -582,11 +582,11 @@
         .order-field input,
         .order-field select {
             width: 100%;
-            padding: 6px 8px;
+            padding: 3px 5px;
             background: #252525;
             border: 1px solid #404040;
             color: #fff;
-            font-size: 15px;
+            font-size: 11px;
             border-radius: 2px;
             font-family: 'Courier New', monospace;
         }
@@ -600,16 +600,16 @@
         .quantity-buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 4px;
-            margin-bottom: 8px;
+            gap: 2px;
+            margin-bottom: 4px;
         }
 
         .qty-btn {
-            padding: 6px;
+            padding: 3px;
             background: #252525;
             border: 1px solid #404040;
             color: #888;
-            font-size: 14px;
+            font-size: 10px;
             cursor: pointer;
             border-radius: 2px;
             transition: all 0.2s;
@@ -623,17 +623,17 @@
 
         .price-controls {
             display: grid;
-            grid-template-columns: 40px 1fr 40px;
-            gap: 4px;
-            margin-bottom: 8px;
+            grid-template-columns: 30px 1fr 30px;
+            gap: 2px;
+            margin-bottom: 4px;
         }
 
         .price-btn {
-            padding: 6px;
+            padding: 3px;
             background: #252525;
             border: 1px solid #404040;
             color: #007acc;
-            font-size: 20px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             border-radius: 2px;
@@ -647,20 +647,20 @@
         .order-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 12px;
+            gap: 4px;
+            margin-top: 6px;
         }
 
         .btn {
-            padding: 10px;
+            padding: 6px;
             border: none;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 11px;
             font-weight: 700;
-            border-radius: 3px;
+            border-radius: 2px;
             transition: all 0.2s;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .btn-buy {
@@ -1267,6 +1267,7 @@
         <div class="menu-item" onclick="connectToAlpaca()">🔌 Connect Alpaca</div>
         <div class="menu-item" onclick="openPDTMonitor()" style="background: #7f1d1d;">⚖️ PDT Monitor</div>
         <div class="menu-item" onclick="openAIControlPanel()" style="background: #1e40af;">🤖 AI Control</div>
+        <div class="menu-item" onclick="openAIMonitor()" style="background: #0d9488;">📡 AI Monitor</div>
         <div class="menu-item" onclick="openScannerPanel()" style="background: #059669;">🔍 SCANNER</div>
         <div class="menu-item" onclick="openClaudeChatWindow()" style="background: #7c3aed;">💬 Claude Chat</div>
     </div>
@@ -2797,6 +2798,9 @@
                         <button id="aiTabSafety" class="ai-tab" onclick="switchAITab('safety')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
                             🛡️ SAFETY
                         </button>
+                        <button id="aiTabRisk" class="ai-tab" onclick="switchAITab('risk')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            📈 RISK
+                        </button>
                     </div>
 
                     <!-- TRAINING TAB -->
@@ -2927,16 +2931,6 @@
                             <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">BACKTEST CONFIGURATION</div>
 
                             <div style="margin-bottom: 8px;">
-                                <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Strategy</label>
-                                <select id="backtestStrategy" style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
-                                    <option value="ai_predictor">AI Predictor</option>
-                                    <option value="alpha_fusion">AlphaFusion V2</option>
-                                    <option value="ma_cross">Moving Average Cross</option>
-                                    <option value="rsi_strategy">RSI Strategy</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-bottom: 8px;">
                                 <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Symbols (comma separated)</label>
                                 <div style="display: flex; gap: 6px;">
                                     <input type="text" id="backtestSymbols" value="AAPL,MSFT,GOOGL" placeholder="AAPL,MSFT,GOOGL"
@@ -2950,12 +2944,12 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                                 <div>
                                     <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Start Date</label>
-                                    <input type="date" id="backtestStartDate" value="2024-01-01"
+                                    <input type="date" id="backtestStartDate" value="2024-09-01"
                                            style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">End Date</label>
-                                    <input type="date" id="backtestEndDate" value="2025-01-01"
+                                    <input type="date" id="backtestEndDate" value="2025-12-01"
                                            style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
                                 </div>
                             </div>
@@ -2963,30 +2957,83 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                                 <div>
                                     <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Initial Capital $</label>
-                                    <input type="number" id="backtestCapital" value="10000" min="1000" step="1000"
+                                    <input type="number" id="backtestCapital" value="100000" min="1000" step="1000"
                                            style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Position Size %</label>
-                                    <input type="number" id="backtestPositionSize" value="20" min="5" max="100" step="5"
+                                    <input type="number" id="backtestPositionSize" value="10" min="5" max="100" step="5"
                                            style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
                                 </div>
                             </div>
 
-                            <div style="margin-top: 8px; padding: 8px; background: #2d2d2d; border-left: 3px solid #22c55e; border-radius: 3px; font-size: 11px; color: #22c55e;">
-                                ✓ <strong>Real Data:</strong> Uses Yahoo Finance historical data + trained AI model predictions. Train model first in Training tab.
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                                <div>
+                                    <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Stop Loss %</label>
+                                    <input type="number" id="backtestStopLoss" value="4" min="1" max="20" step="0.5"
+                                           style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Take Profit %</label>
+                                    <input type="number" id="backtestTakeProfit" value="6" min="1" max="50" step="0.5"
+                                           style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: #888; display: block; margin-bottom: 3px;">Trailing Stop %</label>
+                                    <input type="number" id="backtestTrailingStop" value="2.5" min="0.5" max="10" step="0.5"
+                                           style="width: 100%; padding: 6px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px;">
+                                </div>
                             </div>
 
-                            <button id="runBacktestBtn" class="btn btn-buy" onclick="runBacktest()" style="width: 100%; font-size: 14px; padding: 10px; margin-top: 8px;">
-                                📊 RUN BACKTEST
-                            </button>
+                            <!-- Advanced Options -->
+                            <div style="margin-bottom: 8px; padding: 8px; background: #252525; border-radius: 4px;">
+                                <div style="font-size: 11px; color: #888; margin-bottom: 6px; font-weight: 600;">ADVANCED OPTIONS</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #aaa; cursor: pointer;">
+                                        <input type="checkbox" id="backtestSlippage" checked style="accent-color: #22c55e;">
+                                        Include Slippage Model
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #aaa; cursor: pointer;">
+                                        <input type="checkbox" id="backtestEODLiquidation" checked style="accent-color: #22c55e;">
+                                        EOD Liquidation (3:45 PM)
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #aaa; cursor: pointer;">
+                                        <input type="checkbox" id="backtestMonteCarlo" style="accent-color: #22c55e;">
+                                        Run Monte Carlo (1000 sims)
+                                    </label>
+                                    <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #aaa;">
+                                        <span>Max Positions:</span>
+                                        <input type="number" id="backtestMaxPositions" value="5" min="1" max="20" step="1"
+                                               style="width: 50px; padding: 3px 6px; background: #1a1a1a; border: 1px solid #404040; color: #fff; font-size: 11px; border-radius: 3px;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 8px; padding: 8px; background: #2d2d2d; border-left: 3px solid #22c55e; border-radius: 3px; font-size: 11px; color: #22c55e;">
+                                ✓ <strong>Enhanced Backtester:</strong> Warrior Trading rules with slippage modeling, EOD liquidation, and Monte Carlo analysis.
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                                <button id="runBacktestBtn" class="btn btn-buy" onclick="runEnhancedBacktest()" style="font-size: 14px; padding: 10px;">
+                                    📊 RUN BACKTEST
+                                </button>
+                                <button id="quickBacktestBtn" class="btn btn-secondary" onclick="runQuickBacktest()" style="font-size: 14px; padding: 10px;">
+                                    ⚡ QUICK (30 Days)
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Backtest Results -->
                         <div id="backtestResults" style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: none;">
                             <div style="font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 700;">BACKTEST RESULTS</div>
-                            <div id="backtestMetrics" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                            <div id="backtestMetrics" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;">
                                 <!-- Metrics grid -->
+                            </div>
+                            <div id="backtestExitReasons" style="margin-top: 12px; display: none;">
+                                <!-- Exit reasons breakdown -->
+                            </div>
+                            <div id="backtestMonteCarlo" style="margin-top: 12px; display: none;">
+                                <!-- Monte Carlo results -->
                             </div>
                             <div id="backtestEquityCurve" style="margin-top: 12px;">
                                 <!-- Equity curve chart -->
@@ -3808,6 +3855,224 @@
                         <div style="margin-top: 12px; padding: 8px; background: #252525; border-left: 3px solid #ef4444; border-radius: 3px; font-size: 10px; color: #888;">
                             🛡️ Circuit Breaker protects your account from excessive losses. Trade Journal records AI-generated reasoning for every trade. Symbol Memory tracks historical performance per stock.
                         </div>
+                    </div>
+
+                    <!-- RISK TAB -->
+                    <div id="aiRiskTab" class="ai-tab-content" style="display: none;">
+                        <!-- Risk Status Banner -->
+                        <div id="riskStatusBanner" style="padding: 12px; background: linear-gradient(135deg, #1a1a2e, #16213e); border: 2px solid #22c55e; border-radius: 6px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="font-size: 14px; color: #22c55e; font-weight: 700;">📈 PORTFOLIO RISK GUARD</div>
+                                <div id="riskLevelBadge" style="padding: 4px 12px; background: #22c55e; border-radius: 3px; font-size: 11px; font-weight: 600; color: #fff;">
+                                    LOW
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                                <div style="padding: 8px; background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 10px; color: #888;">VAR 95%</div>
+                                    <div id="riskVar95" style="font-size: 13px; font-weight: 700; color: #22c55e;">$0</div>
+                                </div>
+                                <div style="padding: 8px; background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 10px; color: #888;">DRAWDOWN</div>
+                                    <div id="riskDrawdown" style="font-size: 13px; font-weight: 700; color: #3b82f6;">0%</div>
+                                </div>
+                                <div style="padding: 8px; background: rgba(139, 92, 246, 0.1); border: 1px solid #8b5cf6; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 10px; color: #888;">MAX DD</div>
+                                    <div id="riskMaxDD" style="font-size: 13px; font-weight: 700; color: #8b5cf6;">0%</div>
+                                </div>
+                                <div style="padding: 8px; background: rgba(249, 115, 22, 0.1); border: 1px solid #f97316; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 10px; color: #888;">EQUITY</div>
+                                    <div id="riskEquity" style="font-size: 13px; font-weight: 700; color: #f97316;">$0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VAR Details -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="font-size: 13px; color: #888; font-weight: 700;">📊 VALUE AT RISK (VAR)</div>
+                                <button onclick="loadVARData()" style="padding: 4px 8px; background: #252525; border: 1px solid #404040; color: #888; font-size: 10px; border-radius: 3px; cursor: pointer;">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">1-Day 95% VAR</div>
+                                    <div id="var1Day95" style="font-size: 16px; font-weight: 700; color: #ef4444;">$0</div>
+                                    <div id="var1Day95Pct" style="font-size: 10px; color: #888;">0%</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">1-Day 99% VAR</div>
+                                    <div id="var1Day99" style="font-size: 16px; font-weight: 700; color: #ef4444;">$0</div>
+                                    <div id="var1Day99Pct" style="font-size: 10px; color: #888;">0%</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">5-Day 95% VAR</div>
+                                    <div id="var5Day95" style="font-size: 16px; font-weight: 700; color: #f97316;">$0</div>
+                                    <div id="var5Day95Pct" style="font-size: 10px; color: #888;">0%</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 8px; padding: 8px; background: #252525; border-radius: 4px;">
+                                <div style="font-size: 10px; color: #666;">Expected Shortfall (CVaR)</div>
+                                <div id="varCVaR" style="font-size: 14px; font-weight: 700; color: #ef4444;">$0</div>
+                                <div style="font-size: 9px; color: #666; margin-top: 2px;">Average loss in worst 5% scenarios</div>
+                            </div>
+                        </div>
+
+                        <!-- Drawdown Tracking -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">📉 DRAWDOWN TRACKING</div>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Peak Equity</div>
+                                    <div id="ddPeakEquity" style="font-size: 14px; font-weight: 700; color: #22c55e;">$0</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Current Equity</div>
+                                    <div id="ddCurrentEquity" style="font-size: 14px; font-weight: 700; color: #60a5fa;">$0</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Days in Drawdown</div>
+                                    <div id="ddDaysIn" style="font-size: 14px; font-weight: 700; color: #f59e0b;">0</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Recovery Needed</div>
+                                    <div id="ddRecoveryNeeded" style="font-size: 14px; font-weight: 700; color: #ef4444;">0%</div>
+                                </div>
+                            </div>
+                            <!-- Drawdown Progress Bar -->
+                            <div style="margin-top: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-bottom: 4px;">
+                                    <span>Current Drawdown</span>
+                                    <span id="ddProgressPct">0%</span>
+                                </div>
+                                <div style="background: #333; height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div id="ddProgressBar" style="background: linear-gradient(90deg, #22c55e, #ef4444); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 9px; color: #666; margin-top: 2px;">
+                                    <span>0%</span>
+                                    <span style="color: #f59e0b;">5% Warning</span>
+                                    <span style="color: #ef4444;">15% Max</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Concentration Limits -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">🎯 CONCENTRATION LIMITS</div>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Largest Position</div>
+                                    <div id="concLargestPos" style="font-size: 14px; font-weight: 700; color: #60a5fa;">0%</div>
+                                    <div style="font-size: 9px; color: #666;">Max: 20%</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Top 3 Concentration</div>
+                                    <div id="concTop3" style="font-size: 14px; font-weight: 700; color: #60a5fa;">0%</div>
+                                    <div style="font-size: 9px; color: #666;">Max: 50%</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Small Cap Exposure</div>
+                                    <div id="concSmallCap" style="font-size: 14px; font-weight: 700; color: #8b5cf6;">0%</div>
+                                    <div style="font-size: 9px; color: #666;">Max: 50%</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Diversification Ratio</div>
+                                    <div id="concDiversification" style="font-size: 14px; font-weight: 700; color: #22c55e;">1.0</div>
+                                    <div style="font-size: 9px; color: #666;">Higher = Better</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Risk Flags -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">⚠️ RISK FLAGS</div>
+                            <div id="riskFlagsList" style="font-size: 11px; color: #aaa;">
+                                <div style="padding: 8px; background: #252525; border-radius: 4px; text-align: center; color: #22c55e;">
+                                    ✓ No active risk flags
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- WebSocket Status -->
+                        <div style="margin-top: 12px; padding: 8px; background: #252525; border-left: 3px solid #007acc; border-radius: 3px; font-size: 10px; color: #888;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>📡 Real-time updates: <span id="riskWsStatus" style="color: #ef4444;">Disconnected</span></span>
+                                <button onclick="connectRiskWebSocket()" style="padding: 3px 8px; background: #007acc; border: none; color: #fff; font-size: 9px; border-radius: 3px; cursor: pointer;">
+                                    Connect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            aimonitor: `
+                <div class="module-content" style="display: flex; flex-direction: column; height: 100%; padding: 0; font-size: 10px;">
+                    <!-- Status Bar -->
+                    <div style="background: #0d1117; padding: 4px 6px; display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid #333;">
+                        <div style="display: flex; align-items: center; gap: 3px;">
+                            <span id="monBrainStatus" style="width: 6px; height: 6px; border-radius: 50%; background: #666;"></span>
+                            <span style="color: #888;">Brain</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 3px;">
+                            <span id="monBotStatus" style="width: 6px; height: 6px; border-radius: 50%; background: #666;"></span>
+                            <span style="color: #888;">Bot</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 3px;">
+                            <span id="monModelStatus" style="width: 6px; height: 6px; border-radius: 50%; background: #666;"></span>
+                            <span style="color: #888;">Model</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 3px;">
+                            <span id="monCircuitStatus" style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
+                            <span style="color: #888;">Circuit</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 3px;">
+                            <span id="monWSStatus" style="width: 6px; height: 6px; border-radius: 50%; background: #666;"></span>
+                            <span style="color: #888;">WS</span>
+                        </div>
+                        <div style="margin-left: auto; color: #444;" id="monTimestamp">--:--:--</div>
+                    </div>
+
+                    <!-- Quick Stats Row -->
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #333; border-bottom: 1px solid #333;">
+                        <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
+                            <div style="color: #666; font-size: 8px;">REGIME</div>
+                            <div id="monRegime" style="color: #60a5fa; font-weight: 600;">--</div>
+                        </div>
+                        <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
+                            <div style="color: #666; font-size: 8px;">DRIFT</div>
+                            <div id="monDrift" style="color: #22c55e; font-weight: 600;">OK</div>
+                        </div>
+                        <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
+                            <div style="color: #666; font-size: 8px;">TRADES</div>
+                            <div id="monTrades" style="color: #fff; font-weight: 600;">0</div>
+                        </div>
+                        <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
+                            <div style="color: #666; font-size: 8px;">P&L</div>
+                            <div id="monPnL" style="color: #888; font-weight: 600;">$0</div>
+                        </div>
+                        <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
+                            <div style="color: #666; font-size: 8px;">DD%</div>
+                            <div id="monDrawdown" style="color: #22c55e; font-weight: 600;">0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Log -->
+                    <div style="flex: 1; overflow-y: auto; background: #0a0a0a;" id="aiMonitorLog">
+                        <div style="padding: 4px 6px; color: #666; border-bottom: 1px solid #1a1a1a;">
+                            ⏳ Connecting to AI Monitor...
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div style="display: flex; gap: 2px; padding: 3px; background: #1a1a1a; border-top: 1px solid #333;">
+                        <button onclick="filterMonitorLog('all')" class="mon-filter active" style="flex: 1; padding: 2px; background: #007acc; border: none; color: #fff; font-size: 9px; border-radius: 2px; cursor: pointer;">ALL</button>
+                        <button onclick="filterMonitorLog('trade')" class="mon-filter" style="flex: 1; padding: 2px; background: #252525; border: none; color: #888; font-size: 9px; border-radius: 2px; cursor: pointer;">TRADES</button>
+                        <button onclick="filterMonitorLog('signal')" class="mon-filter" style="flex: 1; padding: 2px; background: #252525; border: none; color: #888; font-size: 9px; border-radius: 2px; cursor: pointer;">SIGNALS</button>
+                        <button onclick="filterMonitorLog('error')" class="mon-filter" style="flex: 1; padding: 2px; background: #252525; border: none; color: #888; font-size: 9px; border-radius: 2px; cursor: pointer;">ERRORS</button>
+                        <button onclick="filterMonitorLog('system')" class="mon-filter" style="flex: 1; padding: 2px; background: #252525; border: none; color: #888; font-size: 9px; border-radius: 2px; cursor: pointer;">SYSTEM</button>
+                        <button onclick="clearMonitorLog()" style="padding: 2px 6px; background: #333; border: none; color: #666; font-size: 9px; border-radius: 2px; cursor: pointer;">CLR</button>
                     </div>
                 </div>
             `,
@@ -5970,6 +6235,8 @@ Confirm order?`;
             if (brainTab) brainTab.style.display = 'none';
             const safetyTab = document.getElementById('aiSafetyTab');
             if (safetyTab) safetyTab.style.display = 'none';
+            const riskTab = document.getElementById('aiRiskTab');
+            if (riskTab) riskTab.style.display = 'none';
 
             // Reset all tab buttons
             document.querySelectorAll('.ai-tab').forEach(btn => {
@@ -6030,6 +6297,11 @@ Confirm order?`;
                 document.getElementById('aiTabSafety').style.background = '#2d2d2d';
                 document.getElementById('aiTabSafety').style.color = '#fff';
                 loadCircuitBreakerStatus();
+            } else if (tab === 'risk') {
+                document.getElementById('aiRiskTab').style.display = 'block';
+                document.getElementById('aiTabRisk').style.background = '#2d2d2d';
+                document.getElementById('aiTabRisk').style.color = '#fff';
+                loadRiskDashboard();
             }
         }
 
@@ -7840,6 +8112,407 @@ Confirm order?`;
                             r.total_return_percent >= 0 ? 'success' : 'warning');
         }
 
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     ENHANCED BACKTESTER FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        async function runEnhancedBacktest() {
+            const symbols = document.getElementById('backtestSymbols').value.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+            const startDate = document.getElementById('backtestStartDate').value;
+            const endDate = document.getElementById('backtestEndDate').value;
+            const capital = parseFloat(document.getElementById('backtestCapital').value);
+            const positionSize = parseFloat(document.getElementById('backtestPositionSize').value) / 100;
+            const stopLoss = parseFloat(document.getElementById('backtestStopLoss').value) / 100;
+            const takeProfit = parseFloat(document.getElementById('backtestTakeProfit').value) / 100;
+            const trailingStop = parseFloat(document.getElementById('backtestTrailingStop').value) / 100;
+            const maxPositions = parseInt(document.getElementById('backtestMaxPositions').value);
+            const includeSlippage = document.getElementById('backtestSlippage').checked;
+            const eodLiquidation = document.getElementById('backtestEODLiquidation').checked;
+            const runMonteCarlo = document.getElementById('backtestMonteCarlo').checked;
+
+            if (!symbols.length || !startDate || !endDate) {
+                alert('Please fill in all backtest parameters');
+                return;
+            }
+
+            const btn = document.getElementById('runBacktestBtn');
+            try {
+                btn.disabled = true;
+                btn.textContent = '⏳ RUNNING...';
+
+                document.getElementById('backtestResults').style.display = 'block';
+                document.getElementById('backtestMetrics').innerHTML = `
+                    <div style="padding: 30px; text-align: center; color: #888; grid-column: span 4;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                        <div>Running enhanced backtest on ${symbols.length} symbol(s)...</div>
+                        <div style="font-size: 11px; margin-top: 5px;">Slippage: ${includeSlippage ? 'ON' : 'OFF'} | EOD Liquidation: ${eodLiquidation ? 'ON' : 'OFF'} | Monte Carlo: ${runMonteCarlo ? '1000 sims' : 'OFF'}</div>
+                    </div>
+                `;
+
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/backtest/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: symbols,
+                        start_date: startDate,
+                        end_date: endDate,
+                        initial_capital: capital,
+                        position_size_pct: positionSize,
+                        stop_loss_pct: stopLoss,
+                        take_profit_pct: takeProfit,
+                        trailing_stop_pct: trailingStop,
+                        max_positions: maxPositions,
+                        include_slippage: includeSlippage,
+                        eod_liquidation: eodLiquidation,
+                        run_monte_carlo: runMonteCarlo,
+                        monte_carlo_simulations: 1000
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Enhanced backtest result:', data);
+
+                if (data.success) {
+                    displayEnhancedBacktestResults(data);
+                } else {
+                    throw new Error(data.error || 'Backtest failed');
+                }
+            } catch (error) {
+                console.error('Error running enhanced backtest:', error);
+                document.getElementById('backtestMetrics').innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: #ef4444; grid-column: span 4;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">❌</div>
+                        <div style="font-weight: 600;">Backtest Failed</div>
+                        <div style="font-size: 12px; margin-top: 8px; color: #888;">${error.message}</div>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📊 RUN BACKTEST';
+            }
+        }
+
+        async function runQuickBacktest() {
+            const symbols = document.getElementById('backtestSymbols').value.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+
+            if (!symbols.length) {
+                alert('Please enter at least one symbol');
+                return;
+            }
+
+            const btn = document.getElementById('quickBacktestBtn');
+            try {
+                btn.disabled = true;
+                btn.textContent = '⏳ RUNNING...';
+
+                document.getElementById('backtestResults').style.display = 'block';
+                document.getElementById('backtestMetrics').innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: #888; grid-column: span 4;">
+                        <div style="font-size: 20px; margin-bottom: 8px;">⚡</div>
+                        <div>Quick 30-day backtest...</div>
+                    </div>
+                `;
+
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/backtest/quick', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: symbols, days: 30 })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    displayEnhancedBacktestResults(data);
+                } else {
+                    throw new Error(data.error || 'Quick backtest failed');
+                }
+            } catch (error) {
+                console.error('Error running quick backtest:', error);
+                document.getElementById('backtestMetrics').innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: #ef4444; grid-column: span 4;">
+                        ❌ ${error.message}
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⚡ QUICK (30 Days)';
+            }
+        }
+
+        function displayEnhancedBacktestResults(data) {
+            const r = data.results || data;
+
+            const totalReturn = r.total_return_pct || 0;
+            const finalCapital = r.final_capital || 0;
+            const winRate = r.win_rate || 0;
+            const maxDrawdown = r.max_drawdown_pct || 0;
+            const sharpe = r.sharpe_ratio || 0;
+            const profitFactor = r.profit_factor || 0;
+            const totalTrades = r.total_trades || 0;
+            const slippageCost = r.total_slippage_cost || 0;
+
+            const profitFactorDisplay = profitFactor >= 999 ? '∞' : profitFactor.toFixed(2);
+            const profitFactorColor = profitFactor >= 1.5 ? '#22c55e' : (profitFactor >= 1 ? '#f59e0b' : '#ef4444');
+
+            document.getElementById('backtestMetrics').innerHTML = `
+                <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                    <div style="font-size: 10px; color: #666;">TOTAL RETURN</div>
+                    <div style="font-size: 18px; font-weight: 700; color: ${totalReturn >= 0 ? '#22c55e' : '#ef4444'};">
+                        ${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%
+                    </div>
+                </div>
+                <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                    <div style="font-size: 10px; color: #666;">FINAL CAPITAL</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #60a5fa;">$${finalCapital.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+                </div>
+                <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                    <div style="font-size: 10px; color: #666;">WIN RATE</div>
+                    <div style="font-size: 18px; font-weight: 700; color: ${winRate >= 50 ? '#22c55e' : '#f59e0b'};">${winRate.toFixed(1)}%</div>
+                </div>
+                <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                    <div style="font-size: 10px; color: #666;">MAX DRAWDOWN</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #ef4444;">${maxDrawdown.toFixed(2)}%</div>
+                </div>
+                <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                    <div style="font-size: 10px; color: #666;">SHARPE RATIO</div>
+                    <div style="font-size: 18px; font-weight: 700; color: ${sharpe >= 1 ? '#22c55e' : '#f59e0b'};">${sharpe.toFixed(2)}</div>
+                </div>
+                <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                    <div style="font-size: 10px; color: #666;">PROFIT FACTOR</div>
+                    <div style="font-size: 18px; font-weight: 700; color: ${profitFactorColor};">${profitFactorDisplay}</div>
+                </div>
+                <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                    <div style="font-size: 10px; color: #666;">TOTAL TRADES</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #fff;">${totalTrades}</div>
+                </div>
+                <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
+                    <div style="font-size: 10px; color: #666;">SLIPPAGE COST</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #f97316;">$${slippageCost.toFixed(2)}</div>
+                </div>
+            `;
+
+            // Show exit reasons if available
+            if (r.exit_reasons) {
+                const exitReasonsDiv = document.getElementById('backtestExitReasons');
+                exitReasonsDiv.style.display = 'block';
+                exitReasonsDiv.innerHTML = `
+                    <div style="font-size: 12px; color: #888; margin-bottom: 6px; font-weight: 600;">EXIT REASONS</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        ${Object.entries(r.exit_reasons).map(([reason, count]) => `
+                            <div style="padding: 4px 8px; background: #252525; border-radius: 3px; font-size: 11px;">
+                                <span style="color: #888;">${reason}:</span>
+                                <span style="color: #fff; font-weight: 600;">${count}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // Show Monte Carlo results if available
+            if (data.monte_carlo) {
+                const mc = data.monte_carlo;
+                const mcDiv = document.getElementById('backtestMonteCarlo');
+                mcDiv.style.display = 'block';
+                mcDiv.innerHTML = `
+                    <div style="padding: 10px; background: #1a1a2e; border: 1px solid #8b5cf6; border-radius: 4px;">
+                        <div style="font-size: 12px; color: #8b5cf6; margin-bottom: 8px; font-weight: 600;">🎲 MONTE CARLO ANALYSIS (${mc.simulations} simulations)</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                            <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                <div style="font-size: 10px; color: #666;">Profit Probability</div>
+                                <div style="font-size: 14px; font-weight: 700; color: ${mc.probability_profit >= 50 ? '#22c55e' : '#ef4444'};">${mc.probability_profit.toFixed(1)}%</div>
+                            </div>
+                            <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                <div style="font-size: 10px; color: #666;">Ruin Probability</div>
+                                <div style="font-size: 14px; font-weight: 700; color: ${mc.probability_ruin <= 5 ? '#22c55e' : '#ef4444'};">${mc.probability_ruin.toFixed(1)}%</div>
+                            </div>
+                            <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                <div style="font-size: 10px; color: #666;">Median Return</div>
+                                <div style="font-size: 14px; font-weight: 700; color: ${mc.median_return >= 0 ? '#22c55e' : '#ef4444'};">${mc.median_return.toFixed(2)}%</div>
+                            </div>
+                            <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                <div style="font-size: 10px; color: #666;">Worst Drawdown</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #ef4444;">${mc.worst_drawdown.toFixed(2)}%</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 6px; font-size: 10px; color: #888; text-align: center;">
+                            95% CI Return: ${mc.ci_95_return[0].toFixed(2)}% to ${mc.ci_95_return[1].toFixed(2)}%
+                        </div>
+                    </div>
+                `;
+            }
+
+            showNotification(`Backtest complete: ${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}% return, ${winRate.toFixed(1)}% win rate`,
+                            totalReturn >= 0 ? 'success' : 'warning');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     RISK DASHBOARD FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let riskWebSocket = null;
+
+        async function loadRiskDashboard() {
+            try {
+                // Load full risk status
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/portfolio-guard/status');
+                const data = await response.json();
+
+                if (data.success) {
+                    updateRiskDisplay(data);
+                }
+            } catch (error) {
+                console.error('Error loading risk dashboard:', error);
+            }
+
+            // Also load VAR details
+            loadVARData();
+        }
+
+        async function loadVARData() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/portfolio-guard/var');
+                const data = await response.json();
+
+                if (data.success && data.var) {
+                    const v = data.var;
+                    safeUpdate('var1Day95', `$${v.var_1day_95.toFixed(2)}`);
+                    safeUpdate('var1Day95Pct', `${(v.var_pct_95 * 100).toFixed(2)}%`);
+                    safeUpdate('var1Day99', `$${v.var_1day_99.toFixed(2)}`);
+                    safeUpdate('var1Day99Pct', `${(v.var_pct_99 * 100).toFixed(2)}%`);
+                    safeUpdate('var5Day95', `$${v.var_5day_95.toFixed(2)}`);
+                    safeUpdate('var5Day95Pct', `${((v.var_5day_95 / (data.portfolio_value || 100000)) * 100).toFixed(2)}%`);
+                    safeUpdate('varCVaR', `$${v.expected_shortfall.toFixed(2)}`);
+                    safeUpdate('riskVar95', `$${v.var_1day_95.toFixed(0)}`);
+                }
+            } catch (error) {
+                console.error('Error loading VAR data:', error);
+            }
+        }
+
+        function updateRiskDisplay(data) {
+            // Update risk level badge
+            const badge = document.getElementById('riskLevelBadge');
+            const banner = document.getElementById('riskStatusBanner');
+            const level = data.risk_level || 'LOW';
+
+            badge.textContent = level;
+            const colors = {
+                'LOW': { bg: '#22c55e', border: '#22c55e' },
+                'MODERATE': { bg: '#f59e0b', border: '#f59e0b' },
+                'HIGH': { bg: '#f97316', border: '#f97316' },
+                'CRITICAL': { bg: '#ef4444', border: '#ef4444' }
+            };
+            const color = colors[level] || colors['LOW'];
+            badge.style.background = color.bg;
+            banner.style.borderColor = color.border;
+
+            // Update summary metrics
+            safeUpdate('riskVar95', `$${(data.var_95_dollars || 0).toFixed(0)}`);
+            safeUpdate('riskDrawdown', `${((data.drawdown_pct || 0) * 100).toFixed(2)}%`);
+            safeUpdate('riskMaxDD', `${((data.max_drawdown_pct || 0) * 100).toFixed(2)}%`);
+            safeUpdate('riskEquity', `$${(data.equity || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`);
+
+            // Update drawdown section
+            if (data.drawdown) {
+                const dd = data.drawdown;
+                safeUpdate('ddPeakEquity', `$${(dd.peak_equity || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`);
+                safeUpdate('ddCurrentEquity', `$${(dd.current_equity || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`);
+                safeUpdate('ddDaysIn', dd.days_in_drawdown || 0);
+                safeUpdate('ddRecoveryNeeded', `${((dd.recovery_needed_pct || 0) * 100).toFixed(2)}%`);
+
+                const ddPct = (dd.drawdown_pct || 0) * 100;
+                safeUpdate('ddProgressPct', `${ddPct.toFixed(2)}%`);
+                const progressBar = document.getElementById('ddProgressBar');
+                if (progressBar) {
+                    progressBar.style.width = `${Math.min(ddPct / 15 * 100, 100)}%`;
+                }
+            }
+
+            // Update concentration section
+            if (data.concentration) {
+                const c = data.concentration;
+                safeUpdate('concLargestPos', `${((c.largest_position_pct || 0) * 100).toFixed(1)}%`);
+                safeUpdate('concTop3', `${((c.top_3_concentration || 0) * 100).toFixed(1)}%`);
+                safeUpdate('concSmallCap', `${((c.small_cap_exposure || 0) * 100).toFixed(1)}%`);
+                safeUpdate('concDiversification', (c.diversification_ratio || 1).toFixed(2));
+            }
+
+            // Update risk flags
+            const flagsDiv = document.getElementById('riskFlagsList');
+            if (flagsDiv && data.risk_flags && data.risk_flags.length > 0) {
+                flagsDiv.innerHTML = data.risk_flags.map(flag => `
+                    <div style="padding: 6px 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 3px; margin-bottom: 4px; color: #ef4444;">
+                        ⚠️ ${flag}
+                    </div>
+                `).join('');
+            } else if (flagsDiv) {
+                flagsDiv.innerHTML = `
+                    <div style="padding: 8px; background: #252525; border-radius: 4px; text-align: center; color: #22c55e;">
+                        ✓ No active risk flags
+                    </div>
+                `;
+            }
+        }
+
+        function connectRiskWebSocket() {
+            if (riskWebSocket && riskWebSocket.readyState === WebSocket.OPEN) {
+                return;
+            }
+
+            const wsUrl = API_BASE_URL.replace('http', 'ws') + '/ws/realtime';
+            riskWebSocket = new WebSocket(wsUrl);
+
+            riskWebSocket.onopen = () => {
+                console.log('Risk WebSocket connected');
+                safeUpdate('riskWsStatus', 'Connected');
+                document.getElementById('riskWsStatus').style.color = '#22c55e';
+
+                // Subscribe to risk channel
+                riskWebSocket.send(JSON.stringify({
+                    action: 'subscribe',
+                    channels: ['risk']
+                }));
+            };
+
+            riskWebSocket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.channel === 'risk') {
+                        handleRiskUpdate(msg);
+                    }
+                } catch (e) {
+                    console.error('Error parsing WebSocket message:', e);
+                }
+            };
+
+            riskWebSocket.onclose = () => {
+                console.log('Risk WebSocket disconnected');
+                safeUpdate('riskWsStatus', 'Disconnected');
+                document.getElementById('riskWsStatus').style.color = '#ef4444';
+            };
+
+            riskWebSocket.onerror = (error) => {
+                console.error('Risk WebSocket error:', error);
+            };
+        }
+
+        function handleRiskUpdate(msg) {
+            if (msg.type === 'var') {
+                safeUpdate('riskVar95', `$${msg.data.var_95_dollars.toFixed(0)}`);
+            } else if (msg.type === 'drawdown') {
+                safeUpdate('riskDrawdown', `${(msg.data.drawdown_pct * 100).toFixed(2)}%`);
+                safeUpdate('riskMaxDD', `${(msg.data.max_drawdown_pct * 100).toFixed(2)}%`);
+                if (msg.data.equity) {
+                    safeUpdate('riskEquity', `$${msg.data.equity.toLocaleString(undefined, {maximumFractionDigits: 0})}`);
+                }
+            } else if (msg.type === 'circuit_breaker') {
+                const badge = document.getElementById('riskLevelBadge');
+                if (badge && !msg.data.can_trade) {
+                    badge.textContent = 'HALTED';
+                    badge.style.background = '#ef4444';
+                }
+            }
+        }
+
         // Open AI Control Panel window
         function openAIControlPanel() {
             // Check if window already exists
@@ -7852,6 +8525,21 @@ Confirm order?`;
 
             // Create new AI Control Panel window (centered, large size)
             createWindow('aicontrol', '🤖 AI CONTROL PANEL', windowTemplates.aicontrol, 300, 100, 680, 600);
+        }
+
+        // Open AI Monitor window
+        function openAIMonitor() {
+            const existing = windows.find(w => w.id === 'aimonitor');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                return;
+            }
+
+            // Create compact AI Monitor window
+            createWindow('aimonitor', '📡 AI MONITOR', windowTemplates.aimonitor, 10, 10, 320, 280);
+            // Initialize the monitor after DOM ready
+            setTimeout(initAIMonitor, 100);
         }
 
         // Open Claude Chat window
@@ -8218,6 +8906,304 @@ Confirm order?`;
 
             logDiv.appendChild(entry);
             logDiv.parentElement.scrollTop = logDiv.parentElement.scrollHeight;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //               AI MONITOR PANEL FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let monitorLogEntries = [];
+        let monitorFilter = 'all';
+        let monitorWS = null;
+        let monitorTradeCount = 0;
+        let monitorTotalPnL = 0;
+
+        // Add entry to AI Monitor log
+        function addMonitorEntry(type, message, data = {}) {
+            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const entry = { type, message, data, time, timestamp: Date.now() };
+            monitorLogEntries.unshift(entry);
+
+            // Keep only last 200 entries
+            if (monitorLogEntries.length > 200) {
+                monitorLogEntries = monitorLogEntries.slice(0, 200);
+            }
+
+            renderMonitorLog();
+
+            // Update timestamp
+            const tsEl = document.getElementById('monTimestamp');
+            if (tsEl) tsEl.textContent = time;
+        }
+
+        // Render the monitor log based on current filter
+        function renderMonitorLog() {
+            const logDiv = document.getElementById('aiMonitorLog');
+            if (!logDiv) return;
+
+            const filtered = monitorFilter === 'all'
+                ? monitorLogEntries
+                : monitorLogEntries.filter(e => e.type === monitorFilter);
+
+            logDiv.innerHTML = filtered.slice(0, 50).map(entry => {
+                let icon = '📝';
+                let color = '#888';
+
+                switch(entry.type) {
+                    case 'trade':
+                        icon = entry.data.side === 'buy' ? '🟢' : '🔴';
+                        color = entry.data.side === 'buy' ? '#22c55e' : '#ef4444';
+                        break;
+                    case 'signal':
+                        icon = '⚡';
+                        color = '#60a5fa';
+                        break;
+                    case 'error':
+                        icon = '❌';
+                        color = '#ef4444';
+                        break;
+                    case 'system':
+                        icon = '⚙️';
+                        color = '#888';
+                        break;
+                    case 'position':
+                        icon = '📊';
+                        color = '#fbbf24';
+                        break;
+                    case 'risk':
+                        icon = '⚠️';
+                        color = '#f97316';
+                        break;
+                }
+
+                return `<div style="padding: 3px 6px; border-bottom: 1px solid #1a1a1a; display: flex; gap: 6px; align-items: flex-start;">
+                    <span style="color: #444; font-size: 9px; flex-shrink: 0;">${entry.time}</span>
+                    <span>${icon}</span>
+                    <span style="color: ${color}; flex: 1;">${entry.message}</span>
+                </div>`;
+            }).join('') || '<div style="padding: 6px; color: #666;">No entries matching filter</div>';
+        }
+
+        // Filter the monitor log
+        function filterMonitorLog(filter) {
+            monitorFilter = filter;
+
+            // Update button styles
+            document.querySelectorAll('.mon-filter').forEach(btn => {
+                btn.style.background = '#252525';
+                btn.style.color = '#888';
+            });
+            event.target.style.background = '#007acc';
+            event.target.style.color = '#fff';
+
+            renderMonitorLog();
+        }
+
+        // Clear the monitor log
+        function clearMonitorLog() {
+            monitorLogEntries = [];
+            renderMonitorLog();
+            addMonitorEntry('system', 'Log cleared');
+        }
+
+        // Update monitor status indicators
+        function updateMonitorStatus(key, status) {
+            const statusEl = document.getElementById(`mon${key}Status`);
+            if (!statusEl) return;
+
+            switch(status) {
+                case 'running':
+                case 'active':
+                case 'ok':
+                    statusEl.style.background = '#22c55e';
+                    break;
+                case 'warning':
+                    statusEl.style.background = '#fbbf24';
+                    break;
+                case 'error':
+                case 'stopped':
+                    statusEl.style.background = '#ef4444';
+                    break;
+                default:
+                    statusEl.style.background = '#666';
+            }
+        }
+
+        // Connect to the realtime WebSocket for AI events
+        function connectAIMonitorWS() {
+            if (monitorWS && monitorWS.readyState === WebSocket.OPEN) return;
+
+            try {
+                monitorWS = new WebSocket(`ws://${window.location.host}/ws/realtime`);
+
+                monitorWS.onopen = () => {
+                    updateMonitorStatus('WS', 'active');
+                    addMonitorEntry('system', 'Connected to AI event stream');
+
+                    // Subscribe to channels
+                    monitorWS.send(JSON.stringify({
+                        action: 'subscribe',
+                        channels: ['trading', 'ai', 'risk', 'system']
+                    }));
+                };
+
+                monitorWS.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        handleMonitorMessage(msg);
+                    } catch (e) {
+                        console.error('Monitor WS parse error:', e);
+                    }
+                };
+
+                monitorWS.onclose = () => {
+                    updateMonitorStatus('WS', 'stopped');
+                    addMonitorEntry('system', 'Disconnected from AI event stream');
+                    // Reconnect after 5 seconds
+                    setTimeout(connectAIMonitorWS, 5000);
+                };
+
+                monitorWS.onerror = (err) => {
+                    updateMonitorStatus('WS', 'error');
+                    addMonitorEntry('error', 'WebSocket connection error');
+                };
+            } catch (e) {
+                addMonitorEntry('error', 'Failed to connect to AI monitor');
+            }
+        }
+
+        // Handle incoming monitor messages
+        function handleMonitorMessage(msg) {
+            const type = msg.type || msg.channel;
+            const data = msg.data || msg;
+
+            switch(type) {
+                case 'trade':
+                    const side = data.side || 'unknown';
+                    const symbol = data.symbol || '???';
+                    const qty = data.qty || data.quantity || 0;
+                    const price = data.price || data.avg_price || 0;
+                    addMonitorEntry('trade', `${side.toUpperCase()} ${qty} ${symbol} @ $${parseFloat(price).toFixed(2)}`, { side });
+                    monitorTradeCount++;
+                    document.getElementById('monTrades').textContent = monitorTradeCount;
+                    break;
+
+                case 'position_update':
+                    addMonitorEntry('position', `Position update: ${data.symbol} qty=${data.qty}`, data);
+                    break;
+
+                case 'prediction':
+                case 'signal':
+                    const action = data.signal || data.action || 'HOLD';
+                    const conf = data.confidence ? ` (${(data.confidence * 100).toFixed(0)}%)` : '';
+                    addMonitorEntry('signal', `${data.symbol}: ${action}${conf}`, data);
+                    break;
+
+                case 'bot_status':
+                    updateMonitorStatus('Bot', data.running ? 'active' : 'stopped');
+                    addMonitorEntry('system', `Bot ${data.running ? 'STARTED' : 'STOPPED'}`);
+                    break;
+
+                case 'brain_status':
+                    updateMonitorStatus('Brain', data.running ? 'active' : 'stopped');
+                    if (data.regime) {
+                        document.getElementById('monRegime').textContent = data.regime;
+                    }
+                    break;
+
+                case 'circuit_breaker':
+                    const level = data.level || 'OK';
+                    updateMonitorStatus('Circuit', level === 'OK' ? 'ok' : level === 'WARNING' ? 'warning' : 'error');
+                    if (level !== 'OK') {
+                        addMonitorEntry('risk', `Circuit breaker: ${level}`, data);
+                    }
+                    break;
+
+                case 'drawdown':
+                    const dd = data.drawdown_pct || 0;
+                    const ddEl = document.getElementById('monDrawdown');
+                    if (ddEl) {
+                        ddEl.textContent = `${dd.toFixed(1)}%`;
+                        ddEl.style.color = dd > 3 ? '#ef4444' : dd > 1 ? '#fbbf24' : '#22c55e';
+                    }
+                    break;
+
+                case 'drift':
+                    const driftEl = document.getElementById('monDrift');
+                    if (driftEl) {
+                        driftEl.textContent = data.detected ? 'DRIFT' : 'OK';
+                        driftEl.style.color = data.detected ? '#ef4444' : '#22c55e';
+                    }
+                    if (data.detected) {
+                        addMonitorEntry('risk', 'Data drift detected - consider retraining', data);
+                    }
+                    break;
+
+                case 'error':
+                    addMonitorEntry('error', data.message || 'Unknown error', data);
+                    break;
+
+                case 'connected':
+                case 'subscribed':
+                    // Ignore connection confirmations
+                    break;
+
+                default:
+                    if (data.message) {
+                        addMonitorEntry('system', data.message, data);
+                    }
+            }
+        }
+
+        // Initialize AI Monitor on window creation
+        function initAIMonitor() {
+            // Load initial status
+            fetchMonitorStatus();
+
+            // Connect WebSocket
+            connectAIMonitorWS();
+
+            // Periodic status refresh
+            setInterval(fetchMonitorStatus, 30000);
+        }
+
+        // Fetch current system status for monitor
+        async function fetchMonitorStatus() {
+            try {
+                // Get model status
+                const modelResp = await fetch('/api/ai/model-info');
+                const modelData = await modelResp.json();
+                updateMonitorStatus('Model', modelData.trained ? 'active' : 'stopped');
+
+                // Get brain status
+                try {
+                    const brainResp = await fetch('/api/brain/status');
+                    const brainData = await brainResp.json();
+                    if (brainData.success) {
+                        updateMonitorStatus('Brain', brainData.data?.running ? 'active' : 'stopped');
+                        if (brainData.data?.regime) {
+                            document.getElementById('monRegime').textContent = brainData.data.regime;
+                        }
+                    }
+                } catch (e) {}
+
+                // Get account P&L
+                try {
+                    const acctResp = await fetch('/api/account');
+                    const acctData = await acctResp.json();
+                    if (acctData.success && acctData.data) {
+                        const pnl = parseFloat(acctData.data.unrealized_pl || 0) + parseFloat(acctData.data.realized_pl || 0);
+                        const pnlEl = document.getElementById('monPnL');
+                        if (pnlEl) {
+                            pnlEl.textContent = `$${pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}`;
+                            pnlEl.style.color = pnl >= 0 ? '#22c55e' : '#ef4444';
+                        }
+                    }
+                } catch (e) {}
+
+            } catch (e) {
+                console.error('Monitor status fetch error:', e);
+            }
         }
 
         // Update Claude chat live status panel

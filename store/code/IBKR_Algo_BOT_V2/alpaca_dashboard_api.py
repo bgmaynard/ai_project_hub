@@ -1797,6 +1797,21 @@ if ui_path.exists():
         """Serve main dashboard"""
         return FileResponse("ui/complete_platform.html")
 
+    @app.get("/trading")
+    async def trading_dashboard():
+        """Serve trading-focused dashboard"""
+        return FileResponse("ui/trading_dashboard.html")
+
+    @app.get("/ai")
+    async def ai_dashboard():
+        """Serve AI monitoring dashboard"""
+        return FileResponse("ui/ai_dashboard.html")
+
+    @app.get("/ai-control")
+    async def ai_control_dashboard():
+        """Serve AI control center - all controls in one view"""
+        return FileResponse("ui/ai_control_dashboard.html")
+
 
 # ============================================================================
 # STARTUP & SHUTDOWN
@@ -1988,6 +2003,293 @@ async def shutdown_event():
             logger.info("Schwab fast polling stopped")
         except Exception as e:
             logger.warning(f"Error stopping Schwab fast polling: {e}")
+
+
+# ============================================================================
+# REAL-TIME WEBSOCKET HUB
+# ============================================================================
+
+# Import realtime hub for WebSocket management
+try:
+    from ai.realtime_hub import (
+        get_realtime_hub,
+        Channel,
+        broadcast_trade,
+        broadcast_position_update,
+        broadcast_bot_status,
+        broadcast_prediction,
+        broadcast_brain_status,
+        broadcast_var_update,
+        broadcast_drawdown_update,
+        broadcast_circuit_breaker,
+        broadcast_risk_alert
+    )
+    HAS_REALTIME_HUB = True
+except ImportError as e:
+    logger.warning(f"Realtime hub not available: {e}")
+    HAS_REALTIME_HUB = False
+
+
+@app.websocket("/ws/realtime")
+async def websocket_realtime_hub(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time trading updates.
+
+    Channels:
+    - trading: Bot status, trades, positions, orders
+    - ai: Predictions, signals, brain status
+    - risk: VAR, drawdown, circuit breaker alerts
+    - system: Server status, errors
+
+    Protocol:
+    1. Connect to ws://localhost:9100/ws/realtime
+    2. Optionally subscribe to specific channels:
+       {"action": "subscribe", "channels": ["trading", "risk"]}
+    3. Receive streaming updates:
+       {"channel": "trading", "type": "trade", "data": {...}, "timestamp": "..."}
+
+    Actions:
+    - subscribe: Subscribe to channels
+    - unsubscribe: Unsubscribe from channels
+    - get_history: Get recent messages for a channel
+    - status: Get hub status
+    """
+    await websocket.accept()
+    client_id = str(uuid.uuid4())
+    logger.info(f"[WS-RT] Client connected: {client_id}")
+
+    if not HAS_REALTIME_HUB:
+        await websocket.send_json({
+            "type": "error",
+            "message": "Realtime hub not available"
+        })
+        await websocket.close()
+        return
+
+    hub = get_realtime_hub()
+
+    # Register with all channels by default
+    message_queue = hub.register_client(client_id)
+
+    # Send welcome message
+    await websocket.send_json({
+        "type": "connected",
+        "client_id": client_id,
+        "message": "Connected to realtime hub",
+        "channels": [c.value for c in Channel if c != Channel.ALL],
+        "status": hub.get_status()
+    })
+
+    async def send_messages():
+        """Forward messages from queue to WebSocket"""
+        while True:
+            try:
+                message = await message_queue.get()
+                await websocket.send_text(message)
+            except Exception as e:
+                logger.error(f"[WS-RT] Send error: {e}")
+                break
+
+    async def receive_commands():
+        """Receive commands from WebSocket client"""
+        while True:
+            try:
+                data = await websocket.receive_json()
+                action = data.get("action", "").lower()
+
+                if action == "subscribe":
+                    channels = data.get("channels", [])
+                    hub.subscribe(client_id, channels)
+                    await websocket.send_json({
+                        "type": "subscribed",
+                        "channels": channels
+                    })
+
+                elif action == "unsubscribe":
+                    channels = data.get("channels", [])
+                    hub.unsubscribe(client_id, channels)
+                    await websocket.send_json({
+                        "type": "unsubscribed",
+                        "channels": channels
+                    })
+
+                elif action == "get_history":
+                    channel = data.get("channel", "trading")
+                    limit = data.get("limit", 20)
+                    history = hub.get_history(channel, limit)
+                    await websocket.send_json({
+                        "type": "history",
+                        "channel": channel,
+                        "messages": history
+                    })
+
+                elif action == "status":
+                    await websocket.send_json({
+                        "type": "status",
+                        "hub": hub.get_status()
+                    })
+
+                elif action == "ping":
+                    await websocket.send_json({
+                        "type": "pong",
+                        "timestamp": datetime.now().isoformat()
+                    })
+
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                logger.error(f"[WS-RT] Receive error: {e}")
+                break
+
+    try:
+        # Run both tasks concurrently
+        send_task = asyncio.create_task(send_messages())
+        receive_task = asyncio.create_task(receive_commands())
+
+        done, pending = await asyncio.wait(
+            [send_task, receive_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+
+        for task in pending:
+            task.cancel()
+
+    except WebSocketDisconnect:
+        logger.info(f"[WS-RT] Client disconnected: {client_id}")
+    except Exception as e:
+        logger.error(f"[WS-RT] Error: {e}")
+    finally:
+        hub.unregister_client(client_id)
+        logger.info(f"[WS-RT] Client cleanup: {client_id}")
+
+
+@app.get("/api/realtime/status")
+async def get_realtime_status():
+    """Get realtime hub status"""
+    if not HAS_REALTIME_HUB:
+        return {"success": False, "error": "Realtime hub not available"}
+
+    hub = get_realtime_hub()
+    return {
+        "success": True,
+        "status": hub.get_status()
+    }
+
+
+@app.get("/api/realtime/history/{channel}")
+async def get_realtime_history(channel: str, limit: int = 20):
+    """Get message history for a channel"""
+    if not HAS_REALTIME_HUB:
+        return {"success": False, "error": "Realtime hub not available"}
+
+    hub = get_realtime_hub()
+    history = hub.get_history(channel, limit)
+
+    return {
+        "success": True,
+        "channel": channel,
+        "messages": history,
+        "count": len(history)
+    }
+
+
+@app.post("/api/realtime/broadcast")
+async def broadcast_message(data: dict):
+    """
+    Broadcast a message to connected clients.
+
+    Body:
+        channel: str - Channel to broadcast to (trading, ai, risk, system, all)
+        type: str - Message type
+        data: dict - Message payload
+    """
+    if not HAS_REALTIME_HUB:
+        return {"success": False, "error": "Realtime hub not available"}
+
+    from ai.realtime_hub import broadcast
+
+    channel = data.get("channel", "system")
+    message_type = data.get("type", "update")
+    payload = data.get("data", {})
+
+    await broadcast(channel, payload, message_type)
+
+    return {
+        "success": True,
+        "message": f"Broadcast sent to {channel}",
+        "type": message_type
+    }
+
+
+# ============================================================================
+# BACKGROUND TASK: PERIODIC RISK UPDATES
+# ============================================================================
+
+async def periodic_risk_broadcast():
+    """Background task to broadcast risk updates every 30 seconds"""
+    if not HAS_REALTIME_HUB:
+        return
+
+    from ai.realtime_hub import broadcast
+
+    while True:
+        try:
+            # Get current risk state
+            connector = get_alpaca_connector()
+            if connector.is_connected():
+                account = connector.get_account()
+                equity = float(account.get('equity', 0))
+
+                # Broadcast drawdown
+                try:
+                    from ai.portfolio_guard import get_portfolio_guard
+                    guard = get_portfolio_guard()
+                    dd = guard.calculate_drawdown(equity)
+
+                    await broadcast(
+                        "risk",
+                        {
+                            "drawdown_pct": dd.drawdown_pct,
+                            "max_drawdown_pct": dd.max_drawdown_pct,
+                            "equity": equity,
+                            "is_at_peak": dd.is_at_peak
+                        },
+                        "drawdown"
+                    )
+                except Exception as e:
+                    logger.debug(f"Error broadcasting drawdown: {e}")
+
+                # Broadcast circuit breaker status
+                try:
+                    from ai.circuit_breaker import get_circuit_breaker
+                    breaker = get_circuit_breaker()
+                    state = breaker.check_breaker()
+
+                    await broadcast(
+                        "risk",
+                        {
+                            "level": state.level,
+                            "can_trade": state.can_trade,
+                            "daily_pnl": state.daily_pnl,
+                            "daily_pnl_pct": state.daily_pnl_pct
+                        },
+                        "circuit_breaker"
+                    )
+                except Exception as e:
+                    logger.debug(f"Error broadcasting circuit breaker: {e}")
+
+        except Exception as e:
+            logger.debug(f"Periodic risk broadcast error: {e}")
+
+        await asyncio.sleep(30)
+
+
+@app.on_event("startup")
+async def start_periodic_broadcasts():
+    """Start background broadcast tasks on server startup"""
+    if HAS_REALTIME_HUB:
+        asyncio.create_task(periodic_risk_broadcast())
+        logger.info("Started periodic risk broadcast task")
 
 
 # ============================================================================
