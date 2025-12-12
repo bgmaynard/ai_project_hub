@@ -423,7 +423,7 @@
         .data-table {
             width: 100%;
             font-family: 'Courier New', monospace;
-            font-size: 11px;
+            font-size: 13px;
         }
 
         .data-table thead {
@@ -434,18 +434,18 @@
         }
 
         .data-table th {
-            padding: 3px 5px;
+            padding: 4px 6px;
             text-align: left;
             font-weight: 700;
             color: #888;
             border-bottom: 1px solid #404040;
             text-transform: uppercase;
-            font-size: 9px;
+            font-size: 11px;
             letter-spacing: 0.3px;
         }
 
         .data-table td {
-            padding: 2px 5px;
+            padding: 4px 6px;
             border-bottom: 1px solid #252525;
         }
 
@@ -516,9 +516,9 @@
 
         .level2-header {
             display: grid;
-            grid-template-columns: 40px 60px 60px 40px;
-            padding: 3px 2px;
-            font-size: 9px;
+            grid-template-columns: 50px 70px 70px 50px;
+            padding: 5px 4px;
+            font-size: 11px;
             font-weight: 700;
             background: #2d2d2d;
             border-bottom: 1px solid #404040;
@@ -534,9 +534,9 @@
 
         .level2-row {
             display: grid;
-            grid-template-columns: 40px 60px 60px 40px;
-            padding: 1px 2px;
-            font-size: 10px;
+            grid-template-columns: 50px 70px 70px 50px;
+            padding: 3px 4px;
+            font-size: 13px;
             border-bottom: 1px solid #222;
             position: relative;
         }
@@ -547,7 +547,7 @@
 
         .level2-row div {
             text-align: center;
-            padding: 2px;
+            padding: 3px;
         }
 
         .level2-row.clickable {
@@ -572,7 +572,7 @@
 
         .order-field label {
             display: block;
-            font-size: 9px;
+            font-size: 11px;
             color: #888;
             margin-bottom: 2px;
             text-transform: uppercase;
@@ -582,11 +582,11 @@
         .order-field input,
         .order-field select {
             width: 100%;
-            padding: 3px 5px;
+            padding: 4px 6px;
             background: #252525;
             border: 1px solid #404040;
             color: #fff;
-            font-size: 11px;
+            font-size: 13px;
             border-radius: 2px;
             font-family: 'Courier New', monospace;
         }
@@ -605,11 +605,11 @@
         }
 
         .qty-btn {
-            padding: 3px;
+            padding: 4px;
             background: #252525;
             border: 1px solid #404040;
             color: #888;
-            font-size: 10px;
+            font-size: 12px;
             cursor: pointer;
             border-radius: 2px;
             transition: all 0.2s;
@@ -1180,96 +1180,97 @@
         </div>
     </div>
 
-    <!-- Menu Bar -->
+    <!-- Menu Bar - Redesigned with Nested Dropdowns -->
     <div class="menu-bar">
+        <!-- FILE MENU -->
+        <div class="menu-item" onclick="toggleDropdown('file-dropdown')">
+            📁 FILE
+            <div class="dropdown" id="file-dropdown" style="width: 220px;">
+                <a href="#" onclick="event.preventDefault(); showSaveConfigDialog()">💾 Save Configuration...</a>
+                <a href="#" onclick="event.preventDefault(); setAsDefaultLayout()">⭐ Set as Default</a>
+                <a href="#" onclick="event.preventDefault(); showManageConfigsDialog()">⚙️ Manage Configs</a>
+                <hr>
+                <a href="#" onclick="event.preventDefault(); resetLayout()">🔄 Reset Layout</a>
+                <a href="#" onclick="event.preventDefault(); openNewDashboardInstance()">➕ New Window</a>
+            </div>
+        </div>
+
+        <!-- LAYOUTS MENU -->
         <div class="menu-item" onclick="toggleDropdown('layouts-dropdown')">
             📐 LAYOUTS
             <div class="dropdown" id="layouts-dropdown">
-                <strong>Preset Layouts</strong>
                 <a href="#" onclick="event.preventDefault(); loadLayout('default')">📊 Default</a>
                 <a href="#" onclick="event.preventDefault(); loadLayout('trading')">⚡ Trading</a>
                 <a href="#" onclick="event.preventDefault(); loadLayout('analysis')">📈 Analysis</a>
                 <a href="#" onclick="event.preventDefault(); loadLayout('scalping')">🎯 Scalping</a>
-                <hr>
-                <a href="#" onclick="event.preventDefault(); resetLayout()">🔄 Reset to Default</a>
             </div>
         </div>
-        <div class="menu-item" onclick="toggleDropdown('configs-dropdown')" style="background: #1e3a8a;">
-            💾 CONFIGURATIONS
-            <div class="dropdown" id="configs-dropdown">
-                <strong>Saved Configurations</strong>
-                <div id="savedConfigsList" style="max-height: 300px; overflow-y: auto;">
-                    <!-- Dynamically populated -->
-                </div>
-                <hr>
-                <a href="#" onclick="event.preventDefault(); showSaveConfigDialog()">💾 Save Current As...</a>
-                <a href="#" onclick="event.preventDefault(); setAsDefaultLayout()">⭐ Set as Startup Default</a>
-                <a href="#" onclick="event.preventDefault(); showManageConfigsDialog()">⚙️ Manage Configurations</a>
-            </div>
-        </div>
-        <div class="menu-item" onclick="toggleDropdown('switch-ui-dropdown')">
-            🖥️ Switch UI
-            <div class="dropdown" id="switch-ui-dropdown">
-                <strong>Available Dashboards</strong>
-                <a href="/ui/monitor.html" target="_blank">🎛️ Monitor Dashboard</a>
-                <a href="/ui/live_dashboard.html" target="_blank">📈 Live Dashboard</a>
-                <a href="/ui/trading_platform_complete.html" target="_blank">📊 Trading Platform</a>
-                <a href="/ui/complete_platform.html">🖥️ Complete Platform (Current)</a>
-                <hr>
-                <strong>Open New Instance</strong>
-                <a href="#" onclick="event.preventDefault(); openNewDashboardInstance()">➕ New Dashboard Window</a>
-            </div>
-        </div>
+
+        <!-- CHARTS MENU -->
         <div class="menu-item" onclick="toggleDropdown('charts-dropdown')">
             📊 CHARTS
-            <div class="dropdown" id="charts-dropdown">
-                <strong>Quick Add (Uses Your Defaults)</strong>
-                <a href="#" onclick="event.preventDefault(); addChartWithDefault('1')">📊 1 Minute</a>
-                <a href="#" onclick="event.preventDefault(); addChartWithDefault('5')">📊 5 Minutes</a>
-                <a href="#" onclick="event.preventDefault(); addChartWithDefault('15')">📊 15 Minutes</a>
-                <a href="#" onclick="event.preventDefault(); addChartWithDefault('60')">📊 1 Hour</a>
-                <a href="#" onclick="event.preventDefault(); addChartWithDefault('D')">📊 Daily</a>
+            <div class="dropdown" id="charts-dropdown" style="width: 200px;">
+                <strong style="font-size: 10px;">Add Chart</strong>
+                <a href="#" onclick="event.preventDefault(); addChartWithDefault('1')">1 Min</a>
+                <a href="#" onclick="event.preventDefault(); addChartWithDefault('5')">5 Min</a>
+                <a href="#" onclick="event.preventDefault(); addChartWithDefault('15')">15 Min</a>
+                <a href="#" onclick="event.preventDefault(); addChartWithDefault('60')">1 Hour</a>
+                <a href="#" onclick="event.preventDefault(); addChartWithDefault('D')">Daily</a>
                 <hr>
-                <strong>Templates</strong>
-                <a href="#" onclick="event.preventDefault(); showAddChartDialog()">📊 Add Chart (Select Template)...</a>
-                <a href="#" onclick="event.preventDefault(); showCreateTemplateDialog()">🎨 Create New Template...</a>
-                <a href="#" onclick="event.preventDefault(); showManageTemplatesDialog()">📋 Manage Templates & Defaults...</a>
+                <a href="#" onclick="event.preventDefault(); showAddChartDialog()">📋 Templates...</a>
             </div>
         </div>
-        <div class="menu-item" onclick="toggleDropdown('tradingview-dropdown')" style="background: #2563eb;">
-            📺 TV DESKTOP
-            <div class="dropdown" id="tradingview-dropdown" style="width: 280px;">
-                <strong>🖥️ Open in TradingView Desktop</strong>
-                <a href="#" onclick="event.preventDefault(); openTVDesktop(currentSymbol, '1')">📊 1 Minute Chart</a>
-                <a href="#" onclick="event.preventDefault(); openTVDesktop(currentSymbol, '5')">📊 5 Minute Chart</a>
-                <a href="#" onclick="event.preventDefault(); openTVDesktop(currentSymbol, '15')">📊 15 Minute Chart</a>
-                <a href="#" onclick="event.preventDefault(); openTVDesktop(currentSymbol, '60')">📊 1 Hour Chart</a>
+
+        <!-- TRADING VIEW MENU -->
+        <div class="menu-item" onclick="toggleDropdown('tv-dropdown')" style="background: #2563eb;">
+            📺 TV
+            <div class="dropdown" id="tv-dropdown" style="width: 220px;">
+                <strong style="font-size: 10px;">Open in TradingView</strong>
+                <a href="#" onclick="event.preventDefault(); openTVDesktop(currentSymbol, '5')">📊 5 Min Chart</a>
+                <a href="#" onclick="event.preventDefault(); openTVDesktop(currentSymbol, '15')">📊 15 Min Chart</a>
                 <a href="#" onclick="event.preventDefault(); openTVDesktop(currentSymbol, 'D')">📊 Daily Chart</a>
-                <a href="#" onclick="event.preventDefault(); openTVDesktop(currentSymbol, 'W')">📊 Weekly Chart</a>
                 <hr>
-                <strong>🚀 Quick Actions</strong>
-                <a href="#" onclick="event.preventDefault(); openTVDesktopMulti()">📺 Open All Watchlist Symbols</a>
-                <a href="#" onclick="event.preventDefault(); copySymbolToClipboard()">📋 Copy Symbol to Clipboard</a>
-                <a href="#" onclick="event.preventDefault(); showTVDesktopHelp()">❓ How to Use TV Desktop</a>
+                <a href="#" onclick="event.preventDefault(); openTVDesktopMulti()">📺 Open Watchlist</a>
+                <a href="#" onclick="event.preventDefault(); copySymbolToClipboard()">📋 Copy Symbol</a>
                 <hr>
-                <strong>⚡ Webhook Integration</strong>
-                <a href="#" onclick="event.preventDefault(); showWebhookInfo()">🔗 Webhook URL & Setup</a>
-                <a href="#" onclick="event.preventDefault(); showWebhookLogs()">📊 View Webhook Logs</a>
+                <strong style="font-size: 10px;">Webhooks</strong>
+                <a href="#" onclick="event.preventDefault(); showWebhookInfo()">🔗 Webhook Setup</a>
                 <a href="#" onclick="event.preventDefault(); testWebhook()">🧪 Test Webhook</a>
-                <hr>
-                <strong>📁 Watchlist Sync</strong>
-                <a href="#" onclick="event.preventDefault(); showTVWatchlistSyncModal()">🔄 Sync Watchlist to TV Desktop</a>
-                <a href="#" onclick="event.preventDefault(); copyWatchlistToClipboard()">📋 Copy Watchlist to Clipboard</a>
-                <a href="#" onclick="event.preventDefault(); exportWatchlist()">⬇️ Export as File</a>
-                <a href="#" onclick="event.preventDefault(); showSetupGuide()">📚 Setup Guide</a>
             </div>
         </div>
-        <div class="menu-item" onclick="connectToAlpaca()">🔌 Connect Alpaca</div>
-        <div class="menu-item" onclick="openPDTMonitor()" style="background: #7f1d1d;">⚖️ PDT Monitor</div>
-        <div class="menu-item" onclick="openAIControlPanel()" style="background: #1e40af;">🤖 AI Control</div>
-        <div class="menu-item" onclick="openAIMonitor()" style="background: #0d9488;">📡 AI Monitor</div>
-        <div class="menu-item" onclick="openScannerPanel()" style="background: #059669;">🔍 SCANNER</div>
-        <div class="menu-item" onclick="openClaudeChatWindow()" style="background: #7c3aed;">💬 Claude Chat</div>
+
+        <!-- AI TOOLS MENU -->
+        <div class="menu-item" onclick="toggleDropdown('ai-dropdown')" style="background: #1e40af;">
+            🤖 AI
+            <div class="dropdown" id="ai-dropdown" style="width: 240px;">
+                <strong style="font-size: 10px;">Control Panels</strong>
+                <a href="/ai-control" target="_blank">🎮 AI Control Dashboard</a>
+                <a href="#" onclick="event.preventDefault(); openAIControlPanel()">🎛️ AI Control Panel</a>
+                <a href="#" onclick="event.preventDefault(); openAIMonitor()">📡 AI Monitor</a>
+                <hr>
+                <strong style="font-size: 10px;">Tools</strong>
+                <a href="#" onclick="event.preventDefault(); openScannerPanel()">🔍 Stock Scanner</a>
+                <a href="#" onclick="event.preventDefault(); openClaudeChatWindow()">💬 Claude Chat</a>
+                <hr>
+                <strong style="font-size: 10px;">Backtesting</strong>
+                <a href="/ui/ensemble_backtest.html" target="_blank">🔬 Ensemble Comparison</a>
+            </div>
+        </div>
+
+        <!-- TOOLS MENU -->
+        <div class="menu-item" onclick="toggleDropdown('tools-dropdown')">
+            🛠️ TOOLS
+            <div class="dropdown" id="tools-dropdown" style="width: 200px;">
+                <a href="#" onclick="event.preventDefault(); openPDTMonitor()">⚖️ PDT Monitor</a>
+                <a href="#" onclick="event.preventDefault(); exportWatchlist()">⬇️ Export Watchlist</a>
+                <a href="#" onclick="event.preventDefault(); copyWatchlistToClipboard()">📋 Copy Watchlist</a>
+            </div>
+        </div>
+
+        <!-- CONNECT BUTTON -->
+        <div class="menu-item" onclick="connectToAlpaca()" style="background: #059669;">
+            🔌 CONNECT
+        </div>
     </div>
 
     <!-- Workspace -->
@@ -2141,20 +2142,20 @@
                 <!-- Secondary Stats -->
                 <div style="padding: 0 8px 8px 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-size: 10px; border-top: 1px solid #333;">
                     <div style="text-align: center; padding-top: 4px;">
-                        <div style="color: #666; font-size: 8px;">VOL</div>
-                        <div id="volumePrice" style="color: #aaa; font-weight: 600; font-size: 10px;">--</div>
+                        <div style="color: #666; font-size: 10px;">VOL</div>
+                        <div id="volumePrice" style="color: #aaa; font-weight: 600; font-size: 12px;">--</div>
                     </div>
                     <div style="text-align: center; padding-top: 4px;">
-                        <div style="color: #666; font-size: 8px;">HIGH</div>
-                        <div id="highPrice" style="color: #aaa; font-weight: 600; font-size: 10px;">--</div>
+                        <div style="color: #666; font-size: 10px;">HIGH</div>
+                        <div id="highPrice" style="color: #aaa; font-weight: 600; font-size: 12px;">--</div>
                     </div>
                     <div style="text-align: center; padding-top: 4px;">
-                        <div style="color: #666; font-size: 8px;">LOW</div>
-                        <div id="lowPrice" style="color: #aaa; font-weight: 600; font-size: 10px;">--</div>
+                        <div style="color: #666; font-size: 10px;">LOW</div>
+                        <div id="lowPrice" style="color: #aaa; font-weight: 600; font-size: 12px;">--</div>
                     </div>
                     <div style="text-align: center; padding-top: 4px;">
-                        <div style="color: #666; font-size: 8px;">OPEN</div>
-                        <div id="openPrice" style="color: #aaa; font-weight: 600; font-size: 10px;">--</div>
+                        <div style="color: #666; font-size: 10px;">OPEN</div>
+                        <div id="openPrice" style="color: #aaa; font-weight: 600; font-size: 12px;">--</div>
                     </div>
                 </div>
 
@@ -2268,7 +2269,7 @@
                     <div class="order-field">
                         <label>Time In Force</label>
                         <select id="orderTIF">
-                            <option value="DAY">Day</option>
+                            <option value="DAY" selected>Day + Ext Hrs</option>
                             <option value="GTC">GTC</option>
                             <option value="IOC">IOC</option>
                             <option value="FOK">FOK</option>
@@ -2278,8 +2279,8 @@
                     <!-- Checkboxes on one line to save space -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0;">
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <input type="checkbox" id="extendedHours" style="width: auto; margin: 0;">
-                            <label for="extendedHours" style="margin: 0; cursor: pointer; font-size: 13px;">Ext Hours</label>
+                            <input type="checkbox" id="extendedHours" style="width: auto; margin: 0;" checked>
+                            <label for="extendedHours" style="margin: 0; cursor: pointer; font-size: 13px; color: #22c55e;">Ext Hours ✓</label>
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <input type="checkbox" id="autoSubmitOrders" style="width: auto; margin: 0;" onchange="saveAutoSubmitSetting(this.checked)">
@@ -2467,20 +2468,20 @@
                 <!-- Key Stats - Compact Grid -->
                 <div style="padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
                     <div style="padding: 6px; background: #1a1a1a; border-radius: 3px;">
-                        <div style="color: #666; font-size: 8px; margin-bottom: 2px;">CASH</div>
-                        <div id="cashBalance" style="font-weight: 700; font-size: 13px; color: #22c55e;">$0.00</div>
+                        <div style="color: #666; font-size: 10px; margin-bottom: 2px;">CASH</div>
+                        <div id="cashBalance" style="font-weight: 700; font-size: 14px; color: #22c55e;">$0.00</div>
                     </div>
                     <div style="padding: 6px; background: #1a1a1a; border-radius: 3px;">
-                        <div style="color: #666; font-size: 8px; margin-bottom: 2px;">BUYING POWER</div>
-                        <div id="buyingPower" style="font-weight: 700; font-size: 13px; color: #60a5fa;">$0.00</div>
+                        <div style="color: #666; font-size: 10px; margin-bottom: 2px;">BUYING POWER</div>
+                        <div id="buyingPower" style="font-weight: 700; font-size: 14px; color: #60a5fa;">$0.00</div>
                     </div>
                     <div style="padding: 6px; background: #1a1a1a; border-radius: 3px;">
-                        <div style="color: #666; font-size: 8px; margin-bottom: 2px;">DAY P&L</div>
-                        <div id="dayPL" style="font-weight: 700; font-size: 13px;">$0.00</div>
+                        <div style="color: #666; font-size: 10px; margin-bottom: 2px;">DAY P&L</div>
+                        <div id="dayPL" style="font-weight: 700; font-size: 14px;">$0.00</div>
                     </div>
                     <div style="padding: 6px; background: #1a1a1a; border-radius: 3px;">
-                        <div style="color: #666; font-size: 8px; margin-bottom: 2px;">EQUITY</div>
-                        <div id="equityValue" style="font-weight: 700; font-size: 13px; color: #aaa;">$0.00</div>
+                        <div style="color: #666; font-size: 10px; margin-bottom: 2px;">EQUITY</div>
+                        <div id="equityValue" style="font-weight: 700; font-size: 14px; color: #aaa;">$0.00</div>
                     </div>
                 </div>
 
@@ -2524,8 +2525,12 @@
                             <div id="botPositions" style="font-size: 17px; font-weight: 700; color: #fbbf24;">0</div>
                         </div>
                         <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
-                            <div style="font-size: 12px; color: #888;">DAILY P&L (5%)</div>
+                            <div style="font-size: 12px; color: #888;">DAY P/L</div>
                             <div id="botDailyPnl" style="font-size: 17px; font-weight: 700;">$0.00</div>
+                        </div>
+                        <div style="padding: 6px; background: #1a1a1a; border-radius: 2px;">
+                            <div style="font-size: 12px; color: #888;">UNREALIZED</div>
+                            <div id="botPositionPnl" style="font-size: 17px; font-weight: 700;">$0.00</div>
                         </div>
                     </div>
 
@@ -2801,6 +2806,12 @@
                         <button id="aiTabRisk" class="ai-tab" onclick="switchAITab('risk')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
                             📈 RISK
                         </button>
+                        <button id="aiTabEnsemble" class="ai-tab" onclick="switchAITab('ensemble')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            🎯 ENSEMBLE
+                        </button>
+                        <button id="aiTabRL" class="ai-tab" onclick="switchAITab('rl')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            🤖 RL AGENT
+                        </button>
                     </div>
 
                     <!-- TRAINING TAB -->
@@ -3019,6 +3030,13 @@
                                 </button>
                                 <button id="quickBacktestBtn" class="btn btn-secondary" onclick="runQuickBacktest()" style="font-size: 14px; padding: 10px;">
                                     ⚡ QUICK (30 Days)
+                                </button>
+                            </div>
+                            <div style="margin-top: 12px; padding: 10px; background: #1e3a5f; border-radius: 4px; border: 1px solid #3b82f6;">
+                                <div style="font-size: 12px; color: #60a5fa; margin-bottom: 6px; font-weight: 600;">🔬 ENSEMBLE COMPARISON</div>
+                                <div style="font-size: 11px; color: #888; margin-bottom: 8px;">Compare Single vs Parallel vs Hybrid ensemble performance</div>
+                                <button class="btn" onclick="window.open('/ui/ensemble_backtest.html', '_blank')" style="background: #3b82f6; color: white; font-size: 12px; padding: 8px 16px; width: 100%;">
+                                    Open Ensemble Comparison Tool →
                                 </button>
                             </div>
                         </div>
@@ -4004,6 +4022,203 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- ENSEMBLE TAB -->
+                    <div id="aiEnsembleTab" class="ai-tab-content" style="display: none;">
+                        <div style="padding: 10px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid #0f3460; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 14px; color: #e94560; margin-bottom: 6px; font-weight: 700;">🎯 ENSEMBLE AI PREDICTOR</div>
+                            <div style="font-size: 11px; color: #aaa;">Combines LightGBM + Heuristics + Momentum with regime-aware weighting</div>
+                        </div>
+
+                        <!-- Quick Predict -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">⚡ QUICK PREDICT</div>
+                            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                                <input type="text" id="ensembleSymbol" placeholder="Symbol (e.g., AAPL)"
+                                    style="flex: 1; padding: 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px; text-transform: uppercase;">
+                                <button onclick="runEnsemblePrediction()" style="padding: 8px 16px; background: #e94560; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
+                                    PREDICT
+                                </button>
+                            </div>
+
+                            <!-- Prediction Result -->
+                            <div id="ensembleResult" style="display: none; padding: 12px; background: #252525; border-radius: 4px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <div>
+                                        <span id="ensembleSymbolResult" style="font-size: 18px; font-weight: 700; color: #fff;">AAPL</span>
+                                        <span id="ensemblePrediction" style="margin-left: 10px; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 700;">BULLISH</span>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 10px; color: #666;">Confidence</div>
+                                        <div id="ensembleConfidence" style="font-size: 20px; font-weight: 700; color: #22c55e;">75%</div>
+                                    </div>
+                                </div>
+
+                                <!-- Component Scores -->
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+                                    <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 10px; color: #666;">LightGBM</div>
+                                        <div id="ensembleLgbScore" style="font-size: 16px; font-weight: 700; color: #60a5fa;">56%</div>
+                                        <div id="ensembleLgbWeight" style="font-size: 9px; color: #444;">40% weight</div>
+                                    </div>
+                                    <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 10px; color: #666;">Heuristic</div>
+                                        <div id="ensembleHeurScore" style="font-size: 16px; font-weight: 700; color: #f59e0b;">50%</div>
+                                        <div id="ensembleHeurWeight" style="font-size: 9px; color: #444;">30% weight</div>
+                                    </div>
+                                    <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 10px; color: #666;">Momentum</div>
+                                        <div id="ensembleMomScore" style="font-size: 16px; font-weight: 700; color: #22c55e;">65%</div>
+                                        <div id="ensembleMomWeight" style="font-size: 9px; color: #444;">30% weight</div>
+                                    </div>
+                                </div>
+
+                                <!-- Regime -->
+                                <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; margin-bottom: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 11px; color: #666;">Market Regime:</span>
+                                        <span id="ensembleRegime" style="font-size: 12px; font-weight: 700; color: #e94560;">TRENDING_UP</span>
+                                    </div>
+                                </div>
+
+                                <!-- Signals -->
+                                <div style="font-size: 11px; color: #666; margin-bottom: 4px;">Signals:</div>
+                                <div id="ensembleSignals" style="font-size: 10px; color: #aaa; max-height: 100px; overflow-y: auto;">
+                                    <div style="padding: 4px 0; border-bottom: 1px solid #333;">• LightGBM: 56% bullish</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Batch Predict -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">📊 BATCH PREDICT (Watchlist)</div>
+                            <button onclick="runBatchEnsemble()" style="width: 100%; padding: 10px; background: #16213e; border: 1px solid #0f3460; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
+                                🔍 Scan Watchlist Symbols
+                            </button>
+
+                            <div id="batchEnsembleResults" style="margin-top: 10px; display: none;">
+                                <div style="max-height: 200px; overflow-y: auto;" id="batchResultsContainer"></div>
+                            </div>
+                        </div>
+
+                        <!-- Performance Stats -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">📈 PERFORMANCE</div>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Accuracy</div>
+                                    <div id="ensembleAccuracy" style="font-size: 16px; font-weight: 700; color: #22c55e;">--</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px;">
+                                    <div style="font-size: 10px; color: #666;">Sample Size</div>
+                                    <div id="ensembleSampleSize" style="font-size: 16px; font-weight: 700; color: #60a5fa;">--</div>
+                                </div>
+                            </div>
+                            <button onclick="loadEnsemblePerformance()" style="width: 100%; margin-top: 8px; padding: 6px; background: #252525; border: 1px solid #404040; color: #888; font-size: 11px; border-radius: 3px; cursor: pointer;">
+                                Refresh Stats
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- RL AGENT TAB -->
+                    <div id="aiRLTab" class="ai-tab-content" style="display: none;">
+                        <div style="padding: 10px; background: linear-gradient(135deg, #1a1a2e 0%, #2d1b4e 100%); border: 1px solid #6b21a8; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 14px; color: #a855f7; margin-bottom: 6px; font-weight: 700;">🤖 REINFORCEMENT LEARNING AGENT</div>
+                            <div style="font-size: 11px; color: #aaa;">Self-optimizing DQN agent for entry/exit timing</div>
+                        </div>
+
+                        <!-- Agent Status -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">📊 AGENT STATUS</div>
+                            <div id="rlStatusPanel" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                                <div style="padding: 8px; background: #252525; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 10px; color: #666;">PyTorch</div>
+                                    <div id="rlPytorch" style="font-size: 14px; font-weight: 700; color: #22c55e;">--</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 10px; color: #666;">Episodes</div>
+                                    <div id="rlEpisodes" style="font-size: 14px; font-weight: 700; color: #60a5fa;">--</div>
+                                </div>
+                                <div style="padding: 8px; background: #252525; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 10px; color: #666;">Epsilon</div>
+                                    <div id="rlEpsilon" style="font-size: 14px; font-weight: 700; color: #f59e0b;">--</div>
+                                </div>
+                            </div>
+                            <button onclick="loadRLStatus()" style="width: 100%; margin-top: 8px; padding: 6px; background: #252525; border: 1px solid #404040; color: #888; font-size: 11px; border-radius: 3px; cursor: pointer;">
+                                Refresh Status
+                            </button>
+                        </div>
+
+                        <!-- Quick Predict -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">⚡ RL PREDICTION</div>
+                            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                                <input type="text" id="rlSymbol" placeholder="Symbol (e.g., AAPL)"
+                                    style="flex: 1; padding: 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 14px; border-radius: 3px; text-transform: uppercase;">
+                                <button onclick="runRLPrediction()" style="padding: 8px 16px; background: #6b21a8; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
+                                    PREDICT
+                                </button>
+                            </div>
+
+                            <!-- RL Result -->
+                            <div id="rlResult" style="display: none; padding: 12px; background: #252525; border-radius: 4px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <div>
+                                        <span id="rlSymbolResult" style="font-size: 18px; font-weight: 700; color: #fff;">AAPL</span>
+                                        <span id="rlAction" style="margin-left: 10px; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 700;">HOLD</span>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 10px; color: #666;">Price</div>
+                                        <div id="rlPrice" style="font-size: 16px; font-weight: 700; color: #fff;">$0.00</div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Probabilities -->
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+                                    <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 10px; color: #666;">HOLD</div>
+                                        <div id="rlProbHold" style="font-size: 16px; font-weight: 700; color: #888;">33%</div>
+                                    </div>
+                                    <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 10px; color: #666;">BUY</div>
+                                        <div id="rlProbBuy" style="font-size: 16px; font-weight: 700; color: #22c55e;">33%</div>
+                                    </div>
+                                    <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 10px; color: #666;">SELL</div>
+                                        <div id="rlProbSell" style="font-size: 16px; font-weight: 700; color: #ef4444;">33%</div>
+                                    </div>
+                                </div>
+
+                                <!-- State Features -->
+                                <div style="font-size: 11px; color: #666; margin-bottom: 4px;">State Features:</div>
+                                <div id="rlStateFeatures" style="font-size: 10px; color: #aaa; padding: 8px; background: #1a1a1a; border-radius: 4px;">
+                                    RSI: -- | MACD: -- | Trend: --
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Training Section -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 700;">🎓 TRAIN AGENT</div>
+                            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                                <input type="text" id="rlTrainSymbols" value="AAPL,MSFT,NVDA" placeholder="Symbols"
+                                    style="flex: 2; padding: 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 12px; border-radius: 3px;">
+                                <input type="number" id="rlTrainEpisodes" value="5" min="1" max="100" placeholder="Episodes"
+                                    style="flex: 1; padding: 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 12px; border-radius: 3px;">
+                            </div>
+                            <button onclick="trainRLAgent()" id="rlTrainBtn" style="width: 100%; padding: 10px; background: #6b21a8; border: none; color: #fff; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer;">
+                                🚀 Start Training
+                            </button>
+                            <div id="rlTrainStatus" style="display: none; margin-top: 8px; padding: 8px; background: #252525; border-radius: 4px; font-size: 11px; color: #aaa;"></div>
+                        </div>
+
+                        <!-- Reset Button -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;">
+                            <button onclick="resetRLAgent()" style="width: 100%; padding: 8px; background: #7f1d1d; border: none; color: #fff; font-size: 12px; font-weight: 600; border-radius: 3px; cursor: pointer;">
+                                ⚠️ Reset Agent (Clear Training)
+                            </button>
+                        </div>
+                    </div>
                 </div>
             `,
 
@@ -4037,24 +4252,24 @@
                     <!-- Quick Stats Row -->
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #333; border-bottom: 1px solid #333;">
                         <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
-                            <div style="color: #666; font-size: 8px;">REGIME</div>
-                            <div id="monRegime" style="color: #60a5fa; font-weight: 600;">--</div>
+                            <div style="color: #666; font-size: 10px;">REGIME</div>
+                            <div id="monRegime" style="color: #60a5fa; font-weight: 600; font-size: 12px;">--</div>
                         </div>
                         <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
-                            <div style="color: #666; font-size: 8px;">DRIFT</div>
-                            <div id="monDrift" style="color: #22c55e; font-weight: 600;">OK</div>
+                            <div style="color: #666; font-size: 10px;">DRIFT</div>
+                            <div id="monDrift" style="color: #22c55e; font-weight: 600; font-size: 12px;">OK</div>
                         </div>
                         <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
-                            <div style="color: #666; font-size: 8px;">TRADES</div>
-                            <div id="monTrades" style="color: #fff; font-weight: 600;">0</div>
+                            <div style="color: #666; font-size: 10px;">TRADES</div>
+                            <div id="monTrades" style="color: #fff; font-weight: 600; font-size: 12px;">0</div>
                         </div>
                         <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
-                            <div style="color: #666; font-size: 8px;">P&L</div>
-                            <div id="monPnL" style="color: #888; font-weight: 600;">$0</div>
+                            <div style="color: #666; font-size: 10px;">P&L</div>
+                            <div id="monPnL" style="color: #888; font-weight: 600; font-size: 12px;">$0</div>
                         </div>
                         <div style="background: #1a1a1a; padding: 3px 4px; text-align: center;">
-                            <div style="color: #666; font-size: 8px;">DD%</div>
-                            <div id="monDrawdown" style="color: #22c55e; font-weight: 600;">0%</div>
+                            <div style="color: #666; font-size: 10px;">DD%</div>
+                            <div id="monDrawdown" style="color: #22c55e; font-weight: 600; font-size: 12px;">0%</div>
                         </div>
                     </div>
 
@@ -4751,11 +4966,17 @@
                     safeUpdate('cashBalance', `$${(s.total_cash || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
                     safeUpdate('marginUsed', `$${((s.net_liquidation - s.total_cash) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
 
-                    const dayPL = accountData.total_unrealized_pnl || 0;
-                    const dayPLEl = document.getElementById('dayPL');
-                    if (dayPLEl) {
-                        dayPLEl.textContent = `$${dayPL.toFixed(2)}`;
-                        dayPLEl.className = dayPL >= 0 ? 'account-stat-value positive' : 'account-stat-value negative';
+                    // Fetch REAL daily P/L from Alpaca (equity - last_equity)
+                    try {
+                        const alpacaAcct = await apiFetch('/api/alpaca/account');
+                        const dayPL = alpacaAcct?.daily_pnl || (parseFloat(alpacaAcct?.equity || 0) - parseFloat(alpacaAcct?.last_equity || 0));
+                        const dayPLEl = document.getElementById('dayPL');
+                        if (dayPLEl) {
+                            dayPLEl.textContent = `$${dayPL.toFixed(2)}`;
+                            dayPLEl.className = dayPL >= 0 ? 'account-stat-value positive' : 'account-stat-value negative';
+                        }
+                    } catch (e) {
+                        console.log('Day P/L fetch error:', e);
                     }
 
                     const totalPL = accountData.total_realized_pnl || 0;
@@ -6092,12 +6313,38 @@ Confirm order?`;
                 if (data.trading_engine && data.trading_engine.open_positions !== undefined) {
                     document.getElementById('botPositions').textContent = data.trading_engine.open_positions;
                 }
-                if (data.trading_engine && data.trading_engine.daily_pnl !== undefined) {
-                    const pnl = data.trading_engine.daily_pnl;
-                    const pnlElem = document.getElementById('botDailyPnl');
-                    pnlElem.textContent = '$' + pnl.toFixed(2);
-                    pnlElem.style.color = pnl >= 0 ? '#22c55e' : '#ef4444';
-                }
+                // ALWAYS fetch Daily P/L from Alpaca account (equity - last_equity)
+                try {
+                    const acctResp = await fetch(API_BASE_URL + '/api/alpaca/account');
+                    if (acctResp.ok) {
+                        const acct = await acctResp.json();
+                        const equity = parseFloat(acct.equity || 0);
+                        const lastEquity = parseFloat(acct.last_equity || 0);
+                        if (lastEquity > 0) {
+                            const dailyPnl = equity - lastEquity;
+                            const dailyPnlElem = document.getElementById('botDailyPnl');
+                            dailyPnlElem.textContent = '$' + dailyPnl.toFixed(2);
+                            dailyPnlElem.style.color = dailyPnl >= 0 ? '#22c55e' : '#ef4444';
+                        }
+                    }
+                } catch (e) { console.log('Alpaca account fetch failed:', e); }
+
+                // Fetch Position P/L (sum of all unrealized_pl from positions)
+                try {
+                    const posResp = await fetch(API_BASE_URL + '/api/alpaca/positions');
+                    if (posResp.ok) {
+                        const positions = await posResp.json();
+                        let totalUnrealizedPl = 0;
+                        if (Array.isArray(positions)) {
+                            for (const pos of positions) {
+                                totalUnrealizedPl += parseFloat(pos.unrealized_pl || 0);
+                            }
+                        }
+                        const posPnlElem = document.getElementById('botPositionPnl');
+                        posPnlElem.textContent = '$' + totalUnrealizedPl.toFixed(2);
+                        posPnlElem.style.color = totalUnrealizedPl >= 0 ? '#22c55e' : '#ef4444';
+                    }
+                } catch (e) { console.log('Alpaca positions fetch failed:', e); }
 
                 // Update 3-5-7 risk management display
                 if (data.trading_engine && data.trading_engine.weekly_pnl !== undefined) {
@@ -6237,6 +6484,10 @@ Confirm order?`;
             if (safetyTab) safetyTab.style.display = 'none';
             const riskTab = document.getElementById('aiRiskTab');
             if (riskTab) riskTab.style.display = 'none';
+            const ensembleTab = document.getElementById('aiEnsembleTab');
+            if (ensembleTab) ensembleTab.style.display = 'none';
+            const rlTab = document.getElementById('aiRLTab');
+            if (rlTab) rlTab.style.display = 'none';
 
             // Reset all tab buttons
             document.querySelectorAll('.ai-tab').forEach(btn => {
@@ -6302,6 +6553,16 @@ Confirm order?`;
                 document.getElementById('aiTabRisk').style.background = '#2d2d2d';
                 document.getElementById('aiTabRisk').style.color = '#fff';
                 loadRiskDashboard();
+            } else if (tab === 'ensemble') {
+                document.getElementById('aiEnsembleTab').style.display = 'block';
+                document.getElementById('aiTabEnsemble').style.background = '#2d2d2d';
+                document.getElementById('aiTabEnsemble').style.color = '#fff';
+                loadEnsemblePerformance();
+            } else if (tab === 'rl') {
+                document.getElementById('aiRLTab').style.display = 'block';
+                document.getElementById('aiTabRL').style.background = '#2d2d2d';
+                document.getElementById('aiTabRL').style.color = '#fff';
+                loadRLStatus();
             }
         }
 
@@ -8239,16 +8500,18 @@ Confirm order?`;
         }
 
         function displayEnhancedBacktestResults(data) {
-            const r = data.results || data;
+            // Handle both 'result' and 'results' keys, and also data.summary
+            const r = data.result || data.results || data;
+            const summary = data.summary || r;
 
-            const totalReturn = r.total_return_pct || 0;
+            const totalReturn = summary.total_return_pct || r.total_return_pct || 0;
             const finalCapital = r.final_capital || 0;
-            const winRate = r.win_rate || 0;
-            const maxDrawdown = r.max_drawdown_pct || 0;
-            const sharpe = r.sharpe_ratio || 0;
-            const profitFactor = r.profit_factor || 0;
-            const totalTrades = r.total_trades || 0;
-            const slippageCost = r.total_slippage_cost || 0;
+            const winRate = summary.win_rate || r.win_rate || 0;
+            const maxDrawdown = summary.max_drawdown_pct || r.max_drawdown_pct || 0;
+            const sharpe = summary.sharpe_ratio || r.sharpe_ratio || 0;
+            const profitFactor = summary.profit_factor || r.profit_factor || 0;
+            const totalTrades = summary.total_trades || r.total_trades || 0;
+            const slippageCost = r.total_slippage || r.total_slippage_cost || 0;
 
             const profitFactorDisplay = profitFactor >= 999 ? '∞' : profitFactor.toFixed(2);
             const profitFactorColor = profitFactor >= 1.5 ? '#22c55e' : (profitFactor >= 1 ? '#f59e0b' : '#ef4444');
@@ -8290,21 +8553,24 @@ Confirm order?`;
                 </div>
             `;
 
-            // Show exit reasons if available
-            if (r.exit_reasons) {
+            // Show exit reasons if available (API returns exits_by_reason)
+            const exitReasons = r.exits_by_reason || r.exit_reasons;
+            if (exitReasons) {
                 const exitReasonsDiv = document.getElementById('backtestExitReasons');
-                exitReasonsDiv.style.display = 'block';
-                exitReasonsDiv.innerHTML = `
-                    <div style="font-size: 12px; color: #888; margin-bottom: 6px; font-weight: 600;">EXIT REASONS</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                        ${Object.entries(r.exit_reasons).map(([reason, count]) => `
-                            <div style="padding: 4px 8px; background: #252525; border-radius: 3px; font-size: 11px;">
-                                <span style="color: #888;">${reason}:</span>
-                                <span style="color: #fff; font-weight: 600;">${count}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
+                if (exitReasonsDiv) {
+                    exitReasonsDiv.style.display = 'block';
+                    exitReasonsDiv.innerHTML = `
+                        <div style="font-size: 12px; color: #888; margin-bottom: 6px; font-weight: 600;">EXIT REASONS</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            ${Object.entries(exitReasons).map(([reason, count]) => `
+                                <div style="padding: 4px 8px; background: #252525; border-radius: 3px; font-size: 11px;">
+                                    <span style="color: #888;">${reason}:</span>
+                                    <span style="color: #fff; font-weight: 600;">${count}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
             }
 
             // Show Monte Carlo results if available
@@ -8342,6 +8608,261 @@ Confirm order?`;
 
             showNotification(`Backtest complete: ${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}% return, ${winRate.toFixed(1)}% win rate`,
                             totalReturn >= 0 ? 'success' : 'warning');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     ENSEMBLE PREDICTOR FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        async function runEnsemblePrediction() {
+            const symbol = document.getElementById('ensembleSymbol').value.trim().toUpperCase();
+            if (!symbol) {
+                alert('Please enter a symbol');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/ensemble/predict/' + symbol);
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('ensembleResult').style.display = 'block';
+                    document.getElementById('ensembleSymbolResult').textContent = data.symbol;
+
+                    // Prediction badge
+                    const predEl = document.getElementById('ensemblePrediction');
+                    predEl.textContent = data.prediction;
+                    predEl.style.background = data.prediction === 'BULLISH' ? '#22c55e' : '#ef4444';
+                    predEl.style.color = '#fff';
+
+                    // Confidence
+                    const confPct = (data.confidence * 100).toFixed(0) + '%';
+                    document.getElementById('ensembleConfidence').textContent = confPct;
+                    document.getElementById('ensembleConfidence').style.color = data.confidence > 0.6 ? '#22c55e' : data.confidence > 0.4 ? '#f59e0b' : '#ef4444';
+
+                    // Component scores
+                    document.getElementById('ensembleLgbScore').textContent = (data.components.lgb.score * 100).toFixed(0) + '%';
+                    document.getElementById('ensembleLgbWeight').textContent = (data.components.lgb.weight * 100).toFixed(0) + '% weight';
+
+                    document.getElementById('ensembleHeurScore').textContent = (data.components.heuristic.score * 100).toFixed(0) + '%';
+                    document.getElementById('ensembleHeurWeight').textContent = (data.components.heuristic.weight * 100).toFixed(0) + '% weight';
+
+                    document.getElementById('ensembleMomScore').textContent = (data.components.momentum.score * 100).toFixed(0) + '%';
+                    document.getElementById('ensembleMomWeight').textContent = (data.components.momentum.weight * 100).toFixed(0) + '% weight';
+
+                    // Regime
+                    document.getElementById('ensembleRegime').textContent = data.regime.type;
+
+                    // Signals
+                    const signalsHtml = data.signals.map(s => `<div style="padding: 4px 0; border-bottom: 1px solid #333;">• ${s}</div>`).join('');
+                    document.getElementById('ensembleSignals').innerHTML = signalsHtml;
+                } else {
+                    alert('Prediction failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Ensemble prediction error:', err);
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function runBatchEnsemble() {
+            try {
+                // Get symbols from watchlist
+                const watchlistResponse = await fetch(API_BASE_URL + '/api/watchlist/default');
+                const watchlistData = await watchlistResponse.json();
+                const symbols = watchlistData.symbols || ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL'];
+
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/ensemble/predict-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: symbols.slice(0, 10) })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('batchEnsembleResults').style.display = 'block';
+
+                    const html = data.predictions.map(p => {
+                        if (p.error) {
+                            return `<div style="padding: 8px; background: #252525; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                                <span style="color: #888;">${p.symbol}</span>
+                                <span style="color: #ef4444;">Error</span>
+                            </div>`;
+                        }
+
+                        const color = p.prediction === 'BULLISH' ? '#22c55e' : '#ef4444';
+                        return `<div style="padding: 8px; background: #252525; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; color: #fff;">${p.symbol}</span>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <span style="font-size: 10px; color: #666;">${p.regime}</span>
+                                <span style="font-size: 11px; color: ${color};">${(p.confidence * 100).toFixed(0)}%</span>
+                                <span style="padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 700; background: ${color}; color: #fff;">${p.prediction}</span>
+                            </div>
+                        </div>`;
+                    }).join('');
+
+                    document.getElementById('batchResultsContainer').innerHTML = html;
+                }
+            } catch (err) {
+                console.error('Batch ensemble error:', err);
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function loadEnsemblePerformance() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/ensemble/performance');
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('ensembleAccuracy').textContent = data.interpretation.accuracy;
+                    document.getElementById('ensembleSampleSize').textContent = data.performance.total;
+                }
+            } catch (err) {
+                console.error('Load ensemble performance error:', err);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     RL AGENT FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        async function loadRLStatus() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/rl/status');
+                const data = await response.json();
+
+                if (data.success) {
+                    const s = data.status;
+                    document.getElementById('rlPytorch').textContent = s.pytorch_available ? 'YES' : 'NO';
+                    document.getElementById('rlPytorch').style.color = s.pytorch_available ? '#22c55e' : '#ef4444';
+                    document.getElementById('rlEpisodes').textContent = s.episode || 0;
+                    document.getElementById('rlEpsilon').textContent = (s.epsilon * 100).toFixed(1) + '%';
+                }
+            } catch (err) {
+                console.error('Load RL status error:', err);
+            }
+        }
+
+        async function runRLPrediction() {
+            const symbol = document.getElementById('rlSymbol').value.trim().toUpperCase();
+            if (!symbol) {
+                alert('Please enter a symbol');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/rl/predict/' + symbol);
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('rlResult').style.display = 'block';
+                    document.getElementById('rlSymbolResult').textContent = data.symbol;
+                    document.getElementById('rlPrice').textContent = '$' + data.current_price.toFixed(2);
+
+                    // Action badge
+                    const actionEl = document.getElementById('rlAction');
+                    actionEl.textContent = data.action;
+                    if (data.action === 'BUY') {
+                        actionEl.style.background = '#22c55e';
+                    } else if (data.action === 'SELL') {
+                        actionEl.style.background = '#ef4444';
+                    } else {
+                        actionEl.style.background = '#666';
+                    }
+                    actionEl.style.color = '#fff';
+
+                    // Probabilities
+                    document.getElementById('rlProbHold').textContent = (data.probabilities.HOLD * 100).toFixed(0) + '%';
+                    document.getElementById('rlProbBuy').textContent = (data.probabilities.BUY * 100).toFixed(0) + '%';
+                    document.getElementById('rlProbSell').textContent = (data.probabilities.SELL * 100).toFixed(0) + '%';
+
+                    // State features
+                    const sf = data.state_features;
+                    document.getElementById('rlStateFeatures').innerHTML =
+                        `RSI: ${sf.rsi.toFixed(1)} | MACD: ${sf.macd.toFixed(4)} | Trend: ${(sf.trend * 100).toFixed(2)}% | Vol: ${(sf.volatility * 100).toFixed(1)}%`;
+                } else {
+                    alert('Prediction failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('RL prediction error:', err);
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function trainRLAgent() {
+            const symbolsStr = document.getElementById('rlTrainSymbols').value.trim();
+            const episodes = parseInt(document.getElementById('rlTrainEpisodes').value) || 5;
+
+            if (!symbolsStr) {
+                alert('Please enter symbols');
+                return;
+            }
+
+            const symbols = symbolsStr.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+
+            document.getElementById('rlTrainBtn').disabled = true;
+            document.getElementById('rlTrainBtn').textContent = 'Training...';
+            document.getElementById('rlTrainStatus').style.display = 'block';
+            document.getElementById('rlTrainStatus').innerHTML =
+                '<span style="color: #f59e0b;">Training in progress... This may take a few minutes.</span>';
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/rl/train', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols, episodes, period: '1y' })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const summary = data.training_summary;
+                    document.getElementById('rlTrainStatus').innerHTML =
+                        `<span style="color: #22c55e;">Training complete!</span><br>` +
+                        `Episodes: ${summary.total_episodes} | Avg Win Rate: ${(summary.avg_win_rate * 100).toFixed(1)}%<br>` +
+                        `Total Trades: ${summary.total_trades} | Epsilon: ${(summary.epsilon_final * 100).toFixed(1)}%`;
+
+                    // Refresh status
+                    loadRLStatus();
+                    showNotification('RL training complete!', 'success');
+                } else {
+                    document.getElementById('rlTrainStatus').innerHTML =
+                        `<span style="color: #ef4444;">Training failed: ${data.error}</span>`;
+                }
+            } catch (err) {
+                console.error('RL training error:', err);
+                document.getElementById('rlTrainStatus').innerHTML =
+                    `<span style="color: #ef4444;">Error: ${err.message}</span>`;
+            }
+
+            document.getElementById('rlTrainBtn').disabled = false;
+            document.getElementById('rlTrainBtn').textContent = '🚀 Start Training';
+        }
+
+        async function resetRLAgent() {
+            if (!confirm('Are you sure you want to reset the RL agent? All training will be lost!')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/rl/reset', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadRLStatus();
+                    showNotification('RL agent reset successfully', 'success');
+                } else {
+                    alert('Reset failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('RL reset error:', err);
+                alert('Error: ' + err.message);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -10518,6 +11039,8 @@ Confirm order?`;
             const configs = getAllConfigurations();
             const configNames = Object.keys(configs).sort();
             const listDiv = document.getElementById('savedConfigsList');
+
+            if (!listDiv) return;  // Element not in DOM yet
 
             if (configNames.length === 0) {
                 listDiv.innerHTML = '<div style="padding: 10px; text-align: center; color: #666; font-size: 13px;">No saved configurations</div>';

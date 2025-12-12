@@ -4,9 +4,12 @@ Drop-in replacement for IBKR connectivity
 """
 import os
 import time
+import logging
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import (
     MarketOrderRequest, LimitOrderRequest, StopOrderRequest, StopLimitOrderRequest,
@@ -196,16 +199,23 @@ class AlpacaConnector:
             }
 
     def get_account(self) -> Dict:
-        """Get account information"""
+        """Get account information with daily P/L"""
         account = self.trading_client.get_account()
-        
+
+        equity = float(account.equity)
+        last_equity = float(account.last_equity)
+        daily_pnl = equity - last_equity
+        daily_pnl_pct = (daily_pnl / last_equity * 100) if last_equity > 0 else 0
+
         return {
             "account_id": account.account_number,
             "buying_power": float(account.buying_power),
             "cash": float(account.cash),
             "portfolio_value": float(account.portfolio_value),
-            "equity": float(account.equity),
-            "last_equity": float(account.last_equity),
+            "equity": equity,
+            "last_equity": last_equity,
+            "daily_pnl": daily_pnl,
+            "daily_pnl_pct": daily_pnl_pct,
             "currency": account.currency,
             "status": str(account.status),
             "pattern_day_trader": account.pattern_day_trader
@@ -539,25 +549,28 @@ class AlpacaConnector:
             return False
 
     def place_smart_order(self, symbol: str, quantity: int, side: str,
-                          limit_price: float = None, emergency: bool = False) -> Dict:
+                          limit_price: float = None, emergency: bool = False,
+                          momentum: bool = False) -> Dict:
         """
-        SMART ORDER - MOMENTUM STRATEGY with extended hours support.
+        SMART ORDER - LIMIT ORDERS ONLY (except emergency liquidation).
 
-        ORDER STRATEGY:
-        ===============
-        1. ALL orders are LIMIT orders by default (never get stuck after hours)
-        2. ALL orders have extended_hours=True (trade any session, catch momentum)
-        3. BUY orders: Use ASK price (ride momentum, get filled fast)
-        4. SELL orders: Use ASK price normally (ride momentum up for better exit)
-        5. EMERGENCY SELL: Use BID price (get out NOW, accept slippage)
-        6. Market orders ONLY for emergency exits during regular hours
+        ORDER PRICING RULES:
+        ====================
+        - BUY: Use ASK price (hit the ask to get filled fast)
+        - SELL normal exit: Use BID price (guaranteed fill, protect against gaps)
+        - SELL momentum: Use ASK price (try for better price while riding momentum up)
+        - SELL emergency: Use BID price + market order during regular hours
+
+        MARKET ORDERS ARE NEVER USED except for emergency=True during regular hours.
+        This protects against getting stuck in bad fills from gaps/volatility.
 
         Args:
             symbol: Stock symbol
             quantity: Number of shares
             side: "BUY" or "SELL"
             limit_price: Optional limit price (auto-calculated from quote if not provided)
-            emergency: If True and SELL, uses BID price and market order during regular hours
+            emergency: If True and SELL, uses BID + market order during regular hours
+            momentum: If True and SELL, uses ASK price for better exit while riding momentum
 
         Returns:
             Order details with session info
@@ -582,9 +595,10 @@ class AlpacaConnector:
             if bid <= 0 and ask <= 0:
                 raise ValueError(f"No valid bid/ask data for {symbol}. bid={bid}, ask={ask}")
 
-            # MOMENTUM PRICING STRATEGY:
-            # - BUY: Always use ASK (hit the ask to get filled, ride momentum)
-            # - SELL normal: Use ASK (try for better price while momentum carries)
+            # PRICING RULES (per trading rules):
+            # - BUY: Always use ASK (hit the ask to get filled fast)
+            # - SELL normal exit: Use BID (guaranteed fill, protect against gaps)
+            # - SELL momentum: Use ASK (better exit while riding momentum up)
             # - SELL emergency: Use BID (get out NOW, accept the hit)
             if side.upper() == "BUY":
                 limit_price = ask if ask > 0 else bid * 1.02
@@ -593,10 +607,14 @@ class AlpacaConnector:
                 # EMERGENCY EXIT - Use BID to guarantee fill
                 limit_price = bid if bid > 0 else ask * 0.98
                 price_type = "BID (EMERGENCY)"
-            else:
-                # Normal sell - use ASK for better exit (momentum may carry price up)
+            elif momentum:
+                # MOMENTUM SELL - Use ASK for better exit while price is rising
                 limit_price = ask if ask > 0 else bid * 1.01
-                price_type = "ASK"
+                price_type = "ASK (MOMENTUM)"
+            else:
+                # NORMAL SELL EXIT - Use BID to guarantee fill
+                limit_price = bid if bid > 0 else ask * 0.99
+                price_type = "BID (NORMAL EXIT)"
 
             # Round to 2 decimal places
             limit_price = round(limit_price, 2)
