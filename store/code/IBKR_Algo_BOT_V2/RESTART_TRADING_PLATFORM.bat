@@ -44,7 +44,7 @@ for /f "tokens=2" %%a in ('wmic process where "commandline like '%%alpaca-mcp%%'
 )
 
 :: Kill any Python processes running our API
-for /f "tokens=2" %%a in ('wmic process where "commandline like '%%alpaca_dashboard_api%%'" get processid 2^>nul ^| findstr /r "[0-9]"') do (
+for /f "tokens=2" %%a in ('wmic process where "commandline like '%%morpheus_trading_api%%'" get processid 2^>nul ^| findstr /r "[0-9]"') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 

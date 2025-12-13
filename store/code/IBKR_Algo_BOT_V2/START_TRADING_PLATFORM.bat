@@ -62,7 +62,7 @@ echo.
 echo [3/8] Starting Dashboard API Server...
 echo       Server will run on http://localhost:9100
 
-start "Alpaca Dashboard API" /min cmd /c "cd /d %SCRIPT_DIR% && python alpaca_dashboard_api.py"
+start "Alpaca Dashboard API" /min cmd /c "cd /d %SCRIPT_DIR% && python morpheus_trading_api.py"
 
 echo       Waiting for server to start...
 timeout /t 5 /nobreak >nul

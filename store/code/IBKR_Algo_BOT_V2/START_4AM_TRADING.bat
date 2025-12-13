@@ -17,7 +17,7 @@ if %errorlevel% equ 0 (
 
 echo [STARTING] Trading Platform Server...
 cd /d C:\ai_project_hub\store\code\IBKR_Algo_BOT_V2
-start /B python alpaca_dashboard_api.py
+start /B python morpheus_trading_api.py
 timeout /t 5 /nobreak >nul
 
 :check_brain

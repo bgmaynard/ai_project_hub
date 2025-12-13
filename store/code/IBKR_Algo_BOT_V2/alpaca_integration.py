@@ -1,7 +1,17 @@
 ﻿"""
 Alpaca Integration for AI Trading Dashboard
 Drop-in replacement for IBKR connectivity
+
+DEPRECATED: As of v2.1.0, Schwab is the primary broker.
+This module is retained for fallback/paper trading only.
+Use schwab_trading.py for production trading.
 """
+import warnings
+warnings.warn(
+    "alpaca_integration is deprecated. Use schwab_trading for production.",
+    DeprecationWarning,
+    stacklevel=2
+)
 import os
 import time
 import logging

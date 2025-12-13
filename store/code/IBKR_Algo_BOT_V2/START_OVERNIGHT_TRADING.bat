@@ -21,7 +21,7 @@ if errorlevel 1 (
 cd /d "C:\ai_project_hub\store\code\IBKR_Algo_BOT_V2"
 
 echo [1/3] Starting Dashboard API Server (Port 9100)...
-start /B python alpaca_dashboard_api.py
+start /B python morpheus_trading_api.py
 timeout /t 5 /nobreak >nul
 
 echo [2/3] Starting Pre-Market Preparation Service...

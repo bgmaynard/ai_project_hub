@@ -38,7 +38,7 @@ echo       [OK] News Evaluator stopped
 :: Kill any remaining Python processes related to our app
 echo.
 echo [4/4] Cleaning up remaining processes...
-for /f "tokens=2" %%a in ('wmic process where "commandline like '%%alpaca_dashboard_api%%'" get processid 2^>nul ^| findstr /r "[0-9]"') do (
+for /f "tokens=2" %%a in ('wmic process where "commandline like '%%morpheus_trading_api%%'" get processid 2^>nul ^| findstr /r "[0-9]"') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 for /f "tokens=2" %%a in ('wmic process where "commandline like '%%warrior_autotrader%%'" get processid 2^>nul ^| findstr /r "[0-9]"') do (

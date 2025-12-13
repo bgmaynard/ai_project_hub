@@ -8,7 +8,7 @@ echo   Pre-Market Session Startup
 echo ============================================
 echo.
 echo   Components:
-echo     1. API Server (alpaca_dashboard_api.py)
+echo     1. API Server (morpheus_trading_api.py)
 echo     2. Position Guardian (position_guardian.py)
 echo     3. Pre-Market Scanner
 echo     4. Dashboard UI
@@ -24,7 +24,7 @@ if %errorlevel% equ 0 (
     echo [OK] API Server already running
 ) else (
     echo [1/4] Starting API Server...
-    start "API Server" cmd /k "python alpaca_dashboard_api.py"
+    start "API Server" cmd /k "python morpheus_trading_api.py"
     timeout /t 8 /nobreak >nul
 )
 

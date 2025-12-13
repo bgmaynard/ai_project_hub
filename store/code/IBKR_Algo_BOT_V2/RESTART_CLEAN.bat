@@ -13,7 +13,7 @@ timeout /t 3 /nobreak >nul
 echo.
 echo Starting API Server with fresh scanner routes...
 cd /d C:\ai_project_hub\store\code\IBKR_Algo_BOT_V2
-start /B python alpaca_dashboard_api.py
+start /B python morpheus_trading_api.py
 echo.
 echo Waiting for API to start...
 timeout /t 5 /nobreak >nul

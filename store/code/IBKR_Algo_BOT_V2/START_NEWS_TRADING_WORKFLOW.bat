@@ -23,7 +23,7 @@ echo [1/3] Checking API Server...
 curl -s http://localhost:9100/api/health >nul 2>&1
 if %errorlevel% neq 0 (
     echo     API Server not running. Starting it...
-    start "API Server" cmd /k "python alpaca_dashboard_api.py"
+    start "API Server" cmd /k "python morpheus_trading_api.py"
     timeout /t 8 /nobreak > nul
     echo     API Server started.
 ) else (
