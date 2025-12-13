@@ -47,13 +47,28 @@ except ImportError as e:
 from compatibility_routes import router as compat_router
 
 # Watchlist management
-from watchlist_routes import router as watchlist_router
+try:
+    from watchlist_routes import router as watchlist_router
+    HAS_WATCHLIST_ROUTES = True
+except ImportError:
+    HAS_WATCHLIST_ROUTES = False
+    watchlist_router = None
 
 # TradingView integration
-from tradingview_integration import router as tradingview_router
+try:
+    from tradingview_integration import router as tradingview_router
+    HAS_TRADINGVIEW = True
+except ImportError:
+    HAS_TRADINGVIEW = False
+    tradingview_router = None
 
 # Analytics routes
-from analytics_routes import router as analytics_router
+try:
+    from analytics_routes import router as analytics_router
+    HAS_ANALYTICS = True
+except ImportError:
+    HAS_ANALYTICS = False
+    analytics_router = None
 
 # Advanced Pipeline (Task Queue Mesh Mode, XGBoost, Optuna, Regime/Drift Detection)
 try:
@@ -180,14 +195,17 @@ app.add_middleware(
 # Include Alpaca router
 app.include_router(alpaca_router, tags=["Alpaca Trading"])
 
-# Include watchlist router
-app.include_router(watchlist_router)
+# Include watchlist router (if available)
+if HAS_WATCHLIST_ROUTES and watchlist_router:
+    app.include_router(watchlist_router)
 
-# Include TradingView integration router
-app.include_router(tradingview_router)
+# Include TradingView integration router (if available)
+if HAS_TRADINGVIEW and tradingview_router:
+    app.include_router(tradingview_router)
 
-# Include analytics router
-app.include_router(analytics_router)
+# Include analytics router (if available)
+if HAS_ANALYTICS and analytics_router:
+    app.include_router(analytics_router)
 
 # Include compatibility router for legacy UI endpoints
 app.include_router(compat_router)

@@ -5,3 +5,7 @@
 ._alpaca_test_temp.py
 _install_backups/
 _backups/
+schwab_token.json
+server_log.txt
+bot.log*
+nul

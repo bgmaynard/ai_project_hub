@@ -1,0 +1,474 @@
+"""
+Schwab/ThinkOrSwim Market Data Integration
+Real-time market data from Schwab API for AI Trading Platform
+Uses direct HTTP API calls with automatic token refresh
+"""
+import os
+import json
+import logging
+import base64
+import time
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List
+from pathlib import Path
+
+import httpx
+
+logger = logging.getLogger(__name__)
+
+# Token file location
+TOKEN_FILE = Path(__file__).parent / "schwab_token.json"
+
+# Schwab API base URL
+SCHWAB_API_BASE = "https://api.schwabapi.com"
+
+# Token singleton
+_token_data: Optional[Dict] = None
+_token_expiry: Optional[datetime] = None
+_schwab_available = False
+
+
+def _load_token() -> Optional[Dict]:
+    """Load token from file"""
+    global _token_data, _token_expiry
+
+    if not TOKEN_FILE.exists():
+        logger.warning("Schwab token file not found")
+        return None
+
+    try:
+        with open(TOKEN_FILE, 'r') as f:
+            _token_data = json.load(f)
+
+        # Calculate expiry (access token expires in 30 mins, but we refresh early)
+        _token_expiry = datetime.now() + timedelta(seconds=_token_data.get('expires_in', 1800) - 300)
+        logger.info("Schwab token loaded successfully")
+        return _token_data
+    except Exception as e:
+        logger.error(f"Failed to load Schwab token: {e}")
+        return None
+
+
+def _save_token(token_data: Dict):
+    """Save token to file"""
+    global _token_data, _token_expiry
+
+    try:
+        with open(TOKEN_FILE, 'w') as f:
+            json.dump(token_data, f, indent=2)
+        _token_data = token_data
+        _token_expiry = datetime.now() + timedelta(seconds=token_data.get('expires_in', 1800) - 300)
+        logger.info("Schwab token saved successfully")
+    except Exception as e:
+        logger.error(f"Failed to save Schwab token: {e}")
+
+
+def _refresh_token() -> bool:
+    """Refresh the access token using refresh token"""
+    global _token_data, _token_expiry, _schwab_available
+
+    if not _token_data or 'refresh_token' not in _token_data:
+        logger.error("No refresh token available")
+        _schwab_available = False
+        return False
+
+    app_key = os.getenv('SCHWAB_APP_KEY')
+    app_secret = os.getenv('SCHWAB_APP_SECRET')
+
+    if not app_key or not app_secret:
+        logger.error("Schwab credentials not configured")
+        _schwab_available = False
+        return False
+
+    try:
+        # Create Basic auth header
+        credentials = f"{app_key}:{app_secret}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+        headers = {
+            "Authorization": f"Basic {encoded_credentials}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": _token_data['refresh_token']
+        }
+
+        response = httpx.post(
+            f"{SCHWAB_API_BASE}/v1/oauth/token",
+            headers=headers,
+            data=data,
+            timeout=30.0
+        )
+
+        if response.status_code == 200:
+            new_token = response.json()
+            # Keep refresh token if not returned
+            if 'refresh_token' not in new_token:
+                new_token['refresh_token'] = _token_data['refresh_token']
+            _save_token(new_token)
+            _schwab_available = True
+            logger.info("Schwab token refreshed successfully")
+            return True
+        else:
+            logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
+            _schwab_available = False
+            return False
+
+    except Exception as e:
+        logger.error(f"Token refresh error: {e}")
+        _schwab_available = False
+        return False
+
+
+def _ensure_token() -> Optional[str]:
+    """Ensure we have a valid access token"""
+    global _token_data, _token_expiry, _schwab_available
+
+    # Load token if not loaded
+    if _token_data is None:
+        _load_token()
+
+    if _token_data is None:
+        _schwab_available = False
+        return None
+
+    # Check if token needs refresh
+    if _token_expiry is None or datetime.now() >= _token_expiry:
+        logger.info("Token expired or expiring soon, refreshing...")
+        if not _refresh_token():
+            return None
+
+    _schwab_available = True
+    return _token_data.get('access_token')
+
+
+def _make_request(endpoint: str, params: Optional[Dict] = None) -> Optional[Dict]:
+    """Make authenticated request to Schwab API"""
+    access_token = _ensure_token()
+    if not access_token:
+        return None
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+
+        response = httpx.get(
+            f"{SCHWAB_API_BASE}{endpoint}",
+            headers=headers,
+            params=params,
+            timeout=30.0
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 401:
+            # Token might be invalid, try refresh
+            logger.warning("Got 401, attempting token refresh...")
+            if _refresh_token():
+                # Retry request with new token
+                headers["Authorization"] = f"Bearer {_token_data.get('access_token')}"
+                response = httpx.get(
+                    f"{SCHWAB_API_BASE}{endpoint}",
+                    headers=headers,
+                    params=params,
+                    timeout=30.0
+                )
+                if response.status_code == 200:
+                    return response.json()
+            logger.error(f"Request failed after refresh: {response.status_code}")
+            return None
+        else:
+            logger.error(f"Schwab API error: {response.status_code} - {response.text[:200]}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Schwab API request error: {e}")
+        return None
+
+
+def is_schwab_available() -> bool:
+    """Check if Schwab API is configured and available"""
+    global _schwab_available
+
+    # Check credentials
+    api_key = os.getenv('SCHWAB_APP_KEY')
+    app_secret = os.getenv('SCHWAB_APP_SECRET')
+
+    if not api_key or not app_secret:
+        return False
+
+    # Check if token exists
+    if not TOKEN_FILE.exists():
+        return False
+
+    # Try to ensure we have a valid token
+    if _ensure_token():
+        return True
+
+    return _schwab_available
+
+
+class SchwabMarketData:
+    """Real-time market data from Schwab/ThinkOrSwim"""
+
+    def __init__(self):
+        """Initialize Schwab market data provider"""
+        self._cache: Dict[str, Dict] = {}
+        self._cache_time: Dict[str, datetime] = {}
+        self._cache_ttl = 0.5  # Cache TTL in seconds (500ms for near real-time)
+
+    def _is_cache_valid(self, symbol: str) -> bool:
+        """Check if cache is still valid"""
+        if symbol not in self._cache_time:
+            return False
+        elapsed = (datetime.now() - self._cache_time[symbol]).total_seconds()
+        return elapsed < self._cache_ttl
+
+    def get_quote(self, symbol: str) -> Optional[Dict]:
+        """
+        Get real-time quote for a symbol
+
+        Args:
+            symbol: Stock ticker symbol
+
+        Returns:
+            Dictionary with quote data or None
+        """
+        symbol = symbol.upper()
+
+        # Check cache
+        if self._is_cache_valid(symbol):
+            return self._cache.get(symbol)
+
+        try:
+            data = _make_request(f"/marketdata/v1/quotes", params={"symbols": symbol})
+
+            if not data or symbol not in data:
+                return None
+
+            quote_data = data[symbol].get('quote', {})
+
+            result = {
+                "symbol": symbol,
+                "bid": float(quote_data.get('bidPrice', 0) or 0),
+                "ask": float(quote_data.get('askPrice', 0) or 0),
+                "last": float(quote_data.get('lastPrice', 0) or 0),
+                "bid_size": int(quote_data.get('bidSize', 0) or 0),
+                "ask_size": int(quote_data.get('askSize', 0) or 0),
+                "volume": int(quote_data.get('totalVolume', 0) or 0),
+                "high": float(quote_data.get('highPrice', 0) or 0),
+                "low": float(quote_data.get('lowPrice', 0) or 0),
+                "open": float(quote_data.get('openPrice', 0) or 0),
+                "close": float(quote_data.get('closePrice', 0) or 0),
+                "change": float(quote_data.get('netChange', 0) or 0),
+                "change_percent": float(quote_data.get('netPercentChangeInDouble', 0) or 0),
+                "timestamp": datetime.now().isoformat(),
+                "source": "schwab"
+            }
+
+            # Update cache
+            self._cache[symbol] = result
+            self._cache_time[symbol] = datetime.now()
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting Schwab quote for {symbol}: {e}")
+            return None
+
+    def get_quotes(self, symbols: List[str]) -> Dict[str, Dict]:
+        """
+        Get real-time quotes for multiple symbols
+
+        Args:
+            symbols: List of stock ticker symbols
+
+        Returns:
+            Dictionary mapping symbols to quote data
+        """
+        results = {}
+        symbols_to_fetch = []
+
+        # Check cache first
+        for symbol in symbols:
+            symbol = symbol.upper()
+            if self._is_cache_valid(symbol):
+                results[symbol] = self._cache[symbol]
+            else:
+                symbols_to_fetch.append(symbol)
+
+        if not symbols_to_fetch:
+            return results
+
+        try:
+            # Schwab API accepts comma-separated symbols
+            symbol_str = ",".join(symbols_to_fetch)
+            data = _make_request(f"/marketdata/v1/quotes", params={"symbols": symbol_str})
+
+            if not data:
+                return results
+
+            for symbol in symbols_to_fetch:
+                if symbol in data:
+                    quote_data = data[symbol].get('quote', {})
+                    result = {
+                        "symbol": symbol,
+                        "bid": float(quote_data.get('bidPrice', 0) or 0),
+                        "ask": float(quote_data.get('askPrice', 0) or 0),
+                        "last": float(quote_data.get('lastPrice', 0) or 0),
+                        "bid_size": int(quote_data.get('bidSize', 0) or 0),
+                        "ask_size": int(quote_data.get('askSize', 0) or 0),
+                        "volume": int(quote_data.get('totalVolume', 0) or 0),
+                        "high": float(quote_data.get('highPrice', 0) or 0),
+                        "low": float(quote_data.get('lowPrice', 0) or 0),
+                        "open": float(quote_data.get('openPrice', 0) or 0),
+                        "close": float(quote_data.get('closePrice', 0) or 0),
+                        "change": float(quote_data.get('netChange', 0) or 0),
+                        "change_percent": float(quote_data.get('netPercentChangeInDouble', 0) or 0),
+                        "timestamp": datetime.now().isoformat(),
+                        "source": "schwab"
+                    }
+                    results[symbol] = result
+
+                    # Update cache
+                    self._cache[symbol] = result
+                    self._cache_time[symbol] = datetime.now()
+
+        except Exception as e:
+            logger.error(f"Error getting Schwab quotes: {e}")
+
+        return results
+
+    def get_snapshot(self, symbol: str) -> Optional[Dict]:
+        """
+        Get comprehensive market snapshot for a symbol
+
+        Args:
+            symbol: Stock ticker symbol
+
+        Returns:
+            Dictionary with snapshot data or None
+        """
+        # For Schwab, snapshot is same as quote (real-time)
+        return self.get_quote(symbol)
+
+    def get_price_history(
+        self,
+        symbol: str,
+        period_type: str = "day",
+        period: int = 1,
+        frequency_type: str = "minute",
+        frequency: int = 1
+    ) -> Optional[Dict]:
+        """
+        Get historical price data
+
+        Args:
+            symbol: Stock ticker symbol
+            period_type: Type of period (day, month, year, ytd)
+            period: Number of periods
+            frequency_type: Type of frequency (minute, daily, weekly, monthly)
+            frequency: Frequency value
+
+        Returns:
+            Dictionary with historical data or None
+        """
+        try:
+            params = {
+                "periodType": period_type,
+                "period": period,
+                "frequencyType": frequency_type,
+                "frequency": frequency
+            }
+
+            data = _make_request(f"/marketdata/v1/pricehistory", params={
+                "symbol": symbol.upper(),
+                **params
+            })
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Error getting Schwab price history for {symbol}: {e}")
+            return None
+
+
+# Global instance
+_schwab_market_data: Optional[SchwabMarketData] = None
+
+
+def get_schwab_market_data() -> Optional[SchwabMarketData]:
+    """
+    Get or create the global Schwab market data instance
+
+    Returns:
+        SchwabMarketData instance or None if not available
+    """
+    global _schwab_market_data
+
+    if not is_schwab_available():
+        return None
+
+    if _schwab_market_data is None:
+        _schwab_market_data = SchwabMarketData()
+
+    return _schwab_market_data
+
+
+def get_schwab_quote(symbol: str) -> Optional[Dict]:
+    """
+    Convenience function to get a real-time quote from Schwab
+
+    Args:
+        symbol: Stock ticker symbol
+
+    Returns:
+        Quote dictionary or None
+    """
+    schwab = get_schwab_market_data()
+    if schwab:
+        return schwab.get_quote(symbol)
+    return None
+
+
+# ============================================================================
+# TEST
+# ============================================================================
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    print("Testing Schwab Market Data...")
+    print("=" * 50)
+
+    # Check availability
+    print(f"\nSchwab Available: {is_schwab_available()}")
+
+    if is_schwab_available():
+        schwab = get_schwab_market_data()
+
+        # Test single quote
+        print("\n--- Single Quote (AAPL) ---")
+        quote = schwab.get_quote("AAPL")
+        if quote:
+            print(f"Symbol: {quote['symbol']}")
+            print(f"Last: ${quote['last']:.2f}")
+            print(f"Bid: ${quote['bid']:.2f}")
+            print(f"Ask: ${quote['ask']:.2f}")
+            print(f"Change: {quote['change']:+.2f} ({quote['change_percent']:+.2f}%)")
+        else:
+            print("No quote available")
+
+        # Test multiple quotes
+        print("\n--- Multiple Quotes ---")
+        symbols = ["AAPL", "MSFT", "TSLA", "NVDA", "SPY"]
+        quotes = schwab.get_quotes(symbols)
+        for sym, q in quotes.items():
+            print(f"{sym}: ${q['last']:.2f} ({q['change_percent']:+.2f}%)")
+
+    print("\n" + "=" * 50)
+    print("Test complete!")
