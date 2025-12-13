@@ -178,9 +178,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="AI Trading Hub - Alpaca Edition",
-    description="AI-powered trading platform with Alpaca integration",
-    version="2.0.0"
+    title="Morpheus Trading Bot",
+    description="AI-powered trading platform with Schwab integration (Primary) and Alpaca fallback",
+    version="2.1.0"
 )
 
 # Enable CORS
@@ -192,8 +192,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Alpaca router
-app.include_router(alpaca_router, tags=["Alpaca Trading"])
+# =============================================================================
+# PRIMARY ACCOUNT ENDPOINT (Schwab first, Alpaca fallback)
+# =============================================================================
+@app.get("/api/account")
+async def get_primary_account():
+    """Get account info from primary broker (Schwab) or fallback (Alpaca)"""
+    # Try Schwab first (primary broker)
+    if HAS_SCHWAB_TRADING:
+        try:
+            if is_schwab_trading_available():
+                schwab = get_schwab_trading()
+                if schwab:
+                    account = schwab.get_account_info()
+                    if account:
+                        return {
+                            **account,
+                            "broker": "Schwab",
+                            "name": "Morpheus Trading Bot"
+                        }
+        except Exception as e:
+            logger.warning(f"Schwab account fetch failed: {e}")
+
+    # Fallback to Alpaca
+    try:
+        connector = get_alpaca_connector()
+        if connector.is_connected():
+            account = connector.get_account()
+            return {
+                **account,
+                "broker": "Alpaca (fallback)",
+                "name": "Morpheus Trading Bot"
+            }
+    except Exception as e:
+        logger.warning(f"Alpaca account fetch failed: {e}")
+
+    raise HTTPException(status_code=503, detail="No broker available")
+
+
+# Include Alpaca router (fallback broker, paper trading)
+app.include_router(alpaca_router, prefix="/api/alpaca", tags=["Alpaca (Fallback)"])
 
 # Include watchlist router (if available)
 if HAS_WATCHLIST_ROUTES and watchlist_router:
@@ -317,11 +355,21 @@ class ClaudeQueryRequest(BaseModel):
 @app.get("/")
 async def root():
     """Root endpoint"""
+    # Schwab is now the primary broker (Phase 1 migration)
+    primary_broker = "Schwab"
+    if HAS_SCHWAB_TRADING:
+        try:
+            if is_schwab_trading_available():
+                primary_broker = "Schwab"
+        except Exception:
+            primary_broker = "Alpaca (fallback)"
+
     return {
-        "name": "AI Trading Hub",
-        "version": "2.0.0",
-        "broker": "Alpaca",
-        "status": "operational"
+        "name": "Morpheus Trading Bot",
+        "version": "2.1.0",
+        "broker": primary_broker,
+        "status": "operational",
+        "data_source": "Schwab"
     }
 
 

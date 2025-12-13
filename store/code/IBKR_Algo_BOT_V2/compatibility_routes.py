@@ -1,10 +1,19 @@
 """
 Compatibility Routes for Legacy UI
-Maps old IBKR endpoints to new Alpaca endpoints
+Maps old IBKR endpoints to new broker endpoints
+Primary broker: Schwab (as of v2.1.0)
+Fallback: Alpaca (paper trading only)
 """
 from fastapi import APIRouter, HTTPException
 from alpaca_market_data import get_alpaca_market_data
 from alpaca_integration import get_alpaca_connector
+
+# Schwab trading integration (primary broker)
+try:
+    from schwab_trading import get_schwab_trading, is_schwab_trading_available
+    HAS_SCHWAB = True
+except ImportError:
+    HAS_SCHWAB = False
 
 router = APIRouter(tags=["Compatibility"])
 
@@ -247,13 +256,29 @@ async def unsubscribe_compat(data: dict):
 
 @router.get("/health")
 async def health_compat():
-    """Legacy health endpoint - redirect to /api/health"""
-    connector = get_alpaca_connector()
+    """Health endpoint - Schwab primary, Alpaca fallback"""
+    # Check Schwab first (primary broker)
+    if HAS_SCHWAB:
+        try:
+            if is_schwab_trading_available():
+                schwab = get_schwab_trading()
+                if schwab:
+                    return {
+                        "status": "ok",
+                        "broker": "Schwab",
+                        "connected": True,
+                        "name": "Morpheus Trading Bot"
+                    }
+        except Exception:
+            pass
 
+    # Fallback to Alpaca
+    connector = get_alpaca_connector()
     return {
         "status": "ok" if connector.is_connected() else "error",
-        "broker": "Alpaca",
-        "connected": connector.is_connected()
+        "broker": "Alpaca (fallback)",
+        "connected": connector.is_connected(),
+        "name": "Morpheus Trading Bot"
     }
 
 
