@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alpaca Professional Trading Platform</title>
+    <title>Morpheus Trading Bot - Professional Platform</title>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
         * {
@@ -889,12 +889,12 @@
     <!-- Top Bar -->
     <div class="top-bar">
         <div class="top-bar-left">
-            <h1>⚡ ALPACA PROFESSIONAL TRADING PLATFORM</h1>
+            <h1>⚡ MORPHEUS TRADING BOT</h1>
         </div>
         <div class="top-bar-right">
             <div class="status-item">
-                <div class="status-dot" id="alpacaStatus"></div>
-                <span>Alpaca: <strong id="alpacaStatusText">Disconnected</strong></span>
+                <div class="status-dot connected" id="schwabStatusTop"></div>
+                <span>Schwab: <strong id="schwabStatusText">Connected</strong></span>
             </div>
             <div class="status-item">
                 <div class="status-dot" id="aiStatus"></div>
@@ -913,7 +913,7 @@
             </div>
             <div class="status-item" onclick="showBrokerModal()" style="cursor: pointer;" title="Click to switch broker/account">
                 <div class="status-dot" id="schwabStatus"></div>
-                <span>Broker: <strong id="brokerStatusText">Alpaca</strong></span>
+                <span>Broker: <strong id="brokerStatusText">Schwab</strong></span>
             </div>
         </div>
     </div>
@@ -1008,15 +1008,15 @@
                 <div style="margin-bottom: 20px;">
                     <div style="font-size: 12px; color: #888; margin-bottom: 8px;">ACTIVE TRADING BROKER</div>
                     <div style="display: flex; gap: 10px;">
+                        <button id="brokerSchwabBtn" class="btn btn-secondary" onclick="selectBroker('schwab')" style="flex: 1; padding: 15px; border: 2px solid #00ff00; background: rgba(0, 255, 0, 0.1);">
+                            <div style="font-size: 18px;">💹</div>
+                            <div style="font-weight: bold;">Schwab</div>
+                            <div style="font-size: 11px; color: #00ff00;">Primary Broker</div>
+                        </button>
                         <button id="brokerAlpacaBtn" class="btn btn-secondary" onclick="selectBroker('alpaca')" style="flex: 1; padding: 15px;">
                             <div style="font-size: 18px;">📊</div>
                             <div style="font-weight: bold;">Alpaca</div>
                             <div style="font-size: 11px; color: #888;">Paper Trading</div>
-                        </button>
-                        <button id="brokerSchwabBtn" class="btn btn-secondary" onclick="selectBroker('schwab')" style="flex: 1; padding: 15px;">
-                            <div style="font-size: 18px;">💹</div>
-                            <div style="font-weight: bold;">Schwab/TOS</div>
-                            <div style="font-size: 11px; color: #888;">Real + Paper</div>
                         </button>
                     </div>
                 </div>
@@ -1036,8 +1036,8 @@
                 <div style="margin-top: 15px; padding: 12px; background: #1a1a1a; border-radius: 4px;">
                     <div style="font-size: 12px; color: #888; margin-bottom: 8px;">STATUS</div>
                     <div id="brokerStatusDetails" style="font-size: 13px;">
-                        <div>Alpaca: <span style="color: #00ff00;">Connected (Paper)</span></div>
-                        <div>Schwab: <span id="schwabConnectionStatus" style="color: #888;">Checking...</span></div>
+                        <div>Schwab: <span id="schwabConnectionStatus" style="color: #00ff00;">Connected (Primary)</span></div>
+                        <div>Alpaca: <span style="color: #888;">Paper Trading (Fallback)</span></div>
                         <div>Data Source: <span id="dataSourceStatus" style="color: #00ff00;">Schwab</span></div>
                     </div>
                 </div>
@@ -6313,38 +6313,35 @@ Confirm order?`;
                 if (data.trading_engine && data.trading_engine.open_positions !== undefined) {
                     document.getElementById('botPositions').textContent = data.trading_engine.open_positions;
                 }
-                // ALWAYS fetch Daily P/L from Alpaca account (equity - last_equity)
+                // Fetch Daily P/L from primary broker (Schwab)
                 try {
-                    const acctResp = await fetch(API_BASE_URL + '/api/alpaca/account');
+                    const acctResp = await fetch(API_BASE_URL + '/api/schwab/account');
                     if (acctResp.ok) {
                         const acct = await acctResp.json();
-                        const equity = parseFloat(acct.equity || 0);
-                        const lastEquity = parseFloat(acct.last_equity || 0);
-                        if (lastEquity > 0) {
-                            const dailyPnl = equity - lastEquity;
-                            const dailyPnlElem = document.getElementById('botDailyPnl');
-                            dailyPnlElem.textContent = '$' + dailyPnl.toFixed(2);
-                            dailyPnlElem.style.color = dailyPnl >= 0 ? '#22c55e' : '#ef4444';
-                        }
+                        const dailyPnl = parseFloat(acct.daily_pl || 0);
+                        const dailyPnlElem = document.getElementById('botDailyPnl');
+                        dailyPnlElem.textContent = '$' + dailyPnl.toFixed(2);
+                        dailyPnlElem.style.color = dailyPnl >= 0 ? '#22c55e' : '#ef4444';
                     }
-                } catch (e) { console.log('Alpaca account fetch failed:', e); }
+                } catch (e) { console.log('Schwab account fetch failed:', e); }
 
-                // Fetch Position P/L (sum of all unrealized_pl from positions)
+                // Fetch Position P/L from Schwab
                 try {
-                    const posResp = await fetch(API_BASE_URL + '/api/alpaca/positions');
+                    const posResp = await fetch(API_BASE_URL + '/api/schwab/positions');
                     if (posResp.ok) {
-                        const positions = await posResp.json();
+                        const data = await posResp.json();
+                        const positions = data.positions || data || [];
                         let totalUnrealizedPl = 0;
                         if (Array.isArray(positions)) {
                             for (const pos of positions) {
-                                totalUnrealizedPl += parseFloat(pos.unrealized_pl || 0);
+                                totalUnrealizedPl += parseFloat(pos.unrealized_pl || pos.unrealized_pnl || 0);
                             }
                         }
                         const posPnlElem = document.getElementById('botPositionPnl');
                         posPnlElem.textContent = '$' + totalUnrealizedPl.toFixed(2);
                         posPnlElem.style.color = totalUnrealizedPl >= 0 ? '#22c55e' : '#ef4444';
                     }
-                } catch (e) { console.log('Alpaca positions fetch failed:', e); }
+                } catch (e) { console.log('Schwab positions fetch failed:', e); }
 
                 // Update 3-5-7 risk management display
                 if (data.trading_engine && data.trading_engine.weekly_pnl !== undefined) {
@@ -10139,28 +10136,27 @@ Confirm order?`;
 
         async function checkStatus() {
             try {
-                // Check Alpaca status
-                const alpacaResponse = await fetch(API_BASE_URL + '/api/alpaca/status');
-                const alpacaData = await alpacaResponse.json();
+                // Check Schwab status (primary broker)
+                const schwabResponse = await fetch(API_BASE_URL + '/api/schwab/status');
+                const schwabData = await schwabResponse.json();
 
-                console.log('Alpaca Status:', alpacaData);
+                console.log('Schwab Status:', schwabData);
 
-                const alpacaDot = document.getElementById('alpacaStatus');
-                const alpacaText = document.getElementById('alpacaStatusText');
+                const schwabDot = document.getElementById('schwabStatusTop');
+                const schwabText = document.getElementById('schwabStatusText');
+                const brokerText = document.getElementById('brokerStatusText');
 
-                if (alpacaData && alpacaData.connected) {
-                    alpacaDot.classList.add('connected');
-                    alpacaText.textContent = 'Connected';
+                if (schwabData && schwabData.authenticated) {
+                    if (schwabDot) schwabDot.classList.add('connected');
+                    if (schwabText) schwabText.textContent = 'Connected';
+                    if (brokerText) brokerText.textContent = 'Schwab';
                     apiAvailable = true;
-                    console.log('✓ Alpaca indicator set to CONNECTED');
+                    console.log('✓ Schwab indicator set to CONNECTED');
                 } else {
-                    alpacaDot.classList.remove('connected');
-                    if (apiAvailable === false) {
-                        alpacaText.textContent = 'Demo Mode';
-                    } else {
-                        alpacaText.textContent = 'Disconnected';
-                    }
-                    console.log('✗ Alpaca indicator set to DISCONNECTED');
+                    if (schwabDot) schwabDot.classList.remove('connected');
+                    if (schwabText) schwabText.textContent = 'Disconnected';
+                    if (brokerText) brokerText.textContent = 'Disconnected';
+                    console.log('✗ Schwab indicator set to DISCONNECTED');
                 }
 
                 // Check AI/Claude status
@@ -10344,8 +10340,32 @@ Confirm order?`;
         // BROKER/ACCOUNT MODAL FUNCTIONS
         // =====================================================================
 
-        let activeBroker = 'alpaca';  // Current trading broker
+        let activeBroker = 'schwab';  // Current trading broker (Schwab primary)
         let schwabAccounts = [];
+
+        async function loadSchwabAccounts() {
+            try {
+                const schwabResp = await fetch(API_BASE_URL + '/api/schwab/status');
+                const schwabStatus = await schwabResp.json();
+
+                if (schwabStatus.available && schwabStatus.authenticated) {
+                    schwabAccounts = schwabStatus.accounts || [];
+                    const select = document.getElementById('schwabAccountSelect');
+                    if (select) {
+                        select.innerHTML = '<option value="">Select account...</option>';
+                        schwabAccounts.forEach(acc => {
+                            const opt = document.createElement('option');
+                            opt.value = acc.account_number;
+                            opt.textContent = acc.account_number + (acc.selected ? ' (Selected)' : '');
+                            if (acc.selected) opt.selected = true;
+                            select.appendChild(opt);
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load Schwab accounts:', e);
+            }
+        }
 
         function showBrokerModal() {
             document.getElementById('brokerModal').classList.add('show');
@@ -10551,7 +10571,7 @@ Confirm order?`;
 
         // Initialize broker state on page load
         async function initBrokerState() {
-            const savedBroker = localStorage.getItem('activeBroker') || 'alpaca';
+            const savedBroker = localStorage.getItem('activeBroker') || 'schwab';
             activeBroker = savedBroker;
             document.getElementById('brokerStatusText').textContent =
                 savedBroker === 'schwab' ? 'Schwab' : 'Alpaca';
@@ -10564,19 +10584,38 @@ Confirm order?`;
                 console.warn('Failed to sync broker state:', e);
             }
 
+            // Show Schwab account section by default
+            const schwabSection = document.getElementById('schwabAccountSection');
+            if (schwabSection && savedBroker === 'schwab') {
+                schwabSection.style.display = 'block';
+            }
+
             // Check Schwab status on load
             fetch(API_BASE_URL + '/api/schwab/status')
                 .then(r => r.json())
                 .then(status => {
+                    const schwabStatusEl = document.getElementById('schwabStatus');
+                    const schwabStatusTopEl = document.getElementById('schwabStatusTop');
+                    const schwabTextEl = document.getElementById('schwabStatusText');
+
                     if (status.available && status.authenticated) {
-                        document.getElementById('schwabStatus').style.backgroundColor = '#00ff00';
-                        document.getElementById('schwabStatus').classList.add('connected');
+                        if (schwabStatusEl) {
+                            schwabStatusEl.style.backgroundColor = '#00ff00';
+                            schwabStatusEl.classList.add('connected');
+                        }
+                        if (schwabStatusTopEl) schwabStatusTopEl.classList.add('connected');
+                        if (schwabTextEl) schwabTextEl.textContent = 'Connected';
+                        // Load Schwab accounts into dropdown
+                        loadSchwabAccounts();
                     } else {
-                        document.getElementById('schwabStatus').style.backgroundColor = '#888';
+                        if (schwabStatusEl) schwabStatusEl.style.backgroundColor = '#888';
+                        if (schwabStatusTopEl) schwabStatusTopEl.classList.remove('connected');
+                        if (schwabTextEl) schwabTextEl.textContent = 'Disconnected';
                     }
                 })
                 .catch(() => {
-                    document.getElementById('schwabStatus').style.backgroundColor = '#888';
+                    const schwabStatusEl = document.getElementById('schwabStatus');
+                    if (schwabStatusEl) schwabStatusEl.style.backgroundColor = '#888';
                 });
         }
 
@@ -12521,7 +12560,7 @@ Confirm order?`;
         }
 
         window.addEventListener('load', async () => {
-            console.log('%c🚀 Alpaca Professional Trading Platform', 'color: #007acc; font-size: 18px; font-weight: bold;');
+            console.log('%c🚀 Morpheus Trading Bot - Professional Platform', 'color: #007acc; font-size: 18px; font-weight: bold;');
 
             // Start unified price refresh system
             startUnifiedRefresh();
