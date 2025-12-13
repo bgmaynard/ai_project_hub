@@ -22,6 +22,13 @@ from portfolio_analytics import get_portfolio_analytics
 from trade_execution import get_execution_tracker
 from alpaca_market_data import get_alpaca_market_data
 
+# Unified broker for live trading (Schwab primary)
+try:
+    from unified_broker import get_unified_broker
+    HAS_UNIFIED_BROKER = True
+except ImportError:
+    HAS_UNIFIED_BROKER = False
+
 # Claude AI Intelligence for adaptive behavior
 from ai.claude_bot_intelligence import get_bot_intelligence, BotMood
 

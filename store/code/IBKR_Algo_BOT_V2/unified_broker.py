@@ -311,6 +311,113 @@ class UnifiedBroker:
 
         return False
 
+    def close_position(self, symbol: str) -> OrderResult:
+        """Close a position by selling all shares"""
+        timestamp = datetime.now().isoformat()
+        symbol = symbol.upper()
+
+        # Get current positions
+        positions = self.get_positions()
+        position = next((p for p in positions if p.get("symbol", "").upper() == symbol), None)
+
+        if not position:
+            return OrderResult(
+                success=False,
+                symbol=symbol,
+                broker=self.broker_name,
+                error=f"No position found for {symbol}",
+                timestamp=timestamp
+            )
+
+        quantity = abs(int(float(position.get("qty", position.get("quantity", 0)))))
+        if quantity <= 0:
+            return OrderResult(
+                success=False,
+                symbol=symbol,
+                broker=self.broker_name,
+                error=f"Invalid quantity for {symbol}",
+                timestamp=timestamp
+            )
+
+        # Place sell order to close position
+        return self.place_limit_order(
+            symbol=symbol,
+            side=OrderSide.SELL,
+            quantity=quantity,
+            price=float(position.get("current_price", position.get("market_value", 0)) / quantity)
+        )
+
+    def close_all_positions(self) -> List[OrderResult]:
+        """Close all open positions"""
+        results = []
+        positions = self.get_positions()
+
+        for position in positions:
+            symbol = position.get("symbol", "")
+            if symbol:
+                result = self.close_position(symbol)
+                results.append(result)
+
+        return results
+
+    def place_smart_order(
+        self,
+        symbol: str,
+        quantity: int,
+        side: str,
+        limit_price: float = None,
+        emergency: bool = False
+    ) -> OrderResult:
+        """
+        Smart order placement - uses best available execution method.
+
+        For Schwab: Routes to limit order with current quote price
+        For Alpaca: Uses Alpaca's native smart order with bid/ask logic
+        """
+        timestamp = datetime.now().isoformat()
+        order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
+
+        # Try Alpaca's native smart order first if available (for paper trading)
+        if self._alpaca and self._active_broker == BrokerType.ALPACA:
+            try:
+                result = self._alpaca.place_smart_order(
+                    symbol=symbol,
+                    quantity=quantity,
+                    side=side,
+                    limit_price=limit_price,
+                    emergency=emergency
+                )
+                if result and result.get("order_id"):
+                    return OrderResult(
+                        success=True,
+                        order_id=result.get("order_id"),
+                        symbol=symbol,
+                        side=side,
+                        quantity=quantity,
+                        price=result.get("limit_price"),
+                        status=result.get("status", "PENDING"),
+                        broker="Alpaca (paper)",
+                        timestamp=timestamp
+                    )
+            except Exception as e:
+                logger.warning(f"Alpaca smart order failed: {e}")
+
+        # For Schwab or fallback: use limit order with provided price
+        if limit_price:
+            return self.place_limit_order(symbol, order_side, quantity, limit_price)
+
+        # No price provided - log warning and return error
+        logger.warning(f"Smart order for {symbol}: No limit price provided and no quote available")
+        return OrderResult(
+            success=False,
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
+            broker=self.broker_name,
+            error="Limit price required for smart orders",
+            timestamp=timestamp
+        )
+
     def get_status(self) -> Dict:
         """Get broker status"""
         return {

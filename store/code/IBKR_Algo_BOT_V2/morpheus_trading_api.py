@@ -23,10 +23,13 @@ import uvicorn
 # Broker configuration
 from config.broker_config import get_broker_config, BrokerType
 
-# Alpaca integration
+# Alpaca integration (fallback for paper trading)
 from alpaca_integration import get_alpaca_connector
 from alpaca_market_data import get_alpaca_market_data
 from alpaca_api_routes import router as alpaca_router
+
+# Unified Broker (Schwab primary, Alpaca fallback)
+from unified_broker import get_unified_broker, OrderSide
 
 # Unified Market Data Provider (Schwab primary, Alpaca fallback)
 try:
@@ -1692,31 +1695,58 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
     trade_pattern = r"(buy|sell|purchase|short)\s+(\d+)\s*(?:shares?\s+(?:of\s+)?)?([A-Za-z]+)(?:\s+(?:at|@|for)\s+\$?([\d.]+))?"
     trade_match = re.search(trade_pattern, query_lower)
 
-    if trade_match and connector and connector.is_connected():
+    if trade_match:
         action = trade_match.group(1)
         quantity = int(trade_match.group(2))
         symbol = trade_match.group(3).upper()
         limit_price = float(trade_match.group(4)) if trade_match.group(4) else None
 
-        side = "buy" if action in ["buy", "purchase"] else "sell"
+        side = OrderSide.BUY if action in ["buy", "purchase"] else OrderSide.SELL
 
+        # Use UnifiedBroker for order execution (Schwab primary, Alpaca fallback)
         try:
+            broker = get_unified_broker()
+            if not broker.is_connected:
+                return {
+                    "executed": True,
+                    "action": "order_failed",
+                    "response": "❌ No broker connected. Please check your API credentials.",
+                    "details": {"error": "No broker available"}
+                }
+
             if limit_price:
-                result = connector.place_limit_order(symbol, quantity, side, limit_price)
-                return {
-                    "executed": True,
-                    "action": "limit_order",
-                    "response": f"✅ Placed {side.upper()} limit order: {quantity} shares of {symbol} at ${limit_price:.2f}",
-                    "details": {"symbol": symbol, "quantity": quantity, "side": side, "limit_price": limit_price, "order": result}
-                }
+                result = broker.place_limit_order(symbol, side, quantity, limit_price)
+                if result.success:
+                    return {
+                        "executed": True,
+                        "action": "limit_order",
+                        "response": f"✅ Placed {side.value} limit order via {result.broker}: {quantity} shares of {symbol} at ${limit_price:.2f}",
+                        "details": {"symbol": symbol, "quantity": quantity, "side": side.value, "limit_price": limit_price, "order_id": result.order_id, "broker": result.broker}
+                    }
+                else:
+                    return {
+                        "executed": True,
+                        "action": "order_failed",
+                        "response": f"❌ Order failed on {result.broker}: {result.error}",
+                        "details": {"error": result.error, "broker": result.broker}
+                    }
             else:
-                result = connector.place_market_order(symbol, quantity, side)
-                return {
-                    "executed": True,
-                    "action": "market_order",
-                    "response": f"✅ Placed {side.upper()} market order: {quantity} shares of {symbol}",
-                    "details": {"symbol": symbol, "quantity": quantity, "side": side, "order": result}
-                }
+                # Market orders - warn user but execute via UnifiedBroker
+                result = broker.place_market_order(symbol, side, quantity)
+                if result.success:
+                    return {
+                        "executed": True,
+                        "action": "market_order",
+                        "response": f"✅ Placed {side.value} market order via {result.broker}: {quantity} shares of {symbol}",
+                        "details": {"symbol": symbol, "quantity": quantity, "side": side.value, "order_id": result.order_id, "broker": result.broker}
+                    }
+                else:
+                    return {
+                        "executed": True,
+                        "action": "order_failed",
+                        "response": f"❌ Order failed on {result.broker}: {result.error}",
+                        "details": {"error": result.error, "broker": result.broker}
+                    }
         except Exception as e:
             return {
                 "executed": True,
@@ -1729,16 +1759,32 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
     close_pattern = r"(?:close|exit|liquidate|sell all)\s+(?:my\s+)?(?:position\s+(?:in|on)\s+)?([A-Za-z]+)(?:\s+position)?"
     close_match = re.search(close_pattern, query_lower)
 
-    if close_match and connector and connector.is_connected():
+    if close_match:
         symbol = close_match.group(1).upper()
         try:
-            result = connector.close_position(symbol)
-            return {
-                "executed": True,
-                "action": "close_position",
-                "response": f"✅ Closed position in {symbol}",
-                "details": {"symbol": symbol, "result": result}
-            }
+            broker = get_unified_broker()
+            if not broker.is_connected:
+                return {
+                    "executed": True,
+                    "action": "close_failed",
+                    "response": "❌ No broker connected",
+                    "details": {"error": "No broker available"}
+                }
+            result = broker.close_position(symbol)
+            if result.success:
+                return {
+                    "executed": True,
+                    "action": "close_position",
+                    "response": f"✅ Closed position in {symbol} via {result.broker}",
+                    "details": {"symbol": symbol, "order_id": result.order_id, "broker": result.broker}
+                }
+            else:
+                return {
+                    "executed": True,
+                    "action": "close_failed",
+                    "response": f"❌ Could not close {symbol}: {result.error}",
+                    "details": {"error": result.error, "broker": result.broker}
+                }
         except Exception as e:
             return {
                 "executed": True,
@@ -1749,22 +1795,30 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
 
     # Pattern: Close all positions
     if any(phrase in query_lower for phrase in ["close all", "liquidate all", "sell everything", "flatten"]):
-        if connector and connector.is_connected():
-            try:
-                result = connector.close_all_positions()
-                return {
-                    "executed": True,
-                    "action": "close_all",
-                    "response": "✅ Closed all positions",
-                    "details": {"result": result}
-                }
-            except Exception as e:
+        try:
+            broker = get_unified_broker()
+            if not broker.is_connected:
                 return {
                     "executed": True,
                     "action": "close_all_failed",
-                    "response": f"❌ Could not close all positions: {str(e)}",
-                    "details": {"error": str(e)}
+                    "response": "❌ No broker connected",
+                    "details": {"error": "No broker available"}
                 }
+            results = broker.close_all_positions()
+            success_count = sum(1 for r in results if r.success)
+            return {
+                "executed": True,
+                "action": "close_all",
+                "response": f"✅ Closed {success_count}/{len(results)} positions via {broker.broker_name}",
+                "details": {"results": [{"symbol": r.symbol, "success": r.success, "error": r.error} for r in results]}
+            }
+        except Exception as e:
+            return {
+                "executed": True,
+                "action": "close_all_failed",
+                "response": f"❌ Could not close all positions: {str(e)}",
+                "details": {"error": str(e)}
+            }
 
     # Pattern: Show positions
     if any(phrase in query_lower for phrase in ["show position", "my position", "what am i holding", "current holdings", "show holdings"]):
