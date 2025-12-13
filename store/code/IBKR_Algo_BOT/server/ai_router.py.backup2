@@ -1,0 +1,132 @@
+﻿"""AI Router Module for IBKR Trading Bot"""
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+import csv
+from pathlib import Path
+
+router = APIRouter(prefix="/api/ai", tags=["AI"])
+
+class PredictionRequest(BaseModel):
+    symbol: str
+    bid: Optional[float] = None
+    ask: Optional[float] = None
+    bidSize: Optional[int] = None
+    askSize: Optional[int] = None
+    sentiment: Optional[float] = None
+
+class PredictionResponse(BaseModel):
+    symbol: str
+    signal: str
+    prob_up: float
+    confidence: float
+    timestamp: str
+    features_used: List[str] = []
+
+def get_predictions_log_path() -> Path:
+    return Path("logs/predictions.csv")
+
+def save_prediction_to_csv(prediction: Dict[str, Any]):
+    csv_path = get_predictions_log_path()
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    file_exists = csv_path.exists()
+    with open(csv_path, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['timestamp', 'symbol', 'signal', 'prob_up', 'confidence'])
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow({
+            'timestamp': prediction['timestamp'],
+            'symbol': prediction['symbol'],
+            'signal': prediction['signal'],
+            'prob_up': prediction['prob_up'],
+            'confidence': prediction['confidence']
+        })
+
+def load_ai_predictor():
+    try:
+        from ai.ai_predictor import EnhancedAIPredictor
+        return EnhancedAIPredictor()
+    except ImportError:
+        return None
+
+@router.post("/predict", response_model=PredictionResponse)
+async def predict(req: PredictionRequest):
+    try:
+        predictor = load_ai_predictor()
+        if predictor:
+            result = predictor.predict(req.symbol)
+            signal = "bullish" if result['prob_up'] > 0.55 else ("bearish" if result['prob_up'] < 0.45 else "neutral")
+            prediction = PredictionResponse(
+                symbol=req.symbol, signal=signal, prob_up=result['prob_up'],
+                confidence=result['confidence'], timestamp=datetime.utcnow().isoformat(),
+                features_used=result.get('features_used', [])
+            )
+        else:
+            prob_up = 0.5
+            if req.bidSize and req.askSize:
+                imbalance = (req.bidSize - req.askSize) / (req.bidSize + req.askSize)
+                prob_up = 0.5 + (imbalance * 0.3)
+            if req.sentiment:
+                prob_up = prob_up * 0.7 + req.sentiment * 0.3
+            prob_up = max(0.0, min(1.0, prob_up))
+            signal = "bullish" if prob_up > 0.55 else ("bearish" if prob_up < 0.45 else "neutral")
+            prediction = PredictionResponse(
+                symbol=req.symbol, signal=signal, prob_up=round(prob_up, 4),
+                confidence=0.65, timestamp=datetime.utcnow().isoformat(),
+                features_used=["order_book_imbalance", "sentiment"]
+            )
+        save_prediction_to_csv(prediction.dict())
+        return prediction
+    except Exception as e:
+        raise HTTPException(500, f"Prediction failed: {str(e)}")
+
+@router.get("/predict/last")
+async def get_last_prediction():
+    csv_path = get_predictions_log_path()
+    if not csv_path.exists():
+        raise HTTPException(404, "No predictions found")
+    try:
+        with open(csv_path, 'r') as f:
+            predictions = list(csv.DictReader(f))
+        if not predictions:
+            raise HTTPException(404, "No predictions found")
+        last = predictions[-1]
+        return {"symbol": last['symbol'], "signal": last['signal'],
+                "prob_up": float(last['prob_up']), "confidence": float(last['confidence']),
+                "timestamp": last['timestamp']}
+    except Exception as e:
+        raise HTTPException(500, f"Failed to read predictions: {str(e)}")
+
+@router.get("/predict/history")
+async def get_prediction_history(
+    symbol: Optional[str] = Query(None), limit: int = Query(20, ge=1, le=100)
+):
+    csv_path = get_predictions_log_path()
+    if not csv_path.exists():
+        return {"predictions": [], "total": 0}
+    try:
+        with open(csv_path, 'r') as f:
+            predictions = list(csv.DictReader(f))
+        if symbol:
+            predictions = [p for p in predictions if p['symbol'].upper() == symbol.upper()]
+        predictions = predictions[-limit:]
+        predictions.reverse()
+        result = [{"symbol": p['symbol'], "signal": p['signal'],
+                   "prob_up": float(p['prob_up']), "confidence": float(p['confidence']),
+                   "timestamp": p['timestamp']} for p in predictions]
+        return {"predictions": result, "total": len(result), "symbol_filter": symbol}
+    except Exception as e:
+        raise HTTPException(500, f"Failed to read prediction history: {str(e)}")
+
+@router.get("/status")
+async def ai_status():
+    predictor = load_ai_predictor()
+    return {
+        "status": "operational", "ai_available": predictor is not None, "version": "1.0.0",
+        "endpoints": {
+            "predict": "/api/ai/predict", "last_prediction": "/api/ai/predict/last",
+            "history": "/api/ai/predict/history"
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }

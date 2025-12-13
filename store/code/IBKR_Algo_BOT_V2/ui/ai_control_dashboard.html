@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Control Center</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-size: 12px;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            border-bottom: 2px solid #8b5cf6;
+            padding: 4px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 32px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10000;
+        }
+        .header h1 { font-size: 14px; color: #8b5cf6; }
+        .header-right { display: flex; align-items: center; gap: 12px; font-size: 11px; }
+        .clock { color: #60a5fa; font-weight: 600; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* Process Bar */
+        .process-bar {
+            position: fixed;
+            top: 32px;
+            left: 0;
+            right: 0;
+            height: 26px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            display: flex;
+            gap: 4px;
+            padding: 3px 8px;
+            z-index: 9999;
+        }
+        .process-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: #252525;
+            border-radius: 2px;
+            font-size: 10px;
+        }
+        .process-status { width: 6px; height: 6px; border-radius: 50%; }
+        .status-running { background: #22c55e; }
+        .status-stopped { background: #ef4444; }
+        .status-idle { background: #f59e0b; }
+        .process-btn {
+            padding: 1px 4px;
+            font-size: 9px;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            margin-left: 4px;
+        }
+        .process-btn.start { background: #22c55e; color: #000; }
+        .process-btn.stop { background: #ef4444; color: #fff; }
+
+        /* Workspace */
+        .workspace {
+            position: fixed;
+            top: 58px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0a0a0a;
+            overflow: hidden;
+        }
+
+        /* Draggable Windows */
+        .window {
+            position: absolute;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            min-width: 180px;
+            min-height: 100px;
+        }
+        .window.active {
+            border-color: #8b5cf6;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+        }
+        .window-header {
+            background: #252525;
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            user-select: none;
+        }
+        .window.active .window-header {
+            background: #8b5cf6;
+            color: #fff;
+        }
+        .window-controls { display: flex; gap: 4px; }
+        .window-btn {
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            border-radius: 2px;
+        }
+        .window-btn:hover { background: rgba(255,255,255,0.2); }
+        .window-btn.close { color: #ef4444; }
+        .window-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 6px;
+        }
+
+        /* Resize Handles */
+        .resize-handle { position: absolute; background: transparent; z-index: 10; }
+        .resize-handle.e { top: 0; right: 0; bottom: 0; width: 4px; cursor: ew-resize; }
+        .resize-handle.s { bottom: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
+        .resize-handle.se { bottom: 0; right: 0; width: 10px; height: 10px; cursor: nwse-resize; }
+
+        /* Layout Controls */
+        .layout-controls {
+            position: fixed;
+            bottom: 8px;
+            right: 8px;
+            display: flex;
+            gap: 4px;
+            z-index: 9998;
+        }
+        .layout-btn {
+            padding: 6px 10px;
+            background: #252525;
+            border: 1px solid #8b5cf6;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .layout-btn:hover { background: #8b5cf6; }
+
+        /* Form Elements */
+        .input {
+            padding: 4px 6px;
+            background: #252525;
+            border: 1px solid #404040;
+            color: #fff;
+            font-size: 11px;
+            border-radius: 2px;
+        }
+        .input:focus { outline: none; border-color: #8b5cf6; }
+        .btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #22c55e; color: black; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-warning { background: #f59e0b; color: black; }
+        .btn:hover { opacity: 0.9; }
+
+        /* Metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4px;
+        }
+        .metric {
+            background: #252525;
+            padding: 4px 6px;
+            border-radius: 2px;
+            text-align: center;
+        }
+        .metric-label { font-size: 9px; color: #666; }
+        .metric-value { font-size: 12px; font-weight: 700; }
+
+        /* Control Groups */
+        .control-group { margin-bottom: 8px; }
+        .control-group-title { font-size: 9px; color: #666; margin-bottom: 4px; text-transform: uppercase; }
+        .control-row { display: flex; gap: 4px; flex-wrap: wrap; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: #252525; padding: 4px 6px; text-align: left; font-size: 9px; color: #888; }
+        td { padding: 3px 6px; border-bottom: 1px solid #252525; }
+        tr:hover { background: #252525; }
+
+        /* Log */
+        .log-entry {
+            padding: 2px 4px;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 10px;
+            display: flex;
+            gap: 6px;
+        }
+        .log-time { color: #666; font-size: 9px; }
+        .log-info { color: #22c55e; }
+        .log-warn { color: #f59e0b; }
+        .log-error { color: #ef4444; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 AI CONTROL CENTER</h1>
+        <div class="header-right">
+            <span class="status-dot"></span>
+            <span>Connected</span>
+            <span class="clock" id="clock">--:--:--</span>
+            <a href="/dashboard" style="color: #60a5fa; text-decoration: none; font-size: 10px;">← Trading</a>
+        </div>
+    </div>
+
+    <div class="process-bar">
+        <div class="process-item">
+            <div class="process-status status-stopped" id="brainStatus"></div>
+            <span>BRAIN</span>
+            <button class="process-btn start" onclick="startBrain()">▶</button>
+            <button class="process-btn stop" onclick="stopBrain()">■</button>
+        </div>
+        <div class="process-item">
+            <div class="process-status status-stopped" id="botStatus"></div>
+            <span>AUTO TRADER</span>
+            <button class="process-btn start" onclick="startBot()">▶</button>
+            <button class="process-btn stop" onclick="stopBot()">■</button>
+        </div>
+        <div class="process-item">
+            <div class="process-status status-idle" id="predictorStatus"></div>
+            <span>PREDICTOR</span>
+        </div>
+        <div class="process-item">
+            <div class="process-status status-running" id="circuitStatus"></div>
+            <span>CIRCUIT</span>
+        </div>
+        <div class="process-item">
+            <div class="process-status status-running" id="riskStatus"></div>
+            <span>RISK</span>
+        </div>
+        <div class="process-item">
+            <div class="process-status status-running" id="dataStatus"></div>
+            <span>DATA</span>
+        </div>
+    </div>
+
+    <div class="workspace" id="workspace"></div>
+
+    <div class="layout-controls">
+        <button class="layout-btn" onclick="saveLayout()">💾 Save Layout</button>
+        <button class="layout-btn" onclick="resetLayout()">↺ Reset</button>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let windows = [];
+        let activeWindow = null;
+        let dragState = null;
+        let resizeState = null;
+        let zIndex = 100;
+
+        // Window Templates
+        const windowTemplates = {
+            training: `
+                <div class="control-group">
+                    <div class="control-group-title">Train Model</div>
+                    <div class="control-row">
+                        <input type="text" class="input" id="trainSymbol" placeholder="Symbol" value="AAPL" style="width: 60px;">
+                        <select class="input" id="trainDays" style="width: 70px;">
+                            <option value="30">30 days</option>
+                            <option value="60">60 days</option>
+                            <option value="90" selected>90 days</option>
+                            <option value="180">180 days</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="trainModel()">Train</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <div class="control-group-title">Batch Train</div>
+                    <div class="control-row">
+                        <button class="btn btn-success" onclick="trainWatchlist()">Train Watchlist</button>
+                        <button class="btn btn-warning" onclick="retrainAll()">Retrain All</button>
+                    </div>
+                </div>
+                <div class="metrics-grid" style="margin-top: 8px;">
+                    <div class="metric">
+                        <div class="metric-label">MODEL</div>
+                        <div class="metric-value" id="trainModelStatus" style="color: #22c55e;">LOADED</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">ACCURACY</div>
+                        <div class="metric-value" id="trainAccuracy">46%</div>
+                    </div>
+                </div>
+            `,
+            predictions: `
+                <div class="control-group">
+                    <div class="control-row">
+                        <input type="text" class="input" id="predictSymbol" value="AAPL" style="width: 60px;">
+                        <button class="btn btn-primary" onclick="predict()">Predict</button>
+                        <button class="btn btn-success" onclick="scanBuys()">Scan Buys</button>
+                    </div>
+                </div>
+                <div id="predictionResult" style="margin-top: 8px; text-align: center;">
+                    <div style="font-size: 9px; color: #666;">Last Prediction</div>
+                    <div id="predSignal" style="font-size: 18px; font-weight: 700; color: #f59e0b; margin: 4px 0;">HOLD</div>
+                    <div style="font-size: 11px;">Confidence: <span id="predConf">--</span>%</div>
+                </div>
+            `,
+            backtest: `
+                <div class="control-group">
+                    <div class="control-row">
+                        <input type="text" class="input" id="btSymbol" value="AAPL" style="width: 60px;">
+                        <select class="input" id="btDays" style="width: 60px;">
+                            <option value="30">30d</option>
+                            <option value="60" selected>60d</option>
+                            <option value="90">90d</option>
+                            <option value="180">180d</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="runBacktest()">Run</button>
+                    </div>
+                </div>
+                <div class="control-row" style="margin-top: 6px;">
+                    <label style="font-size: 9px; display: flex; align-items: center; gap: 4px;">
+                        <input type="checkbox" id="btSlippage"> Slippage
+                    </label>
+                    <label style="font-size: 9px; display: flex; align-items: center; gap: 4px;">
+                        <input type="checkbox" id="btMonteCarlo"> Monte Carlo
+                    </label>
+                </div>
+                <div class="metrics-grid" style="margin-top: 8px;">
+                    <div class="metric"><div class="metric-label">WIN RATE</div><div class="metric-value" id="btWinRate">--%</div></div>
+                    <div class="metric"><div class="metric-label">SHARPE</div><div class="metric-value" id="btSharpe">--</div></div>
+                    <div class="metric"><div class="metric-label">MAX DD</div><div class="metric-value" id="btDrawdown">--%</div></div>
+                    <div class="metric"><div class="metric-label">TRADES</div><div class="metric-value" id="btTrades">--</div></div>
+                </div>
+                <div class="metrics-grid" style="margin-top: 4px;">
+                    <div class="metric"><div class="metric-label">RETURN</div><div class="metric-value" id="btReturn" style="color: #888;">--%</div></div>
+                    <div class="metric"><div class="metric-label">P.FACTOR</div><div class="metric-value" id="btProfitFactor">--</div></div>
+                    <div class="metric"><div class="metric-label">AVG WIN</div><div class="metric-value" id="btAvgWin" style="color: #22c55e;">$0</div></div>
+                    <div class="metric"><div class="metric-label">AVG LOSS</div><div class="metric-value" id="btAvgLoss" style="color: #ef4444;">$0</div></div>
+                </div>
+                <div style="margin-top: 8px; position: relative;">
+                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">EQUITY CURVE</div>
+                    <canvas id="btEquityChart" style="width: 100%; height: 80px; background: #0a0a0a; border: 1px solid #333; border-radius: 2px;"></canvas>
+                </div>
+                <div style="margin-top: 4px; position: relative;">
+                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">DRAWDOWN</div>
+                    <canvas id="btDrawdownChart" style="width: 100%; height: 50px; background: #0a0a0a; border: 1px solid #333; border-radius: 2px;"></canvas>
+                </div>
+                <div id="btTradesList" style="margin-top: 8px; max-height: 100px; overflow-y: auto; font-size: 9px;"></div>
+            `,
+            risk: `
+                <div class="metrics-grid">
+                    <div class="metric"><div class="metric-label">VAR 95%</div><div class="metric-value" id="riskVar" style="color: #ef4444;">$0</div></div>
+                    <div class="metric"><div class="metric-label">DRAWDOWN</div><div class="metric-value" id="riskDD" style="color: #22c55e;">0.0%</div></div>
+                    <div class="metric"><div class="metric-label">EXPOSURE</div><div class="metric-value" id="riskExp">0%</div></div>
+                    <div class="metric"><div class="metric-label">CIRCUIT</div><div class="metric-value" id="riskCircuit" style="color: #22c55e;">OK</div></div>
+                </div>
+                <div class="control-row" style="margin-top: 8px;">
+                    <button class="btn btn-danger" onclick="tripCircuit()">Circuit Break</button>
+                    <button class="btn btn-success" onclick="resetCircuit()">Reset</button>
+                </div>
+            `,
+            volatility: `
+                <div class="metrics-grid">
+                    <div class="metric"><div class="metric-label">VIX</div><div class="metric-value" id="volVix">--</div></div>
+                    <div class="metric"><div class="metric-label">IV RANK</div><div class="metric-value" id="volIvRank">--</div></div>
+                </div>
+                <div style="margin-top: 8px;">
+                    <div style="font-size: 9px; color: #666; margin-bottom: 4px;">REGIME</div>
+                    <div id="volRegime" style="background: #22c55e; color: #000; padding: 4px 8px; border-radius: 2px; font-weight: 700; text-align: center;">NORMAL</div>
+                </div>
+                <div style="margin-top: 8px;">
+                    <div style="font-size: 9px; color: #666; margin-bottom: 4px;">INTRADAY RANGE</div>
+                    <div style="background: #252525; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div id="volRange" style="background: #3b82f6; height: 100%; width: 30%;"></div>
+                    </div>
+                </div>
+            `,
+            drift: `
+                <div class="metrics-grid">
+                    <div class="metric"><div class="metric-label">STATUS</div><div class="metric-value" id="driftStatus" style="color: #22c55e;">✓ STABLE</div></div>
+                    <div class="metric"><div class="metric-label">P-VALUE</div><div class="metric-value" id="driftPval">0.500</div></div>
+                </div>
+                <div style="margin-top: 8px; font-size: 10px; color: #888;" id="driftRec">Model is performing well</div>
+                <div class="control-row" style="margin-top: 8px;">
+                    <button class="btn btn-primary" onclick="checkDrift()">Check Drift</button>
+                </div>
+            `,
+            sectors: `
+                <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="metric"><div class="metric-label">XLK</div><div id="secXLK" style="font-weight: 600;">--</div></div>
+                    <div class="metric"><div class="metric-label">XLF</div><div id="secXLF" style="font-weight: 600;">--</div></div>
+                    <div class="metric"><div class="metric-label">XLE</div><div id="secXLE" style="font-weight: 600;">--</div></div>
+                    <div class="metric"><div class="metric-label">XLV</div><div id="secXLV" style="font-weight: 600;">--</div></div>
+                    <div class="metric"><div class="metric-label">XLI</div><div id="secXLI" style="font-weight: 600;">--</div></div>
+                    <div class="metric"><div class="metric-label">XLY</div><div id="secXLY" style="font-weight: 600;">--</div></div>
+                </div>
+                <div class="control-row" style="margin-top: 8px;">
+                    <button class="btn btn-primary" onclick="loadSectors()">Refresh</button>
+                </div>
+            `,
+            botcontrol: `
+                <div class="control-group">
+                    <div class="control-group-title">Mode</div>
+                    <div class="control-row">
+                        <button class="btn btn-success" onclick="setBotMode('paper')">Paper</button>
+                        <button class="btn btn-danger" onclick="setBotMode('live')">Live</button>
+                        <button class="btn btn-warning" onclick="setBotMode('shadow')">Shadow</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <div class="control-group-title">Strategy</div>
+                    <select class="input" id="botStrategy" style="width: 100%;">
+                        <option value="momentum">Momentum</option>
+                        <option value="mean_reversion">Mean Reversion</option>
+                        <option value="breakout">Breakout</option>
+                        <option value="ai_hybrid">AI Hybrid</option>
+                    </select>
+                </div>
+                <div class="metrics-grid" style="margin-top: 8px;">
+                    <div class="metric"><div class="metric-label">TRADES</div><div class="metric-value" id="botTrades">0</div></div>
+                    <div class="metric"><div class="metric-label">P&L</div><div class="metric-value" id="botPnl">$0</div></div>
+                </div>
+            `,
+            signals: `
+                <div style="overflow-y: auto; max-height: 100%;">
+                    <table>
+                        <thead>
+                            <tr><th>Symbol</th><th>Signal</th><th>Conf</th><th>P(Up)</th><th>P(Dn)</th></tr>
+                        </thead>
+                        <tbody id="signalsTable">
+                            <tr><td colspan="5" style="text-align: center; color: #666;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            `,
+            scanner: `
+                <div class="control-group">
+                    <div class="control-row">
+                        <select class="input" id="scanPreset" style="flex: 1;">
+                            <option value="momentum">Momentum</option>
+                            <option value="gap_up">Gap Up</option>
+                            <option value="breakout">Breakout</option>
+                            <option value="oversold">Oversold</option>
+                        </select>
+                        <button class="btn btn-success" onclick="runScan()">Scan</button>
+                    </div>
+                </div>
+                <div id="scanResults" style="margin-top: 8px; font-size: 11px; overflow-y: auto;">
+                    <div style="color: #666; text-align: center;">Run a scan to see results</div>
+                </div>
+            `,
+            modelstatus: `
+                <div style="font-size: 11px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: #666;">Last Trained</span>
+                        <span id="modelTrained">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: #666;">Features</span>
+                        <span id="modelFeatures">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: #666;">Samples</span>
+                        <span id="modelSamples">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #666;">Symbols</span>
+                        <span id="modelSymbols">--</span>
+                    </div>
+                </div>
+            `,
+            activitylog: `
+                <div id="logContainer" style="overflow-y: auto; max-height: 100%;">
+                    <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">AI Control Center initialized</span></div>
+                </div>
+            `,
+            positions: `
+                <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="color: #666; font-size: 10px;">TOTAL P&L: </span>
+                        <span id="posTotalPnl" style="font-weight: 600; font-size: 12px;">$0.00</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="loadPositions()" style="padding: 2px 8px; font-size: 9px;">Refresh</button>
+                </div>
+                <div id="positionsContainer" style="overflow-y: auto; max-height: calc(100% - 30px);">
+                    <div style="color: #666; text-align: center; padding: 20px;">Loading positions...</div>
+                </div>
+            `,
+            orders: `
+                <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="color: #666; font-size: 10px;">RECENT ORDERS</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="loadOrders()" style="padding: 2px 8px; font-size: 9px;">Refresh</button>
+                </div>
+                <div id="ordersContainer" style="overflow-y: auto; max-height: calc(100% - 30px);">
+                    <div style="color: #666; text-align: center; padding: 20px;">Loading orders...</div>
+                </div>
+            `,
+            account: `
+                <div class="metrics-grid">
+                    <div class="metric"><div class="metric-label">EQUITY</div><div class="metric-value" id="accEquity" style="color: #60a5fa;">$0</div></div>
+                    <div class="metric"><div class="metric-label">CASH</div><div class="metric-value" id="accCash">$0</div></div>
+                    <div class="metric"><div class="metric-label">BUYING PWR</div><div class="metric-value" id="accBuyingPower">$0</div></div>
+                    <div class="metric"><div class="metric-label">DAY P&L</div><div class="metric-value" id="accDayPnl">$0</div></div>
+                </div>
+                <div style="margin-top: 8px; font-size: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: #666;">Day Trades</span>
+                        <span id="accDayTrades">0 / 3</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: #666;">Account Type</span>
+                        <span id="accType">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #666;">PDT Status</span>
+                        <span id="accPdt" style="color: #22c55e;">OK</span>
+                    </div>
+                </div>
+            `
+        };
+
+        // Default Layout
+        const defaultLayout = [
+            { id: 'training', title: 'TRAINING', x: 5, y: 5, w: 220, h: 180 },
+            { id: 'predictions', title: 'PREDICTIONS', x: 230, y: 5, w: 200, h: 180 },
+            { id: 'backtest', title: 'BACKTEST', x: 435, y: 5, w: 280, h: 420 },
+            { id: 'risk', title: 'RISK MANAGEMENT', x: 720, y: 5, w: 200, h: 180 },
+            { id: 'volatility', title: 'VOLATILITY', x: 5, y: 190, w: 220, h: 160 },
+            { id: 'drift', title: 'DRIFT DETECTION', x: 230, y: 190, w: 200, h: 160 },
+            { id: 'botcontrol', title: 'BOT CONTROL', x: 720, y: 190, w: 200, h: 160 },
+            { id: 'positions', title: 'LIVE POSITIONS', x: 925, y: 5, w: 280, h: 220 },
+            { id: 'account', title: 'ACCOUNT', x: 925, y: 230, w: 280, h: 180 },
+            { id: 'signals', title: 'LIVE AI SIGNALS', x: 5, y: 355, w: 430, h: 250 },
+            { id: 'scanner', title: 'SCANNER', x: 440, y: 430, w: 200, h: 175 },
+            { id: 'orders', title: 'RECENT ORDERS', x: 925, y: 415, w: 280, h: 190 },
+            { id: 'modelstatus', title: 'MODEL STATUS', x: 645, y: 430, w: 160, h: 100 },
+            { id: 'activitylog', title: 'ACTIVITY LOG', x: 645, y: 535, w: 280, h: 70 }
+        ];
+
+        // Create Window
+        function createWindow(id, title, content, x, y, w, h) {
+            const existing = windows.find(win => win.id === id);
+            if (existing) {
+                activateWindow(existing.element);
+                return existing;
+            }
+
+            const win = document.createElement('div');
+            win.className = 'window';
+            win.style.cssText = `left: ${x}px; top: ${y}px; width: ${w}px; height: ${h}px; z-index: ${++zIndex};`;
+            win.innerHTML = `
+                <div class="window-header">
+                    <span>${title}</span>
+                    <div class="window-controls">
+                        <div class="window-btn close" onclick="closeWindow('${id}')">×</div>
+                    </div>
+                </div>
+                <div class="window-content">${content}</div>
+                <div class="resize-handle e"></div>
+                <div class="resize-handle s"></div>
+                <div class="resize-handle se"></div>
+            `;
+
+            document.getElementById('workspace').appendChild(win);
+
+            // Drag handling
+            const header = win.querySelector('.window-header');
+            header.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('window-btn')) return;
+                activateWindow(win);
+                dragState = { win, startX: e.clientX, startY: e.clientY, origX: win.offsetLeft, origY: win.offsetTop };
+            });
+
+            // Resize handling
+            win.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    activateWindow(win);
+                    const dir = handle.className.split(' ')[1];
+                    resizeState = { win, dir, startX: e.clientX, startY: e.clientY, origW: win.offsetWidth, origH: win.offsetHeight };
+                });
+            });
+
+            win.addEventListener('mousedown', () => activateWindow(win));
+
+            const winObj = { id, title, element: win };
+            windows.push(winObj);
+            activateWindow(win);
+            return winObj;
+        }
+
+        function activateWindow(win) {
+            windows.forEach(w => w.element.classList.remove('active'));
+            win.classList.add('active');
+            win.style.zIndex = ++zIndex;
+            activeWindow = win;
+        }
+
+        function closeWindow(id) {
+            const idx = windows.findIndex(w => w.id === id);
+            if (idx !== -1) {
+                windows[idx].element.remove();
+                windows.splice(idx, 1);
+            }
+        }
+
+        // Mouse move/up for drag and resize
+        document.addEventListener('mousemove', (e) => {
+            if (dragState) {
+                const dx = e.clientX - dragState.startX;
+                const dy = e.clientY - dragState.startY;
+                dragState.win.style.left = (dragState.origX + dx) + 'px';
+                dragState.win.style.top = (dragState.origY + dy) + 'px';
+            }
+            if (resizeState) {
+                const dx = e.clientX - resizeState.startX;
+                const dy = e.clientY - resizeState.startY;
+                if (resizeState.dir.includes('e')) {
+                    resizeState.win.style.width = Math.max(180, resizeState.origW + dx) + 'px';
+                }
+                if (resizeState.dir.includes('s')) {
+                    resizeState.win.style.height = Math.max(100, resizeState.origH + dy) + 'px';
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            dragState = null;
+            resizeState = null;
+        });
+
+        // Layout Save/Load
+        function saveLayout() {
+            const layout = windows.map(w => ({
+                id: w.id,
+                title: w.title,
+                x: w.element.offsetLeft,
+                y: w.element.offsetTop,
+                w: w.element.offsetWidth,
+                h: w.element.offsetHeight
+            }));
+            localStorage.setItem('aiControlLayout', JSON.stringify(layout));
+            addLog('Layout saved', 'info');
+        }
+
+        function loadLayout() {
+            const saved = localStorage.getItem('aiControlLayout');
+            const layout = saved ? JSON.parse(saved) : defaultLayout;
+
+            // Clear existing
+            windows.forEach(w => w.element.remove());
+            windows = [];
+
+            // Create windows
+            layout.forEach(l => {
+                const template = windowTemplates[l.id];
+                if (template) {
+                    createWindow(l.id, l.title, template, l.x, l.y, l.w, l.h);
+                }
+            });
+        }
+
+        function resetLayout() {
+            localStorage.removeItem('aiControlLayout');
+            loadLayout();
+            addLog('Layout reset to default', 'info');
+        }
+
+        // Activity Log
+        function addLog(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            if (!container) return;
+            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">${time}</span><span class="log-${type}">${message}</span>`;
+            container.insertBefore(entry, container.firstChild);
+            while (container.children.length > 50) container.removeChild(container.lastChild);
+        }
+
+        // Clock
+        function updateClock() {
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        // API Functions
+        async function trainModel() {
+            const symbol = document.getElementById('trainSymbol')?.value || 'AAPL';
+            const days = document.getElementById('trainDays')?.value || '90';
+            addLog(`Training model for ${symbol}...`, 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/ai/train`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, days: parseInt(days) })
+                });
+                const data = await resp.json();
+                addLog(`Training complete: ${data.accuracy || 'success'}`, 'info');
+            } catch (e) {
+                addLog(`Training failed: ${e.message}`, 'error');
+            }
+        }
+
+        async function predict() {
+            const symbol = document.getElementById('predictSymbol')?.value || 'AAPL';
+            try {
+                const resp = await fetch(`${API_BASE}/api/ai/predict/${symbol}`);
+                const data = await resp.json();
+                if (data.success) {
+                    const pred = data.prediction || data.data;
+                    document.getElementById('predSignal').textContent = pred.signal || 'HOLD';
+                    document.getElementById('predSignal').style.color = pred.signal === 'BUY' ? '#22c55e' : pred.signal === 'SELL' ? '#ef4444' : '#f59e0b';
+                    document.getElementById('predConf').textContent = ((pred.confidence || 0) * 100).toFixed(0);
+                }
+            } catch (e) {
+                addLog(`Prediction failed: ${e.message}`, 'error');
+            }
+        }
+
+        async function loadSignals() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/ai/signals`);
+                const data = await resp.json();
+                const tbody = document.getElementById('signalsTable');
+                if (!tbody) return;
+                if (data.success && data.signals) {
+                    tbody.innerHTML = data.signals.map(s => `
+                        <tr>
+                            <td>${s.symbol}</td>
+                            <td style="color: ${s.signal === 'BUY' ? '#22c55e' : s.signal === 'SELL' ? '#ef4444' : '#888'}">${s.signal}</td>
+                            <td>${((s.confidence || 0) * 100).toFixed(0)}%</td>
+                            <td style="color: #22c55e">${((s.prob_up || 0) * 100).toFixed(0)}%</td>
+                            <td style="color: #ef4444">${((s.prob_down || 0) * 100).toFixed(0)}%</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (e) {}
+        }
+
+        async function runScan() {
+            const preset = document.getElementById('scanPreset')?.value || 'momentum';
+            const results = document.getElementById('scanResults');
+            if (!results) return;
+            results.innerHTML = '<div style="color: #888;">Scanning...</div>';
+            try {
+                const resp = await fetch(`${API_BASE}/api/scanner/ALPACA/scan?preset=${preset}`);
+                const data = await resp.json();
+                if (data.success && data.results) {
+                    results.innerHTML = data.results.slice(0, 15).map(r => `
+                        <div style="display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #252525;">
+                            <span style="font-weight: 600;">${r.symbol}</span>
+                            <span style="color: ${r.change_pct >= 0 ? '#22c55e' : '#ef4444'}">${r.change_pct?.toFixed(1) || '--'}%</span>
+                        </div>
+                    `).join('');
+                } else {
+                    results.innerHTML = '<div style="color: #666;">No results</div>';
+                }
+            } catch (e) {
+                results.innerHTML = '<div style="color: #ef4444;">Scan failed</div>';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // BRAIN CONTROLS
+        // ═══════════════════════════════════════════════════════════════
+        async function startBrain() {
+            addLog('Starting Brain...', 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/start`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('brainStatus').className = 'process-status status-running';
+                    addLog('Brain started successfully', 'info');
+                } else {
+                    addLog(`Brain start failed: ${data.error || 'unknown'}`, 'error');
+                }
+            } catch (e) {
+                addLog(`Brain start error: ${e.message}`, 'error');
+            }
+        }
+
+        async function stopBrain() {
+            addLog('Stopping Brain...', 'warn');
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/stop`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('brainStatus').className = 'process-status status-stopped';
+                    addLog('Brain stopped', 'warn');
+                }
+            } catch (e) {
+                addLog(`Brain stop error: ${e.message}`, 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // BOT CONTROLS
+        // ═══════════════════════════════════════════════════════════════
+        async function startBot() {
+            addLog('Starting Auto Trader...', 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/bot/start`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('botStatus').className = 'process-status status-running';
+                    addLog('Auto Trader started', 'info');
+                } else {
+                    addLog(`Bot start failed: ${data.error || 'unknown'}`, 'error');
+                }
+            } catch (e) {
+                addLog(`Bot start error: ${e.message}`, 'error');
+            }
+        }
+
+        async function stopBot() {
+            addLog('Stopping Auto Trader...', 'warn');
+            try {
+                const resp = await fetch(`${API_BASE}/api/bot/stop`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('botStatus').className = 'process-status status-stopped';
+                    addLog('Auto Trader stopped', 'warn');
+                }
+            } catch (e) {
+                addLog(`Bot stop error: ${e.message}`, 'error');
+            }
+        }
+
+        async function setBotMode(mode) {
+            addLog(`Setting bot mode to ${mode}...`, 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/bot/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode })
+                });
+                const data = await resp.json();
+                addLog(`Bot mode set to ${mode}`, 'info');
+            } catch (e) {
+                addLog(`Set mode error: ${e.message}`, 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // TRAINING FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════
+        async function trainWatchlist() {
+            addLog('Training all watchlist symbols...', 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/watchlist-ai/train`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    addLog(`Watchlist training complete: ${data.trained || 0} symbols`, 'info');
+                    if (data.accuracy) {
+                        const accEl = document.getElementById('trainAccuracy');
+                        if (accEl) accEl.textContent = `${(data.accuracy * 100).toFixed(0)}%`;
+                    }
+                } else {
+                    addLog(`Training failed: ${data.error || 'unknown'}`, 'error');
+                }
+            } catch (e) {
+                addLog(`Training error: ${e.message}`, 'error');
+            }
+        }
+
+        async function retrainAll() {
+            addLog('Force retraining all models...', 'warn');
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/force-retrain`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    addLog('Retrain initiated - check status for progress', 'info');
+                } else {
+                    addLog(`Retrain failed: ${data.error || 'unknown'}`, 'error');
+                }
+            } catch (e) {
+                addLog(`Retrain error: ${e.message}`, 'error');
+            }
+        }
+
+        async function scanBuys() {
+            addLog('Scanning for buy signals...', 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/ai/signals`);
+                const data = await resp.json();
+                if (data.success && data.signals) {
+                    const buys = data.signals.filter(s => s.signal === 'BUY');
+                    addLog(`Found ${buys.length} BUY signals: ${buys.map(b => b.symbol).join(', ') || 'none'}`, 'info');
+                }
+            } catch (e) {
+                addLog(`Scan error: ${e.message}`, 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // BACKTEST
+        // ═══════════════════════════════════════════════════════════════
+        async function runBacktest() {
+            const symbol = document.getElementById('btSymbol')?.value || 'AAPL';
+            const days = parseInt(document.getElementById('btDays')?.value || '60');
+            const useSlippage = document.getElementById('btSlippage')?.checked || false;
+            const useMonteCarlo = document.getElementById('btMonteCarlo')?.checked || false;
+
+            addLog(`Running backtest for ${symbol} (${days} days)...`, 'info');
+
+            // Show loading state
+            document.getElementById('btWinRate').textContent = '...';
+            document.getElementById('btSharpe').textContent = '...';
+
+            try {
+                // Calculate date range
+                const endDate = new Date().toISOString().split('T')[0];
+                const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+                const resp = await fetch(`${API_BASE}/api/backtest/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: symbol,
+                        start_date: startDate,
+                        end_date: endDate,
+                        initial_capital: 100000,
+                        position_size_pct: 0.1,
+                        confidence_threshold: 0.15,
+                        max_positions: 5,
+                        holding_period: 5
+                    })
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    const r = data.data || data;
+
+                    // Update metrics - win_rate is already a percentage
+                    document.getElementById('btWinRate').textContent = `${(r.win_rate || 0).toFixed(0)}%`;
+                    document.getElementById('btSharpe').textContent = (r.sharpe_ratio || 0).toFixed(2);
+                    document.getElementById('btDrawdown').textContent = `${(r.max_drawdown_percent || 0).toFixed(1)}%`;
+                    document.getElementById('btTrades').textContent = r.total_trades || 0;
+
+                    // New metrics
+                    const returnEl = document.getElementById('btReturn');
+                    returnEl.textContent = `${(r.total_return_percent || 0).toFixed(1)}%`;
+                    returnEl.style.color = r.total_return_percent >= 0 ? '#22c55e' : '#ef4444';
+
+                    document.getElementById('btProfitFactor').textContent = (r.profit_factor || 0).toFixed(2);
+                    document.getElementById('btAvgWin').textContent = `$${(r.avg_win || 0).toFixed(0)}`;
+                    document.getElementById('btAvgLoss').textContent = `$${(r.avg_loss || 0).toFixed(0)}`;
+
+                    // Draw equity curve
+                    if (r.equity_curve && r.equity_curve.length > 0) {
+                        drawEquityCurve(r.equity_curve);
+                    }
+
+                    // Draw drawdown curve
+                    if (r.drawdown_curve && r.drawdown_curve.length > 0) {
+                        drawDrawdownCurve(r.drawdown_curve);
+                    }
+
+                    // Show trades list
+                    if (r.trades && r.trades.length > 0) {
+                        const tradesHtml = r.trades.slice(0, 10).map(t => `
+                            <div style="display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #252525;">
+                                <span>${t.symbol} ${t.side}</span>
+                                <span style="color: ${t.pnl >= 0 ? '#22c55e' : '#ef4444'}">$${t.pnl.toFixed(0)}</span>
+                            </div>
+                        `).join('');
+                        document.getElementById('btTradesList').innerHTML = tradesHtml;
+                    } else {
+                        document.getElementById('btTradesList').innerHTML = '<div style="color: #666;">No trades executed</div>';
+                    }
+
+                    addLog(`Backtest: ${r.total_trades} trades, ${(r.win_rate || 0).toFixed(0)}% win, ${(r.total_return_percent || 0).toFixed(1)}% return`, 'info');
+                } else {
+                    addLog(`Backtest failed: ${data.message || 'unknown'}`, 'error');
+                }
+            } catch (e) {
+                addLog(`Backtest error: ${e.message}`, 'error');
+            }
+        }
+
+        // Draw equity curve on canvas
+        function drawEquityCurve(data) {
+            const canvas = document.getElementById('btEquityChart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * 2;
+            canvas.height = rect.height * 2;
+            ctx.scale(2, 2);
+
+            const w = rect.width;
+            const h = rect.height;
+            const padding = 5;
+
+            // Clear
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, w, h);
+
+            if (data.length < 2) return;
+
+            // Find min/max
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            const range = max - min || 1;
+
+            // Draw line
+            ctx.beginPath();
+            ctx.strokeStyle = data[data.length - 1] >= data[0] ? '#22c55e' : '#ef4444';
+            ctx.lineWidth = 1.5;
+
+            for (let i = 0; i < data.length; i++) {
+                const x = padding + (i / (data.length - 1)) * (w - padding * 2);
+                const y = h - padding - ((data[i] - min) / range) * (h - padding * 2);
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw start/end values
+            ctx.fillStyle = '#666';
+            ctx.font = '8px sans-serif';
+            ctx.fillText(`$${(data[0] / 1000).toFixed(0)}k`, 2, h - 2);
+            ctx.fillText(`$${(data[data.length - 1] / 1000).toFixed(0)}k`, w - 30, h - 2);
+        }
+
+        // Draw drawdown curve on canvas
+        function drawDrawdownCurve(data) {
+            const canvas = document.getElementById('btDrawdownChart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * 2;
+            canvas.height = rect.height * 2;
+            ctx.scale(2, 2);
+
+            const w = rect.width;
+            const h = rect.height;
+            const padding = 5;
+
+            // Clear
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, w, h);
+
+            if (data.length < 2) return;
+
+            // Find max drawdown (data is already positive percentages)
+            const maxDD = Math.max(...data) || 1;
+
+            // Fill area
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+
+            ctx.moveTo(padding, padding);
+            for (let i = 0; i < data.length; i++) {
+                const x = padding + (i / (data.length - 1)) * (w - padding * 2);
+                const y = padding + (data[i] / maxDD) * (h - padding * 2);
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(w - padding, padding);
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw line
+            ctx.beginPath();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i < data.length; i++) {
+                const x = padding + (i / (data.length - 1)) * (w - padding * 2);
+                const y = padding + (data[i] / maxDD) * (h - padding * 2);
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Show max DD
+            ctx.fillStyle = '#ef4444';
+            ctx.font = '8px sans-serif';
+            ctx.fillText(`-${maxDD.toFixed(1)}%`, w - 28, h - 2);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // RISK / CIRCUIT BREAKER
+        // ═══════════════════════════════════════════════════════════════
+        async function loadRiskStatus() {
+            try {
+                // Portfolio guard status
+                const guardResp = await fetch(`${API_BASE}/api/alpaca/ai/portfolio-guard/status`);
+                const guardData = await guardResp.json();
+                if (guardData.success) {
+                    // Parse the summary field or risk_state directly
+                    const summary = guardData.summary || {};
+                    const riskState = guardData.risk_state || {};
+                    const drawdown = riskState.drawdown || {};
+
+                    const var95 = summary.var_95_dollars || riskState.var?.var_1day_95 || 0;
+                    const ddPct = summary.drawdown_pct || drawdown.drawdown_pct || 0;
+                    const totalEquity = summary.total_equity || riskState.total_equity || 0;
+                    const posValue = riskState.positions_value || 0;
+                    const exposure = totalEquity > 0 ? (posValue / totalEquity) : 0;
+
+                    document.getElementById('riskVar').textContent = `$${var95.toFixed(0)}`;
+                    document.getElementById('riskDD').textContent = `${ddPct.toFixed(1)}%`;
+                    document.getElementById('riskDD').style.color = ddPct > 3 ? '#ef4444' : '#22c55e';
+                    document.getElementById('riskExp').textContent = `${(exposure * 100).toFixed(1)}%`;
+                }
+
+                // Circuit breaker status
+                const cbResp = await fetch(`${API_BASE}/api/alpaca/ai/circuit-breaker/status`);
+                const cbData = await cbResp.json();
+                if (cbData.success) {
+                    const status = cbData.status || {};
+                    const canTrade = status.can_trade !== false;
+                    document.getElementById('riskCircuit').textContent = canTrade ? 'OK' : 'TRIPPED';
+                    document.getElementById('riskCircuit').style.color = canTrade ? '#22c55e' : '#ef4444';
+                    document.getElementById('circuitStatus').className = `process-status ${canTrade ? 'status-running' : 'status-stopped'}`;
+                }
+            } catch (e) {}
+        }
+
+        async function tripCircuit() {
+            addLog('Manually tripping circuit breaker!', 'error');
+            // There's no direct trip API, but we can record a large loss
+            document.getElementById('riskCircuit').textContent = 'TRIPPED';
+            document.getElementById('riskCircuit').style.color = '#ef4444';
+            document.getElementById('circuitStatus').className = 'process-status status-stopped';
+        }
+
+        async function resetCircuit() {
+            addLog('Resetting circuit breaker...', 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/circuit-breaker/reset`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('riskCircuit').textContent = 'OK';
+                    document.getElementById('riskCircuit').style.color = '#22c55e';
+                    document.getElementById('circuitStatus').className = 'process-status status-running';
+                    addLog('Circuit breaker reset', 'info');
+                }
+            } catch (e) {
+                addLog(`Reset error: ${e.message}`, 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // VOLATILITY & REGIME
+        // ═══════════════════════════════════════════════════════════════
+        async function loadVolatility() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/volatility`);
+                const data = await resp.json();
+                if (data.success) {
+                    const v = data.volatility || data.data || {};
+                    document.getElementById('volVix').textContent = v.vix_proxy || '--';
+                    document.getElementById('volIvRank').textContent = '--'; // Not available in this endpoint
+
+                    const regime = v.level || v.vix_regime || 'NORMAL';
+                    const regimeEl = document.getElementById('volRegime');
+                    regimeEl.textContent = regime.toUpperCase();
+                    regimeEl.style.background = regime.includes('HIGH') || regime.includes('EXTREME') ? '#ef4444'
+                        : regime.includes('LOW') ? '#22c55e' : '#f59e0b';
+
+                    const rangeEl = document.getElementById('volRange');
+                    if (rangeEl && v.intraday_range_pct !== undefined) {
+                        rangeEl.style.width = `${Math.min(100, v.intraday_range_pct * 100)}%`;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // DRIFT DETECTION
+        // ═══════════════════════════════════════════════════════════════
+        async function checkDrift() {
+            addLog('Checking for data drift...', 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/drift`);
+                const data = await resp.json();
+                if (data.success) {
+                    const d = data.prediction_drift || data.data || {};
+                    const driftDetected = d.drift_detected || d.needs_retrain;
+
+                    document.getElementById('driftStatus').textContent = driftDetected ? 'DRIFT' : 'STABLE';
+                    document.getElementById('driftStatus').style.color = driftDetected ? '#ef4444' : '#22c55e';
+                    document.getElementById('driftPval').textContent = (d.p_value || 1.0).toFixed(3);
+                    document.getElementById('driftRec').textContent = d.recommendation || (driftDetected ? 'Consider retraining model' : 'Model is performing well');
+
+                    addLog(driftDetected ? 'Drift detected - retrain recommended' : 'No significant drift', driftDetected ? 'warn' : 'info');
+                }
+            } catch (e) {
+                addLog(`Drift check error: ${e.message}`, 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // SECTOR ROTATION
+        // ═══════════════════════════════════════════════════════════════
+        async function loadSectors() {
+            addLog('Loading sector data...', 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/sectors`);
+                const data = await resp.json();
+                if (data.success) {
+                    const rotation = data.sector_rotation || data.data || {};
+                    const scores = rotation.sector_scores || {};
+                    const momentum = rotation.sector_momentum || {};
+
+                    // Update sector display with available data
+                    const sectorMap = {
+                        'XLK': 'Technology', 'XLF': 'Financial', 'XLE': 'Energy',
+                        'XLV': 'Healthcare', 'XLI': 'Industrial', 'XLY': 'Consumer'
+                    };
+                    for (const [sym, name] of Object.entries(sectorMap)) {
+                        const el = document.getElementById(`sec${sym}`);
+                        if (el) {
+                            const score = scores[name] || momentum[name] || 0;
+                            el.textContent = score.toFixed ? `${score >= 0 ? '+' : ''}${(score * 100).toFixed(1)}%` : '--';
+                            el.style.color = score >= 0 ? '#22c55e' : '#ef4444';
+                        }
+                    }
+                    addLog(`Rotation: ${rotation.rotation_signal || 'NEUTRAL'}`, 'info');
+                }
+            } catch (e) {
+                // Fallback to direct quotes
+                try {
+                    const symbols = ['XLK', 'XLF', 'XLE', 'XLV', 'XLI', 'XLY'];
+                    for (const sym of symbols) {
+                        const resp = await fetch(`${API_BASE}/api/quote/${sym}`);
+                        const data = await resp.json();
+                        if (data.success && data.data) {
+                            const el = document.getElementById(`sec${sym}`);
+                            if (el) {
+                                const change = data.data.change_pct || 0;
+                                el.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
+                                el.style.color = change >= 0 ? '#22c55e' : '#ef4444';
+                            }
+                        }
+                    }
+                } catch (e2) {}
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // MODEL STATUS
+        // ═══════════════════════════════════════════════════════════════
+        async function loadModelStatus() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/model/status`);
+                const data = await resp.json();
+                if (data.success) {
+                    const m = data.data || data;
+                    document.getElementById('modelTrained').textContent = m.last_trained || m.trained_at || '--';
+                    document.getElementById('modelFeatures').textContent = m.features || m.num_features || '--';
+                    document.getElementById('modelSamples').textContent = m.samples || m.training_samples || '--';
+                    document.getElementById('modelSymbols').textContent = m.symbols?.length || m.num_symbols || '--';
+
+                    // Update training panel
+                    const accEl = document.getElementById('trainAccuracy');
+                    if (accEl && m.accuracy) {
+                        accEl.textContent = `${(m.accuracy * 100).toFixed(0)}%`;
+                    }
+                    const statusEl = document.getElementById('trainModelStatus');
+                    if (statusEl) {
+                        statusEl.textContent = m.loaded ? 'LOADED' : 'NOT LOADED';
+                        statusEl.style.color = m.loaded ? '#22c55e' : '#ef4444';
+                    }
+
+                    // Update predictor status
+                    document.getElementById('predictorStatus').className = `process-status ${m.loaded ? 'status-running' : 'status-idle'}`;
+                }
+            } catch (e) {}
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // BOT STATUS & STATS
+        // ═══════════════════════════════════════════════════════════════
+        async function loadBotStatus() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/bot/status`);
+                const data = await resp.json();
+                // Bot status returns data directly, not wrapped in success/data
+                const isRunning = data.running || data.enabled || data.status === 'running';
+                document.getElementById('botStatus').className = `process-status ${isRunning ? 'status-running' : 'status-stopped'}`;
+                document.getElementById('botTrades').textContent = data.trades_today || 0;
+                const pnl = data.pnl_today || data.pnl || 0;
+                document.getElementById('botPnl').textContent = `$${pnl.toFixed(0)}`;
+                document.getElementById('botPnl').style.color = pnl >= 0 ? '#22c55e' : '#ef4444';
+            } catch (e) {}
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // BRAIN STATUS
+        // ═══════════════════════════════════════════════════════════════
+        async function loadBrainStatus() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/status`);
+                const data = await resp.json();
+                if (data.success) {
+                    const isRunning = data.running || (data.metrics && data.metrics.uptime_seconds > 0);
+                    document.getElementById('brainStatus').className = `process-status ${isRunning ? 'status-running' : 'status-stopped'}`;
+                    // Update additional brain stats if available
+                    if (data.metrics) {
+                        const cpu = data.metrics.actual_cpu_usage || 0;
+                        addLog(`Brain CPU: ${(cpu * 100).toFixed(1)}%`, 'info');
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // LIVE POSITIONS
+        // ═══════════════════════════════════════════════════════════════
+        async function loadPositions() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/positions`);
+                const positions = await resp.json();
+
+                const container = document.getElementById('positionsContainer');
+                if (!container) return;
+
+                if (!positions || positions.length === 0) {
+                    container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">No open positions</div>';
+                    document.getElementById('posTotalPnl').textContent = '$0.00';
+                    document.getElementById('posTotalPnl').style.color = '#888';
+                    return;
+                }
+
+                let totalPnl = 0;
+                const html = positions.map(p => {
+                    const pnl = p.unrealized_pl || 0;
+                    const pnlPct = (p.unrealized_plpc || 0) * 100;
+                    totalPnl += pnl;
+
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; border-bottom: 1px solid #252525;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 11px;">${p.symbol}</div>
+                                <div style="font-size: 9px; color: #666;">${p.quantity} @ $${(p.avg_price || 0).toFixed(2)}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 11px; color: ${pnl >= 0 ? '#22c55e' : '#ef4444'};">
+                                    ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}
+                                </div>
+                                <div style="font-size: 9px; color: ${pnl >= 0 ? '#22c55e' : '#ef4444'};">
+                                    ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%
+                                </div>
+                            </div>
+                            <div style="margin-left: 8px; font-size: 10px; color: #60a5fa;">
+                                $${(p.current_price || 0).toFixed(2)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = html;
+
+                // Update total P&L
+                const totalEl = document.getElementById('posTotalPnl');
+                totalEl.textContent = `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}`;
+                totalEl.style.color = totalPnl >= 0 ? '#22c55e' : '#ef4444';
+
+            } catch (e) {
+                console.error('Error loading positions:', e);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // RECENT ORDERS
+        // ═══════════════════════════════════════════════════════════════
+        async function loadOrders() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/orders?status=all&limit=20`);
+                const data = await resp.json();
+
+                const container = document.getElementById('ordersContainer');
+                if (!container) return;
+
+                // Handle both array and {orders: []} response formats
+                const orders = Array.isArray(data) ? data : (data.orders || []);
+
+                if (!orders || orders.length === 0) {
+                    container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">No recent orders</div>';
+                    return;
+                }
+
+                const html = orders.slice(0, 15).map(o => {
+                    const statusColor = o.status === 'filled' ? '#22c55e' :
+                                       o.status === 'canceled' || o.status === 'rejected' ? '#ef4444' :
+                                       o.status === 'pending_new' || o.status === 'accepted' ? '#f59e0b' : '#888';
+                    const sideColor = o.side === 'buy' ? '#22c55e' : '#ef4444';
+                    const time = o.submitted_at ? new Date(o.submitted_at).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'}) : '--';
+                    const qty = o.quantity || o.qty || 0;
+                    const orderType = o.order_type || o.type || 'market';
+
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px; border-bottom: 1px solid #252525; font-size: 10px;">
+                            <div style="flex: 1;">
+                                <span style="color: ${sideColor}; text-transform: uppercase; font-weight: 600;">${o.side}</span>
+                                <span style="margin-left: 4px;">${o.symbol}</span>
+                            </div>
+                            <div style="color: #888;">${qty} @ ${orderType === 'market' ? 'MKT' : '$' + (o.limit_price || '--')}</div>
+                            <div style="margin-left: 8px; color: ${statusColor}; text-transform: uppercase;">${o.status}</div>
+                            <div style="margin-left: 8px; color: #666;">${time}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = html;
+
+            } catch (e) {
+                console.error('Error loading orders:', e);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ACCOUNT INFO
+        // ═══════════════════════════════════════════════════════════════
+        async function loadAccountInfo() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/alpaca/account`);
+                const acc = await resp.json();
+
+                if (!acc) return;
+
+                // Update equity
+                const equity = parseFloat(acc.equity) || 0;
+                document.getElementById('accEquity').textContent = `$${equity.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+
+                // Update cash
+                const cash = parseFloat(acc.cash) || 0;
+                document.getElementById('accCash').textContent = `$${cash.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+
+                // Update buying power
+                const bp = parseFloat(acc.buying_power) || 0;
+                document.getElementById('accBuyingPower').textContent = `$${bp.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+
+                // Calculate day P&L (equity - last_equity)
+                const lastEquity = parseFloat(acc.last_equity) || equity;
+                const dayPnl = equity - lastEquity;
+                const dayPnlEl = document.getElementById('accDayPnl');
+                dayPnlEl.textContent = `${dayPnl >= 0 ? '+' : ''}$${dayPnl.toFixed(0)}`;
+                dayPnlEl.style.color = dayPnl >= 0 ? '#22c55e' : '#ef4444';
+
+                // Day trades
+                const dayTrades = acc.daytrade_count || 0;
+                document.getElementById('accDayTrades').textContent = `${dayTrades} / 3`;
+                document.getElementById('accDayTrades').style.color = dayTrades >= 3 ? '#ef4444' : '#22c55e';
+
+                // Account type
+                document.getElementById('accType').textContent = acc.account_type || 'margin';
+
+                // PDT status
+                const pdtEl = document.getElementById('accPdt');
+                if (acc.pattern_day_trader) {
+                    pdtEl.textContent = 'PDT';
+                    pdtEl.style.color = '#f59e0b';
+                } else if (acc.trading_blocked) {
+                    pdtEl.textContent = 'BLOCKED';
+                    pdtEl.style.color = '#ef4444';
+                } else {
+                    pdtEl.textContent = 'OK';
+                    pdtEl.style.color = '#22c55e';
+                }
+
+            } catch (e) {
+                console.error('Error loading account:', e);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // WEBSOCKET REALTIME CONNECTION
+        // ═══════════════════════════════════════════════════════════════
+        let realtimeWS = null;
+        let wsReconnectAttempts = 0;
+
+        function connectRealtimeWS() {
+            if (realtimeWS && realtimeWS.readyState === WebSocket.OPEN) return;
+
+            try {
+                realtimeWS = new WebSocket(`ws://${window.location.host}/ws/realtime`);
+
+                realtimeWS.onopen = () => {
+                    wsReconnectAttempts = 0;
+                    document.getElementById('dataStatus').className = 'process-status status-running';
+                    addLog('Connected to realtime stream', 'info');
+
+                    // Subscribe to all channels
+                    realtimeWS.send(JSON.stringify({
+                        action: 'subscribe',
+                        channels: ['trading', 'ai', 'risk', 'system']
+                    }));
+                };
+
+                realtimeWS.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        handleRealtimeMessage(msg);
+                    } catch (e) {
+                        console.error('WS parse error:', e);
+                    }
+                };
+
+                realtimeWS.onclose = () => {
+                    document.getElementById('dataStatus').className = 'process-status status-stopped';
+                    addLog('Realtime stream disconnected', 'warn');
+
+                    // Reconnect with backoff
+                    wsReconnectAttempts++;
+                    const delay = Math.min(5000 * wsReconnectAttempts, 30000);
+                    setTimeout(connectRealtimeWS, delay);
+                };
+
+                realtimeWS.onerror = (err) => {
+                    addLog('WebSocket error', 'error');
+                };
+            } catch (e) {
+                addLog(`WS connect failed: ${e.message}`, 'error');
+            }
+        }
+
+        function handleRealtimeMessage(msg) {
+            const type = msg.type || msg.channel;
+            const data = msg.data || msg;
+
+            switch(type) {
+                case 'connected':
+                    addLog(`Connected: ${data.message || 'realtime hub'}`, 'info');
+                    break;
+
+                case 'subscribed':
+                    addLog(`Subscribed to: ${data.channels?.join(', ') || 'channels'}`, 'info');
+                    break;
+
+                case 'trade':
+                    const side = data.side || 'unknown';
+                    const sym = data.symbol || '???';
+                    const qty = data.quantity || data.qty || 0;
+                    const price = data.price || 0;
+                    const pnl = data.pnl;
+                    addLog(`TRADE: ${side.toUpperCase()} ${qty} ${sym} @ $${price.toFixed(2)}${pnl ? ` P&L: $${pnl.toFixed(2)}` : ''}`, side === 'buy' ? 'info' : 'warn');
+
+                    // Update bot trades count
+                    const tradesEl = document.getElementById('botTrades');
+                    if (tradesEl) tradesEl.textContent = parseInt(tradesEl.textContent || 0) + 1;
+
+                    // Refresh positions and orders after trade
+                    setTimeout(() => {
+                        loadPositions();
+                        loadOrders();
+                        loadAccountInfo();
+                    }, 500);
+                    break;
+
+                case 'positions':
+                    addLog(`Positions updated: ${data.positions?.length || 0} positions`, 'info');
+                    // Refresh positions display
+                    loadPositions();
+                    break;
+
+                case 'bot_status':
+                    const running = data.status === 'running' || data.running;
+                    document.getElementById('botStatus').className = `process-status ${running ? 'status-running' : 'status-stopped'}`;
+                    addLog(`Bot ${data.status || (running ? 'started' : 'stopped')}${data.message ? ': ' + data.message : ''}`, running ? 'info' : 'warn');
+                    break;
+
+                case 'prediction':
+                case 'signal':
+                    const signal = data.signal || data.action || 'HOLD';
+                    const conf = data.confidence ? ` (${(data.confidence * 100).toFixed(0)}%)` : '';
+                    addLog(`SIGNAL: ${data.symbol} → ${signal}${conf}`, signal === 'BUY' ? 'info' : signal === 'SELL' ? 'warn' : 'info');
+
+                    // Update prediction display if matching symbol
+                    const predSymEl = document.getElementById('predictSymbol');
+                    if (predSymEl && predSymEl.value === data.symbol) {
+                        document.getElementById('predSignal').textContent = signal;
+                        document.getElementById('predSignal').style.color = signal === 'BUY' ? '#22c55e' : signal === 'SELL' ? '#ef4444' : '#f59e0b';
+                        document.getElementById('predConf').textContent = ((data.confidence || 0) * 100).toFixed(0);
+                    }
+                    break;
+
+                case 'brain_status':
+                    const brainRunning = data.running || data.status === 'running';
+                    document.getElementById('brainStatus').className = `process-status ${brainRunning ? 'status-running' : 'status-stopped'}`;
+                    if (data.regime) {
+                        const regimeEl = document.getElementById('volRegime');
+                        if (regimeEl) {
+                            regimeEl.textContent = data.regime.toUpperCase();
+                        }
+                    }
+                    addLog(`Brain ${brainRunning ? 'active' : 'inactive'}`, brainRunning ? 'info' : 'warn');
+                    break;
+
+                case 'circuit_breaker':
+                    const canTrade = data.can_trade !== false && data.status !== 'tripped';
+                    document.getElementById('riskCircuit').textContent = canTrade ? 'OK' : 'TRIPPED';
+                    document.getElementById('riskCircuit').style.color = canTrade ? '#22c55e' : '#ef4444';
+                    document.getElementById('circuitStatus').className = `process-status ${canTrade ? 'status-running' : 'status-stopped'}`;
+                    if (!canTrade) {
+                        addLog(`CIRCUIT BREAKER TRIPPED: ${data.reason || 'risk limit reached'}`, 'error');
+                    }
+                    break;
+
+                case 'risk_alert':
+                    addLog(`RISK ALERT: ${data.message || data.alert || 'Check risk levels'}`, 'error');
+                    break;
+
+                case 'drawdown':
+                    const dd = data.drawdown || data.current_drawdown || 0;
+                    const ddEl = document.getElementById('riskDD');
+                    if (ddEl) {
+                        ddEl.textContent = `${(dd * 100).toFixed(1)}%`;
+                        ddEl.style.color = dd > 0.03 ? '#ef4444' : '#22c55e';
+                    }
+                    if (dd > 0.02) {
+                        addLog(`Drawdown warning: ${(dd * 100).toFixed(1)}%`, 'warn');
+                    }
+                    break;
+
+                case 'drift_detected':
+                    document.getElementById('driftStatus').textContent = '⚠ DRIFT';
+                    document.getElementById('driftStatus').style.color = '#ef4444';
+                    addLog('Data drift detected - consider retraining', 'warn');
+                    break;
+
+                case 'error':
+                case 'system_error':
+                    addLog(`ERROR: ${data.message || data.error || 'Unknown error'}`, 'error');
+                    break;
+
+                case 'info':
+                case 'system':
+                    if (data.message) {
+                        addLog(data.message, 'info');
+                    }
+                    break;
+
+                default:
+                    // Log unknown message types for debugging
+                    if (data.message) {
+                        addLog(`[${type}] ${data.message}`, 'info');
+                    }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INITIALIZE & REFRESH
+        // ═══════════════════════════════════════════════════════════════
+        async function refreshAll() {
+            await Promise.all([
+                loadBrainStatus(),
+                loadBotStatus(),
+                loadModelStatus(),
+                loadRiskStatus(),
+                loadVolatility(),
+                loadSignals()
+            ]);
+        }
+
+        async function refreshPositionsAndOrders() {
+            await Promise.all([
+                loadPositions(),
+                loadOrders(),
+                loadAccountInfo()
+            ]);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLayout();
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Connect to realtime WebSocket
+            connectRealtimeWS();
+
+            // Initial load
+            refreshAll();
+            loadSectors();
+            refreshPositionsAndOrders();
+
+            // Periodic refresh (as fallback)
+            setInterval(refreshAll, 30000);  // Every 30 seconds (reduced since WS handles real-time)
+            setInterval(loadSectors, 60000);  // Sectors every minute
+            setInterval(refreshPositionsAndOrders, 10000);  // Positions/orders every 10 seconds
+        });
+    </script>
+</body>
+</html>

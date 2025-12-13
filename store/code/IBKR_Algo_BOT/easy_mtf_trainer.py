@@ -208,7 +208,7 @@ def train_symbol(symbol):
     print(f"{'='*70}\n")
     
     # Download
-    print(f"📥 Downloading 2y hourly data...")
+    print("📥 Downloading 2y hourly data...")
     df = yf.download(symbol, period='2y', interval='1h', progress=False)
     
     if df.empty:
@@ -306,7 +306,7 @@ def train_symbol(symbol):
     train_acc = ((train_pred.flatten() > 0.5).astype(int) == y_train[:len(train_pred)]).mean()
     test_acc = (test_pred == y_test).mean()
     
-    print(f"\n✅ Training done!")
+    print("\n✅ Training done!")
     print(f"   Train acc: {train_acc*100:.1f}%")
     print(f"   Test acc: {test_acc*100:.1f}%\n")
     

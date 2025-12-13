@@ -1,0 +1,162 @@
+{
+  "version": "1.0.0",
+  "description": "Warrior Trading Strategy Configuration",
+
+  "scanner": {
+    "enabled": true,
+    "min_gap_percent": 5.0,
+    "min_rvol": 2.0,
+    "max_float_millions": 50.0,
+    "min_premarket_volume": 50000,
+    "scan_interval_minutes": 15,
+    "max_watchlist_size": 10,
+    "min_price": 2.0,
+    "max_price": 500.0,
+    "preferred_float_millions": 10.0,
+    "scan_schedule": {
+      "start_time": "07:00",
+      "end_time": "09:25",
+      "timezone": "America/New_York"
+    }
+  },
+
+  "pattern_detection": {
+    "enabled_patterns": [
+      "BULL_FLAG",
+      "HOD_BREAKOUT",
+      "WHOLE_DOLLAR_BREAKOUT",
+      "MICRO_PULLBACK"
+    ],
+
+    "bull_flag": {
+      "enabled": true,
+      "min_confidence": 60,
+      "pole_min_candles": 3,
+      "pole_min_range_percent": 2.0,
+      "pullback_max_candles": 4,
+      "pullback_max_volume_ratio": 0.8,
+      "require_above_vwap": true,
+      "require_above_ema9": true
+    },
+
+    "hod_breakout": {
+      "enabled": true,
+      "min_confidence": 55,
+      "volume_surge_ratio": 1.5,
+      "proximity_percent": 1.0,
+      "require_above_vwap": false
+    },
+
+    "whole_dollar_breakout": {
+      "enabled": true,
+      "min_confidence": 50,
+      "proximity_percent": 2.0,
+      "whole_dollar_levels": [2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100],
+      "require_uptrend": true
+    },
+
+    "micro_pullback": {
+      "enabled": true,
+      "min_confidence": 65,
+      "max_pullback_candles": 3,
+      "pullback_to_ema": true,
+      "require_trend": true
+    },
+
+    "hammer_reversal": {
+      "enabled": false,
+      "min_confidence": 70,
+      "min_red_candles": 3,
+      "require_support": true,
+      "position_size_multiplier": 0.5
+    }
+  },
+
+  "risk_management": {
+    "daily_profit_goal": 200.0,
+    "max_loss_per_trade": 50.0,
+    "max_loss_per_day": 200.0,
+    "default_risk_per_trade": 100.0,
+    "min_reward_to_risk": 2.0,
+    "max_reward_to_risk": 5.0,
+    "max_consecutive_losses": 3,
+    "max_position_size_dollars": 10000.0,
+    "max_concurrent_positions": 3,
+    "position_sizing_method": "FIXED_RISK",
+    "reduce_size_on_losses": true,
+    "size_reduction_factor": 0.5
+  },
+
+  "execution": {
+    "auto_execute": false,
+    "require_claude_approval": true,
+    "require_user_approval": true,
+    "default_order_type": "LIMIT",
+    "limit_offset_cents": 2,
+    "max_slippage_percent": 0.5,
+    "partial_exit_at_2r": 0.5,
+    "move_stop_to_breakeven_at_r": 1.0,
+    "trailing_stop_percent": 1.5,
+    "use_bracket_orders": true
+  },
+
+  "trading_hours": {
+    "pre_market_start": "04:00",
+    "market_open": "09:30",
+    "market_close": "16:00",
+    "allow_pre_market": true,
+    "allow_after_hours": false,
+    "timezone": "America/New_York"
+  },
+
+  "data_sources": {
+    "finviz_enabled": true,
+    "yfinance_enabled": true,
+    "ibkr_enabled": true,
+    "cache_duration_minutes": 5
+  },
+
+  "logging": {
+    "level": "INFO",
+    "log_to_file": true,
+    "log_file_path": "logs/warrior_trading.log",
+    "log_to_console": true,
+    "max_log_file_size_mb": 100,
+    "backup_count": 5
+  },
+
+  "alerts": {
+    "enabled": true,
+    "alert_on_pattern": true,
+    "alert_on_entry": true,
+    "alert_on_exit": true,
+    "alert_on_stop_hit": true,
+    "alert_on_target_hit": true,
+    "alert_on_daily_limit": true,
+    "sound_enabled": false
+  },
+
+  "backtesting": {
+    "initial_capital": 50000.0,
+    "commission_per_share": 0.005,
+    "slippage_percent": 0.1,
+    "use_realistic_fills": true
+  },
+
+  "claude_integration": {
+    "enabled": false,
+    "api_key_env_var": "CLAUDE_API_KEY",
+    "model": "claude-sonnet-4-20250514",
+    "validate_all_setups": false,
+    "validate_confidence_threshold": 70,
+    "performance_monitoring": false,
+    "code_guardian": false,
+    "strategy_optimization": false
+  },
+
+  "database": {
+    "type": "sqlite",
+    "path": "data/warrior_trading.db",
+    "auto_create_tables": true
+  }
+}

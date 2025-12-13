@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warrior Trading Monitor - Multi-Widget Dashboard</title>
+    <link rel="stylesheet" href="css/monitor.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Top Menu Bar (Windows-style) -->
+    <div class="menu-bar">
+        <div class="menu-logo">
+            <i class="fas fa-chart-line"></i>
+            <span>Warrior Trading Monitor</span>
+        </div>
+        <div class="menu-items">
+            <div class="menu-item" onclick="openMenu('file')">
+                <i class="fas fa-file"></i> File
+                <div class="dropdown" id="file-menu">
+                    <a href="#" onclick="newDashboard()"><i class="fas fa-plus"></i> New Dashboard</a>
+                    <a href="#" onclick="loadLayout()"><i class="fas fa-folder-open"></i> Load Layout</a>
+                    <a href="#" onclick="saveLayout()"><i class="fas fa-save"></i> Save Layout</a>
+                    <hr>
+                    <a href="#" onclick="exportData()"><i class="fas fa-file-export"></i> Export Data</a>
+                </div>
+            </div>
+            <div class="menu-item" onclick="openMenu('widgets')">
+                <i class="fas fa-th"></i> Widgets
+                <div class="dropdown" id="widgets-menu">
+                    <strong style="padding: 0.5rem 1rem; display: block; color: var(--accent-primary);">Trading</strong>
+                    <a href="#" onclick="addWidget('scanner-results')"><i class="fas fa-search"></i> Scanner Results</a>
+                    <a href="#" onclick="addWidget('active-orders')"><i class="fas fa-shopping-cart"></i> Active Orders</a>
+                    <a href="#" onclick="addWidget('risk-manager')"><i class="fas fa-shield-alt"></i> Risk Manager</a>
+                    <hr>
+                    <strong style="padding: 0.5rem 1rem; display: block; color: var(--accent-primary);">AI & ML</strong>
+                    <a href="#" onclick="addWidget('ml-patterns')"><i class="fas fa-brain"></i> ML Pattern Detection</a>
+                    <a href="#" onclick="addWidget('rl-agent')"><i class="fas fa-robot"></i> RL Agent Recommendations</a>
+                    <a href="#" onclick="addWidget('sentiment')"><i class="fas fa-comments"></i> Sentiment Analysis</a>
+                    <hr>
+                    <strong style="padding: 0.5rem 1rem; display: block; color: var(--accent-primary);">Monitoring</strong>
+                    <a href="#" onclick="addWidget('active-trades')"><i class="fas fa-list"></i> Active Trades</a>
+                    <a href="#" onclick="addWidget('trade-history')"><i class="fas fa-history"></i> Trade History</a>
+                    <a href="#" onclick="addWidget('performance')"><i class="fas fa-chart-bar"></i> Performance Metrics</a>
+                    <a href="#" onclick="addWidget('pnl-chart')"><i class="fas fa-chart-area"></i> P&L Chart</a>
+                    <a href="#" onclick="addWidget('errors')"><i class="fas fa-exclamation-triangle"></i> Error Log</a>
+                    <a href="#" onclick="addWidget('slippage')"><i class="fas fa-tachometer-alt"></i> Slippage Monitor</a>
+                    <a href="#" onclick="addWidget('watch-list')"><i class="fas fa-eye"></i> Watch List</a>
+                    <a href="#" onclick="addWidget('alerts')"><i class="fas fa-bell"></i> Alerts</a>
+                </div>
+            </div>
+            <div class="menu-item" onclick="openMenu('view')">
+                <i class="fas fa-eye"></i> View
+                <div class="dropdown" id="view-menu">
+                    <a href="#" onclick="toggleFullscreen()"><i class="fas fa-expand"></i> Fullscreen</a>
+                    <a href="#" onclick="resetLayout()"><i class="fas fa-undo"></i> Reset Layout</a>
+                    <a href="#" onclick="toggleGrid()"><i class="fas fa-border-all"></i> Toggle Grid</a>
+                </div>
+            </div>
+            <div class="menu-item" onclick="openMenu('switch-ui')">
+                <i class="fas fa-desktop"></i> Switch UI
+                <div class="dropdown" id="switch-ui-menu">
+                    <strong style="padding: 0.5rem 1rem; display: block; color: var(--accent-primary);">Available Dashboards</strong>
+                    <a href="monitor.html"><i class="fas fa-chart-line"></i> Monitor Dashboard (Current)</a>
+                    <a href="http://127.0.0.1:9101/ui/platform.html" target="_blank"><i class="fas fa-layer-group"></i> Trading Platform</a>
+                    <a href="http://127.0.0.1:9101/ui/complete_platform.html" target="_blank"><i class="fas fa-th-large"></i> Complete Platform</a>
+                </div>
+            </div>
+            <div class="menu-item" onclick="openMenu('tools')">
+                <i class="fas fa-tools"></i> Tools
+                <div class="dropdown" id="tools-menu">
+                    <a href="#" onclick="openBuilder()"><i class="fas fa-hammer"></i> Custom Monitor Builder</a>
+                    <a href="#" onclick="openSettings()"><i class="fas fa-cog"></i> Settings</a>
+                    <a href="#" onclick="manageLayouts()"><i class="fas fa-layer-group"></i> Manage Layouts</a>
+                </div>
+            </div>
+            <div class="menu-item" onclick="openMenu('help')">
+                <i class="fas fa-question-circle"></i> Help
+                <div class="dropdown" id="help-menu">
+                    <a href="#" onclick="showDocs()"><i class="fas fa-book"></i> Documentation</a>
+                    <a href="#" onclick="showShortcuts()"><i class="fas fa-keyboard"></i> Keyboard Shortcuts</a>
+                    <a href="#" onclick="showAbout()"><i class="fas fa-info-circle"></i> About</a>
+                </div>
+            </div>
+        </div>
+        <div class="menu-status">
+            <span id="connection-status" class="status-indicator">
+                <i class="fas fa-circle"></i> <span id="status-text">Connecting...</span>
+            </span>
+            <span id="clock"></span>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Grid -->
+    <div id="dashboard-grid" class="dashboard-grid">
+        <!-- Widgets will be added here dynamically -->
+    </div>
+
+    <!-- Widget Templates -->
+    <template id="widget-template">
+        <div class="widget" draggable="true">
+            <div class="widget-header">
+                <div class="widget-title">
+                    <i class="widget-icon"></i>
+                    <span class="widget-title-text"></span>
+                </div>
+                <div class="widget-controls">
+                    <button class="widget-btn" onclick="refreshWidget(this)" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="widget-btn" onclick="toggleWidget(this)" title="Minimize">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button class="widget-btn" onclick="removeWidget(this)" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="widget-content">
+                <!-- Dynamic content -->
+            </div>
+            <div class="widget-resize-handle"></div>
+        </div>
+    </template>
+
+    <!-- Active Trades Widget Template -->
+    <template id="active-trades-template">
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Side</th>
+                        <th>Shares</th>
+                        <th>Entry</th>
+                        <th>Current</th>
+                        <th>P&L</th>
+                        <th>Pattern</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="active-trades-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- Trade History Widget Template -->
+    <template id="trade-history-template">
+        <div class="widget-filters">
+            <input type="text" placeholder="Filter by symbol..." id="filter-symbol">
+            <select id="filter-status">
+                <option value="">All Status</option>
+                <option value="closed">Closed</option>
+                <option value="stopped">Stopped Out</option>
+                <option value="target">Target Hit</option>
+            </select>
+            <button onclick="applyFilters()"><i class="fas fa-filter"></i> Filter</button>
+        </div>
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Symbol</th>
+                        <th>Side</th>
+                        <th>Shares</th>
+                        <th>Entry</th>
+                        <th>Exit</th>
+                        <th>P&L</th>
+                        <th>R</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="trade-history-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- Performance Metrics Widget Template -->
+    <template id="performance-template">
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Win Rate</div>
+                <div class="metric-value" id="metric-win-rate">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Total P&L</div>
+                <div class="metric-value" id="metric-total-pnl">$--</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Profit Factor</div>
+                <div class="metric-value" id="metric-profit-factor">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Avg R</div>
+                <div class="metric-value" id="metric-avg-r">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Total Trades</div>
+                <div class="metric-value" id="metric-total-trades">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Best Trade</div>
+                <div class="metric-value" id="metric-best-trade">$--</div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Error Log Widget Template -->
+    <template id="errors-template">
+        <div class="widget-filters">
+            <select id="error-severity">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="error">Error</option>
+                <option value="warning">Warning</option>
+            </select>
+            <label>
+                <input type="checkbox" id="show-resolved"> Show Resolved
+            </label>
+        </div>
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Severity</th>
+                        <th>Module</th>
+                        <th>Error</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="errors-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- P&L Chart Widget Template -->
+    <template id="pnl-chart-template">
+        <div class="chart-container">
+            <canvas id="pnl-chart"></canvas>
+        </div>
+    </template>
+
+    <!-- Slippage Monitor Widget Template -->
+    <template id="slippage-template">
+        <div class="slippage-stats">
+            <div class="stat-row">
+                <span>Total Executions:</span>
+                <span id="slip-total">--</span>
+            </div>
+            <div class="stat-row">
+                <span>Avg Slippage:</span>
+                <span id="slip-avg">--</span>
+            </div>
+            <div class="stat-row">
+                <span>Acceptable:</span>
+                <span id="slip-acceptable" class="status-good">--</span>
+            </div>
+            <div class="stat-row">
+                <span>Warning:</span>
+                <span id="slip-warning" class="status-warn">--</span>
+            </div>
+            <div class="stat-row">
+                <span>Critical:</span>
+                <span id="slip-critical" class="status-critical">--</span>
+            </div>
+            <div class="stat-row">
+                <span>Total Cost:</span>
+                <span id="slip-cost">$--</span>
+            </div>
+        </div>
+    </template>
+
+    <!-- Alerts Widget Template -->
+    <template id="alerts-template">
+        <div class="widget-scroll">
+            <div class="alerts-list" id="alerts-list">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </template>
+
+    <!-- Scanner Results Widget Template -->
+    <template id="scanner-results-template">
+        <div class="widget-filters">
+            <button onclick="runScan()" style="background: var(--accent-success);"><i class="fas fa-play"></i> Run Scan</button>
+            <select id="scanner-type">
+                <option value="premarket">Pre-Market</option>
+                <option value="momentum">Momentum</option>
+                <option value="gappers">Gappers</option>
+            </select>
+        </div>
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Price</th>
+                        <th>Gap %</th>
+                        <th>RVOL</th>
+                        <th>Float</th>
+                        <th>Pattern</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="scanner-results-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- Active Orders Widget Template -->
+    <template id="active-orders-template">
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Side</th>
+                        <th>Type</th>
+                        <th>Qty</th>
+                        <th>Limit Price</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="active-orders-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- Risk Manager Widget Template -->
+    <template id="risk-manager-template">
+        <div class="risk-overview">
+            <div class="metric-card">
+                <div class="metric-label">Daily Risk Used</div>
+                <div class="metric-value" id="risk-daily-used">$0</div>
+                <div class="risk-bar">
+                    <div class="risk-bar-fill" id="risk-daily-bar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Position Size Limit</div>
+                <div class="metric-value" id="risk-position-limit">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Max Loss Per Trade</div>
+                <div class="metric-value" id="risk-max-loss">$50</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Trades Today</div>
+                <div class="metric-value" id="risk-trades-today">0</div>
+            </div>
+        </div>
+    </template>
+
+    <!-- ML Pattern Detection Widget Template -->
+    <template id="ml-patterns-template">
+        <div class="widget-filters">
+            <input type="text" placeholder="Symbol..." id="ml-symbol">
+            <button onclick="detectPattern()"><i class="fas fa-search"></i> Detect</button>
+        </div>
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Pattern</th>
+                        <th>Confidence</th>
+                        <th>Target</th>
+                        <th>Stop</th>
+                        <th>R:R</th>
+                    </tr>
+                </thead>
+                <tbody id="ml-patterns-tbody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- RL Agent Recommendations Widget Template -->
+    <template id="rl-agent-template">
+        <div class="rl-recommendations">
+            <div class="recommendation-card" id="rl-current-action">
+                <div class="rec-header">
+                    <i class="fas fa-robot"></i>
+                    <span>Current Recommendation</span>
+                </div>
+                <div class="rec-action">--</div>
+                <div class="rec-confidence">Confidence: <span id="rl-confidence">--</span></div>
+            </div>
+            <div class="recommendation-card">
+                <div class="rec-header">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Market State</span>
+                </div>
+                <div class="state-grid">
+                    <div class="state-item">
+                        <span>Trend:</span>
+                        <span id="rl-trend">--</span>
+                    </div>
+                    <div class="state-item">
+                        <span>Volatility:</span>
+                        <span id="rl-volatility">--</span>
+                    </div>
+                    <div class="state-item">
+                        <span>Sentiment:</span>
+                        <span id="rl-sentiment">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Sentiment Analysis Widget Template -->
+    <template id="sentiment-template">
+        <div class="widget-filters">
+            <input type="text" placeholder="Symbol..." id="sentiment-symbol">
+            <button onclick="analyzeSentiment()"><i class="fas fa-search"></i> Analyze</button>
+        </div>
+        <div class="widget-scroll">
+            <!-- Breaking News Alert -->
+            <div class="breaking-news-alert" id="breaking-news-alert" style="display: none; padding: 10px; margin-bottom: 10px; border-radius: 4px; border-left: 4px solid var(--accent-danger);">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <i class="fas fa-exclamation-triangle" style="color: var(--accent-danger);"></i>
+                    <strong id="breaking-news-type" style="text-transform: uppercase;">BREAKING NEWS</strong>
+                    <span id="breaking-news-severity" class="status-badge" style="font-size: 0.75rem;"></span>
+                </div>
+                <div id="breaking-news-headline" style="font-size: 0.85rem; margin-bottom: 6px;"></div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+                    <span id="breaking-news-sources"></span>
+                    <span id="breaking-news-time"></span>
+                </div>
+            </div>
+            <div class="sentiment-result" id="sentiment-result">
+                <div class="sentiment-score-card">
+                    <div class="sentiment-label">Overall Score</div>
+                    <div class="sentiment-score" id="sentiment-overall-score">0.00</div>
+                    <div class="sentiment-bar">
+                        <div class="sentiment-bar-fill" id="sentiment-bar" style="width: 50%; background: var(--accent-warning);"></div>
+                    </div>
+                </div>
+                <div class="sentiment-sources">
+                    <div class="source-card">
+                        <div class="source-label"><i class="fas fa-newspaper"></i> News</div>
+                        <div class="source-score" id="sentiment-news">--</div>
+                    </div>
+                    <div class="source-card">
+                        <div class="source-label"><i class="fab fa-twitter"></i> Twitter</div>
+                        <div class="source-score" id="sentiment-twitter">--</div>
+                    </div>
+                    <div class="source-card">
+                        <div class="source-label"><i class="fab fa-reddit"></i> Reddit</div>
+                        <div class="source-score" id="sentiment-reddit">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Watch List Widget Template -->
+    <template id="watch-list-template">
+        <div class="widget-filters">
+            <input type="text" placeholder="Add symbol..." id="worklist-input" style="flex: 1;">
+            <button onclick="addToWorklist()"><i class="fas fa-plus"></i> Add</button>
+        </div>
+        <div class="widget-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Price</th>
+                        <th>Change</th>
+                        <th>Volume</th>
+                        <th>Prediction</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="worklist-tbody">
+                    <!-- Populated via API -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/monitor-widgets.js"></script>
+    <script src="js/monitor-dragdrop.js"></script>
+    <script src="js/monitor-api.js"></script>
+    <script src="js/monitor-main.js"></script>
+</body>
+</html>

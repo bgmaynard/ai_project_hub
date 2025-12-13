@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBKR Trading Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-size: 11px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 200px 1fr 280px;
+            grid-template-rows: 30px 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: #000;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            grid-column: 1 / -1;
+            background: #2d2d30;
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #007acc;
+        }
+
+        .top-bar-left {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .top-bar-title {
+            font-weight: bold;
+            color: #007acc;
+            font-size: 12px;
+        }
+
+        .status-indicator {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            font-size: 10px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-dot.connected { background: #4ec9b0; }
+        .status-dot.disconnected { background: #f48771; }
+
+        /* Watchlist */
+        .watchlist {
+            background: #252526;
+            border-right: 1px solid #3e3e42;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: #2d2d30;
+            padding: 8px 10px;
+            font-weight: bold;
+            font-size: 11px;
+            border-bottom: 1px solid #3e3e42;
+            color: #cccccc;
+        }
+
+        .watchlist-add {
+            padding: 8px 10px;
+            border-bottom: 1px solid #3e3e42;
+        }
+
+        .watchlist-add input {
+            width: 100%;
+            padding: 4px 6px;
+            background: #3c3c3c;
+            border: 1px solid #3e3e42;
+            color: #d4d4d4;
+            font-size: 11px;
+        }
+
+        .watchlist-add input:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        .watchlist-items {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .watchlist-item {
+            padding: 6px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .watchlist-item:hover {
+            background: #2a2d2e;
+        }
+
+        .watchlist-item.active {
+            background: #094771;
+            border-left: 2px solid #007acc;
+        }
+
+        .watchlist-symbol {
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .watchlist-price {
+            font-size: 11px;
+        }
+
+        .price-up { color: #4ec9b0; }
+        .price-down { color: #f48771; }
+
+        /* Main Content */
+        .main-content {
+            background: #1e1e1e;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .quote-bar {
+            background: #252526;
+            padding: 12px 15px;
+            border-bottom: 1px solid #3e3e42;
+        }
+
+        .quote-symbol {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4ec9b0;
+            margin-bottom: 8px;
+        }
+
+        .quote-price-row {
+            display: flex;
+            gap: 20px;
+            align-items: baseline;
+        }
+
+        .quote-last {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .quote-change {
+            font-size: 14px;
+        }
+
+        .quote-details {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #3e3e42;
+        }
+
+        .quote-detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quote-detail-label {
+            font-size: 9px;
+            color: #858585;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .quote-detail-value {
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .market-data {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: #000;
+        }
+
+        .level2-panel {
+            background: #252526;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .level2-header {
+            display: grid;
+            grid-template-columns: 80px 60px 60px;
+            padding: 6px 10px;
+            background: #2d2d30;
+            border-bottom: 1px solid #3e3e42;
+            font-size: 10px;
+            font-weight: bold;
+            color: #858585;
+        }
+
+        .level2-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .level2-row {
+            display: grid;
+            grid-template-columns: 80px 60px 60px;
+            padding: 4px 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            border-bottom: 1px solid #2d2d30;
+        }
+
+        .bid-row { background: rgba(78, 201, 176, 0.05); }
+        .ask-row { background: rgba(244, 135, 113, 0.05); }
+
+        /* Order Entry */
+        .order-panel {
+            background: #252526;
+            border-left: 1px solid #3e3e42;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .order-form {
+            padding: 15px;
+        }
+
+        .form-row {
+            margin-bottom: 12px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 10px;
+            color: #858585;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 6px 8px;
+            background: #3c3c3c;
+            border: 1px solid #3e3e42;
+            color: #d4d4d4;
+            font-size: 11px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        .form-input[readonly] {
+            background: #2d2d30;
+            color: #858585;
+        }
+
+        .quick-price-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .btn-quick {
+            padding: 4px;
+            background: #3c3c3c;
+            border: 1px solid #3e3e42;
+            color: #d4d4d4;
+            font-size: 9px;
+            cursor: pointer;
+        }
+
+        .btn-quick:hover {
+            background: #505050;
+        }
+
+        .btn-quick:active {
+            background: #094771;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 10px;
+            border: none;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .btn-buy {
+            background: #4ec9b0;
+            color: #000;
+        }
+
+        .btn-buy:hover {
+            background: #5dd6bd;
+        }
+
+        .btn-sell {
+            background: #f48771;
+            color: #000;
+        }
+
+        .btn-sell:hover {
+            background: #ff9580;
+        }
+
+        .btn-secondary {
+            background: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #3e3e42;
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .btn-secondary:hover {
+            background: #505050;
+        }
+
+        .order-summary {
+            margin-top: 15px;
+            padding: 12px;
+            background: #2d2d30;
+            border: 1px solid #3e3e42;
+        }
+
+        .summary-label {
+            font-size: 9px;
+            color: #858585;
+            text-transform: uppercase;
+        }
+
+        .summary-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #007acc;
+            margin-top: 4px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3e3e42;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #505050;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="top-bar-title">IBKR TRADING PLATFORM</div>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusServer"></div>
+                    <span>SERVER</span>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusIBKR"></div>
+                    <span>IBKR</span>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusClaude"></div>
+                    <span>CLAUDE</span>
+                </div>
+            </div>
+            <div id="lastUpdate" style="font-size: 10px; color: #858585;"></div>
+        </div>
+
+        <!-- Watchlist -->
+        <div class="watchlist">
+            <div class="panel-header">WATCHLIST</div>
+            <div class="watchlist-add">
+                <input type="text" id="addSymbolInput" placeholder="Add symbol..." onkeypress="handleAddSymbol(event)">
+            </div>
+            <div class="watchlist-items" id="watchlistContainer"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Quote Bar -->
+            <div class="quote-bar">
+                <div class="quote-symbol" id="quoteSymbol">--</div>
+                <div class="quote-price-row">
+                    <div class="quote-last" id="quoteLast">--</div>
+                    <div class="quote-change" id="quoteChange">--</div>
+                </div>
+                <div class="quote-details">
+                    <div class="quote-detail">
+                        <div class="quote-detail-label">Bid</div>
+                        <div class="quote-detail-value price-up" id="quoteBid">--</div>
+                    </div>
+                    <div class="quote-detail">
+                        <div class="quote-detail-label">Ask</div>
+                        <div class="quote-detail-value price-down" id="quoteAsk">--</div>
+                    </div>
+                    <div class="quote-detail">
+                        <div class="quote-detail-label">Bid Size</div>
+                        <div class="quote-detail-value" id="quoteBidSize">--</div>
+                    </div>
+                    <div class="quote-detail">
+                        <div class="quote-detail-label">Ask Size</div>
+                        <div class="quote-detail-value" id="quoteAskSize">--</div>
+                    </div>
+                    <div class="quote-detail">
+                        <div class="quote-detail-label">Volume</div>
+                        <div class="quote-detail-value" id="quoteVolume">--</div>
+                    </div>
+                    <div class="quote-detail">
+                        <div class="quote-detail-label">Spread</div>
+                        <div class="quote-detail-value" id="quoteSpread">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Data -->
+            <div class="market-data">
+                <!-- Level 2 Bids -->
+                <div class="level2-panel">
+                    <div class="panel-header">LEVEL 2 - BIDS</div>
+                    <div class="level2-header">
+                        <div>PRICE</div>
+                        <div>SIZE</div>
+                        <div>ORDERS</div>
+                    </div>
+                    <div class="level2-content" id="level2Bids"></div>
+                </div>
+
+                <!-- Level 2 Asks -->
+                <div class="level2-panel">
+                    <div class="panel-header">LEVEL 2 - ASKS</div>
+                    <div class="level2-header">
+                        <div>PRICE</div>
+                        <div>SIZE</div>
+                        <div>ORDERS</div>
+                    </div>
+                    <div class="level2-content" id="level2Asks"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Entry -->
+        <div class="order-panel">
+            <div class="panel-header">ORDER ENTRY</div>
+            <div class="order-form">
+                <div class="form-row">
+                    <label class="form-label">Symbol</label>
+                    <input type="text" id="orderSymbol" class="form-input" readonly>
+                </div>
+
+                <div class="form-row">
+                    <label class="form-label">Shares</label>
+                    <input type="number" id="orderShares" class="form-input" value="100" oninput="updateCost()">
+                </div>
+
+                <div class="form-row">
+                    <label class="form-label">Order Type</label>
+                    <select id="orderType" class="form-select" onchange="handleTypeChange()">
+                        <option value="LIMIT">LIMIT</option>
+                        <option value="MARKET">MARKET</option>
+                    </select>
+                </div>
+
+                <div class="form-row" id="priceRow">
+                    <label class="form-label">Limit Price</label>
+                    <input type="number" id="orderPrice" class="form-input" step="0.01" oninput="updateCost()">
+                    <div class="quick-price-buttons">
+                        <button class="btn-quick" onclick="setPrice('bid')">BID</button>
+                        <button class="btn-quick" onclick="setPrice('mid')">MID</button>
+                        <button class="btn-quick" onclick="setPrice('ask')">ASK</button>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-buy" onclick="placeOrder('BUY')">BUY</button>
+                    <button class="btn btn-sell" onclick="placeOrder('SELL')">SELL</button>
+                </div>
+
+                <div class="order-summary">
+                    <div class="summary-label">Estimated Cost</div>
+                    <div class="summary-value" id="orderCost">$0.00</div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="getClaudeAnalysis()">ASK CLAUDE AI</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://127.0.0.1:9101';
+        let currentSymbol = null;
+        let priceData = {};
+        let watchlist = ['AAPL', 'TSLA', 'SPY', 'QQQ'];
+        let updateTimer;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', init);
+
+        function init() {
+            checkStatus();
+            loadWatchlist();
+            startUpdates();
+        }
+
+        function startUpdates() {
+            if (updateTimer) clearInterval(updateTimer);
+            updateTimer = setInterval(() => {
+                checkStatus();
+                if (currentSymbol) updateCurrentSymbol();
+                updateWatchlistPrices();
+            }, 2000);
+        }
+
+        async function checkStatus() {
+            try {
+                const health = await fetch(`${API}/health`).then(r => r.json());
+                setStatus('statusServer', true);
+                setStatus('statusIBKR', health.ibkr_connected);
+                setStatus('statusClaude', health.claude_available);
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            } catch {
+                setStatus('statusServer', false);
+            }
+        }
+
+        function setStatus(id, connected) {
+            document.getElementById(id).className = `status-dot ${connected ? 'connected' : 'disconnected'}`;
+        }
+
+        function loadWatchlist() {
+            const container = document.getElementById('watchlistContainer');
+            container.innerHTML = '';
+            watchlist.forEach(symbol => {
+                const item = document.createElement('div');
+                item.className = 'watchlist-item';
+                item.id = `watch-${symbol}`;
+                item.onclick = () => selectSymbol(symbol);
+                item.innerHTML = `
+                    <span class="watchlist-symbol">${symbol}</span>
+                    <span class="watchlist-price" id="price-${symbol}">--</span>
+                `;
+                container.appendChild(item);
+            });
+            if (!currentSymbol && watchlist.length > 0) {
+                selectSymbol(watchlist[0]);
+            }
+        }
+
+        function selectSymbol(symbol) {
+            currentSymbol = symbol;
+            document.querySelectorAll('.watchlist-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(`watch-${symbol}`)?.classList.add('active');
+            document.getElementById('orderSymbol').value = symbol;
+            document.getElementById('quoteSymbol').textContent = symbol;
+            updateCurrentSymbol();
+        }
+
+        async function updateCurrentSymbol() {
+            await updatePrice(currentSymbol);
+            await updateLevel2(currentSymbol);
+        }
+
+        async function updatePrice(symbol) {
+            try {
+                const result = await fetch(`${API}/api/price/${symbol}`).then(r => r.json());
+                const data = result.data || result;
+                priceData[symbol] = data;
+
+                if (symbol === currentSymbol) {
+                    const last = data.last || 0;
+                    const change = data.change || 0;
+                    const changePct = data.changePercent || 0;
+
+                    document.getElementById('quoteLast').textContent = last.toFixed(2);
+                    document.getElementById('quoteLast').className = `quote-last ${change >= 0 ? 'price-up' : 'price-down'}`;
+                    
+                    const changeText = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct.toFixed(2)}%)`;
+                    document.getElementById('quoteChange').textContent = changeText;
+                    document.getElementById('quoteChange').className = `quote-change ${change >= 0 ? 'price-up' : 'price-down'}`;
+
+                    document.getElementById('quoteBid').textContent = (data.bid || 0).toFixed(2);
+                    document.getElementById('quoteAsk').textContent = (data.ask || 0).toFixed(2);
+                    document.getElementById('quoteBidSize').textContent = data.bid_size || 0;
+                    document.getElementById('quoteAskSize').textContent = data.ask_size || 0;
+                    document.getElementById('quoteVolume').textContent = formatVol(data.volume || 0);
+                    document.getElementById('quoteSpread').textContent = ((data.ask || 0) - (data.bid || 0)).toFixed(2);
+                }
+            } catch (e) {
+                console.error(`Error updating ${symbol}:`, e);
+            }
+        }
+
+        async function updateLevel2(symbol) {
+            try {
+                const result = await fetch(`${API}/api/level2/${symbol}`).then(r => r.json());
+                const data = result.data || result;
+
+                const bids = (data.bids || []).slice(0, 15).map(b => `
+                    <div class="level2-row bid-row">
+                        <div>${(b.price || 0).toFixed(2)}</div>
+                        <div>${b.size || 0}</div>
+                        <div>${b.orders || ''}</div>
+                    </div>
+                `).join('');
+
+                const asks = (data.asks || []).slice(0, 15).map(a => `
+                    <div class="level2-row ask-row">
+                        <div>${(a.price || 0).toFixed(2)}</div>
+                        <div>${a.size || 0}</div>
+                        <div>${a.orders || ''}</div>
+                    </div>
+                `).join('');
+
+                document.getElementById('level2Bids').innerHTML = bids || '<div style="padding:20px;text-align:center;color:#858585">No data</div>';
+                document.getElementById('level2Asks').innerHTML = asks || '<div style="padding:20px;text-align:center;color:#858585">No data</div>';
+            } catch (e) {
+                console.error('Level 2 error:', e);
+            }
+        }
+
+        async function updateWatchlistPrices() {
+            for (const symbol of watchlist) {
+                try {
+                    const result = await fetch(`${API}/api/price/${symbol}`).then(r => r.json());
+                    const data = result.data || result;
+                    const el = document.getElementById(`price-${symbol}`);
+                    if (el) {
+                        el.textContent = (data.last || 0).toFixed(2);
+                        el.className = `watchlist-price ${(data.change || 0) >= 0 ? 'price-up' : 'price-down'}`;
+                    }
+                } catch (e) {
+                    // Ignore
+                }
+            }
+        }
+
+        function handleAddSymbol(e) {
+            if (e.key === 'Enter') {
+                const input = e.target;
+                const symbol = input.value.trim().toUpperCase();
+                if (symbol && !watchlist.includes(symbol)) {
+                    // Subscribe to new symbol
+                    subscribeSymbol(symbol);
+                    watchlist.push(symbol);
+                    loadWatchlist();
+                    input.value = '';
+                }
+            }
+        }
+
+        async function subscribeSymbol(symbol) {
+            try {
+                await fetch(`${API}/api/subscribe`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        exchange: 'SMART',
+                        data_types: ['quote', 'depth', 'trades']
+                    })
+                });
+            } catch (e) {
+                console.error('Subscribe error:', e);
+            }
+        }
+
+        function handleTypeChange() {
+            const type = document.getElementById('orderType').value;
+            document.getElementById('priceRow').style.display = type === 'MARKET' ? 'none' : 'block';
+            updateCost();
+        }
+
+        function setPrice(type) {
+            const data = priceData[currentSymbol];
+            if (!data) return;
+            const input = document.getElementById('orderPrice');
+            if (type === 'bid') input.value = (data.bid || 0).toFixed(2);
+            else if (type === 'ask') input.value = (data.ask || 0).toFixed(2);
+            else if (type === 'mid') input.value = (((data.bid || 0) + (data.ask || 0)) / 2).toFixed(2);
+            updateCost();
+        }
+
+        function updateCost() {
+            const shares = parseInt(document.getElementById('orderShares').value) || 0;
+            const price = parseFloat(document.getElementById('orderPrice').value) || 0;
+            const cost = shares * price + Math.max(1, shares * 0.005);
+            document.getElementById('orderCost').textContent = `$${cost.toFixed(2)}`;
+        }
+
+        function placeOrder(action) {
+            const symbol = document.getElementById('orderSymbol').value;
+            const shares = document.getElementById('orderShares').value;
+            const type = document.getElementById('orderType').value;
+            const price = document.getElementById('orderPrice').value;
+            alert(`${action} ${shares} ${symbol} ${type}${type === 'LIMIT' ? ' @ $' + price : ''}\n\n(Paper trading - not executed)`);
+        }
+
+        async function getClaudeAnalysis() {
+            if (!currentSymbol) return;
+            try {
+                const result = await fetch(`${API}/api/claude/analyze-with-data/${currentSymbol}`).then(r => r.json());
+                alert(`CLAUDE ANALYSIS - ${currentSymbol}\n\n${result.analysis}`);
+            } catch (e) {
+                alert('Claude analysis failed: ' + e.message);
+            }
+        }
+
+        function formatVol(v) {
+            if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+            if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+            return v;
+        }
+    </script>
+</body>
+</html>

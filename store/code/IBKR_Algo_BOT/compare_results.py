@@ -10,7 +10,6 @@ Usage:
 """
 
 import json
-import os
 from pathlib import Path
 
 
@@ -117,7 +116,7 @@ def print_comparison(results):
             if improvements:
                 print(f"  ✅ Improved: {', '.join(improvements)}")
             else:
-                print(f"  ⚠️  No significant improvement")
+                print("  ⚠️  No significant improvement")
             
             print()
     

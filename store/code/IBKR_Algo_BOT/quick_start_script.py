@@ -4,7 +4,6 @@ Run this to generate the complete dashboard system
 """
 
 import os
-from pathlib import Path
 
 print("=" * 60)
 print("  Creating Trading Dashboard Files")

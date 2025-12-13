@@ -1,0 +1,19 @@
+﻿fastapi
+uvicorn[standard]
+anthropic
+python-dotenv
+pandas
+numpy
+scikit-learn
+lightgbm
+joblib
+yfinance
+ta
+requests
+
+# Alpaca Trading SDK
+alpaca-py>=0.20.0
+alpaca-trade-api
+
+# Optional: Keep IBKR for backward compatibility
+ib-insync

@@ -1,1043 +1,572 @@
-﻿"""
-Dashboard API - Complete Backend for AI Trading Bot
-Version: 2.0 - Clean, Verified, Production-Ready
-"""
-
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-from flask_socketio import SocketIO, emit
-import threading
-import time
-import logging
+﻿import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+"""IBKR Trading Bot Dashboard API - Complete with Backtesting"""
+import os
 from datetime import datetime
-import json
-from pathlib import Path
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from dotenv import load_dotenv
 
-from functools import wraps
-from pathlib import Path
-
-API_KEY_PATH = Path(r"C:\ai_project_hub\store\secrets\api_key.txt")
-API_KEY = API_KEY_PATH.read_text().strip() if API_KEY_PATH.exists() else "dev-key"
-
-def require_key(fn):
-    @wraps(fn)
-    def _wrapped(*args, **kwargs):
-        from flask import request, jsonify
-        if request.headers.get("X-API-Key") != API_KEY:
-            return jsonify({'success': False, 'message': 'Unauthorized'}), 401
-        return fn(*args, **kwargs)
-    return _wrapped
-
-
-
-
-
-app = Flask(__name__)
-CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-
-
-
-
-
+load_dotenv()
 
 try:
-    from ibapi.client import EClient
-    from ibapi.wrapper import EWrapper
-    IBKR_AVAILABLE = True
-except ImportError:
-    IBKR_AVAILABLE = False
-    logger.warning('IBKR API not available')
+    from ai.ai_predictor import get_predictor
+    AI_AVAILABLE = True
+    print("? AI Predictor loaded")
+except Exception as e:
+    AI_AVAILABLE = False
+    print(f"?? AI Predictor not available: {e}")
 
+try:
+    from ai.auto_trader import create_auto_trader, TradingConfig
+    AUTO_TRADER_AVAILABLE = True
+    print("? Auto-Trader loaded")
+except Exception as e:
+    AUTO_TRADER_AVAILABLE = False
+    print(f"?? Auto-Trader not available: {e}")
 
-class TrainingManager:
-    def __init__(self):
-        self.active_trainings = {}
-        self.completed_trainings = []
-        self.lock = threading.Lock()
-    
-    def start_training(self, training_id, symbols, config):
-        with self.lock:
-            self.active_trainings[training_id] = {
-                'id': training_id,
-                'symbols': symbols,
-                'config': config,
-                'status': 'initializing',
-                'progress': 0,
-                'current_symbol': None,
-                'started_at': datetime.now().isoformat(),
-                'logs': []
-            }
-        return training_id
-    
-    def update_progress(self, training_id, progress, status, current_symbol=None, log_message=None):
-        with self.lock:
-            if training_id in self.active_trainings:
-                training = self.active_trainings[training_id]
-                training['progress'] = progress
-                training['status'] = status
-                if current_symbol:
-                    training['current_symbol'] = current_symbol
-                if log_message:
-                    training['logs'].append({'timestamp': datetime.now().isoformat(), 'message': log_message})
-                socketio.emit('training_progress', {
-                    'training_id': training_id,
-                    'progress': progress,
-                    'status': status,
-                    'current_symbol': current_symbol
-                })
-    
-    def complete_training(self, training_id, results):
-        with self.lock:
-            if training_id in self.active_trainings:
-                training = self.active_trainings[training_id]
-                training['status'] = 'completed'
-                training['progress'] = 100
-                training['completed_at'] = datetime.now().isoformat()
-                training['results'] = results
-                self.completed_trainings.append(training)
-                del self.active_trainings[training_id]
-                backtest_id = backtest_manager.start_backtest(training['symbols'], results)
-                socketio.emit('training_complete', {'training_id': training_id, 'backtest_id': backtest_id})
-    
-    def fail_training(self, training_id, error):
-        with self.lock:
-            if training_id in self.active_trainings:
-                training = self.active_trainings[training_id]
-                training['status'] = 'failed'
-                training['error'] = str(error)
-                training['completed_at'] = datetime.now().isoformat()
-                del self.active_trainings[training_id]
-    
-    def get_all_trainings(self):
-        with self.lock:
-            return {'active': list(self.active_trainings.values()), 'completed': self.completed_trainings[-10:]}
+try:
+    from ai.analytics_engine import create_analytics_engine
+    ANALYTICS_AVAILABLE = True
+    print("? Analytics Engine loaded")
+except Exception as e:
+    ANALYTICS_AVAILABLE = False
+    print(f"?? Analytics not available: {e}")
 
+try:
+    from ai.backtester import create_backtester
+    BACKTEST_AVAILABLE = True
+    print("? Backtester loaded")
+except Exception as e:
+    BACKTEST_AVAILABLE = False
+    print(f"?? Backtester not available: {e}")
 
-class BacktestManager:
-    def __init__(self):
-        self.active_backtests = {}
-        self.completed_backtests = []
-        self.lock = threading.Lock()
-    
-    def start_backtest(self, symbols, training_results):
-        backtest_id = f"backtest_{int(time.time())}"
-        with self.lock:
-            self.active_backtests[backtest_id] = {
-                'id': backtest_id,
-                'symbols': symbols,
-                'status': 'running',
-                'progress': 0,
-                'started_at': datetime.now().isoformat()
-            }
-        
-        def run_backtest():
-            try:
-                for i, symbol in enumerate(symbols):
-                    progress = int((i + 1) / len(symbols) * 100)
-                    self.update_backtest_progress(backtest_id, progress, symbol)
-                    time.sleep(2)
-                results = {symbol: {
-                    'total_return': round(15.5 + (i * 2.3), 2),
-                    'sharpe_ratio': round(1.8 + (i * 0.2), 2),
-                    'win_rate': round(62.5 - (i * 1.5), 1),
-                    'max_drawdown': round(-8.2 - (i * 0.8), 2),
-                    'total_trades': 45 + (i * 5)
-                } for i, symbol in enumerate(symbols)}
-                self.complete_backtest(backtest_id, results)
-            except Exception as e:
-                self.fail_backtest(backtest_id, e)
-        
-        threading.Thread(target=run_backtest, daemon=True).start()
-        return backtest_id
-    
-    def update_backtest_progress(self, backtest_id, progress, current_symbol):
-        with self.lock:
-            if backtest_id in self.active_backtests:
-                self.active_backtests[backtest_id]['progress'] = progress
-                self.active_backtests[backtest_id]['current_symbol'] = current_symbol
-                socketio.emit('backtest_progress', {'backtest_id': backtest_id, 'progress': progress, 'current_symbol': current_symbol})
-    
-    def complete_backtest(self, backtest_id, results):
-        with self.lock:
-            if backtest_id in self.active_backtests:
-                backtest = self.active_backtests[backtest_id]
-                backtest['status'] = 'completed'
-                backtest['progress'] = 100
-                backtest['completed_at'] = datetime.now().isoformat()
-                backtest['results'] = results
-                self.completed_backtests.append(backtest)
-                del self.active_backtests[backtest_id]
-                socketio.emit('backtest_complete', {'backtest_id': backtest_id, 'results': results})
-    
-    def fail_backtest(self, backtest_id, error):
-        with self.lock:
-            if backtest_id in self.active_backtests:
-                self.active_backtests[backtest_id]['status'] = 'failed'
-                self.active_backtests[backtest_id]['error'] = str(error)
-                del self.active_backtests[backtest_id]
-    
-    def get_all_backtests(self):
-        with self.lock:
-            return {'active': list(self.active_backtests.values()), 'completed': self.completed_backtests[-10:]}
-    
-    def get_results(self, backtest_id=None, symbol=None):
-        with self.lock:
-            if backtest_id:
-                for backtest in self.completed_backtests:
-                    if backtest['id'] == backtest_id:
-                        return backtest.get('results', {})
-            if symbol:
-                for backtest in reversed(self.completed_backtests):
-                    results = backtest.get('results', {})
-                    if symbol in results:
-                        return {symbol: results[symbol]}
-        return {}
+ADAPTER_OK = False
+ib_adapter = None
+startup_error: Optional[str] = None
 
+try:
+    from bridge.ib_adapter import IBConfig, IBAdapter
+    ADAPTER_OK = True
+    print("? IB Adapter import OK")
+except Exception as e:
+    print(f"?? IB Adapter import failed: {e}")
 
-class WatchlistManager:
-    def __init__(self):
-        self.watchlists_dir = Path('dashboard_data/watchlists')
-        self.watchlists_dir.mkdir(parents=True, exist_ok=True)
-        self.watchlists = {}
-        self.watchlists = self.load_all_watchlists()
-    
-    def load_all_watchlists(self):
-        watchlists = {}
-        default_lists = {'MTF_Swing': ['AAPL', 'TSLA', 'NVDA', 'AMD', 'MSFT'], 'Warrior_Momentum': [], 'Scanner_Results': []}
-        for name, symbols in default_lists.items():
-            file_path = self.watchlists_dir / f'{name}.json'
-            if not file_path.exists():
-                self.save_watchlist(name, symbols)
-        for file in self.watchlists_dir.glob('*.json'):
-            try:
-                with open(file, 'r') as f:
-                    data = json.load(f)
-                    watchlists[data['name']] = data
-            except Exception as e:
-                logger.error(f'Error loading watchlist {file}: {e}')
-        return watchlists
-    
-    def save_watchlist(self, name, symbols):
-        file_path = self.watchlists_dir / f'{name}.json'
-        data = {'name': name, 'symbols': symbols, 'created_at': datetime.now().isoformat(), 'updated_at': datetime.now().isoformat()}
-        with open(file_path, 'w') as f:
-            json.dump(data, f, indent=2)
-        self.watchlists[name] = data
-        return data
-    
-    def add_symbol(self, watchlist_name, symbol):
-        if watchlist_name in self.watchlists:
-            symbols = self.watchlists[watchlist_name]['symbols']
-            if symbol not in symbols:
-                symbols.append(symbol)
-                self.save_watchlist(watchlist_name, symbols)
-                return True
-        return False
-    
-    def remove_symbol(self, watchlist_name, symbol):
-        if watchlist_name in self.watchlists:
-            symbols = self.watchlists[watchlist_name]['symbols']
-            if symbol in symbols:
-                symbols.remove(symbol)
-                self.save_watchlist(watchlist_name, symbols)
-                return True
-        return False
+app = FastAPI(title="IBKR Trading Bot API", version="4.0.0")
 
+# === AI Router Integration ===
+try:
+    from server.ai_router import router as ai_router
+    app.include_router(ai_router)
+    print('✅ AI Router mounted successfully')
+except ImportError as e:
+    print(f'⚠️ AI router error: {e}')
 
-class BotState:
-    def __init__(self):
-        self.mtf_running = False
-        self.warrior_running = False
-        self.logs = []
-    
-    def add_log(self, level, category, message):
-        log_entry = {'timestamp': datetime.now().isoformat(), 'level': level, 'category': category, 'message': message}
-        self.logs.append(log_entry)
-        self.logs = self.logs[-100:]
-        socketio.emit('log', log_entry)
+@app.on_event("startup")
+def _on_startup():
+    global ib_adapter, startup_error
+    print("?? Starting IBKR Dashboard API...")
+    try:
+        cfg = IBConfig()
+        ib_adapter = IBAdapter(cfg)
+        print("?? Connecting to IBKR...")
+        ib_adapter.connect()
+    except Exception as e:
+        startup_error = str(e)
+        print(f"?? Startup error: {e}")
+    print("? Startup complete")
 
+class OrderIn(BaseModel):
+    symbol: str
+    side: str
+    qty: int
+    orderType: Optional[str] = "LMT"
+    limitPrice: Optional[float] = None
+    stopPrice: Optional[float] = None
+    trailAmount: Optional[float] = None
+    outsideRth: bool = False  # Extended hours trading flag
 
-class IBKRManager:
-    def __init__(self):
-        self.connected = False
-        self.positions = []
-        self.orders = []
-        self.scanner_results = []
-        self.account_value = 0
-        self.buying_power = 0
-        self.client = None
-        self.wrapper = None
-        self.connection_thread = None
-    
-    def connect(self, host='127.0.0.1', port=7497, client_id=1):
-        """Actually connect to IBKR TWS"""
-        print('\n' + '='*60)
-        print('ðŸ”Œ STARTING IBKR CONNECTION')
-        print('='*60)
-        print(f'Host: {host}, Port: {port}, Client ID: {client_id}')
-        print(f'IBKR_AVAILABLE: {IBKR_AVAILABLE}')
-        
-        logger.info(f'=== STARTING IBKR CONNECTION ===')
-        logger.info(f'Host: {host}, Port: {port}, Client ID: {client_id}')
-        logger.info(f'IBKR_AVAILABLE: {IBKR_AVAILABLE}')
-        
-        try:
-            if not IBKR_AVAILABLE:
-                print('âŒ IBKR API not installed')
-                logger.error('IBKR API not installed')
-                bot_state.add_log('error', 'ibkr', 'IBKR API not available')
-                return False
-            
-            if EClient is None or EWrapper is None:
-                print('âŒ IBKR classes not imported')
-                logger.error('IBKR classes not imported')
-                bot_state.add_log('error', 'ibkr', 'IBKR classes not available')
-                return False
-            
-            print('Creating IBKR wrapper and client...')
-            logger.info('Creating IBKR wrapper...')
-            
-            class TradingWrapper(EWrapper):
-                def __init__(self):
-                    super().__init__()
-                    self.connected_event = threading.Event()
-                    self.positions_data = []
-                    self.orders_data = []
-                    self.account_data = {}
-                    self.scanner_data = []
-                    self.next_order_id = None
-                    print('  âœ“ TradingWrapper initialized')
-                
-                def connectAck(self):
-                    print('  âœ… IBKR connectAck received!')
-                    logger.info('âœ… IBKR connectAck received!')
-                    self.connected_event.set()
-                
-                def nextValidId(self, orderId):
-                    self.next_order_id = orderId
-                    print(f'  âœ… Next valid order ID: {orderId}')
-                    logger.info(f'âœ… Next valid order ID: {orderId}')
-                
-                def accountSummary(self, reqId, account, tag, value, currency):
-                    self.account_data[tag] = {
-                        'value': float(value) if value.replace('.','').replace('-','').isdigit() else value, 
-                        'currency': currency
-                    }
-                    print(f'  âœ“ Account {tag}: {value} {currency}')
-                    logger.info(f'Account data: {tag} = {value} {currency}')
-                
-                def position(self, account, contract, position, avgCost):
-                    pos = {
-                        'symbol': contract.symbol,
-                        'position': position,
-                        'avg_cost': avgCost,
-                        'market_value': position * avgCost,
-                        'unrealized_pnl': 0
-                    }
-                    self.positions_data.append(pos)
-                    print(f'  âœ“ Position: {contract.symbol} {position} @ ${avgCost}')
-                    logger.info(f'Position: {contract.symbol} {position} @ {avgCost}')
-                
-                def positionEnd(self):
-                    print(f'  âœ“ Positions loaded: {len(self.positions_data)}')
-                    logger.info('Position data complete')
-                
-                def openOrder(self, orderId, contract, order, orderState):
-                    ord = {
-                        'symbol': contract.symbol,
-                        'action': order.action,
-                        'quantity': order.totalQuantity,
-                        'price': order.lmtPrice if order.lmtPrice else order.auxPrice,
-                        'status': orderState.status
-                    }
-                    self.orders_data.append(ord)
-                    print(f'  âœ“ Order callback: ID={orderId} {contract.symbol} {order.action} {order.totalQuantity} - Status: {orderState.status}')
-                    logger.info(f'Order: {contract.symbol} {order.action} {order.totalQuantity} - {orderState.status}')
-                
-                def orderStatus(self, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice):
-                    print(f'  ðŸ“‹ Order {orderId} status: {status} (filled: {filled}, remaining: {remaining})')
-                    if whyHeld:
-                        print(f'     Why held: {whyHeld}')
-                    logger.info(f'Order {orderId} status: {status}')
-                
-                def scannerData(self, reqId, rank, contractDetails, distance, benchmark, projection, legsStr):
-                    contract = contractDetails.contract
-                    scanner_item = {
-                        'rank': rank,
-                        'symbol': contract.symbol,
-                        'price': 0,
-                        'change': 0,
-                        'volume': '0'
-                    }
-                    self.scanner_data.append(scanner_item)
-                    logger.info(f'Scanner: #{rank} {contract.symbol}')
-                
-                def scannerDataEnd(self, reqId):
-                    print(f'  âœ“ Scanner complete: {len(self.scanner_data)} results')
-                    logger.info('Scanner data complete')
-                
-                def error(self, reqId, errorCode, errorString, advancedOrderRejectJson=''):
-                    if errorCode in [2104, 2106, 2158, 2119]:
-                        print(f'  â„¹ IBKR [{errorCode}]: {errorString}')
-                        logger.info(f'IBKR Info [{errorCode}]: {errorString}')
-                    else:
-                        print(f'  âŒ IBKR Error [{errorCode}]: {errorString}')
-                        logger.error(f'IBKR Error [{errorCode}]: {errorString}')
-            
-            class TradingClient(EClient):
-                def __init__(self, wrapper):
-                    super().__init__(wrapper)
-                    print('  âœ“ TradingClient initialized')
-            
-            self.wrapper = TradingWrapper()
-            self.client = TradingClient(self.wrapper)
-            
-            print(f'\nConnecting to TWS at {host}:{port}...')
-            self.client.connect(host, port, client_id)
-            print('Connection initiated, starting client thread...')
-            
-            def run_client():
-                print('  âœ“ Client thread started')
-                self.client.run()
-                print('  âœ“ Client thread ended')
-            
-            self.connection_thread = threading.Thread(target=run_client, daemon=True)
-            self.connection_thread.start()
-            
-            print('Waiting for connection acknowledgment (5 sec)...\n')
-            
-            if self.wrapper.connected_event.wait(timeout=5):
-                print('âœ… CONNECTION SUCCESSFUL!\n')
-                
-                # Wait for nextValidId to arrive (usually comes right after connectAck)
-                print('Waiting for order ID from TWS...')
-                for i in range(10):  # Wait up to 1 second
-                    if self.wrapper.next_order_id is not None:
-                        print(f'âœ… Got order ID: {self.wrapper.next_order_id}')
-                        break
-                    time.sleep(0.1)
-                
-                if self.wrapper.next_order_id is None:
-                    print('âš  No order ID received yet (will use timestamp if needed)')
-                
-                self.connected = True
-                bot_state.add_log('success', 'ibkr', f'Connected to IBKR TWS on {host}:{port}')
-                
-                print('\nRequesting account data...')
-                self.client.reqAccountSummary(9001, "All", "NetLiquidation,TotalCashValue,BuyingPower")
-                
-                print('Requesting positions...')
-                self.client.reqPositions()
-                
-                print('Requesting open orders...')
-                self.client.reqOpenOrders()
-                
-                print('Waiting for data (2 sec)...\n')
-                time.sleep(2)
-                
-                self.positions = self.wrapper.positions_data
-                self.orders = self.wrapper.orders_data
-                
-                if 'NetLiquidation' in self.wrapper.account_data:
-                    self.account_value = self.wrapper.account_data['NetLiquidation']['value']
-                    print(f'ðŸ’° Account Value: ${self.account_value:,.2f}')
-                
-                if 'BuyingPower' in self.wrapper.account_data:
-                    self.buying_power = self.wrapper.account_data['BuyingPower']['value']
-                    print(f'ðŸ’µ Buying Power: ${self.buying_power:,.2f}')
-                
-                print(f'ðŸ“Š Positions: {len(self.positions)}')
-                print(f'ðŸ“ Orders: {len(self.orders)}')
-                print('\n' + '='*60)
-                print('âœ… IBKR CONNECTION COMPLETE')
-                print('='*60 + '\n')
-                
-                return True
-            else:
-                print('\nâŒ CONNECTION TIMEOUT')
-                print('Check: 1) TWS running, 2) API enabled, 3) Port correct')
-                print('='*60 + '\n')
-                self.connected = False
-                bot_state.add_log('error', 'ibkr', 'Connection timeout')
-                return False
-                
-        except Exception as e:
-            print(f'\nâŒ CONNECTION FAILED: {e}')
-            print('='*60 + '\n')
-            logger.error(f'âŒ IBKR CONNECTION FAILED: {e}', exc_info=True)
-            self.connected = False
-            bot_state.add_log('error', 'ibkr', f'Connection failed: {e}')
-            return False
-    
-    def disconnect(self):
-        """Disconnect from IBKR TWS"""
-        try:
-            if self.client:
-                self.client.disconnect()
-            self.connected = False
-            self.positions = []
-            self.orders = []
-            self.account_value = 0
-            self.buying_power = 0
-            bot_state.add_log('info', 'ibkr', 'Disconnected from IBKR TWS')
-            logger.info('Disconnected from IBKR TWS')
-            return True
-        except Exception as e:
-            logger.error(f'Disconnect error: {e}')
-            return False
-    
-    def run_scanner(self, scanner_type='TOP_PERC_GAIN'):
-        """Run IBKR market scanner"""
-        try:
-            if not self.connected or not self.client:
-                logger.error('Not connected to IBKR')
-                return []
-            
-            from ibapi.scanner import ScannerSubscription
-            
-            # Clear previous results
-            self.wrapper.scanner_data = []
-            
-            # Create scanner subscription
-            scan_sub = ScannerSubscription()
-            scan_sub.instrument = "STK"
-            scan_sub.locationCode = "STK.US"
-            scan_sub.scanCode = scanner_type  # TOP_PERC_GAIN, MOST_ACTIVE, HOT_BY_VOLUME
-            scan_sub.abovePrice = 1.0  # Min price $1
-            scan_sub.belowPrice = 50.0  # Max price $50
-            scan_sub.aboveVolume = 500000  # Min volume 500K
-            
-            # Request scanner data
-            logger.info(f'Running scanner: {scanner_type}')
-            self.client.reqScannerSubscription(7001, scan_sub, [], [])
-            
-            # Wait for results
-            time.sleep(3)
-            
-            # Cancel scanner subscription
-            self.client.cancelScannerSubscription(7001)
-            
-            # Get results
-            results = []
-            for item in self.wrapper.scanner_data[:10]:  # Top 10
-                results.append({
-                    'symbol': item['symbol'],
-                    'price': item.get('price', 0),
-                    'change': item.get('change', 0),
-                    'volume': item.get('volume', '0')
-                })
-            
-            self.scanner_results = results
-            logger.info(f'Scanner returned {len(results)} results')
-            return results
-            
-        except Exception as e:
-            logger.error(f'Scanner error: {e}')
-            return []
-    
-    def is_connected(self):
-        """Check if still connected to IBKR"""
-        if not self.connected:
-            return False
-        
-        # Check if client is still alive
-        if not self.client or not self.client.isConnected():
-            print('âš  IBKR client disconnected, setting connected=False')
-            self.connected = False
-            return False
-        
-        return True
+def require_api_key(x_api_key: str = Header(None)):
+    expected = os.getenv("LOCAL_API_KEY")
+    if not expected:
+        raise HTTPException(500, "LOCAL_API_KEY not configured")
+    if x_api_key != expected:
+        raise HTTPException(401, "Invalid or missing X-API-Key")
+    return True
 
-
-watchlist_manager = WatchlistManager()
-training_manager = TrainingManager()
-backtest_manager = BacktestManager()
-bot_state = BotState()
-ibkr_manager = IBKRManager()
-
-
-@app.route('/api/health')
+@app.get("/health")
 def health():
-    return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
-
-@app.route('/api/status')
-def get_status():
-    return jsonify({'mtf_running': bot_state.mtf_running, 'warrior_running': bot_state.warrior_running, 'ibkr_connected': ibkr_manager.is_connected(), 'timestamp': datetime.now().isoformat()})
-
-
-@app.route('/api/logs')
-def get_logs():
-    return jsonify(bot_state.logs)
-
-
-@app.route('/api/watchlists')
-def get_watchlists():
-    return jsonify(list(watchlist_manager.watchlists.values()))
-
-
-@app.route('/api/watchlist/<name>/add', methods=['POST'])
-def add_to_watchlist(name):
-    data = request.json
-    symbol = data.get('symbol')
-    if watchlist_manager.add_symbol(name, symbol):
-        bot_state.add_log('info', 'watchlist', f'Added {symbol} to {name}')
-        return jsonify({'success': True})
-    return jsonify({'success': False}), 400
-
-
-@app.route('/api/watchlist/<name>/remove', methods=['POST'])
-def remove_from_watchlist(name):
-    data = request.json
-    symbol = data.get('symbol')
-    if watchlist_manager.remove_symbol(name, symbol):
-        bot_state.add_log('info', 'watchlist', f'Removed {symbol} from {name}')
-        return jsonify({'success': True})
-    return jsonify({'success': False}), 400
-
-
-@app.route('/api/train/start', methods=['POST'])
-def start_training():
-    try:
-        data = request.json
-        symbols = data.get('symbols', [])
-        config = data.get('config', {'period': '2y', 'interval': '1h', 'epochs': 50, 'batch_size': 32})
-        if not symbols:
-            return jsonify({'success': False, 'message': 'No symbols provided'}), 400
-        training_id = f"train_{int(time.time())}"
-        training_manager.start_training(training_id, symbols, config)
-        
-        def train_in_background():
-            try:
-                for i, symbol in enumerate(symbols):
-                    progress = int((i / len(symbols)) * 100)
-                    training_manager.update_progress(training_id, progress, 'training', symbol, f'Training {symbol}...')
-                    time.sleep(3)
-                results = {symbol: {'accuracy': 62.5, 'val_accuracy': 58.3, 'epochs_completed': config['epochs'], 'model_path': f"models/{symbol}.keras"} for symbol in symbols}
-                training_manager.complete_training(training_id, results)
-            except Exception as e:
-                training_manager.fail_training(training_id, e)
-        
-        threading.Thread(target=train_in_background, daemon=True).start()
-        return jsonify({'success': True, 'training_id': training_id, 'message': f'Training started for {len(symbols)} symbols'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/train/status')
-def get_training_status():
-    return jsonify(training_manager.get_all_trainings())
-
-
-@app.route('/api/train/stop/<training_id>', methods=['POST'])
-def stop_training(training_id):
-    return jsonify({'success': True, 'message': 'Training stopped'})
-
-
-@app.route('/api/backtest/status')
-def get_backtest_status():
-    return jsonify(backtest_manager.get_all_backtests())
-
-
-@app.route('/api/backtest/results')
-def get_backtest_results():
-    backtest_id = request.args.get('backtest_id')
-    symbol = request.args.get('symbol')
-    results = backtest_manager.get_results(backtest_id, symbol)
-    return jsonify({'results': results})
-
-
-@app.route('/api/trade/execute', methods=['POST'])
-def execute_trade():
-    """Execute a trade via IBKR"""
-    try:
-        data = request.json
-        symbol = data.get('symbol')
-        action = data.get('action', 'BUY')
-        quantity = data.get('quantity')
-        order_type = data.get('order_type', 'MKT')
-        limit_price = data.get('limit_price')
-        
-        print('\n' + '='*60)
-        print(f'ðŸ“ˆ TRADE EXECUTION REQUEST')
-        print('='*60)
-        print(f'Symbol: {symbol}')
-        print(f'Action: {action}')
-        print(f'Quantity: {quantity}')
-        print(f'Order Type: {order_type}')
-        
-        logger.info(f'Trade request: {action} {quantity} {symbol}')
-        
-        if not ibkr_manager.is_connected():
-            print('âŒ Not connected to IBKR')
-            print('='*60 + '\n')
-            logger.error('Trade failed: Not connected to IBKR')
-            return jsonify({'success': False, 'message': 'Not connected to IBKR'}), 400
-        
-        if not symbol or not quantity:
-            print('âŒ Missing symbol or quantity')
-            print('='*60 + '\n')
-            logger.error('Trade failed: Missing symbol or quantity')
-            return jsonify({'success': False, 'message': 'Symbol and quantity required'}), 400
-        
-        # Check if client is actually initialized
-        if not ibkr_manager.client:
-            print('âŒ IBKR client is None - connection not real!')
-            print('='*60 + '\n')
-            logger.error('Trade failed: IBKR client is None')
-            return jsonify({'success': False, 'message': 'IBKR client not initialized. Reconnect to IBKR.'}), 400
-        
-        if not ibkr_manager.wrapper:
-            print('âŒ IBKR wrapper is None - connection not real!')
-            print('='*60 + '\n')
-            logger.error('Trade failed: IBKR wrapper is None')
-            return jsonify({'success': False, 'message': 'IBKR wrapper not initialized. Reconnect to IBKR.'}), 400
-        
-        print('âœ“ IBKR client and wrapper initialized')
-        
-        # Verify client is actually connected
-        if not ibkr_manager.client.isConnected():
-            print('âŒ Client shows as disconnected!')
-            print('   Try disconnecting and reconnecting in the dashboard')
-            print('='*60 + '\n')
-            return jsonify({'success': False, 'message': 'IBKR client disconnected. Please reconnect.'}), 400
-        
-        print('âœ“ Client connection verified')
-        print('âœ“ Creating order...')
-        
-        # Place real order via IBKR
+@app.get("/api/status")
+def status():
+    out = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "ib_connection": False,
+        "ai_connection": AI_AVAILABLE,
+        "auto_trader": AUTO_TRADER_AVAILABLE,
+        "analytics": ANALYTICS_AVAILABLE,
+        "backtest": BACKTEST_AVAILABLE,
+        "current_client_id": None,
+        "state": "UNKNOWN",
+        "api_key_configured": bool(os.getenv("LOCAL_API_KEY")),
+        "mode": "simulation"
+    }
+    if ib_adapter:
         try:
-            from ibapi.contract import Contract
-            from ibapi.order import Order
-            
-            # Create contract
-            contract = Contract()
-            contract.symbol = symbol.upper()
-            contract.secType = 'STK'
-            contract.exchange = 'SMART'
-            contract.currency = 'USD'
-            
-            print(f'âœ“ Contract: {contract.symbol} {contract.secType} {contract.exchange}')
-            
-            # Create order with only essential attributes
-            order = Order()
-            order.action = action.upper()
-            order.totalQuantity = int(quantity)
-            order.orderType = order_type
-            order.transmit = True  # Execute immediately
-            
-            # Clear any default attributes that might cause issues
-            order.eTradeOnly = False
-            order.firmQuoteOnly = False
-            
-            if order_type == 'LMT' and limit_price:
-                order.lmtPrice = float(limit_price)
-            
-            print(f'âœ“ Order: {order.action} {order.totalQuantity} @ {order.orderType}')
-            
-            # Get next order ID from wrapper
-            if hasattr(ibkr_manager.wrapper, 'next_order_id') and ibkr_manager.wrapper.next_order_id:
-                order_id = ibkr_manager.wrapper.next_order_id
-                ibkr_manager.wrapper.next_order_id += 1
-                print(f'âœ“ Using order ID from TWS: {order_id}')
-            else:
-                order_id = int(time.time())
-                print(f'âš  No order ID from TWS, using timestamp: {order_id}')
-            
-            print(f'\nðŸš€ Sending order to IBKR...')
-            
-            # Transmit order immediately (bypass confirmations)
-            order.transmit = True
-            
-            ibkr_manager.client.placeOrder(order_id, contract, order)
-            print(f'âœ… placeOrder() called successfully!')
-            print(f'   Order ID: {order_id}')
-            print(f'   {action} {quantity} {symbol} @ {order_type}')
-            print(f'   Transmit: True (will execute immediately)')
-            print('='*60 + '\n')
-            
-            bot_state.add_log('success', 'trade', 
-                f'âœ… Order sent to IBKR: {action} {quantity} {symbol} (ID: {order_id})')
-            
-            # Wait for order confirmation
-            time.sleep(1)
-            
-            return jsonify({
-                'success': True,
-                'order_id': order_id,
-                'message': f'Order sent to IBKR: {action} {quantity} shares of {symbol}',
-                'details': {
-                    'symbol': symbol,
-                    'action': action,
-                    'quantity': quantity,
-                    'order_type': order_type,
-                    'order_id': order_id
-                }
+            status_data = ib_adapter.get_status()
+            out.update({
+                "ib_connection": ib_adapter.is_connected(),
+                "current_client_id": status_data.get("current_client_id"),
+                "state": status_data.get("state"),
+                "host": status_data.get("host"),
+                "port": status_data.get("port"),
+                "mode": "live" if ib_adapter.is_connected() else "simulation"
             })
-                
         except Exception as e:
-            print(f'âŒ Order placement FAILED: {e}')
-            print('='*60 + '\n')
-            logger.error(f'Order placement error: {e}', exc_info=True)
-            return jsonify({'success': False, 'message': f'Order failed: {str(e)}'}), 500
-        
-    except Exception as e:
-        print(f'âŒ Trade execution FAILED: {e}')
-        print('='*60 + '\n')
-        logger.error(f'Trade execution error: {e}', exc_info=True)
-        return jsonify({'success': False, 'message': str(e)}), 500
+            out["error"] = str(e)
+    else:
+        out["state"] = "NOT_INITIALIZED"
+        out["error"] = startup_error or "Adapter not created"
+    return out
 
+@app.get("/api/positions")
+def get_positions():
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    return {"positions": ib_adapter.get_positions(), "timestamp": datetime.utcnow().isoformat()}
 
-@app.route('/api/ibkr/test', methods=['GET'])
-def test_ibkr():
-    """Test IBKR connection status"""
-    return jsonify({
-        'ibkr_available': IBKR_AVAILABLE,
-        'connected': ibkr_manager.connected,
-        'client_exists': ibkr_manager.client is not None,
-        'wrapper_exists': ibkr_manager.wrapper is not None
-    })
+@app.get("/api/account")
+def get_account():
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    return {"account": ib_adapter.get_account_summary(), "timestamp": datetime.utcnow().isoformat()}
 
-
-@app.route('/api/ibkr/connect', methods=['POST'])
-def ibkr_connect():
-    """Connect to IBKR TWS"""
+@app.get("/api/account/live")
+def get_live_account():
+    if not ib_adapter or not ib_adapter.is_connected():
+        raise HTTPException(503, "IBKR not connected")
     try:
-        data = request.json or {}
-        port = data.get('port', 7497)
-        host = data.get('host', '127.0.0.1')
-        client_id = data.get('client_id', 1)
+        account = ib_adapter.get_account_summary()
+        positions = ib_adapter.get_positions()
+        net_liquidation = 0
+        total_cash = 0
+        for tag, value in account.items():
+            if tag == "NetLiquidation":
+                net_liquidation = float(value.get("value", 0))
+            if tag == "TotalCashValue":
+                total_cash = float(value.get("value", 0))
+        position_value = sum(p.get('position', 0) * p.get('avgCost', 0) for p in positions)
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "net_liquidation": net_liquidation,
+            "total_cash": total_cash,
+            "position_value": position_value,
+            "positions": positions,
+            "account_details": account
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Failed to get account: {e}")
+
+@app.post("/api/order/preview")
+def order_preview(body: OrderIn, _=Depends(require_api_key)):
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    return {"status": "preview_ready", "order": body.dict(), "timestamp": datetime.utcnow().isoformat()}
+
+@app.post("/api/order/place")
+def order_place(body: OrderIn, _=Depends(require_api_key)):
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    if not ib_adapter.is_connected():
+        raise HTTPException(503, "IBKR not connected")
+    try:
+        action = "BUY" if body.side.upper() == "BUY" else "SELL"
         
-        logger.info(f'Attempting IBKR connection to {host}:{port}...')
-        
-        success = ibkr_manager.connect(host, port, client_id)
-        
-        if success:
-            # Verify connection is real
-            is_real = ibkr_manager.client is not None and ibkr_manager.wrapper is not None
-            
-            return jsonify({
-                'success': True,
-                'message': f'Connected to IBKR TWS on port {port}',
-                'real_connection': is_real,
-                'account_value': ibkr_manager.account_value,
-                'buying_power': ibkr_manager.buying_power,
-                'positions_count': len(ibkr_manager.positions),
-                'orders_count': len(ibkr_manager.orders)
-            })
+        # Route to appropriate order method
+        if body.orderType == "MKT":
+            result = ib_adapter.place_market_order_sync(body.symbol, body.qty, action)
+        elif body.orderType == "LMT":
+            if not body.limitPrice:
+                raise HTTPException(400, "Limit price required")
+            result = ib_adapter.place_limit_order_sync(body.symbol, body.qty, body.limitPrice, action)
+        elif body.orderType == "STP":
+            if not body.stopPrice:
+                raise HTTPException(400, "Stop price required")
+            result = ib_adapter.place_stop_order_sync(body.symbol, body.qty, body.stopPrice, action)
+        elif body.orderType == "STP LMT":
+            if not body.stopPrice or not body.limitPrice:
+                raise HTTPException(400, "Stop and limit prices required")
+            result = ib_adapter.place_stop_limit_order_sync(body.symbol, body.qty, body.stopPrice, body.limitPrice, action)
+        elif body.orderType == "TRAIL":
+            if not body.trailAmount:
+                raise HTTPException(400, "Trail amount required")
+            result = ib_adapter.place_trailing_stop_sync(body.symbol, body.qty, body.trailAmount, action)
         else:
-            return jsonify({
-                'success': False,
-                'message': 'Failed to connect to IBKR. Check TWS is running and API is enabled.',
-                'real_connection': False
-            }), 500
+            raise HTTPException(400, f"Unsupported order type: {body.orderType}")
             
+        return result
     except Exception as e:
-        logger.error(f'IBKR connection error: {e}', exc_info=True)
-        return jsonify({'success': False, 'message': str(e), 'real_connection': False}), 500
+        raise HTTPException(500, f"Order failed: {e}")
 
 
-@app.route('/api/ibkr/disconnect', methods=['POST'])
-def ibkr_disconnect():
+
+
+@app.post("/api/order/cancel")
+def cancel_order(body: dict, _=Depends(require_api_key)):
+    """Cancel an order by order ID"""
+    if not ib_adapter:
+        return {"success": False, "error": "IB adapter not initialized"}
+    
     try:
-        ibkr_manager.disconnect()
-        return jsonify({'success': True, 'message': 'Disconnected from IBKR'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/ibkr/account')
-def get_ibkr_account():
-    """Get account information"""
-    try:
-        if not ibkr_manager.is_connected():
-            return jsonify({'account_value': 0, 'buying_power': 0, 'connected': False})
-        
-        return jsonify({
-            'account_value': ibkr_manager.account_value,
-            'buying_power': ibkr_manager.buying_power,
-            'connected': True
-        })
-    except Exception as e:
-        logger.error(f'Error getting account: {e}')
-        return jsonify({'account_value': 0, 'buying_power': 0, 'connected': False})
-
-
-@app.route('/api/ibkr/positions')
-def get_ibkr_positions():
-    try:
-        if not ibkr_manager.is_connected():
-            return jsonify([])
-        return jsonify(ibkr_manager.positions)
-    except Exception as e:
-        return jsonify([])
-
-
-@app.route('/api/ibkr/orders')
-def get_ibkr_orders():
-    try:
-        if not ibkr_manager.is_connected():
-            return jsonify([])
-        return jsonify(ibkr_manager.orders)
-    except Exception as e:
-        return jsonify([])
-
-
-@app.route('/api/ibkr/scanner', methods=['GET'])
-def run_ibkr_scanner():
-    try:
-        if not ibkr_manager.is_connected():
-            return jsonify({'success': False, 'message': 'Not connected to IBKR', 'results': []}), 400
-        
-        # Get scanner type from query params
-        scanner_type = request.args.get('type', 'TOP_PERC_GAIN')
-        
-        # Run real IBKR scanner
-        results = ibkr_manager.run_scanner(scanner_type)
-        
-        # If no results from real scanner, use mock data
-        if not results and IBKR_AVAILABLE:
-            logger.warning('Scanner returned no results, using mock data')
-            results = [
-                {'symbol': 'SMCI', 'price': 45.20, 'change': 12.5, 'volume': '15.2M'},
-                {'symbol': 'PLUG', 'price': 8.45, 'change': 9.8, 'volume': '22.1M'},
-                {'symbol': 'RIOT', 'price': 12.30, 'change': 8.7, 'volume': '18.5M'},
-                {'symbol': 'LCID', 'price': 3.85, 'change': 7.9, 'volume': '45.3M'},
-                {'symbol': 'RIVN', 'price': 11.20, 'change': 7.2, 'volume': '28.9M'},
-                {'symbol': 'NIO', 'price': 5.65, 'change': 6.8, 'volume': '35.7M'},
-                {'symbol': 'SOFI', 'price': 9.15, 'change': 6.5, 'volume': '31.2M'},
-                {'symbol': 'PLTR', 'price': 28.90, 'change': 5.9, 'volume': '42.8M'},
-                {'symbol': 'MARA', 'price': 18.75, 'change': 5.4, 'volume': '12.4M'},
-                {'symbol': 'AMC', 'price': 4.25, 'change': 4.8, 'volume': '38.9M'}
-            ]
-        
-        bot_state.add_log('info', 'scanner', f'Scanner found {len(results)} stocks')
-        return jsonify({'success': True, 'results': results})
-    except Exception as e:
-        logger.error(f'Scanner error: {e}')
-        return jsonify({'success': False, 'message': str(e), 'results': []}), 500
-
-
-@app.route('/api/watchlist/<name>/add-manual', methods=['POST'])
-def add_symbol_manual(name):
-    """Manually add a symbol to watchlist by typing it"""
-    try:
-        data = request.json
-        symbol = data.get('symbol', '').upper().strip()
-        
-        if not symbol:
-            return jsonify({'success': False, 'message': 'Symbol required'}), 400
-        
-        if watchlist_manager.add_symbol(name, symbol):
-            bot_state.add_log('info', 'watchlist', f'Manually added {symbol} to {name}')
-            return jsonify({'success': True, 'message': f'Added {symbol} to {name}'})
-        
-        return jsonify({'success': False, 'message': 'Symbol already in watchlist or watchlist not found'}), 400
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/mtf/start', methods=['POST'])
-def start_mtf_bot():
-    try:
-        bot_state.mtf_running = True
-        bot_state.add_log('success', 'mtf', 'MTF bot started')
-        return jsonify({'success': True, 'message': 'MTF bot started'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/mtf/stop', methods=['POST'])
-def stop_mtf_bot():
-    try:
-        bot_state.mtf_running = False
-        bot_state.add_log('info', 'mtf', 'MTF bot stopped')
-        return jsonify({'success': True, 'message': 'MTF bot stopped'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/warrior/start', methods=['POST'])
-def start_warrior_bot():
-    try:
-        bot_state.warrior_running = True
-        bot_state.add_log('success', 'warrior', 'Warrior bot started')
-        return jsonify({'success': True, 'message': 'Warrior bot started'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/warrior/stop', methods=['POST'])
-def stop_warrior_bot():
-    try:
-        bot_state.warrior_running = False
-        bot_state.add_log('info', 'warrior', 'Warrior bot stopped')
-        return jsonify({'success': True, 'message': 'Warrior bot stopped'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/trade/cancel', methods=['POST'])
-def cancel_trade():
-    try:
-        data = request.json or {}
-        order_id = int(data.get('order_id', 0))
+        order_id = body.get("orderId")
         if not order_id:
-            return jsonify({'success': False, 'message': 'order_id required'}), 400
-        if not ibkr_manager.is_connected() or not ibkr_manager.client:
-            return jsonify({'success': False, 'message': 'Not connected to IBKR'}), 400
-        ibkr_manager.client.cancelOrder(order_id)
-        return jsonify({'success': True, 'message': f'Cancel requested for order {order_id}'})
+            return {"success": False, "error": "Missing orderId"}
+        
+        # Try to cancel the order
+        result = ib_adapter.cancel_order(int(order_id))
+        
+        return result
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-
-@socketio.on('connect')
-def handle_connect():
-    logger.info('Client connected')
-    emit('connected', {'message': 'Connected to dashboard API'})
-
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    logger.info('Client disconnected')
-
-
-if __name__ == '__main__':
-    print('=' * 60)
-    print('AI TRADING BOT DASHBOARD API')
-    print('=' * 60)
-    print(f'Watchlists: {len(watchlist_manager.watchlists)}')
-    print(f'IBKR Available: {IBKR_AVAILABLE}')
-    print('=' * 60)
-    print('Server: http://localhost:5000')
-    print('Dashboard: http://localhost:3000')
-    print('Press Ctrl+C to stop')
-    print('=' * 60)
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
-
-# -------- cancel endpoint --------
-@app.route("/api/trade/cancel", methods=["POST"])
-def cancel_trade():
+        return {
+            "success": False,
+            "error": str(e)
+        }
+@app.get("/api/price/{symbol}")
+def get_price(symbol: str):
+    from ib_insync import Stock
+    from ib_insync import Stock
+    """Get current price for a symbol"""
     try:
-        data = request.json or {}
-        order_id = int(data.get("order_id", 0))
-        if not order_id:
-            return jsonify({"success": False, "message": "order_id required"}), 400
-        if not ibkr_manager.is_connected():
-            return jsonify({"success": False, "message": "Not connected to IBKR"}), 400
-        if not ibkr_manager.client:
-            return jsonify({"success": False, "message": "IBKR client not initialized"}), 400
-
-        ibkr_manager.client.cancelOrder(order_id)
-        bot_state.add_log("info", "trade", f"Cancel requested for order {order_id}")
-        return jsonify({"success": True, "order_id": order_id, "message": f"Cancel requested for order {order_id}"})
+        symbol = symbol.upper()
+        contract = Stock(symbol, 'SMART', 'USD')
+        ticker = ib_adapter.ib.reqMktData(contract, '', False, False)
+        ib_adapter.ib.sleep(1.5)
+        
+        # Get price - try multiple sources
+        price = ticker.last
+        if not price or price <= 0:
+            price = ticker.marketPrice()
+        if not price or price <= 0:
+            price = (ticker.bid + ticker.ask) / 2 if ticker.bid and ticker.ask else None
+        
+        if price and price > 0:
+            return {
+                "symbol": symbol,
+                "price": round(price, 4),
+                "bid": round(ticker.bid, 4) if ticker.bid else round(price - 0.01, 4),
+                "ask": round(ticker.ask, 4) if ticker.ask else round(price + 0.01, 4),
+                "last": round(price, 4)
+            }
+        
+        return {"error": "No price data available", "symbol": symbol, "price": 0}
     except Exception as e:
-        logger.error("cancel_trade error", exc_info=True)
-        return jsonify({"success": False, "message": str(e)}), 500
+        return {"error": str(e), "symbol": symbol, "price": 0}
+def get_price(symbol: str):
+    """Get current price for a symbol"""
+    if not ib_adapter:
+        return {"error": "IB adapter not initialized", "price": 0}
+    
+    try:
+        symbol = symbol.upper()
+        # Try to get price from IB
+        contract = Stock(symbol, 'SMART', 'USD')
+        print(f"DEBUG: Requesting contract for {symbol}")
+        ticker = ib_adapter.ib.reqMktData(contract, '', False, False)
+        print(f"DEBUG: Ticker object: {ticker}")
+        print(f"DEBUG: Contract details: {ticker.contract}")
+        ib_adapter.ib.sleep(1)  # Wait for data
+        
+        price = ticker.marketPrice()
+        print(f"DEBUG {symbol}: bid={ticker.bid}, ask={ticker.ask}, last={ticker.last}, close={ticker.close}, marketPrice={price}")
+        print(f"DEBUG: Full ticker dump: {ticker}")
+        print(f"DEBUG {symbol}: bid={ticker.bid}, ask={ticker.ask}, last={ticker.last}, marketPrice={price}")
+        if price and price > 0:
+            print(f"PRICE API returning for {symbol}: price={price}, bid={ticker.bid}, ask={ticker.ask}")
+            return {
+                "symbol": symbol,
+                "price": price,
+                "bid": ticker.bid if ticker.bid else price - 0.01,
+                "ask": ticker.ask if ticker.ask else price + 0.01,
+                "last": price
+            }
+        else:
+            # Fallback to a simulated price
+            import random
+            base_price = 100.0
+            return {
+                "symbol": symbol,
+                "price": base_price,
+                "bid": base_price - 0.01,
+                "ask": base_price + 0.01,
+                "last": base_price
+            }
+    except Exception as e:
+        # Return simulated price on error
+        import random
+        base_price = 100.0 + random.uniform(-5, 5)
+        return {
+            "symbol": symbol,
+            "price": base_price,
+            "bid": base_price - 0.01,
+            "ask": base_price + 0.01,
+            "last": base_price,
+            "note": f"Simulated price (error: {str(e)})"
+        }
+@app.get("/api/orders")
+def get_orders():
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    return {"orders": ib_adapter.get_open_orders(), "timestamp": datetime.utcnow().isoformat()}
+
+@app.post("/api/ai/predict")
+async def ai_predict(data: dict):
+    if not AI_AVAILABLE:
+        raise HTTPException(503, "AI predictor not available")
+    symbol = data.get("symbol")
+    if not symbol:
+        raise HTTPException(400, "Symbol required")
+    try:
+        predictor = get_predictor()
+        return predictor.predict(symbol)
+    except Exception as e:
+        return {"symbol": symbol, "error": str(e), "prob_up": 0.5, "confidence": 0.0}
+
+@app.post("/api/model/train")
+def train_model(data: dict, _=Depends(require_api_key)):
+    if not AI_AVAILABLE:
+        raise HTTPException(503, "AI not available")
+    symbol = data.get("symbol")
+    period = data.get("period", "2y")
+    if not symbol:
+        raise HTTPException(400, "Symbol required")
+    try:
+        predictor = get_predictor()
+        accuracy = predictor.train(symbol, period)
+        return {"success": True, "symbol": symbol, "period": period, "accuracy": accuracy, "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/backtest/run")
+def run_backtest(data: dict, _=Depends(require_api_key)):
+    if not AI_AVAILABLE or not BACKTEST_AVAILABLE:
+        raise HTTPException(503, "AI or Backtester not available")
+    symbol = data.get("symbol")
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    initial_capital = data.get("initial_capital", 10000.0)
+    if not all([symbol, start_date, end_date]):
+        raise HTTPException(400, "symbol, start_date, end_date required")
+    try:
+        predictor = get_predictor()
+        backtester = create_backtester(initial_capital)
+        results = backtester.backtest(symbol, predictor, start_date, end_date)
+        return results
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/auto-trade/config")
+def get_auto_config():
+    if not AUTO_TRADER_AVAILABLE:
+        raise HTTPException(503, "Auto-trader not available")
+    config = TradingConfig()
+    return {"enabled": config.enabled, "min_confidence": config.min_confidence, "min_prob_up": config.min_prob_up, "max_position_size": config.max_position_size, "max_daily_trades": config.max_daily_trades, "max_daily_loss": config.max_daily_loss, "stop_loss_pct": config.stop_loss_pct}
+
+@app.post("/api/auto-trade/evaluate")
+def evaluate_auto_trade(data: dict, _=Depends(require_api_key)):
+    if not AUTO_TRADER_AVAILABLE or not AI_AVAILABLE:
+        raise HTTPException(503, "Auto-trader or AI not available")
+    symbol = data.get("symbol")
+    if not symbol:
+        raise HTTPException(400, "Symbol required")
+    if not ib_adapter or not ib_adapter.is_connected():
+        raise HTTPException(503, "IBKR not connected")
+    predictor = get_predictor()
+    trader = create_auto_trader(predictor, ib_adapter)
+    return trader.should_trade(symbol)
+
+@app.post("/api/auto-trade/execute")
+def execute_auto_trade(data: dict, _=Depends(require_api_key)):
+    if not AUTO_TRADER_AVAILABLE or not AI_AVAILABLE:
+        raise HTTPException(503, "Auto-trader or AI not available")
+    symbol = data.get("symbol")
+    if not symbol:
+        raise HTTPException(400, "Symbol required")
+    if not ib_adapter or not ib_adapter.is_connected():
+        raise HTTPException(503, "IBKR not connected")
+    predictor = get_predictor()
+    trader = create_auto_trader(predictor, ib_adapter)
+    return trader.execute_trade(symbol)
+
+@app.get("/api/auto-trade/logs")
+def get_trade_logs():
+    if not AUTO_TRADER_AVAILABLE:
+        raise HTTPException(503, "Auto-trader not available")
+    from ai.auto_trader import TradeLogger
+    logger = TradeLogger()
+    return {"trades": logger.get_all_trades(), "today": logger.get_today_trades()}
+
+@app.get("/api/analytics/summary")
+def get_analytics_summary():
+    if not ANALYTICS_AVAILABLE:
+        raise HTTPException(503, "Analytics not available")
+    analytics = create_analytics_engine()
+    return analytics.get_performance_summary()
+
+@app.get("/api/analytics/daily")
+def get_daily_analytics(days: int = 30):
+    if not ANALYTICS_AVAILABLE:
+        raise HTTPException(503, "Analytics not available")
+    analytics = create_analytics_engine()
+    return {"daily_pnl": analytics.get_daily_pnl(days)}
+
+@app.get("/api/analytics/symbols")
+def get_symbol_analytics():
+    if not ANALYTICS_AVAILABLE:
+        raise HTTPException(503, "Analytics not available")
+    analytics = create_analytics_engine()
+    return {"symbols": analytics.get_symbol_performance()}
+
+@app.get("/api/analytics/recent")
+def get_recent_analytics(limit: int = 10):
+    if not ANALYTICS_AVAILABLE:
+        raise HTTPException(503, "Analytics not available")
+    analytics = create_analytics_engine()
+    return {"recent_trades": analytics.get_recent_activity(limit)}
+
+@app.post("/api/tws/connect")
+def tws_connect():
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    try:
+        if ib_adapter.is_connected():
+            return {"success": True, "message": "Already connected", "status": ib_adapter.get_status()}
+        ib_adapter.connect()
+        return {"success": ib_adapter.is_connected(), "status": ib_adapter.get_status()}
+    except Exception as e:
+        raise HTTPException(500, f"Connection failed: {e}")
+
+@app.get("/api/tws/ping")
+def tws_ping():
+    if not ib_adapter:
+        return {"connected": False, "state": "NOT_INITIALIZED"}
+    return {"connected": ib_adapter.is_connected(), "state": ib_adapter.connection_state, "timestamp": datetime.utcnow().isoformat()}
+
+@app.get("/api/debug/ibkr")
+def debug_ibkr():
+    import socket
+    if not ib_adapter:
+        return {"error": "Adapter not initialized", "adapter_available": False}
+    host = ib_adapter.config.host
+    port = ib_adapter.config.port
+    socket_test = {"success": False, "error": None}
+    try:
+        with socket.create_connection((host, port), timeout=3):
+            socket_test["success"] = True
+    except Exception as e:
+        socket_test["error"] = str(e)
+    return {"timestamp": datetime.utcnow().isoformat(), "socket_test": {"host": host, "port": port, "success": socket_test["success"], "error": socket_test.get("error")}, "adapter_status": ib_adapter.get_status(), "adapter_available": True}
+
+@app.get("/ui/{file_path:path}")
+async def serve_ui(file_path: str):
+    from pathlib import Path
+    import os
+    
+    # Get the project root directory
+    project_root = Path(__file__).parent.parent.parent.parent
+    ui_path = project_root / "ui" / file_path
+    
+    if ui_path.exists() and ui_path.is_file():
+        return FileResponse(ui_path)
+    raise HTTPException(404, f"File not found: {file_path}")
+
+@app.get("/")
+def root():
+    return {"message": "IBKR Trading Bot API", "version": "4.0.0", "status": "/api/status"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@app.get("/api/timesales/{symbol}")
+def get_timesales(symbol: str, limit: int = 50, _=Depends(require_api_key)):
+    """Get Time & Sales for a symbol"""
+    if not ib_adapter or not ib_adapter.is_connected():
+        raise HTTPException(503, "Not connected")
+    try:
+        return ib_adapter.get_recent_trades(symbol, limit)
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.get("/api/level2/{symbol}")
+def get_level2(symbol: str, _=Depends(require_api_key)):
+    """Get Level 2 market depth data"""
+    if not ib_adapter:
+        raise HTTPException(503, "Adapter not available")
+    if not ib_adapter.is_connected():
+        raise HTTPException(503, "IBKR not connected")
+    try:
+        depth = ib_adapter.get_market_depth_sync(symbol)
+        return depth
+    except Exception as e:
+        raise HTTPException(500, f"Level 2 fetch failed: {e}")
+
+# === AI router mount ===
+try:
+    from server.ai_router import router as ai_router
+    app.include_router(ai_router)
+    print("? AI router mounted successfully")
+except Exception as e:
+    print("? AI router failed:", e)
+# === end AI router mount ===
+
+if __name__ == "__main__":
+    import uvicorn
+    print("?? Starting IBKR Trading Bot Dashboard API on http://127.0.0.1:9101")
+    print("?? UI Available at: http://127.0.0.1:9101/ui/trading.html")
+    uvicorn.run(app, host="127.0.0.1", port=9101, log_level="info")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# === AI router mount (added by collab patch) ===
+try:
+    from server.ai_router import router as ai_router
+    app.include_router(ai_router)
+except Exception as _e:
+    print("? AI router not mounted:", _e)
+else:
+    print("? AI router mounted successfully")
+# === end AI router mount ===
+
+
+
+
+

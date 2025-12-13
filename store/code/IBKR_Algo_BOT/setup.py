@@ -198,13 +198,13 @@ def main():
     
     # Step 3: Create requirements.txt
     requirements_file = PROJECT_ROOT / "requirements.txt"
-    print(f"\n📝 Creating requirements.txt...")
+    print("\n📝 Creating requirements.txt...")
     with open(requirements_file, 'w') as f:
         f.write(REQUIREMENTS)
     print(f"  ✓ Created {requirements_file}")
     
     # Step 4: Install dependencies
-    print(f"\n📚 Installing core dependencies...")
+    print("\n📚 Installing core dependencies...")
     run_command(
         f"{pip_path} install -r {requirements_file}",
         "Installing packages"
@@ -213,12 +213,12 @@ def main():
     # Step 5: Create configuration
     config_file = CONFIGS_DIR / "config.json"
     if not config_file.exists():
-        print(f"\n⚙️  Creating configuration file...")
+        print("\n⚙️  Creating configuration file...")
         with open(config_file, 'w') as f:
             json.dump(CONFIG_TEMPLATE, f, indent=2)
         print(f"  ✓ Created {config_file}")
     else:
-        print(f"\n✓ Configuration file already exists")
+        print("\n✓ Configuration file already exists")
     
     # Step 6: Create .env template
     env_file = PROJECT_ROOT / ".env.template"
@@ -239,11 +239,11 @@ DAILY_LOSS_LIMIT=2000
 # Logging
 LOG_LEVEL=INFO
 """
-    print(f"\n🔐 Creating .env template...")
+    print("\n🔐 Creating .env template...")
     with open(env_file, 'w') as f:
         f.write(env_content)
     print(f"  ✓ Created {env_file}")
-    print(f"  ⚠️  Copy .env.template to .env and add your API keys")
+    print("  ⚠️  Copy .env.template to .env and add your API keys")
     
     # Step 7: Create .gitignore
     gitignore_file = PROJECT_ROOT / ".gitignore"
@@ -285,7 +285,7 @@ Thumbs.db
 .env
 config.json
 """
-    print(f"\n📄 Creating .gitignore...")
+    print("\n📄 Creating .gitignore...")
     with open(gitignore_file, 'w') as f:
         f.write(gitignore_content)
     print(f"  ✓ Created {gitignore_file}")
@@ -307,7 +307,7 @@ source {VENV_DIR}/bin/activate
 python ibkr_trading_backend.py
 """
     
-    print(f"\n🚀 Creating startup script...")
+    print("\n🚀 Creating startup script...")
     with open(startup_script, 'w') as f:
         f.write(startup_content)
     
@@ -398,7 +398,7 @@ ai_trading_bot/
 See `setup_guide.md` for detailed setup instructions.
 """
     
-    print(f"\n📖 Creating README...")
+    print("\n📖 Creating README...")
     with open(readme_file, 'w') as f:
         f.write(readme_content)
     print(f"  ✓ Created {readme_file}")
@@ -416,30 +416,30 @@ See `setup_guide.md` for detailed setup instructions.
     print(f"  • Config directory: {CONFIGS_DIR}")
     
     print("\n📦 Files Created:")
-    print(f"  • requirements.txt")
-    print(f"  • .env.template")
-    print(f"  • .gitignore")
+    print("  • requirements.txt")
+    print("  • .env.template")
+    print("  • .gitignore")
     print(f"  • {startup_script.name}")
-    print(f"  • README.md")
-    print(f"  • configs/config.json")
+    print("  • README.md")
+    print("  • configs/config.json")
     
     print("\n🚀 Next Steps:")
-    print(f"\n1. Activate virtual environment:")
+    print("\n1. Activate virtual environment:")
     print(f"   {activate_cmd}")
-    print(f"\n2. Copy .env template and add API keys:")
-    print(f"   cp .env.template .env")
-    print(f"\n3. Edit configuration:")
-    print(f"   nano configs/config.json")
-    print(f"\n4. Place the Python bot files in this directory:")
-    print(f"   • ibkr_trading_backend.py")
-    print(f"   • lstm_neural_network.py")
-    print(f"   • modular_dashboard_config.py")
-    print(f"\n5. Start IBKR TWS (Paper Trading)")
-    print(f"\n6. Run the bot:")
+    print("\n2. Copy .env template and add API keys:")
+    print("   cp .env.template .env")
+    print("\n3. Edit configuration:")
+    print("   nano configs/config.json")
+    print("\n4. Place the Python bot files in this directory:")
+    print("   • ibkr_trading_backend.py")
+    print("   • lstm_neural_network.py")
+    print("   • modular_dashboard_config.py")
+    print("\n5. Start IBKR TWS (Paper Trading)")
+    print("\n6. Run the bot:")
     if sys.platform == "win32":
-        print(f"   start_bot.bat")
+        print("   start_bot.bat")
     else:
-        print(f"   ./start_bot.sh")
+        print("   ./start_bot.sh")
     
     print("\n" + "=" * 60)
     print("Happy Trading! 📈")

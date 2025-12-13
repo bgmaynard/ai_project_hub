@@ -1,1 +1,11 @@
-﻿* text=auto
+﻿# Text defaults to LF
+* text=auto eol=lf
+
+# Powershell scripts keep CRLF (Windows-friendly)
+*.ps1 eol=crlf
+*.bat eol=crlf
+
+# Keep binaries untouched
+*.png binary
+*.jpg binary
+*.ico binary

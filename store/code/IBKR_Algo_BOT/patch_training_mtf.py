@@ -14,8 +14,6 @@ What it does:
 3. Tests that it works
 """
 
-import sys
-import os
 
 # Add MTF feature function to your project
 MTF_CODE = '''

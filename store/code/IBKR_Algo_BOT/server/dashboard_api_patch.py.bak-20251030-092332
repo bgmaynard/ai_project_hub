@@ -1,0 +1,72 @@
+import asyncio
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from datetime import datetime
+
+from .config import get_settings
+from .auth_middleware import require_api_key
+
+app = FastAPI(title="IBKR Algo BOT API", version="2.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+def health():
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
+@app.get("/api/status")
+def api_status():
+    s = get_settings()
+    # dev-friendly status stub; wire in your real flags if you have them handy
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "ib_connection": True,
+        "ai_connection": True,
+        "auto_trader": True,
+        "analytics": True,
+        "backtest": True,
+        "current_client_id": s.tws_client_id,
+        "state": "CONNECTED",
+        "api_key_configured": bool((s.api_key or "").strip()),
+        "mode": "paper" if s.tws_port == 7497 else "live",
+        "host": s.tws_host,
+        "port": s.tws_port,
+    }
+
+class PredictRequest(BaseModel):
+    symbol: str
+
+@app.post("/api/ai/predict")
+def ai_predict(req: PredictRequest, _=Depends(require_api_key)):
+    # Placeholder: return neutral shape if not wired to your model here.
+    return {
+        "signal": "NEUTRAL",
+        "prob_up": 0.50,
+        "prob_down": 0.50,
+        "confidence": 0.0,
+        "prediction": 0,
+        "asof": datetime.utcnow().isoformat()
+    }
+
+@app.get("/api/price/{symbol}")
+def get_price(symbol: str, _=Depends(require_api_key)):
+    return {"symbol": symbol, "last": None, "bid": None, "ask": None}
+
+@app.post("/api/order")
+def place_order(_=Depends(require_api_key)):
+    return {"ok": False, "error": "Not Implemented in patch skeleton"}
+
+def run():
+    import uvicorn
+    s = get_settings()
+    uvicorn.run(app, host=s.bind_host, port=s.bind_port)
+
+if __name__ == "__main__":
+    run()

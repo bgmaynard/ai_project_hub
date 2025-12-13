@@ -256,7 +256,7 @@ class IBKRManager:
         print(f'Host: {host}, Port: {port}, Client ID: {client_id}')
         print(f'IBKR_AVAILABLE: {IBKR_AVAILABLE}')
         
-        logger.info(f'=== STARTING IBKR CONNECTION ===')
+        logger.info('=== STARTING IBKR CONNECTION ===')
         logger.info(f'Host: {host}, Port: {port}, Client ID: {client_id}')
         logger.info(f'IBKR_AVAILABLE: {IBKR_AVAILABLE}')
         
@@ -610,7 +610,7 @@ def execute_trade():
         limit_price = data.get('limit_price')
         
         print('\n' + '='*60)
-        print(f'📈 TRADE EXECUTION REQUEST')
+        print('📈 TRADE EXECUTION REQUEST')
         print('='*60)
         print(f'Symbol: {symbol}')
         print(f'Action: {action}')
@@ -681,9 +681,9 @@ def execute_trade():
                 order_id = int(time.time())
                 print(f'⚠ No order ID from TWS, using timestamp: {order_id}')
             
-            print(f'\n🚀 Sending order to IBKR...')
+            print('\n🚀 Sending order to IBKR...')
             ibkr_manager.client.placeOrder(order_id, contract, order)
-            print(f'✅ placeOrder() called successfully!')
+            print('✅ placeOrder() called successfully!')
             print(f'   Order ID: {order_id}')
             print(f'   {action} {quantity} {symbol} @ {order_type}')
             print('='*60 + '\n')
@@ -801,7 +801,7 @@ def get_ibkr_positions():
         if not ibkr_manager.is_connected():
             return jsonify([])
         return jsonify(ibkr_manager.positions)
-    except Exception as e:
+    except Exception:
         return jsonify([])
 
 
@@ -811,7 +811,7 @@ def get_ibkr_orders():
         if not ibkr_manager.is_connected():
             return jsonify([])
         return jsonify(ibkr_manager.orders)
-    except Exception as e:
+    except Exception:
         return jsonify([])
 
 

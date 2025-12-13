@@ -10,7 +10,6 @@ Run this first to verify the issue before training.
 
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, timedelta
 
 def check_data_download(symbol, period, interval):
     """Check what data yfinance actually downloads"""
@@ -36,7 +35,7 @@ def check_data_download(symbol, period, interval):
     end_date = df.index[-1]
     days_covered = (end_date - start_date).days
     
-    print(f"📊 RESULTS:")
+    print("📊 RESULTS:")
     print(f"   Bars downloaded: {len(df)}")
     print(f"   Start date: {start_date}")
     print(f"   End date: {end_date}")
@@ -48,37 +47,37 @@ def check_data_download(symbol, period, interval):
         # Hourly: ~6.5 trading hours/day * 252 trading days/year
         expected_per_year = 6.5 * 252
         expected_2y = expected_per_year * 2
-        print(f"\n📈 EXPECTATIONS FOR HOURLY:")
+        print("\n📈 EXPECTATIONS FOR HOURLY:")
         print(f"   Expected per year: ~{expected_per_year:.0f} bars")
         print(f"   Expected for 2y: ~{expected_2y:.0f} bars")
         print(f"   Actual: {len(df)} bars")
         
         if len(df) >= 3800:
-            print(f"   ✅ LOOKS GOOD - Close to 2 years hourly")
+            print("   ✅ LOOKS GOOD - Close to 2 years hourly")
         elif len(df) >= 3000 and len(df) < 3800:
-            print(f"   ⚠️  WARNING - Looks like 60 days of 5-min resampled")
+            print("   ⚠️  WARNING - Looks like 60 days of 5-min resampled")
         else:
-            print(f"   ⚠️  WARNING - Unexpected bar count")
+            print("   ⚠️  WARNING - Unexpected bar count")
             
     elif interval == '5m':
         # 5-min: ~78 bars/day * trading days
         expected_per_day = 78
         expected_60d = expected_per_day * 60
-        print(f"\n📈 EXPECTATIONS FOR 5-MIN:")
+        print("\n📈 EXPECTATIONS FOR 5-MIN:")
         print(f"   Expected per day: ~{expected_per_day} bars")
         print(f"   Expected for 60d: ~{expected_60d} bars")
         print(f"   Actual: {len(df)} bars")
         
         if len(df) >= 4000:
-            print(f"   ✅ Looks like 60 days of 5-min")
+            print("   ✅ Looks like 60 days of 5-min")
         else:
-            print(f"   ⚠️  Unexpected bar count")
+            print("   ⚠️  Unexpected bar count")
     
     # Sample data
-    print(f"\n📋 SAMPLE DATA (first 5 rows):")
+    print("\n📋 SAMPLE DATA (first 5 rows):")
     print(df.head())
     
-    print(f"\n📋 SAMPLE DATA (last 5 rows):")
+    print("\n📋 SAMPLE DATA (last 5 rows):")
     print(df.tail())
     
     print(f"\n{'='*70}\n")

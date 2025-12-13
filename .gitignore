@@ -1,14 +1,47 @@
-﻿venv/
-**/__pycache__/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Node / UI
+node_modules/
+.ui-cache/
 *.log
-store/last_pytest.log
-store/enhanced_dependency_graph.png
-store/dependency_graph.png
-store/tasks/*.json
-*.sqlite
-*.h5
-*.keras
-store/code/IBKR_Algo_BOT.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data & models
+store/**/*.parquet
+store/**/*.duckdb
+store/**/*.db
+store/**/*.sqlite*
+store/models/*.onnx
+store/models/*.txt
+store/models/*.bin
+store/logs/
+logs/
+
+# Secrets
+.env
+*.key
+*.pem
+*.pfx
+secrets/
+
+# Zips & artifacts
 *.zip
-store/code/IBKR_Algo_BOT.zip
-store/code/dashboard_data/
+*.tar
+*.tar.gz

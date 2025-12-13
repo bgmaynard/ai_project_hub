@@ -17,17 +17,13 @@ Usage:
     python warrior_momentum_scanner.py --start-time 07:00
 """
 
-import pandas as pd
-import numpy as np
-from datetime import datetime, time, timedelta
+from datetime import datetime
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
-from ibapi.contract import Contract
 from ibapi.scanner import ScannerSubscription
 import threading
 import time as time_module
 import logging
-from collections import defaultdict
 import yfinance as yf
 
 logging.basicConfig(level=logging.INFO)
@@ -479,8 +475,8 @@ class WarriorMomentumTrader:
         print("🔥"*40 + "\n")
         
         print(f"Time: {datetime.now().strftime('%H:%M:%S')}")
-        print(f"Target: Pre-market gappers (2%+ gap, high volume)")
-        print(f"Style: Ross Cameron gap-and-go\n")
+        print("Target: Pre-market gappers (2%+ gap, high volume)")
+        print("Style: Ross Cameron gap-and-go\n")
         
         # Step 1: Scan
         candidates = self.scan_for_gappers()
@@ -584,7 +580,7 @@ def main():
     
     if args.continuous:
         # Continuous mode
-        print(f"\n🔄 Continuous scanning mode")
+        print("\n🔄 Continuous scanning mode")
         print(f"   Interval: {args.interval} seconds\n")
         
         try:

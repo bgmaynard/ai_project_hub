@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Cache Helper</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1d24;
+            color: #e4e5e7;
+        }
+        h1 { color: #00a69c; }
+        .step {
+            background: #242830;
+            border: 1px solid #3a3f4b;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #00a69c;
+        }
+        button {
+            background: #00a69c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #008c84;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cache Clear Helper for AI Control Center</h1>
+
+    <div class="step">
+        <h3>Step 1: Hard Refresh</h3>
+        <p>Press one of these key combinations:</p>
+        <ul>
+            <li><strong>Windows:</strong> Ctrl + Shift + R or Ctrl + F5</li>
+            <li><strong>Mac:</strong> Cmd + Shift + R</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Clear Service Workers</h3>
+        <button onclick="clearServiceWorkers()">Clear Service Workers</button>
+        <p id="sw-result"></p>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Clear Local Storage</h3>
+        <button onclick="clearLocalStorage()">Clear Local Storage</button>
+        <p id="ls-result"></p>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Return to App</h3>
+        <button onclick="window.location.href='/'">Go to AI Control Center</button>
+    </div>
+
+    <div class="step">
+        <h3>Alternative: Open in Incognito/Private Mode</h3>
+        <p>If the above steps don't work, try opening in private/incognito mode:</p>
+        <ul>
+            <li><strong>Chrome:</strong> Ctrl + Shift + N</li>
+            <li><strong>Firefox:</strong> Ctrl + Shift + P</li>
+            <li><strong>Edge:</strong> Ctrl + Shift + N</li>
+        </ul>
+    </div>
+
+    <script>
+        async function clearServiceWorkers() {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                    document.getElementById('sw-result').innerHTML =
+                        '<span class="success">✓ Service workers cleared successfully!</span>';
+                } else {
+                    document.getElementById('sw-result').innerHTML =
+                        '<span class="success">✓ No service workers found</span>';
+                }
+            } catch (e) {
+                document.getElementById('sw-result').innerHTML =
+                    'Error: ' + e.message;
+            }
+        }
+
+        function clearLocalStorage() {
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                document.getElementById('ls-result').innerHTML =
+                    '<span class="success">✓ Local storage cleared successfully!</span>';
+            } catch (e) {
+                document.getElementById('ls-result').innerHTML =
+                    'Error: ' + e.message;
+            }
+        }
+
+        // Add timestamp to show page is fresh
+        console.log('Cache clear helper loaded at:', new Date().toISOString());
+    </script>
+</body>
+</html>

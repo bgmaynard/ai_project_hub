@@ -1,0 +1,243 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "created": "2025-12-12",
+    "description": "Claude's persistent trading knowledge - survives reboots",
+    "purpose": "Embedded consciousness for autonomous trading decisions"
+  },
+
+  "trading_philosophy": {
+    "core_principle": "Capital preservation first, profits second",
+    "risk_tolerance": "Conservative with defined stops",
+    "strategy_type": "Low-float momentum gappers (Warrior Trading style)",
+    "session_focus": "Pre-market and first 30 minutes of open"
+  },
+
+  "entry_criteria": {
+    "price_range": {
+      "min": 0.50,
+      "max": 20.00,
+      "sweet_spot": [2.00, 10.00]
+    },
+    "float": {
+      "max_shares": 10000000,
+      "ideal_range": [1000000, 5000000],
+      "note": "Low float = bigger moves"
+    },
+    "volume": {
+      "min_daily": 100000,
+      "min_premarket": 50000,
+      "relative_volume_min": 2.0
+    },
+    "spread": {
+      "max_percent": 2.0,
+      "max_cents": 0.05,
+      "CRITICAL": "NEVER buy if spread > 3% - untradeable"
+    },
+    "gap": {
+      "min_percent": 5.0,
+      "catalyst_required": true,
+      "catalysts": ["FDA", "earnings beat", "contract", "acquisition", "partnership"]
+    },
+    "momentum": {
+      "require_uptrend": true,
+      "min_acceleration": 0.1
+    }
+  },
+
+  "exit_criteria": {
+    "profit_targets": {
+      "first_target_percent": 1.5,
+      "scale_out_levels": [1.5, 3.0, 5.0],
+      "scale_out_portions": [0.33, 0.33, 0.34]
+    },
+    "stop_losses": {
+      "hard_stop_percent": 1.0,
+      "trailing_stop_percent": 1.0,
+      "zombie_threshold_percent": 2.0,
+      "CRITICAL": "Never hold a 2%+ loser - CUT IMMEDIATELY"
+    },
+    "time_stops": {
+      "max_hold_minutes": 15,
+      "no_progress_timeout_seconds": 120,
+      "stale_position_minutes": 5,
+      "eod_liquidation_time": "15:45:00",
+      "MOMENTUM_RULE": "If not profitable in 2-5 min, GET OUT - momentum is GONE"
+    },
+    "spread_exit": {
+      "max_spread_cents": 0.03,
+      "action": "SELL immediately if spread widens beyond limit"
+    },
+    "NO_HOLD_AND_HOPE": {
+      "rule": "NEVER hold a losing position hoping for recovery",
+      "action": "CUT losers fast, only ride WINNERS",
+      "time_decay": "Position not profitable after 5 min = momentum failed = EXIT"
+    }
+  },
+
+  "order_policy": {
+    "CRITICAL_RULE": "LIMIT ORDERS ONLY - NEVER MARKET ORDERS",
+    "buy_orders": {
+      "type": "LIMIT",
+      "price": "ASK",
+      "reason": "Hit the ask for quick fill on momentum entries"
+    },
+    "sell_orders": {
+      "normal_exit": {
+        "type": "LIMIT",
+        "price": "BID",
+        "reason": "Guaranteed fill, protects against gap-downs"
+      },
+      "momentum_exit": {
+        "type": "LIMIT",
+        "price": "ASK",
+        "condition": "Only when momentum is still strong"
+      },
+      "emergency_exit": {
+        "type": "LIMIT",
+        "price": "BID",
+        "note": "Even emergencies use LIMIT at bid"
+      }
+    },
+    "extended_hours": true,
+    "time_in_force": "DAY"
+  },
+
+  "position_sizing": {
+    "max_position_dollars": 2000,
+    "max_portfolio_percent": 5,
+    "max_concurrent_positions": 5,
+    "scaling": {
+      "initial_position": 0.5,
+      "add_on_confirmation": 0.25,
+      "max_adds": 2
+    }
+  },
+
+  "watchlist_rules": {
+    "purpose": "STAGING AREA for evaluation - NOT auto-buy list",
+    "workflow": [
+      "1. Stock shows market interest (gapper, news, volume)",
+      "2. Add to watchlist for tracking",
+      "3. Auto-evaluator runs AI prediction + backtest",
+      "4. Human reviews score and criteria",
+      "5. Only trade if ALL criteria met",
+      "6. Remove if stock fails criteria"
+    ],
+    "auto_buy_enabled": false,
+    "require_manual_approval": true
+  },
+
+  "hft_scalping": {
+    "description": "Pure momentum trading - no catalyst needed, if it's moving, ride it",
+    "philosophy": "Stocks move for no apparent reason sometimes - we can profit if we're FAST",
+    "entry_triggers": {
+      "acceleration": 0.1,
+      "velocity": 0.05,
+      "min_move_percent": 0.3
+    },
+    "exit_triggers": {
+      "momentum_reversal": true,
+      "deceleration_threshold": -0.05,
+      "time_stop_seconds": 60,
+      "profit_target_percent": 1.0,
+      "stop_loss_percent": 0.5
+    },
+    "requirements": {
+      "spread_max_percent": 1.0,
+      "volume_min": 50000,
+      "price_min": 1.00,
+      "CRITICAL": "Still check spread - can't scalp illiquid stocks"
+    },
+    "order_type": "LIMIT at ASK for fast entry, LIMIT at BID for fast exit"
+  },
+
+  "red_flags": {
+    "never_trade": [
+      "Spread > 3% (illiquid)",
+      "Float > 50M (too heavy to move)",
+      "Halted stocks",
+      "Penny stocks under $0.50",
+      "Low volume < 50K"
+    ],
+    "note": "NO CATALYST is OK for HFT scalping - momentum is the catalyst",
+    "extreme_caution": [
+      "Biotech FDA binary events",
+      "Earnings plays (unpredictable)",
+      "China stocks (overnight risk)",
+      "SPACs near NAV"
+    ]
+  },
+
+  "lessons_learned": {
+    "JZXN_2025_12_12": {
+      "issue": "Bought stock with 54.6% spread",
+      "loss": "-6.6%",
+      "lesson": "ALWAYS check spread BEFORE buying, not just after",
+      "rule_added": "Entry filter must reject spread > 3%"
+    },
+    "market_orders_bad": {
+      "issue": "Market orders on illiquid stocks = terrible fills",
+      "lesson": "LIMIT orders ALWAYS, even in emergencies",
+      "rule": "TRADING_RULES.md policy"
+    },
+    "zombie_positions": {
+      "issue": "Old positions lingering with big losses",
+      "lesson": "Position Guardian must catch and exit zombies",
+      "threshold": "3% loss = zombie, must exit"
+    }
+  },
+
+  "daily_routine": {
+    "premarket": {
+      "start_time": "04:00",
+      "actions": [
+        "Run premarket_prep.py to scan gappers",
+        "Review news catalysts",
+        "Build watchlist of qualified candidates",
+        "Set alerts for breakout levels"
+      ]
+    },
+    "market_open": {
+      "time": "09:30",
+      "actions": [
+        "Focus first 30 minutes only",
+        "Execute on pre-planned setups",
+        "Tight stops, quick profits"
+      ]
+    },
+    "midday": {
+      "time": "11:30-14:00",
+      "actions": [
+        "Reduced trading (chop zone)",
+        "Review morning trades",
+        "Adjust stops on winners"
+      ]
+    },
+    "eod": {
+      "time": "15:45",
+      "actions": [
+        "Liquidate all day-trade positions",
+        "No overnight holds on momentum plays",
+        "Review daily P/L"
+      ]
+    }
+  },
+
+  "autonomous_trader_config": {
+    "enabled": false,
+    "mode": "paper",
+    "require_confirmation": true,
+    "max_daily_loss": -500,
+    "max_daily_trades": 10,
+    "halt_on_3_consecutive_losses": true,
+    "pre_trade_checklist": [
+      "Check spread < 2%",
+      "Verify volume > 100K",
+      "Confirm catalyst exists",
+      "Check float < 10M",
+      "Verify not already in position",
+      "Check daily loss limit not hit"
+    ]
+  }
+}

@@ -13,9 +13,7 @@ Usage:
 """
 
 import argparse
-from datetime import datetime, time
 import subprocess
-import sys
 
 
 STRATEGIES = {
@@ -59,7 +57,7 @@ def print_strategies():
         print(f"Style:       {strategy['style']}")
         print(f"Win Rate:    {strategy['win_rate_target']}")
         print(f"Script:      {strategy['script']}")
-        print(f"\nTo run:")
+        print("\nTo run:")
         print(f"  python strategy_selector.py --strategy {key}")
         print("\n" + "="*80 + "\n")
 

@@ -11,7 +11,6 @@ import pandas as pd
 import logging
 from lstm_training_pipeline import LSTMTrainingPipeline
 from improved_backtest import ImprovedBacktester
-from lstm_model_complete import LSTMTradingModel
 
 logging.basicConfig(
     level=logging.INFO,
@@ -74,7 +73,7 @@ def train_with_ibkr_data(
             continue
         
         # Train model
-        print(f"\nTraining LSTM model...")
+        print("\nTraining LSTM model...")
         
         model = pipeline.train_model(
             df=df,
@@ -85,7 +84,7 @@ def train_with_ibkr_data(
         )
         
         # Evaluate
-        print(f"\nEvaluating model...")
+        print("\nEvaluating model...")
         
         # Run backtest with improved logic
         backtester = ImprovedBacktester(

@@ -9,7 +9,7 @@ from ibapi.contract import Contract
 import pandas as pd
 import time
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 logging.basicConfig(level=logging.INFO)

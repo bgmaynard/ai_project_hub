@@ -12,7 +12,7 @@ print("PYTHON ENVIRONMENT DIAGNOSTIC TOOL")
 print("="*60)
 
 # 1. Python version and location
-print(f"\n1. PYTHON VERSION:")
+print("\n1. PYTHON VERSION:")
 print(f"   Version: {sys.version}")
 print(f"   Executable: {sys.executable}")
 
@@ -21,7 +21,7 @@ is_64bit = sys.maxsize > 2**32
 print(f"   Architecture: {'64-bit' if is_64bit else '32-bit'}")
 
 # 2. Python in PATH
-print(f"\n2. PYTHON IN SYSTEM PATH:")
+print("\n2. PYTHON IN SYSTEM PATH:")
 python_path = os.environ.get('PATH', '').split(';')
 python_dirs = [p for p in python_path if 'python' in p.lower()]
 if python_dirs:
@@ -31,32 +31,32 @@ else:
     print("   ⚠ No Python directories found in PATH")
 
 # 3. pip module test
-print(f"\n3. PIP MODULE CHECK:")
+print("\n3. PIP MODULE CHECK:")
 try:
     import pip
-    print(f"   ✓ pip module found")
+    print("   ✓ pip module found")
     print(f"   Version: {pip.__version__}")
 except ImportError:
-    print(f"   ✗ pip module not found")
+    print("   ✗ pip module not found")
 
 # 4. pip command test
-print(f"\n4. PIP COMMAND TEST:")
+print("\n4. PIP COMMAND TEST:")
 try:
     result = subprocess.run([sys.executable, "-m", "pip", "--version"], 
                           capture_output=True, text=True, timeout=5)
     if result.returncode == 0:
-        print(f"   ✓ pip command works!")
+        print("   ✓ pip command works!")
         print(f"   {result.stdout.strip()}")
     else:
-        print(f"   ✗ pip command failed")
+        print("   ✗ pip command failed")
         print(f"   Error: {result.stderr}")
 except subprocess.TimeoutExpired:
-    print(f"   ✗ pip command timed out (may be frozen)")
+    print("   ✗ pip command timed out (may be frozen)")
 except Exception as e:
     print(f"   ✗ Error running pip: {e}")
 
 # 5. Check installed packages
-print(f"\n5. REQUIRED PACKAGES CHECK:")
+print("\n5. REQUIRED PACKAGES CHECK:")
 required = {
     'tensorflow': 'TensorFlow',
     'pandas': 'Pandas',
@@ -82,25 +82,25 @@ for module, name in required.items():
         print(f"   ✗ {name:20} NOT INSTALLED")
 
 # 6. Check disk space
-print(f"\n6. SYSTEM INFORMATION:")
+print("\n6. SYSTEM INFORMATION:")
 try:
     import shutil
     total, used, free = shutil.disk_usage("C:\\")
     print(f"   Disk Space (C:): {free // (2**30)} GB free")
 except:
-    print(f"   Could not check disk space")
+    print("   Could not check disk space")
 
 # 7. Check internet connectivity
-print(f"\n7. INTERNET CONNECTIVITY:")
+print("\n7. INTERNET CONNECTIVITY:")
 try:
     import urllib.request
     urllib.request.urlopen('https://pypi.org', timeout=3)
-    print(f"   ✓ Can reach PyPI (package repository)")
+    print("   ✓ Can reach PyPI (package repository)")
 except:
-    print(f"   ✗ Cannot reach PyPI - check internet connection")
+    print("   ✗ Cannot reach PyPI - check internet connection")
 
 # Summary
-print(f"\n" + "="*60)
+print("\n" + "="*60)
 print("DIAGNOSTIC SUMMARY")
 print("="*60)
 print(f"Python Version: {sys.version.split()[0]}")
@@ -108,7 +108,7 @@ print(f"Packages Installed: {len(installed)}/{len(required)}")
 print(f"Packages Missing:   {len(missing)}/{len(required)}")
 
 # Recommendations
-print(f"\n" + "="*60)
+print("\n" + "="*60)
 print("RECOMMENDATIONS")
 print("="*60)
 
@@ -121,20 +121,20 @@ if len(missing) == 0:
 
 elif len(missing) < len(required):
     print(f"⚠ {len(missing)} package(s) still need to be installed")
-    print(f"\n📝 To install missing packages:")
+    print("\n📝 To install missing packages:")
     missing_modules = [k for k, v in required.items() if v in missing]
     print(f"   python -m pip install {' '.join(missing_modules)}")
 
 else:
     print("❌ No packages are installed yet")
-    print(f"\n📝 To install all required packages:")
-    print(f"   Method 1 (Recommended):")
-    print(f"      python install_packages.py")
-    print(f"\n   Method 2 (Manual):")
-    print(f"      python -m pip install tensorflow scikit-learn pandas numpy yfinance matplotlib seaborn joblib")
+    print("\n📝 To install all required packages:")
+    print("   Method 1 (Recommended):")
+    print("      python install_packages.py")
+    print("\n   Method 2 (Manual):")
+    print("      python -m pip install tensorflow scikit-learn pandas numpy yfinance matplotlib seaborn joblib")
 
 # Check for common issues
-print(f"\n" + "="*60)
+print("\n" + "="*60)
 print("COMMON ISSUES CHECK")
 print("="*60)
 
@@ -146,13 +146,13 @@ minor = int(version_parts[1])
 if major < 3 or (major == 3 and minor < 8):
     print("❌ Python version too old!")
     print(f"   Current: {major}.{minor}")
-    print(f"   Required: 3.8 or newer")
-    print(f"   Please upgrade Python from: https://www.python.org/downloads/")
+    print("   Required: 3.8 or newer")
+    print("   Please upgrade Python from: https://www.python.org/downloads/")
 elif major == 3 and minor > 11:
     print("⚠ Python version very new")
     print(f"   Current: {major}.{minor}")
-    print(f"   TensorFlow may not be fully compatible yet")
-    print(f"   Consider using Python 3.11 if you have issues")
+    print("   TensorFlow may not be fully compatible yet")
+    print("   Consider using Python 3.11 if you have issues")
 else:
     print(f"✓ Python version compatible: {major}.{minor}")
 

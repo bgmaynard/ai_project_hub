@@ -476,7 +476,7 @@ if __name__ == "__main__":
     # Get signal
     signal = lstm_module.get_signal_for_symbol('AAPL')
     if signal['valid']:
-        print(f"\nLatest Signal for AAPL:")
+        print("\nLatest Signal for AAPL:")
         print(f"  Direction: {signal['direction']}")
         print(f"  Probability: {signal['probability']:.3f}")
         print(f"  Confidence: {signal['confidence']:.3f}")

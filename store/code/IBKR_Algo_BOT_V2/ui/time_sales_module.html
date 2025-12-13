@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Time & Sales</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-size: 11px;
+        }
+        .ts-container {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .ts-header {
+            background: #252525;
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ts-symbol {
+            font-size: 14px;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+        .ts-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 10px;
+        }
+        .ts-stat { color: #888; }
+        .ts-stat-value { color: #fff; font-weight: 700; margin-left: 4px; }
+        .ts-table-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .ts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .ts-table thead {
+            background: #1e1e1e;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .ts-table th {
+            padding: 6px 8px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            border-bottom: 1px solid #333;
+        }
+        .ts-table tbody tr {
+            border-bottom: 1px solid #252525;
+        }
+        .ts-table td {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+        .ts-time { color: #64748b; }
+        .ts-price {
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .ts-price.uptick { color: #22c55e; }
+        .ts-price.downtick { color: #ef4444; }
+        .ts-price.neutral { color: #fff; }
+        .ts-size { text-align: right; }
+        .ts-size.large {
+            color: #f59e0b;
+            font-weight: 700;
+        }
+        .ts-exchange { color: #64748b; font-size: 9px; }
+        .ts-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .ts-indicator.uptick { background: #22c55e; }
+        .ts-indicator.downtick { background: #ef4444; }
+        .ts-indicator.neutral { background: #64748b; }
+        .ts-footer {
+            background: #252525;
+            padding: 8px 12px;
+            border-top: 1px solid #333;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            font-size: 10px;
+        }
+        .ts-footer-stat-label { color: #888; }
+        .ts-footer-stat-value { color: #fff; font-weight: 700; font-size: 12px; }
+        .loading {
+            padding: 40px;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="ts-container">
+        <div class="ts-header">
+            <div class="ts-symbol" id="tsSymbol">─</div>
+            <div class="ts-stats">
+                <div class="ts-stat">
+                    Last: <span class="ts-stat-value" id="tsLast">─</span>
+                </div>
+                <div class="ts-stat">
+                    Vol: <span class="ts-stat-value" id="tsVolume">─</span>
+                </div>
+            </div>
+        </div>
+        <div class="ts-table-container">
+            <table class="ts-table">
+                <thead>
+                    <tr>
+                        <th>TIME</th>
+                        <th>PRICE</th>
+                        <th>SIZE</th>
+                        <th>EXCH</th>
+                    </tr>
+                </thead>
+                <tbody id="tsBody">
+                    <tr>
+                        <td colspan="4" class="loading">Waiting for trades...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="ts-footer">
+            <div>
+                <div class="ts-footer-stat-label">Upticks</div>
+                <div class="ts-footer-stat-value" style="color: #22c55e;" id="upticks">0</div>
+            </div>
+            <div>
+                <div class="ts-footer-stat-label">Downticks</div>
+                <div class="ts-footer-stat-value" style="color: #ef4444;" id="downticks">0</div>
+            </div>
+            <div>
+                <div class="ts-footer-stat-label">Avg Size</div>
+                <div class="ts-footer-stat-value" id="avgSize">0</div>
+            </div>
+            <div>
+                <div class="ts-footer-stat-label">Momentum</div>
+                <div class="ts-footer-stat-value" id="momentum">─</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let currentSymbol = null;
+        let ws = null;
+        let trades = [];
+        let lastPrice = null;
+        let uptickCount = 0;
+        let downtickCount = 0;
+        
+        function connectToSymbol(symbol) {
+            if (ws) ws.close();
+            currentSymbol = symbol;
+            document.getElementById('tsSymbol').textContent = symbol;
+            trades = [];
+            lastPrice = null;
+            uptickCount = 0;
+            downtickCount = 0;
+            
+            ws = new WebSocket(`ws://127.0.0.1:9101/ws/market-data/${symbol}`);
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'trade') {
+                    addTrade(data.data);
+                } else if (data.type === 'quote') {
+                    updateQuote(data.data);
+                }
+            };
+        }
+        
+        function addTrade(trade) {
+            // Determine tick direction
+            let tickClass = 'neutral';
+            if (lastPrice !== null) {
+                if (trade.price > lastPrice) {
+                    tickClass = 'uptick';
+                    uptickCount++;
+                } else if (trade.price < lastPrice) {
+                    tickClass = 'downtick';
+                    downtickCount++;
+                }
+            }
+            lastPrice = trade.price;
+            
+            // Add to trades array (keep last 100)
+            trades.unshift({...trade, tickClass});
+            if (trades.length > 100) trades.pop();
+            
+            // Render trades
+            const tbody = document.getElementById('tsBody');
+            const isLarge = trade.size > 1000;
+            
+            const time = new Date(trade.time).toLocaleTimeString();
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="ts-time">${time}</td>
+                <td class="ts-price ${tickClass}">
+                    <span class="ts-indicator ${tickClass}"></span>
+                    $${trade.price.toFixed(2)}
+                </td>
+                <td class="ts-size ${isLarge ? 'large' : ''}">${trade.size.toLocaleString()}</td>
+                <td class="ts-exchange">${trade.exchange || 'SMART'}</td>
+            `;
+            
+            if (tbody.firstChild.tagName === 'TR' && tbody.firstChild.cells.length === 1) {
+                // Remove loading message
+                tbody.innerHTML = '';
+            }
+            
+            tbody.insertBefore(row, tbody.firstChild);
+            
+            // Keep max 100 rows displayed
+            while (tbody.children.length > 100) {
+                tbody.removeChild(tbody.lastChild);
+            }
+            
+            // Update footer stats
+            updateFooterStats();
+        }
+        
+        function updateQuote(quote) {
+            if (quote.last) {
+                document.getElementById('tsLast').textContent = '$' + quote.last.toFixed(2);
+            }
+            if (quote.volume) {
+                document.getElementById('tsVolume').textContent = formatVolume(quote.volume);
+            }
+        }
+        
+        function updateFooterStats() {
+            document.getElementById('upticks').textContent = uptickCount;
+            document.getElementById('downticks').textContent = downtickCount;
+            
+            // Calculate average size
+            if (trades.length > 0) {
+                const avgSize = trades.reduce((sum, t) => sum + t.size, 0) / trades.length;
+                document.getElementById('avgSize').textContent = Math.round(avgSize).toLocaleString();
+            }
+            
+            // Calculate momentum
+            const total = uptickCount + downtickCount;
+            if (total > 0) {
+                const momentum = ((uptickCount - downtickCount) / total * 100).toFixed(0);
+                const momentumEl = document.getElementById('momentum');
+                momentumEl.textContent = momentum + '%';
+                momentumEl.style.color = momentum > 0 ? '#22c55e' : '#ef4444';
+            }
+        }
+        
+        function formatVolume(volume) {
+            if (volume >= 1000000) {
+                return (volume / 1000000).toFixed(1) + 'M';
+            } else if (volume >= 1000) {
+                return (volume / 1000).toFixed(0) + 'K';
+            }
+            return volume.toString();
+        }
+        
+        // Listen for symbol changes from parent
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'load_symbol') {
+                connectToSymbol(event.data.symbol);
+            }
+        });
+    </script>
+</body>
+</html>

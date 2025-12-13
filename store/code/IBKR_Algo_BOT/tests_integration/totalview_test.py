@@ -26,7 +26,7 @@ class TotalViewTest(EWrapper, EClient):
         super().nextValidId(orderId)
         self.next_req_id = orderId
         self.connected = True
-        print(f"✓ Connected to IBKR TWS/Gateway")
+        print("✓ Connected to IBKR TWS/Gateway")
         print(f"   Next Order ID: {orderId}")
         
     def error(self, reqId, errorCode, errorString, advancedOrderRejectJson=""):
@@ -35,7 +35,7 @@ class TotalViewTest(EWrapper, EClient):
             print(f"ℹ Market Data: {errorString}")
         elif errorCode == 10167:
             print(f"⚠ {errorString}")
-            print(f"   Make sure TotalView is enabled in TWS Market Data subscriptions")
+            print("   Make sure TotalView is enabled in TWS Market Data subscriptions")
         else:
             print(f"⚠ Error {errorCode}: {errorString}")
     
