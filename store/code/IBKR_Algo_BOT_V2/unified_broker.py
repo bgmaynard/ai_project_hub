@@ -168,9 +168,9 @@ class UnifiedBroker:
             try:
                 result = self._schwab.place_limit_order(
                     symbol=symbol,
-                    side=side.value,
                     quantity=quantity,
-                    price=price
+                    side=side.value,
+                    limit_price=price
                 )
                 if result and result.get("success"):
                     return OrderResult(
