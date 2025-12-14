@@ -1013,11 +1013,6 @@
                             <div style="font-weight: bold;">Schwab</div>
                             <div style="font-size: 11px; color: #00ff00;">Primary Broker</div>
                         </button>
-                        <button id="brokerAlpacaBtn" class="btn btn-secondary" onclick="selectBroker('alpaca')" style="flex: 1; padding: 15px;">
-                            <div style="font-size: 18px;">📊</div>
-                            <div style="font-weight: bold;">Alpaca</div>
-                            <div style="font-size: 11px; color: #888;">Paper Trading</div>
-                        </button>
                     </div>
                 </div>
 
@@ -1036,8 +1031,7 @@
                 <div style="margin-top: 15px; padding: 12px; background: #1a1a1a; border-radius: 4px;">
                     <div style="font-size: 12px; color: #888; margin-bottom: 8px;">STATUS</div>
                     <div id="brokerStatusDetails" style="font-size: 13px;">
-                        <div>Schwab: <span id="schwabConnectionStatus" style="color: #00ff00;">Connected (Primary)</span></div>
-                        <div>Alpaca: <span style="color: #888;">Paper Trading (Fallback)</span></div>
+                        <div>Schwab: <span id="schwabConnectionStatus" style="color: #00ff00;">Connected</span></div>
                         <div>Data Source: <span id="dataSourceStatus" style="color: #00ff00;">Schwab</span></div>
                     </div>
                 </div>
@@ -1268,8 +1262,8 @@
         </div>
 
         <!-- CONNECT BUTTON -->
-        <div class="menu-item" onclick="connectToAlpaca()" style="background: #059669;">
-            🔌 CONNECT
+        <div class="menu-item" onclick="connectToSchwab()" style="background: #059669;">
+            🔌 CONNECT SCHWAB
         </div>
     </div>
 
@@ -2391,10 +2385,17 @@
                             Closed
                         </button>
                     </div>
-                    <button class="btn btn-secondary" onclick="cancelAllOrders()"
-                            style="padding: 4px 12px; font-size: 12px; font-weight: 600;">
-                        CANCEL ALL
-                    </button>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary" onclick="loadOrders()"
+                                style="padding: 4px 10px; font-size: 12px; font-weight: 600; background: #1e3a5f; color: #60a5fa;"
+                                title="Refresh orders list">
+                            🔄
+                        </button>
+                        <button class="btn btn-secondary" onclick="cancelAllOrders()"
+                                style="padding: 4px 12px; font-size: 12px; font-weight: 600;">
+                            CANCEL ALL
+                        </button>
+                    </div>
                 </div>
                 <div id="ordersTabContent">
                     <table class="data-table">
@@ -5513,10 +5514,8 @@ Confirm order?`;
         async function cancelAllOrders() {
             const autoSubmit = document.getElementById('autoSubmitOrders')?.checked || false;
 
-            // Skip confirmation if auto-submit is enabled
-            if (!autoSubmit && !window.confirm('⚠️ CANCEL ALL WORKING ORDERS?\n\nThis will cancel ALL open orders.\n\nAre you sure?')) {
-                return;
-            }
+            // Cancellable order statuses
+            const CANCELLABLE_STATUSES = ['WORKING', 'PENDING_ACTIVATION', 'QUEUED', 'ACCEPTED', 'PENDING', 'NEW', 'PENDING_NEW', 'PARTIALLY_FILLED'];
 
             try {
                 // Fetch all current orders
@@ -5524,17 +5523,34 @@ Confirm order?`;
                 const data = await response.json();
 
                 if (!data.orders || data.orders.length === 0) {
-                    if (!autoSubmit) alert('No orders to cancel');
-                    console.log('No orders to cancel');
+                    if (!autoSubmit) alert('No orders found');
+                    console.log('No orders found');
                     return;
                 }
 
-                console.log(`Cancelling ${data.orders.length} orders...`);
+                // Filter to only cancellable orders
+                const cancellableOrders = data.orders.filter(order => {
+                    const status = (order.status || '').toUpperCase();
+                    return CANCELLABLE_STATUSES.includes(status);
+                });
+
+                if (cancellableOrders.length === 0) {
+                    if (!autoSubmit) alert('No active orders to cancel.\n\nAll orders are already filled, cancelled, or rejected.');
+                    console.log('No cancellable orders found');
+                    return;
+                }
+
+                // Skip confirmation if auto-submit is enabled
+                if (!autoSubmit && !window.confirm(`⚠️ CANCEL ${cancellableOrders.length} WORKING ORDERS?\n\nThis will cancel all active orders.\n\nAre you sure?`)) {
+                    return;
+                }
+
+                console.log(`Cancelling ${cancellableOrders.length} active orders (skipping ${data.orders.length - cancellableOrders.length} non-cancellable)...`);
                 let cancelled = 0;
                 let failed = 0;
 
-                // Cancel each order
-                for (const order of data.orders) {
+                // Cancel each cancellable order
+                for (const order of cancellableOrders) {
                     try {
                         const cancelResponse = await fetch(API_BASE_URL + '/api/schwab/cancel-order', {
                             method: 'POST',
@@ -5549,7 +5565,7 @@ Confirm order?`;
                             console.log(`✓ Cancelled order ${order.order_id}`);
                         } else {
                             failed++;
-                            console.error(`✗ Failed to cancel order ${order.order_id}:`, cancelData.detail);
+                            console.error(`✗ Failed to cancel order ${order.order_id}:`, cancelData.detail || cancelData.message);
                         }
                     } catch (error) {
                         failed++;
@@ -5576,10 +5592,26 @@ Confirm order?`;
         // ═══════════════════════════════════════════════════════════════════════
 
         let worklistData = [];
+        let worklistLoading = false;  // Prevent duplicate calls
+        let worklistLastLoad = 0;     // Debounce timestamp
 
         async function loadWorklist() {
+            // Debounce: skip if loaded within last 2 seconds or currently loading
+            const now = Date.now();
+            if (worklistLoading || (now - worklistLastLoad < 2000)) {
+                console.log('[Worklist] Skipping duplicate call');
+                return;
+            }
+
+            worklistLoading = true;
+            worklistLastLoad = now;
+            const startTime = performance.now();
+
             try {
+                console.log('[Worklist] Fetching from API...');
                 const response = await fetch(API_BASE_URL + '/api/worklist');
+                const fetchTime = performance.now() - startTime;
+                console.log(`[Worklist] Fetch completed in ${fetchTime.toFixed(0)}ms`);
                 const data = await response.json();
 
                 if (data.success && data.data) {
@@ -5602,6 +5634,8 @@ Confirm order?`;
                 }
             } catch (error) {
                 console.error('Failed to load worklist:', error);
+            } finally {
+                worklistLoading = false;
             }
         }
 
@@ -5801,13 +5835,13 @@ Confirm order?`;
                 const data = await response.json();
                 if (data.success) {
                     await loadWorklist();
-                    alert(`✓ ${symbol.toUpperCase()} added to worklist`);
+                    showNotification(`✓ ${symbol.toUpperCase()} added`, 'success');
                 } else {
-                    alert('Failed to add symbol: ' + (data.detail || 'Unknown error'));
+                    showNotification('Failed: ' + (data.message || 'Unknown error'), 'error');
                 }
             } catch (error) {
                 console.error('Failed to add symbol:', error);
-                alert('Failed to add symbol');
+                showNotification('Failed to add symbol', 'error');
             }
         }
 
@@ -6069,7 +6103,7 @@ Confirm order?`;
             const symbols = Array.from(checkboxes).map(cb => cb.value);
 
             if (symbols.length === 0) {
-                alert('No symbols selected');
+                showNotification('No symbols selected', 'error');
                 return;
             }
 
@@ -6084,13 +6118,13 @@ Confirm order?`;
                 if (data.success) {
                     await loadWorklist();
                     closeScannerDialog();
-                    alert(`✓ Added ${symbols.length} symbols to worklist`);
+                    showNotification(`✓ Added ${symbols.length} symbols`, 'success');
                 } else {
-                    alert('Failed to add symbols');
+                    showNotification('Failed to add symbols', 'error');
                 }
             } catch (error) {
                 console.error('Failed to add scanner results:', error);
-                alert('Failed to add symbols');
+                showNotification('Failed to add symbols', 'error');
             }
         }
 
@@ -10096,7 +10130,7 @@ Confirm order?`;
         //                     CONNECTION MANAGEMENT
         // ═══════════════════════════════════════════════════════════════════════
 
-        async function connectToAlpaca() {
+        async function connectToSchwab() {
             try {
                 const response = await fetch(API_BASE_URL + '/api/schwab/connect', {
                     method: 'POST',
@@ -10105,13 +10139,13 @@ Confirm order?`;
                 const data = await response.json();
 
                 if (data.status === 'connected' || data.connected) {
-                    alert('✓ Connected to Alpaca successfully!');
+                    showNotification('✓ Connected to Schwab', 'success');
                     checkStatus();
                 } else {
-                    alert('✗ Failed to connect to Alpaca');
+                    showNotification('✗ Failed to connect to Schwab', 'error');
                 }
             } catch (error) {
-                alert('✗ Connection error: ' + error.message);
+                showNotification('✗ Connection error: ' + error.message, 'error');
             }
         }
 
@@ -12593,27 +12627,32 @@ Confirm order?`;
                 loadLayout('default');
             }
 
-            // Subscribe to all watchlist symbols
+            // Subscribe to all watchlist symbols IN PARALLEL (was sequential - caused 29s delay!)
             console.log('📊 Subscribing to market data...');
-            for (const symbol of watchlist) {
-                await subscribeToSymbol(symbol);
-            }
-
-            // Subscribe to current symbol
-            await subscribeToSymbol(currentSymbol);
+            let t0 = performance.now();
+            const subscribePromises = watchlist.map(symbol => subscribeToSymbol(symbol));
+            subscribePromises.push(subscribeToSymbol(currentSymbol));
+            await Promise.all(subscribePromises);
+            console.log(`✓ Subscribed to ${watchlist.length + 1} symbols in ${(performance.now()-t0).toFixed(0)}ms`);
 
             // Start status check
             checkStatus();
             setInterval(checkStatus, 30000);  // Every 30 seconds to prevent resource exhaustion
 
-            // Initialize broker state FIRST (Alpaca/Schwab selection)
+            // Initialize broker state FIRST (Schwab)
             // Must complete before data loading starts
+            t0 = performance.now();
             await initBrokerState();
+            console.log(`✓ Broker state initialized in ${(performance.now()-t0).toFixed(0)}ms`);
 
-            // Now load initial data with correct broker
-            await loadAccount();
-            await loadPositions();
-            await loadOrders();
+            // Now load initial data IN PARALLEL (was sequential)
+            t0 = performance.now();
+            await Promise.all([
+                loadAccount(),
+                loadPositions(),
+                loadOrders()
+            ]);
+            console.log(`✓ Account/Positions/Orders loaded in ${(performance.now()-t0).toFixed(0)}ms`);
 
             // Start data updates (every 5 seconds to prevent resource exhaustion)
             setInterval(() => {

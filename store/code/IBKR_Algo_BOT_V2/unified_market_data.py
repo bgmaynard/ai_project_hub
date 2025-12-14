@@ -112,7 +112,7 @@ class UnifiedMarketData:
         self._schwab_client = None
         self._alpaca_client = None
         self._cache: Dict[str, QuoteData] = {}
-        self._cache_ttl = 0.5  # Cache TTL in seconds (500ms for near real-time)
+        self._cache_ttl = 3.0  # Cache TTL in seconds (3s to reduce API calls)
         self._cache_timestamps: Dict[str, datetime] = {}
         self._lock = threading.Lock()
         self._source_stats = {
@@ -409,6 +409,9 @@ class UnifiedMarketData:
         Returns:
             Dictionary mapping symbols to quote data
         """
+        import time as _time
+        start = _time.time()
+
         results = {}
         symbols_to_fetch = []
 
@@ -423,10 +426,17 @@ class UnifiedMarketData:
         else:
             symbols_to_fetch = symbols
 
+        t1 = _time.time()
+        logger.info(f"[UNIFIED] get_quotes: {len(results)} cached, {len(symbols_to_fetch)} to fetch ({(t1-start)*1000:.0f}ms)")
+
         # Batch fetch from Schwab
         if symbols_to_fetch and self._schwab_available and self._schwab_client:
             try:
+                t2 = _time.time()
                 schwab_quotes = self._schwab_client.get_quotes(symbols_to_fetch)
+                t3 = _time.time()
+                logger.info(f"[UNIFIED] Schwab API batch call returned {len(schwab_quotes)} quotes in {(t3-t2)*1000:.0f}ms")
+
                 for symbol, quote in schwab_quotes.items():
                     quote_data = QuoteData(
                         symbol=symbol,
@@ -449,15 +459,20 @@ class UnifiedMarketData:
                     results[symbol] = quote_data.to_dict()
                     symbols_to_fetch.remove(symbol) if symbol in symbols_to_fetch else None
             except Exception as e:
-                logger.debug(f"[UNIFIED] Schwab batch quote failed: {e}")
+                logger.warning(f"[UNIFIED] Schwab batch quote failed: {e}")
 
-        # Fallback remaining to Alpaca
-        for symbol in symbols_to_fetch:
-            quote = self._get_from_alpaca(symbol)
-            if quote:
-                self._update_cache(symbol, quote)
-                results[symbol.upper()] = quote.to_dict()
+        # Fallback remaining to Alpaca (sequential - SLOW!)
+        if symbols_to_fetch:
+            t4 = _time.time()
+            logger.warning(f"[UNIFIED] Falling back to Alpaca for {len(symbols_to_fetch)} symbols: {symbols_to_fetch}")
+            for symbol in symbols_to_fetch:
+                quote = self._get_from_alpaca(symbol)
+                if quote:
+                    self._update_cache(symbol, quote)
+                    results[symbol.upper()] = quote.to_dict()
+            logger.warning(f"[UNIFIED] Alpaca fallback took {(_time.time()-t4)*1000:.0f}ms for {len(symbols_to_fetch)} symbols")
 
+        logger.info(f"[UNIFIED] get_quotes TOTAL: {(_time.time()-start)*1000:.0f}ms, returning {len(results)} quotes")
         return results
 
     def get_snapshot(self, symbol: str) -> Optional[Dict]:

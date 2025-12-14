@@ -3,7 +3,16 @@ Compatibility Routes for Legacy UI
 Maps old IBKR endpoints to new broker endpoints
 Primary broker: Schwab (as of v2.1.0)
 """
+import asyncio
+import time
+import logging
 from fastapi import APIRouter, HTTPException
+
+logger = logging.getLogger(__name__)
+
+# Worklist cache with request coalescing
+_worklist_cache = {"data": None, "timestamp": 0, "lock": None}
+_WORKLIST_CACHE_TTL = 5.0  # Cache for 5 seconds
 
 # Unified market data (Schwab)
 try:
@@ -157,26 +166,55 @@ async def get_account_compat():
 
 @router.get("/api/worklist")
 async def get_worklist_compat():
-    """Worklist endpoint - return saved watchlist with quotes"""
-    try:
-        # Get watchlist from manager
-        watchlist_symbols = []
-        if HAS_WATCHLIST:
-            mgr = get_watchlist_manager()
-            watchlist = mgr.get_default_watchlist()
-            watchlist_symbols = watchlist.get("symbols", [])
+    """Worklist endpoint - return saved watchlist with quotes (cached + coalesced)"""
+    global _worklist_cache
 
-        if not watchlist_symbols:
-            watchlist_symbols = ["SPY", "QQQ", "AAPL", "MSFT", "GOOGL",
-                                 "AMZN", "TSLA", "NVDA", "META", "AMD"]
+    # Check cache first (instant return if fresh)
+    now = time.time()
+    if _worklist_cache["data"] and (now - _worklist_cache["timestamp"]) < _WORKLIST_CACHE_TTL:
+        logger.info(f"[WORKLIST] Cache HIT - returning cached data (age: {(now - _worklist_cache['timestamp'])*1000:.0f}ms)")
+        return _worklist_cache["data"]
 
-        symbols = []
-        if HAS_UNIFIED:
-            unified = get_unified_market_data()
-            for symbol in watchlist_symbols:
+    # Initialize lock if needed
+    if _worklist_cache["lock"] is None:
+        _worklist_cache["lock"] = asyncio.Lock()
+
+    # Use lock to coalesce concurrent requests
+    async with _worklist_cache["lock"]:
+        # Double-check cache (another request may have populated it while waiting)
+        now = time.time()
+        if _worklist_cache["data"] and (now - _worklist_cache["timestamp"]) < _WORKLIST_CACHE_TTL:
+            return _worklist_cache["data"]
+
+        try:
+            start_total = time.time()
+
+            # Get watchlist from manager
+            watchlist_symbols = []
+            if HAS_WATCHLIST:
+                mgr = get_watchlist_manager()
+                watchlist = mgr.get_default_watchlist()
+                watchlist_symbols = watchlist.get("symbols", [])
+
+            t1 = time.time()
+            logger.info(f"[WORKLIST] Got {len(watchlist_symbols)} symbols in {(t1-start_total)*1000:.0f}ms")
+
+            if not watchlist_symbols:
+                watchlist_symbols = ["SPY", "QQQ", "AAPL", "MSFT", "GOOGL",
+                                     "AMZN", "TSLA", "NVDA", "META", "AMD"]
+
+            symbols = []
+            if HAS_UNIFIED:
+                unified = get_unified_market_data()
+                # Use batch quote fetching for speed (single API call vs sequential)
                 try:
-                    quote = unified.get_quote(symbol)
-                    if quote:
+                    t2 = time.time()
+                    quotes = unified.get_quotes(watchlist_symbols)
+                    t3 = time.time()
+                    logger.info(f"[WORKLIST] Batch fetch {len(watchlist_symbols)} quotes in {(t3-t2)*1000:.0f}ms")
+
+                    for symbol in watchlist_symbols:
+                        quote = quotes.get(symbol, {})
                         symbols.append({
                             "symbol": symbol,
                             "name": symbol,
@@ -187,29 +225,53 @@ async def get_worklist_compat():
                             "bid": quote.get("bid", 0),
                             "ask": quote.get("ask", 0)
                         })
-                except:
-                    symbols.append({
-                        "symbol": symbol,
-                        "name": symbol,
-                        "price": 0.0,
-                        "change": 0.0,
-                        "change_percent": 0.0,
-                        "volume": 0,
-                        "bid": 0.0,
-                        "ask": 0.0
-                    })
-        else:
-            symbols = [{"symbol": s, "name": s, "price": 0, "change": 0, "change_percent": 0, "volume": 0, "bid": 0, "ask": 0} for s in watchlist_symbols]
+                except Exception as batch_err:
+                    logger.warning(f"[WORKLIST] Batch fetch failed: {batch_err}, falling back to sequential")
+                    # Fallback to sequential if batch fails
+                    seq_start = time.time()
+                    for symbol in watchlist_symbols:
+                        try:
+                            quote = unified.get_quote(symbol)
+                            if quote:
+                                symbols.append({
+                                    "symbol": symbol,
+                                    "name": symbol,
+                                    "price": quote.get("last", 0),
+                                    "change": quote.get("change", 0),
+                                    "change_percent": quote.get("change_percent", 0),
+                                    "volume": quote.get("volume", 0),
+                                    "bid": quote.get("bid", 0),
+                                    "ask": quote.get("ask", 0)
+                                })
+                        except:
+                            symbols.append({
+                                "symbol": symbol,
+                                "name": symbol,
+                                "price": 0.0,
+                                "change": 0.0,
+                                "change_percent": 0.0,
+                                "volume": 0,
+                                "bid": 0.0,
+                                "ask": 0.0
+                            })
+                    logger.warning(f"[WORKLIST] Sequential fetch took {(time.time()-seq_start)*1000:.0f}ms")
+            else:
+                symbols = [{"symbol": s, "name": s, "price": 0, "change": 0, "change_percent": 0, "volume": 0, "bid": 0, "ask": 0} for s in watchlist_symbols]
 
-        # Return wrapped in 'data' key for UI compatibility
-        return {"success": True, "data": symbols, "count": len(symbols)}
-    except Exception as e:
-        return {"success": True, "data": [{"symbol": s, "name": s, "price": 0, "change": 0, "change_percent": 0, "volume": 0, "bid": 0, "ask": 0} for s in ["SPY", "QQQ", "AAPL"]], "count": 3}
+            # Cache the result
+            result = {"success": True, "data": symbols, "count": len(symbols)}
+            _worklist_cache["data"] = result
+            _worklist_cache["timestamp"] = time.time()
+            logger.info(f"[WORKLIST] TOTAL request time: {(time.time()-start_total)*1000:.0f}ms for {len(symbols)} symbols")
+            return result
+        except Exception as e:
+            return {"success": True, "data": [{"symbol": s, "name": s, "price": 0, "change": 0, "change_percent": 0, "volume": 0, "bid": 0, "ask": 0} for s in ["SPY", "QQQ", "AAPL"]], "count": 3}
 
 
 @router.post("/api/worklist/add")
 async def add_to_worklist_compat(data: dict):
     """Add symbol to worklist"""
+    global _worklist_cache
     try:
         symbol = data.get("symbol", "").upper()
         if not symbol:
@@ -221,6 +283,9 @@ async def add_to_worklist_compat(data: dict):
             watchlist_id = watchlist.get("watchlist_id")
             if watchlist_id:
                 mgr.add_symbols(watchlist_id, [symbol])
+                # Invalidate cache so next request fetches fresh data
+                _worklist_cache["data"] = None
+                _worklist_cache["timestamp"] = 0
                 return {"success": True, "message": f"Symbol {symbol} added to worklist"}
 
         return {"success": False, "message": "Watchlist manager not available"}
@@ -231,6 +296,7 @@ async def add_to_worklist_compat(data: dict):
 @router.delete("/api/worklist/{symbol}")
 async def remove_from_worklist_compat(symbol: str):
     """Remove symbol from worklist"""
+    global _worklist_cache
     try:
         symbol = symbol.upper()
         if HAS_WATCHLIST:
@@ -239,6 +305,9 @@ async def remove_from_worklist_compat(symbol: str):
             watchlist_id = watchlist.get("watchlist_id")
             if watchlist_id:
                 mgr.remove_symbols(watchlist_id, [symbol])
+                # Invalidate cache so next request fetches fresh data
+                _worklist_cache["data"] = None
+                _worklist_cache["timestamp"] = 0
                 return {"success": True, "message": f"Symbol {symbol} removed from worklist"}
 
         return {"success": False, "message": "Watchlist manager not available"}

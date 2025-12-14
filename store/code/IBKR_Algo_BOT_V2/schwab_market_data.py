@@ -273,7 +273,7 @@ class SchwabMarketData:
         """Initialize Schwab market data provider"""
         self._cache: Dict[str, Dict] = {}
         self._cache_time: Dict[str, datetime] = {}
-        self._cache_ttl = 0.5  # Cache TTL in seconds (500ms for near real-time)
+        self._cache_ttl = 3.0  # Cache TTL in seconds (3s to reduce API calls)
 
     def _is_cache_valid(self, symbol: str) -> bool:
         """Check if cache is still valid"""
@@ -344,6 +344,9 @@ class SchwabMarketData:
         Returns:
             Dictionary mapping symbols to quote data
         """
+        import time as _time
+        start = _time.time()
+
         results = {}
         symbols_to_fetch = []
 
@@ -356,14 +359,20 @@ class SchwabMarketData:
                 symbols_to_fetch.append(symbol)
 
         if not symbols_to_fetch:
+            logger.info(f"[SCHWAB] get_quotes: All {len(results)} symbols from cache")
             return results
 
         try:
             # Schwab API accepts comma-separated symbols
             symbol_str = ",".join(symbols_to_fetch)
+            logger.info(f"[SCHWAB] Making batch API call for {len(symbols_to_fetch)} symbols")
+            t1 = _time.time()
             data = _make_request(f"/marketdata/v1/quotes", params={"symbols": symbol_str})
+            t2 = _time.time()
+            logger.info(f"[SCHWAB] HTTP request took {(t2-t1)*1000:.0f}ms")
 
             if not data:
+                logger.warning(f"[SCHWAB] API returned no data for {len(symbols_to_fetch)} symbols")
                 return results
 
             for symbol in symbols_to_fetch:
@@ -391,6 +400,8 @@ class SchwabMarketData:
                     # Update cache
                     self._cache[symbol] = result
                     self._cache_time[symbol] = datetime.now()
+
+            logger.info(f"[SCHWAB] get_quotes TOTAL: {(_time.time()-start)*1000:.0f}ms, returned {len(results)} quotes")
 
         except Exception as e:
             logger.error(f"Error getting Schwab quotes: {e}")
