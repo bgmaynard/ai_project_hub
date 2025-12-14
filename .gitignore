@@ -48,3 +48,10 @@ secrets/
 
 # Old backup folder to delete
 store/code/IBKR_Algo_BOT/
+
+# Runtime data
+store/code/IBKR_Algo_BOT_V2/schwabdev_tokens.json
+store/code/IBKR_Algo_BOT_V2/store/
+store/models/
+store/tasks/
+tools/
