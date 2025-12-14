@@ -45,3 +45,6 @@ secrets/
 *.zip
 *.tar
 *.tar.gz
+
+# Old backup folder to delete
+store/code/IBKR_Algo_BOT/
