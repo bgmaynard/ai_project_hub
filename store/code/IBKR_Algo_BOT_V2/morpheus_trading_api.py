@@ -1277,6 +1277,12 @@ async def train_model_multi(request: TrainMultiRequest):
     """Train AI prediction model on multiple symbols for better generalization"""
     try:
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
+        if not predictor or not hasattr(predictor, 'train_multi'):
+            return {
+                "success": False,
+                "error": "AI Scanner not available",
+                "message": "Train a single symbol first with /api/ai/train"
+            }
         symbols = [s.upper() for s in request.symbols]
         result = predictor.train_multi(
             symbols=symbols,
@@ -1411,6 +1417,15 @@ async def predict(request: PredictRequest):
     """Get AI prediction for a symbol"""
     try:
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
+        if not predictor or not hasattr(predictor, 'model') or predictor.model is None:
+            return {
+                "success": False,
+                "symbol": request.symbol.upper(),
+                "prediction": "neutral",
+                "confidence": 0.0,
+                "error": "Model not trained",
+                "message": "Train the AI model first with /api/ai/train"
+            }
         prediction = predictor.predict(
             symbol=request.symbol.upper(),
             timeframe=request.timeframe
@@ -1422,7 +1437,13 @@ async def predict(request: PredictRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error making prediction: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {
+            "success": False,
+            "symbol": request.symbol.upper(),
+            "prediction": "neutral",
+            "confidence": 0.0,
+            "error": str(e)
+        }
 
 
 @app.get("/api/ai/model-info")

@@ -763,3 +763,63 @@ async def bot_status_compat():
 async def bot_config_compat(data: dict):
     """Legacy bot config"""
     return {"success": True, "message": "Configuration updated"}
+
+
+# ============================================================================
+# PIPELINE & BACKTEST COMPATIBILITY
+# ============================================================================
+
+@router.post("/api/pipeline/train/advanced")
+async def pipeline_train_advanced(data: dict = None):
+    """Advanced training pipeline - placeholder"""
+    return {
+        "success": True,
+        "status": "not_configured",
+        "message": "Advanced training pipeline not configured. Use /api/ai/train for basic training."
+    }
+
+
+@router.post("/api/schwab/ai/backtest/run")
+async def schwab_backtest_run(data: dict = None):
+    """Backtest via Schwab path - redirects to main backtest endpoint"""
+    from datetime import datetime, timedelta
+
+    try:
+        from backtester import get_backtester
+        backtester = get_backtester()
+
+        if not data:
+            return {"success": False, "error": "No backtest parameters provided"}
+
+        symbols = data.get("symbols", data.get("symbol", ["SPY"]))
+        if isinstance(symbols, str):
+            symbols = [symbols]
+
+        # Convert days to start_date/end_date
+        days = data.get("days", 30)
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+        # Use provided dates if available
+        start_date = data.get("start_date", start_date)
+        end_date = data.get("end_date", end_date)
+
+        result = backtester.run_backtest(
+            symbols=symbols,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=data.get("initial_capital", 10000)
+        )
+        # Convert dataclass to dict if needed
+        if hasattr(result, '__dict__'):
+            from dataclasses import asdict
+            result = asdict(result)
+        return {"success": True, "data": result}
+    except ImportError:
+        return {
+            "success": False,
+            "error": "Backtester module not available",
+            "message": "Use /api/backtest/run instead"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
