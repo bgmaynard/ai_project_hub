@@ -1733,17 +1733,12 @@
                 clearInterval(unifiedRefreshInterval);
             }
 
-            // Refresh every 2 seconds for synchronized updates
+            // Refresh every 10 seconds to prevent resource exhaustion
             unifiedRefreshInterval = setInterval(async () => {
                 if (currentSymbol) {
                     await fetchAndUpdateStore(currentSymbol);
                 }
-
-                // Also refresh worklist if it's being displayed
-                if (document.getElementById('worklistDisplay')) {
-                    await refreshWorklistPrices();
-                }
-            }, 2000);
+            }, 10000);
         }
 
         async function fetchAndUpdateStore(symbol) {
@@ -2213,8 +2208,11 @@
                 <div class="module-content">
                     <div class="order-field">
                         <label>Symbol</label>
-                        <input type="text" id="orderSymbol" value="AAPL" readonly
-                               style="text-transform: uppercase; background: #1a1a1a; font-weight: 700; font-size: 17px;">
+                        <input type="text" id="orderSymbol" value="AAPL"
+                               style="text-transform: uppercase; background: #1a1a1a; font-weight: 700; font-size: 17px;"
+                               onchange="handleSymbolChange(this.value)"
+                               onkeyup="if(event.key==='Enter')handleSymbolChange(this.value)"
+                               placeholder="Enter symbol...">
                     </div>
 
                     <div class="quantity-buttons">
@@ -4303,6 +4301,15 @@
         //                     SYMBOL MANAGEMENT
         // ═══════════════════════════════════════════════════════════════════════
 
+        // Handle manual symbol entry in order form
+        function handleSymbolChange(symbol) {
+            if (!symbol || symbol.trim() === '') return;
+            symbol = symbol.toUpperCase().trim();
+            console.log('Manual symbol entry:', symbol);
+            setCurrentSymbol(symbol);
+            showNotification(`Symbol changed to ${symbol}`, 'info');
+        }
+
         function setCurrentSymbol(symbol) {
             currentSymbol = symbol.toUpperCase();
             document.getElementById('currentSymbolDisplay').textContent = currentSymbol;
@@ -4812,19 +4819,19 @@
                     // Alpaca orders endpoint
                     switch(currentOrdersTab) {
                         case 'working':
-                            endpoint = '/api/alpaca/orders?status=open&limit=50';
+                            endpoint = '/api/schwab/orders?status=open&limit=50';
                             statusFilter = ['new', 'accepted', 'pending_new', 'partially_filled'];
                             break;
                         case 'open':
-                            endpoint = '/api/alpaca/orders?status=open&limit=50';
+                            endpoint = '/api/schwab/orders?status=open&limit=50';
                             statusFilter = ['new', 'accepted', 'pending_new'];
                             break;
                         case 'filled':
-                            endpoint = '/api/alpaca/orders?status=closed&limit=50';
+                            endpoint = '/api/schwab/orders?status=closed&limit=50';
                             statusFilter = ['filled'];
                             break;
                         case 'closed':
-                            endpoint = '/api/alpaca/orders?status=closed&limit=50';
+                            endpoint = '/api/schwab/orders?status=closed&limit=50';
                             statusFilter = ['canceled', 'expired', 'rejected', 'replaced'];
                             break;
                     }
@@ -4915,7 +4922,7 @@
             // Determine cancel endpoint based on active broker
             const cancelEndpoint = activeBroker === 'schwab'
                 ? `/api/schwab/orders/${orderId}`
-                : `/api/alpaca/orders/${orderId}`;
+                : `/api/schwab/orders/${orderId}`;
 
             // Fire API call in background
             fetch(API_BASE_URL + cancelEndpoint, { method: 'DELETE' })
@@ -4968,7 +4975,7 @@
 
                     // Fetch REAL daily P/L from Alpaca (equity - last_equity)
                     try {
-                        const alpacaAcct = await apiFetch('/api/alpaca/account');
+                        const alpacaAcct = await apiFetch('/api/schwab/account');
                         const dayPL = alpacaAcct?.daily_pnl || (parseFloat(alpacaAcct?.equity || 0) - parseFloat(alpacaAcct?.last_equity || 0));
                         const dayPLEl = document.getElementById('dayPL');
                         if (dayPLEl) {
@@ -5291,7 +5298,7 @@ Confirm order?`;
                     // Route order to selected broker (Alpaca or Schwab)
                     const orderEndpoint = activeBroker === 'schwab'
                         ? '/api/schwab/place-order'
-                        : '/api/alpaca/place-order';
+                        : '/api/schwab/place-order';
 
                     // Get selected Schwab account if applicable
                     const schwabAccountEl = document.getElementById('schwabAccountSelect');
@@ -5445,7 +5452,7 @@ Confirm order?`;
                     };
 
                     // Submit order to Alpaca
-                    const response = await fetch(API_BASE_URL + '/api/alpaca/place-order', {
+                    const response = await fetch(API_BASE_URL + '/api/schwab/place-order', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(orderRequest)
@@ -5477,7 +5484,7 @@ Confirm order?`;
                 try {
                     console.log('Cancelling order:', orderId);
 
-                    const response = await fetch(API_BASE_URL + '/api/alpaca/cancel-order', {
+                    const response = await fetch(API_BASE_URL + '/api/schwab/cancel-order', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ order_id: orderId })
@@ -5513,7 +5520,7 @@ Confirm order?`;
 
             try {
                 // Fetch all current orders
-                const response = await fetch(API_BASE_URL + '/api/alpaca/orders');
+                const response = await fetch(API_BASE_URL + '/api/schwab/orders');
                 const data = await response.json();
 
                 if (!data.orders || data.orders.length === 0) {
@@ -5529,7 +5536,7 @@ Confirm order?`;
                 // Cancel each order
                 for (const order of data.orders) {
                     try {
-                        const cancelResponse = await fetch(API_BASE_URL + '/api/alpaca/cancel-order', {
+                        const cancelResponse = await fetch(API_BASE_URL + '/api/schwab/cancel-order', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ order_id: order.order_id })
@@ -5612,7 +5619,7 @@ Confirm order?`;
                     return;
                 }
 
-                const response = await fetch(`${API_BASE_URL}/api/alpaca/asset/${currentSymbol}/status`);
+                const response = await fetch(`${API_BASE_URL}/api/schwab/asset/${currentSymbol}/status`);
                 const data = await response.json();
 
                 if (data.success) {
@@ -5689,97 +5696,71 @@ Confirm order?`;
                 }
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/alpaca/asset/${symbol}/status`);
+                    const response = await fetch(`${API_BASE_URL}/api/schwab/asset/${symbol}/status`);
+                    if (!response.ok) {
+                        // Cache empty result to avoid repeated 404s
+                        assetStatusCache[symbol] = { data: {}, timestamp: Date.now() };
+                        continue;
+                    }
                     const data = await response.json();
                     if (data.success) {
                         assetStatusCache[symbol] = { data: data, timestamp: Date.now() };
                         results[symbol] = data;
                     }
                 } catch (e) {
-                    console.debug('Status fetch failed for', symbol);
+                    // Silent fail - don't block worklist display
                 }
             }
 
             return results;
         }
 
-        async function updateWorklistDisplay() {
+        function updateWorklistDisplay(retryCount = 0) {
             const display = document.getElementById('watchlistDisplay');
-            if (!display) return;
+            if (!display) {
+                // Retry up to 5 times with delay if element not found (window might not be rendered yet)
+                if (retryCount < 5 && worklistData.length > 0) {
+                    console.log(`Worklist display element not found, retrying in 500ms (attempt ${retryCount + 1}/5)...`);
+                    setTimeout(() => updateWorklistDisplay(retryCount + 1), 500);
+                }
+                return;
+            }
 
             if (worklistData.length === 0) {
                 display.innerHTML = '<div class="empty-state" style="padding: 20px; text-align: center;"><div style="font-size: 28px; margin-bottom: 8px;">📋</div><div style="font-size: 15px;">No symbols in worklist</div><div style="font-size: 13px; color: #888; margin-top: 4px;">Use Scanner or Add Symbol</div></div>';
                 return;
             }
 
-            let html = '<table class="data-table" style="font-size: 13px;"><thead><tr><th style="padding: 4px 6px;">Symbol</th><th style="padding: 4px 6px; text-align: center;">Status</th><th style="padding: 4px 6px; text-align: right;">Price</th><th style="padding: 4px 6px; text-align: right;">Change</th><th style="padding: 4px 6px; text-align: center;">Pred</th><th style="padding: 4px 6px; text-align: right;">Conf</th><th style="padding: 4px 6px; text-align: center;">Action</th></tr></thead><tbody>';
+            try {
+                let html = '<table class="data-table" style="font-size: 13px;"><thead><tr><th style="padding: 4px 6px;">Symbol</th><th style="padding: 4px 6px; text-align: right;">Price</th><th style="padding: 4px 6px; text-align: right;">Change</th><th style="padding: 4px 6px; text-align: center;">Action</th></tr></thead><tbody>';
 
-            // Pre-fetch asset status for all symbols in worklist
-            const symbols = worklistData.map(item => item.symbol);
-            const assetStatuses = await getAssetStatusBatch(symbols);
+                for (const item of worklistData) {
+                    // Use item data directly (already has price from API)
+                    const price = item.price ? `$${item.price.toFixed(2)}` : '-';
+                    const change = item.change_percent !== undefined ? item.change_percent.toFixed(2) + '%' :
+                                   (item.change !== undefined ? item.change.toFixed(2) : '-');
+                    const changeClass = (item.change_percent >= 0 || item.change >= 0) ? 'positive' : 'negative';
 
-            for (const item of worklistData) {
-                // GET PRICE FROM CENTRALIZED STORE (not from item)
-                const storeData = marketDataStore.get(item.symbol);
-                const isFresh = marketDataStore.isFresh(item.symbol);
-                const price = storeData?.last ? `$${storeData.last.toFixed(2)}` : '-';
-                const change = storeData?.change_percent !== undefined ? storeData.change_percent.toFixed(2) + '%' : '-';
-                const changeClass = storeData?.change_percent !== undefined && storeData.change_percent >= 0 ? 'positive' : 'negative';
-
-                let predBadge = '-';
-                // Handle all prediction formats: BUY/SELL/HOLD, UP/DOWN, BULLISH/BEARISH/NEUTRAL
-                const pred = item.prediction?.toUpperCase();
-                if (pred === 'BUY' || pred === 'UP' || pred === 'BULLISH' || pred === 'STRONG_BULLISH') {
-                    const label = pred === 'STRONG_BULLISH' ? '▲▲ STRONG' : '▲ BUY';
-                    const bgColor = pred === 'STRONG_BULLISH' ? '#14532d' : '#166534';
-                    predBadge = `<span style="background: ${bgColor}; color: #22c55e; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 700;">${label}</span>`;
-                } else if (pred === 'SELL' || pred === 'DOWN' || pred === 'BEARISH' || pred === 'STRONG_BEARISH') {
-                    const label = pred === 'STRONG_BEARISH' ? '▼▼ STRONG' : '▼ SELL';
-                    const bgColor = pred === 'STRONG_BEARISH' ? '#450a0a' : '#7f1d1d';
-                    predBadge = `<span style="background: ${bgColor}; color: #ef4444; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 700;">${label}</span>`;
-                } else if (pred === 'HOLD' || pred === 'NEUTRAL') {
-                    predBadge = '<span style="background: #3f3f46; color: #a1a1aa; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 700;">— HOLD</span>';
+                    html += `
+                        <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="font-size: 13px; cursor: pointer;">
+                            <td style="padding: 6px 8px;"><strong style="color: #fff;">${item.symbol}</strong></td>
+                            <td style="padding: 6px 8px; text-align: right; font-family: monospace;">${price}</td>
+                            <td class="${changeClass}" style="padding: 6px 8px; text-align: right; font-family: monospace;">${change}</td>
+                            <td style="padding: 6px 8px; text-align: center;">
+                                <button onclick="event.stopPropagation(); removeFromWorklist('${item.symbol}')"
+                                        style="background: #7f1d1d; color: #ef4444; border: none; padding: 3px 8px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600;">✕</button>
+                            </td>
+                        </tr>
+                    `;
                 }
 
-                const confidence = item.confidence ? item.confidence.toFixed(0) + '%' : '-';
-                // Live indicator: green dot if fresh, red if stale
-                const liveIndicator = isFresh ? '<span style="color: #22c55e; margin-left: 4px;" title="Live data (fresh)">🟢</span>' :
-                                      (storeData ? '<span style="color: #eab308; margin-left: 4px;" title="Data delayed">🟡</span>' :
-                                       '<span style="color: #ef4444; margin-left: 4px;" title="No data">🔴</span>');
-
-                // Get asset status for this symbol
-                const status = assetStatuses[item.symbol];
-                let statusBadge = '<span style="color: #666; font-size: 10px;">-</span>';
-                if (status) {
-                    if (status.is_halted) {
-                        statusBadge = '<span style="background: #dc3545; color: #fff; padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: 700;">HALT</span>';
-                    } else if (status.borrow_status === 'ETB') {
-                        statusBadge = '<span style="background: #28a745; color: #fff; padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: 700;">ETB</span>';
-                    } else if (status.borrow_status === 'HTB') {
-                        statusBadge = '<span style="background: #ff9800; color: #fff; padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: 700;">HTB</span>';
-                    } else if (status.borrow_status === 'NOT_SHORTABLE' || !status.shortable) {
-                        statusBadge = '<span style="background: #6c757d; color: #fff; padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: 700;" title="Not Shortable">NO SHORT</span>';
-                    }
-                }
-
-                html += `
-                    <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="font-size: 13px;">
-                        <td style="padding: 4px 6px;"><strong>${item.symbol}</strong>${liveIndicator}</td>
-                        <td style="padding: 4px 6px; text-align: center;">${statusBadge}</td>
-                        <td style="padding: 4px 6px; text-align: right; font-family: monospace;">${price}</td>
-                        <td class="${changeClass}" style="padding: 4px 6px; text-align: right; font-family: monospace;">${change}</td>
-                        <td style="padding: 4px 6px; text-align: center;">${predBadge}</td>
-                        <td style="padding: 4px 6px; text-align: right; font-family: monospace;">${confidence}</td>
-                        <td style="padding: 4px 6px; text-align: center;">
-                            <button onclick="event.stopPropagation(); removeFromWorklist('${item.symbol}')"
-                                    style="background: #7f1d1d; color: #ef4444; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600;">✕</button>
-                        </td>
-                    </tr>
-                `;
+                html += '</tbody></table>';
+                display.innerHTML = html;
+                console.log(`Worklist display updated with ${worklistData.length} symbols`);
+            } catch (error) {
+                console.error('Error rendering worklist display:', error);
+                display.innerHTML = '<div class="empty-state" style="padding: 20px; text-align: center; color: #ef4444;">Error loading worklist. Please refresh.</div>';
             }
-
-            html += '</tbody></table>';
-            display.innerHTML = html;
         }
 
         function updateWorklistStats() {
@@ -6569,7 +6550,7 @@ Confirm order?`;
 
         async function loadBrainStatus() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/brain/status');
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/brain/status');
                 const data = await response.json();
 
                 if (data.success) {
@@ -6623,7 +6604,7 @@ Confirm order?`;
         async function startBackgroundBrain() {
             try {
                 const cpuTarget = parseInt(document.getElementById('brainCpuSlider').value) / 100;
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/brain/start', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/brain/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cpu_target: cpuTarget })
@@ -6642,7 +6623,7 @@ Confirm order?`;
 
         async function stopBackgroundBrain() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/brain/stop', { method: 'POST' });
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/brain/stop', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
                     showNotification('Brain stopped', 'warning');
@@ -6658,7 +6639,7 @@ Confirm order?`;
         async function updateBrainCpuTarget(value) {
             document.getElementById('brainCpuSliderValue').textContent = value + '%';
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/brain/cpu-target', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/brain/cpu-target', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cpu_target: parseInt(value) / 100 })
@@ -6679,7 +6660,7 @@ Confirm order?`;
 
         async function loadCircuitBreakerStatus() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/circuit-breaker/status');
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/circuit-breaker/status');
                 const data = await response.json();
 
                 if (data.success) {
@@ -6717,7 +6698,7 @@ Confirm order?`;
         async function resetCircuitBreaker() {
             if (!confirm('Reset circuit breaker for today? This will reinitialize starting equity.')) return;
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/circuit-breaker/reset', { method: 'POST' });
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/circuit-breaker/reset', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
                     showNotification('Circuit breaker reset', 'success');
@@ -6732,7 +6713,7 @@ Confirm order?`;
 
         async function loadTradeJournal() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/trade-journal?limit=20');
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/trade-journal?limit=20');
                 const data = await response.json();
 
                 const container = document.getElementById('tradeJournalList');
@@ -6769,7 +6750,7 @@ Confirm order?`;
             }
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/symbol-memory/' + symbol);
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/symbol-memory/' + symbol);
                 const data = await response.json();
 
                 const container = document.getElementById('symbolMemoryInfo');
@@ -8407,7 +8388,7 @@ Confirm order?`;
                     </div>
                 `;
 
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/backtest/run', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/backtest/run', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -8471,7 +8452,7 @@ Confirm order?`;
                     </div>
                 `;
 
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/backtest/quick', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/backtest/quick', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ symbols: symbols, days: 30 })
@@ -8619,7 +8600,7 @@ Confirm order?`;
             }
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/ensemble/predict/' + symbol);
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/ensemble/predict/' + symbol);
                 const data = await response.json();
 
                 if (data.success) {
@@ -8669,7 +8650,7 @@ Confirm order?`;
                 const watchlistData = await watchlistResponse.json();
                 const symbols = watchlistData.symbols || ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL'];
 
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/ensemble/predict-batch', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/ensemble/predict-batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ symbols: symbols.slice(0, 10) })
@@ -8709,7 +8690,7 @@ Confirm order?`;
 
         async function loadEnsemblePerformance() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/ensemble/performance');
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/ensemble/performance');
                 const data = await response.json();
 
                 if (data.success) {
@@ -8727,7 +8708,7 @@ Confirm order?`;
 
         async function loadRLStatus() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/rl/status');
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/rl/status');
                 const data = await response.json();
 
                 if (data.success) {
@@ -8750,7 +8731,7 @@ Confirm order?`;
             }
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/rl/predict/' + symbol);
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/rl/predict/' + symbol);
                 const data = await response.json();
 
                 if (data.success) {
@@ -8806,7 +8787,7 @@ Confirm order?`;
                 '<span style="color: #f59e0b;">Training in progress... This may take a few minutes.</span>';
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/rl/train', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/rl/train', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ symbols, episodes, period: '1y' })
@@ -8844,7 +8825,7 @@ Confirm order?`;
             }
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/rl/reset', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/rl/reset', {
                     method: 'POST'
                 });
 
@@ -8871,7 +8852,7 @@ Confirm order?`;
         async function loadRiskDashboard() {
             try {
                 // Load full risk status
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/portfolio-guard/status');
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/portfolio-guard/status');
                 const data = await response.json();
 
                 if (data.success) {
@@ -8887,7 +8868,7 @@ Confirm order?`;
 
         async function loadVARData() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/portfolio-guard/var');
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/portfolio-guard/var');
                 const data = await response.json();
 
                 if (data.success && data.var) {
@@ -9092,7 +9073,7 @@ Confirm order?`;
         // Refresh PDT status
         async function refreshPDTStatus() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/pdt-status');
+                const response = await fetch(API_BASE_URL + '/api/schwab/pdt-status');
                 const data = await response.json();
 
                 // Update status badge
@@ -9271,7 +9252,7 @@ Confirm order?`;
 
             try {
                 // Use the new full conversational AI endpoint
-                const response = await fetch(API_BASE_URL + '/api/alpaca/ai/chat', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/ai/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -10117,7 +10098,7 @@ Confirm order?`;
 
         async function connectToAlpaca() {
             try {
-                const response = await fetch(API_BASE_URL + '/api/alpaca/connect', {
+                const response = await fetch(API_BASE_URL + '/api/schwab/connect', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -12623,7 +12604,7 @@ Confirm order?`;
 
             // Start status check
             checkStatus();
-            setInterval(checkStatus, 5000);
+            setInterval(checkStatus, 30000);  // Every 30 seconds to prevent resource exhaustion
 
             // Initialize broker state FIRST (Alpaca/Schwab selection)
             // Must complete before data loading starts
@@ -12634,19 +12615,27 @@ Confirm order?`;
             await loadPositions();
             await loadOrders();
 
-            // Start data updates (every 1 second for near real-time)
+            // Start data updates (every 5 seconds to prevent resource exhaustion)
             setInterval(() => {
                 loadPrice();
+            }, 5000);
+
+            // Level 2 and Time & Sales less frequent (every 10 seconds)
+            setInterval(() => {
                 loadLevel2();
                 loadTimeSales();
-            }, 1000);
+            }, 10000);
 
-            // Slower updates for account data (every 3 seconds)
+            // Slower updates for account data (every 15 seconds)
             setInterval(() => {
                 loadPositions();
                 loadAccount();
+            }, 15000);
+
+            // Worklist refresh (every 30 seconds - it's mostly static)
+            setInterval(() => {
                 loadWorklist();
-            }, 3000);
+            }, 30000);
 
             // Initialize order form price field based on selected order type
             handleOrderTypeChange();
@@ -12860,6 +12849,10 @@ Confirm order?`;
                 if (!response.ok) throw new Error('Failed to fetch worklist');
 
                 const data = await response.json();
+                if (!data.data || !Array.isArray(data.data)) {
+                    console.error('Worklist data format error:', data);
+                    return;
+                }
                 const symbols = data.data.map(item => item.symbol);
 
                 if (symbols.length === 0) {
@@ -12941,6 +12934,11 @@ Confirm order?`;
                 if (!response.ok) throw new Error('Failed to fetch worklist');
 
                 const data = await response.json();
+                if (!data.data || !Array.isArray(data.data)) {
+                    console.error('Worklist data format error:', data);
+                    alert('❌ Failed to load worklist - invalid data format');
+                    return;
+                }
                 const symbols = data.data.map(item => item.symbol);
 
                 if (symbols.length === 0) {

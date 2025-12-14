@@ -205,36 +205,20 @@ class ClaudeStockScanner:
     async def load_stock_universe(self) -> int:
         """
         Load the full tradeable stock universe.
-        Uses Alpaca's asset API to get all tradeable stocks.
+        Uses hardcoded popular stocks as Schwab doesn't have a universe API.
         """
         logger.info("[SCANNER] Loading stock universe...")
 
         try:
-            # Try Alpaca API first
-            from alpaca_integration import get_alpaca_connector
-            connector = get_alpaca_connector()
+            # Try to get stock universe from broker
+            from unified_broker import get_unified_broker
+            broker = get_unified_broker()
 
-            if connector and connector.api:
-                assets = connector.api.list_assets(status='active', asset_class='us_equity')
-
-                self.stock_universe = [
-                    {
-                        "symbol": asset.symbol,
-                        "name": asset.name,
-                        "exchange": asset.exchange,
-                        "tradable": asset.tradable,
-                        "shortable": asset.shortable
-                    }
-                    for asset in assets
-                    if asset.tradable and asset.exchange in ['NASDAQ', 'NYSE', 'ARCA']
-                ]
-
-                self.universe_loaded = True
-                logger.info(f"[SCANNER] Loaded {len(self.stock_universe)} tradeable stocks from Alpaca")
-                return len(self.stock_universe)
+            # Use default popular stocks - Schwab doesn't have a universe API
+            pass  # Fall through to hardcoded list
 
         except Exception as e:
-            logger.warning(f"[SCANNER] Alpaca universe load failed: {e}")
+            logger.warning(f"[SCANNER] Universe load failed: {e}")
 
         # Fallback to hardcoded popular stocks
         self.stock_universe = self._get_fallback_universe()

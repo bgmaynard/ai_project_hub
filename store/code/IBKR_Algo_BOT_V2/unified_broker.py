@@ -2,10 +2,9 @@
 Unified Broker Interface for Morpheus Trading Bot
 ==================================================
 Single interface for all broker operations.
-Primary: Schwab
-Fallback: Alpaca (paper trading only)
+Broker: Schwab
 
-Version: 2.1.0
+Version: 2.2.0
 """
 
 import logging
@@ -20,7 +19,6 @@ logger = logging.getLogger(__name__)
 class BrokerType(str, Enum):
     """Supported brokers"""
     SCHWAB = "schwab"
-    ALPACA = "alpaca"
 
 
 class OrderSide(str, Enum):
@@ -54,7 +52,7 @@ class OrderResult:
 
 class UnifiedBroker:
     """
-    Unified broker interface - abstracts Schwab and Alpaca
+    Unified broker interface for Schwab
 
     Usage:
         broker = UnifiedBroker()
@@ -64,37 +62,23 @@ class UnifiedBroker:
     def __init__(self, prefer_schwab: bool = True):
         self.prefer_schwab = prefer_schwab
         self._schwab = None
-        self._alpaca = None
         self._active_broker = None
         self._initialize()
 
     def _initialize(self):
-        """Initialize broker connections"""
-        # Try Schwab first (primary)
-        if self.prefer_schwab:
-            try:
-                from schwab_trading import get_schwab_trading, is_schwab_trading_available
-                if is_schwab_trading_available():
-                    self._schwab = get_schwab_trading()
-                    if self._schwab:
-                        self._active_broker = BrokerType.SCHWAB
-                        logger.info("UnifiedBroker: Using Schwab as primary broker")
-            except Exception as e:
-                logger.warning(f"Schwab initialization failed: {e}")
-
-        # Fallback to Alpaca
-        if not self._active_broker:
-            try:
-                from alpaca_integration import get_alpaca_connector
-                self._alpaca = get_alpaca_connector()
-                if self._alpaca and self._alpaca.is_connected():
-                    self._active_broker = BrokerType.ALPACA
-                    logger.info("UnifiedBroker: Using Alpaca as fallback broker")
-            except Exception as e:
-                logger.warning(f"Alpaca initialization failed: {e}")
+        """Initialize Schwab broker connection"""
+        try:
+            from schwab_trading import get_schwab_trading, is_schwab_trading_available
+            if is_schwab_trading_available():
+                self._schwab = get_schwab_trading()
+                if self._schwab:
+                    self._active_broker = BrokerType.SCHWAB
+                    logger.info("UnifiedBroker: Schwab broker connected")
+        except Exception as e:
+            logger.warning(f"Schwab initialization failed: {e}")
 
         if not self._active_broker:
-            logger.error("UnifiedBroker: No broker available!")
+            logger.error("UnifiedBroker: Schwab broker not available!")
 
     @property
     def broker_name(self) -> str:
@@ -114,12 +98,6 @@ class UnifiedBroker:
             except Exception as e:
                 logger.error(f"Schwab account error: {e}")
 
-        if self._alpaca:
-            try:
-                return self._alpaca.get_account()
-            except Exception as e:
-                logger.error(f"Alpaca account error: {e}")
-
         return None
 
     def get_positions(self) -> List[Dict]:
@@ -130,12 +108,6 @@ class UnifiedBroker:
             except Exception as e:
                 logger.error(f"Schwab positions error: {e}")
 
-        if self._alpaca:
-            try:
-                return self._alpaca.get_positions()
-            except Exception as e:
-                logger.error(f"Alpaca positions error: {e}")
-
         return []
 
     def get_orders(self, status: str = "all") -> List[Dict]:
@@ -145,12 +117,6 @@ class UnifiedBroker:
                 return self._schwab.get_orders()
             except Exception as e:
                 logger.error(f"Schwab orders error: {e}")
-
-        if self._alpaca:
-            try:
-                return self._alpaca.get_orders(status)
-            except Exception as e:
-                logger.error(f"Alpaca orders error: {e}")
 
         return []
 
@@ -205,37 +171,6 @@ class UnifiedBroker:
                     quantity=quantity,
                     price=price,
                     broker="Schwab",
-                    error=str(e),
-                    timestamp=timestamp
-                )
-
-        # Alpaca fallback (paper trading only)
-        if self._alpaca:
-            try:
-                if side == OrderSide.BUY:
-                    result = self._alpaca.place_limit_order(symbol, quantity, price)
-                else:
-                    result = self._alpaca.sell_limit(symbol, quantity, price)
-
-                return OrderResult(
-                    success=True,
-                    order_id=result.get("order_id") if result else None,
-                    symbol=symbol,
-                    side=side.value,
-                    quantity=quantity,
-                    price=price,
-                    status="PENDING",
-                    broker="Alpaca (paper)",
-                    timestamp=timestamp
-                )
-            except Exception as e:
-                return OrderResult(
-                    success=False,
-                    symbol=symbol,
-                    side=side.value,
-                    quantity=quantity,
-                    price=price,
-                    broker="Alpaca",
                     error=str(e),
                     timestamp=timestamp
                 )
@@ -303,12 +238,6 @@ class UnifiedBroker:
             except Exception as e:
                 logger.error(f"Schwab cancel error: {e}")
 
-        if self._alpaca:
-            try:
-                return self._alpaca.cancel_order(order_id)
-            except Exception as e:
-                logger.error(f"Alpaca cancel error: {e}")
-
         return False
 
     def close_position(self, symbol: str) -> OrderResult:
@@ -360,6 +289,78 @@ class UnifiedBroker:
 
         return results
 
+    def _get_smart_limit_price(self, symbol: str, side: str) -> Optional[float]:
+        """
+        Get intelligent limit price for smart orders.
+        Uses bid for sells (slightly below market) and ask for buys (slightly above market).
+        Adds a small buffer for better fill rates.
+        """
+        try:
+            # Try Schwab market data first
+            from schwab_market_data import SchwabMarketData, is_schwab_available
+            if is_schwab_available():
+                schwab_data = SchwabMarketData()
+                quote = schwab_data.get_quote(symbol)
+                if quote:
+                    bid = quote.get("bid", quote.get("bidPrice", 0))
+                    ask = quote.get("ask", quote.get("askPrice", 0))
+                    last = quote.get("last", quote.get("lastPrice", 0))
+
+                    if side.upper() == "BUY":
+                        # For buys, use ask + 0.02% buffer for better fills
+                        if ask and ask > 0:
+                            return round(ask * 1.0002, 2)
+                        elif last and last > 0:
+                            return round(last * 1.001, 2)  # 0.1% above last
+                    else:
+                        # For sells, use bid - 0.02% buffer for faster fills
+                        if bid and bid > 0:
+                            return round(bid * 0.9998, 2)
+                        elif last and last > 0:
+                            return round(last * 0.999, 2)  # 0.1% below last
+        except Exception as e:
+            logger.debug(f"Schwab quote failed for {symbol}: {e}")
+
+        return None
+
+    def _validate_order(
+        self,
+        symbol: str,
+        quantity: int,
+        side: str,
+        limit_price: float
+    ) -> Optional[str]:
+        """
+        Validate order before submission.
+        Returns error message if invalid, None if valid.
+        """
+        # Basic validation
+        if quantity <= 0:
+            return f"Invalid quantity: {quantity}"
+        if limit_price <= 0:
+            return f"Invalid limit price: {limit_price}"
+        if len(symbol) == 0:
+            return "Symbol is required"
+
+        # Position size validation
+        order_value = quantity * limit_price
+        if order_value > 100000:  # Max single order value
+            logger.warning(f"Large order: {symbol} ${order_value:.2f}")
+            # Don't block but warn
+
+        # Check buying power for buys
+        if side.upper() == "BUY":
+            try:
+                account = self.get_account()
+                if account:
+                    buying_power = float(account.get("buying_power", account.get("buyingPower", 0)))
+                    if buying_power > 0 and order_value > buying_power:
+                        return f"Insufficient buying power: ${buying_power:.2f} < ${order_value:.2f}"
+            except Exception as e:
+                logger.warning(f"Could not validate buying power: {e}")
+
+        return None  # Valid
+
     def place_smart_order(
         self,
         symbol: str,
@@ -371,62 +372,59 @@ class UnifiedBroker:
         """
         Smart order placement - uses best available execution method.
 
-        For Schwab: Routes to limit order with current quote price
-        For Alpaca: Uses Alpaca's native smart order with bid/ask logic
+        Features:
+        - Auto-fetches quote data if no limit_price provided
+        - Validates order before submission
+        - Routes to Schwab broker
+        - Uses intelligent bid/ask pricing for better fills
         """
         timestamp = datetime.now().isoformat()
         order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
+        symbol = symbol.upper()
 
-        # Try Alpaca's native smart order first if available (for paper trading)
-        if self._alpaca and self._active_broker == BrokerType.ALPACA:
-            try:
-                result = self._alpaca.place_smart_order(
+        # Get price if not provided
+        effective_price = limit_price
+        if not effective_price:
+            effective_price = self._get_smart_limit_price(symbol, side)
+            if effective_price:
+                logger.info(f"Smart order: Using calculated price ${effective_price:.2f} for {symbol}")
+            else:
+                logger.warning(f"Smart order: Could not get quote for {symbol}")
+                return OrderResult(
+                    success=False,
                     symbol=symbol,
-                    quantity=quantity,
                     side=side,
-                    limit_price=limit_price,
-                    emergency=emergency
+                    quantity=quantity,
+                    broker=self.broker_name,
+                    error="Could not determine limit price - no market data available",
+                    timestamp=timestamp
                 )
-                if result and result.get("order_id"):
-                    return OrderResult(
-                        success=True,
-                        order_id=result.get("order_id"),
-                        symbol=symbol,
-                        side=side,
-                        quantity=quantity,
-                        price=result.get("limit_price"),
-                        status=result.get("status", "PENDING"),
-                        broker="Alpaca (paper)",
-                        timestamp=timestamp
-                    )
-            except Exception as e:
-                logger.warning(f"Alpaca smart order failed: {e}")
 
-        # For Schwab or fallback: use limit order with provided price
-        if limit_price:
-            return self.place_limit_order(symbol, order_side, quantity, limit_price)
+        # Validate order (skip in emergency mode for faster execution)
+        if not emergency:
+            validation_error = self._validate_order(symbol, quantity, side, effective_price)
+            if validation_error:
+                return OrderResult(
+                    success=False,
+                    symbol=symbol,
+                    side=side,
+                    quantity=quantity,
+                    price=effective_price,
+                    broker=self.broker_name,
+                    error=validation_error,
+                    timestamp=timestamp
+                )
 
-        # No price provided - log warning and return error
-        logger.warning(f"Smart order for {symbol}: No limit price provided and no quote available")
-        return OrderResult(
-            success=False,
-            symbol=symbol,
-            side=side,
-            quantity=quantity,
-            broker=self.broker_name,
-            error="Limit price required for smart orders",
-            timestamp=timestamp
-        )
+        # Use Schwab limit order
+        return self.place_limit_order(symbol, order_side, quantity, effective_price)
 
     def get_status(self) -> Dict:
         """Get broker status"""
         return {
             "active_broker": self.broker_name,
             "schwab_available": self._schwab is not None,
-            "alpaca_available": self._alpaca is not None,
             "connected": self.is_connected,
-            "primary": "Schwab",
-            "fallback": "Alpaca (paper trading)",
+            "broker": "Schwab",
             "name": "Morpheus Trading Bot"
         }
 

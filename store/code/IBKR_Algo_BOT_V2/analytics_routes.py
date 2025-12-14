@@ -9,8 +9,8 @@ import logging
 
 from portfolio_analytics import get_portfolio_analytics
 from trade_execution import get_execution_tracker
-from alpaca_integration import get_alpaca_connector
-from alpaca_market_data import get_alpaca_market_data
+from unified_broker import get_unified_broker
+from unified_market_data import get_unified_market_data
 
 logger = logging.getLogger(__name__)
 
@@ -62,13 +62,14 @@ async def get_portfolio_metrics():
     """Get comprehensive portfolio performance metrics"""
     try:
         analytics = get_portfolio_analytics()
-        connector = get_alpaca_connector()
+        broker = get_unified_broker()
 
-        # Get current account value from Alpaca
+        # Get current account value from broker
         account_value = 100000  # Default
-        if connector.is_connected():
-            account = connector.get_account()
-            account_value = float(account.get("portfolio_value", 100000))
+        if broker.is_connected:
+            account = broker.get_account()
+            if account:
+                account_value = float(account.get("market_value", account.get("portfolio_value", 100000)))
 
         metrics = analytics.calculate_metrics(account_value)
         return metrics
@@ -82,14 +83,13 @@ async def get_portfolio_metrics():
 async def get_positions_with_pnl():
     """Get current positions with real-time P&L"""
     try:
-        connector = get_alpaca_connector()
-        market_data = get_alpaca_market_data()
+        broker = get_unified_broker()
         analytics = get_portfolio_analytics()
 
-        if not connector.is_connected():
+        if not broker.is_connected:
             raise HTTPException(status_code=503, detail="Not connected to broker")
 
-        positions = connector.get_positions()
+        positions = broker.get_positions()
 
         # Enhance positions with P&L data
         enhanced_positions = []
@@ -356,20 +356,21 @@ async def get_analytics_dashboard():
     try:
         analytics = get_portfolio_analytics()
         tracker = get_execution_tracker()
-        connector = get_alpaca_connector()
+        broker = get_unified_broker()
 
         # Get account info
         account_value = 100000
         account_info = {}
-        if connector.is_connected():
-            account = connector.get_account()
-            account_value = float(account.get("portfolio_value", 100000))
-            account_info = {
-                "portfolio_value": account_value,
-                "buying_power": float(account.get("buying_power", 0)),
-                "cash": float(account.get("cash", 0)),
-                "equity": float(account.get("equity", 0))
-            }
+        if broker.is_connected:
+            account = broker.get_account()
+            if account:
+                account_value = float(account.get("market_value", account.get("portfolio_value", 100000)))
+                account_info = {
+                    "portfolio_value": account_value,
+                    "buying_power": float(account.get("buying_power", 0)),
+                    "cash": float(account.get("cash", 0)),
+                    "equity": float(account.get("market_value", 0))
+                }
 
         return {
             "account": account_info,

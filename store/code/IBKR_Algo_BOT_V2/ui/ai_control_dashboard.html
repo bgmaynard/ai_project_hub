@@ -802,7 +802,7 @@
         async function startBrain() {
             addLog('Starting Brain...', 'info');
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/start`, { method: 'POST' });
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/brain/start`, { method: 'POST' });
                 const data = await resp.json();
                 if (data.success) {
                     document.getElementById('brainStatus').className = 'process-status status-running';
@@ -818,7 +818,7 @@
         async function stopBrain() {
             addLog('Stopping Brain...', 'warn');
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/stop`, { method: 'POST' });
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/brain/stop`, { method: 'POST' });
                 const data = await resp.json();
                 if (data.success) {
                     document.getElementById('brainStatus').className = 'process-status status-stopped';
@@ -902,7 +902,7 @@
         async function retrainAll() {
             addLog('Force retraining all models...', 'warn');
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/force-retrain`, { method: 'POST' });
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/brain/force-retrain`, { method: 'POST' });
                 const data = await resp.json();
                 if (data.success) {
                     addLog('Retrain initiated - check status for progress', 'info');
@@ -1125,7 +1125,7 @@
         async function loadRiskStatus() {
             try {
                 // Portfolio guard status
-                const guardResp = await fetch(`${API_BASE}/api/alpaca/ai/portfolio-guard/status`);
+                const guardResp = await fetch(`${API_BASE}/api/schwab/ai/portfolio-guard/status`);
                 const guardData = await guardResp.json();
                 if (guardData.success) {
                     // Parse the summary field or risk_state directly
@@ -1146,7 +1146,7 @@
                 }
 
                 // Circuit breaker status
-                const cbResp = await fetch(`${API_BASE}/api/alpaca/ai/circuit-breaker/status`);
+                const cbResp = await fetch(`${API_BASE}/api/schwab/ai/circuit-breaker/status`);
                 const cbData = await cbResp.json();
                 if (cbData.success) {
                     const status = cbData.status || {};
@@ -1169,7 +1169,7 @@
         async function resetCircuit() {
             addLog('Resetting circuit breaker...', 'info');
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/circuit-breaker/reset`, { method: 'POST' });
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/circuit-breaker/reset`, { method: 'POST' });
                 const data = await resp.json();
                 if (data.success) {
                     document.getElementById('riskCircuit').textContent = 'OK';
@@ -1187,7 +1187,7 @@
         // ═══════════════════════════════════════════════════════════════
         async function loadVolatility() {
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/volatility`);
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/brain/volatility`);
                 const data = await resp.json();
                 if (data.success) {
                     const v = data.volatility || data.data || {};
@@ -1214,7 +1214,7 @@
         async function checkDrift() {
             addLog('Checking for data drift...', 'info');
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/drift`);
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/brain/drift`);
                 const data = await resp.json();
                 if (data.success) {
                     const d = data.prediction_drift || data.data || {};
@@ -1238,7 +1238,7 @@
         async function loadSectors() {
             addLog('Loading sector data...', 'info');
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/sectors`);
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/brain/sectors`);
                 const data = await resp.json();
                 if (data.success) {
                     const rotation = data.sector_rotation || data.data || {};
@@ -1285,7 +1285,7 @@
         // ═══════════════════════════════════════════════════════════════
         async function loadModelStatus() {
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/model/status`);
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/model/status`);
                 const data = await resp.json();
                 if (data.success) {
                     const m = data.data || data;
@@ -1333,7 +1333,7 @@
         // ═══════════════════════════════════════════════════════════════
         async function loadBrainStatus() {
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/ai/brain/status`);
+                const resp = await fetch(`${API_BASE}/api/schwab/ai/brain/status`);
                 const data = await resp.json();
                 if (data.success) {
                     const isRunning = data.running || (data.metrics && data.metrics.uptime_seconds > 0);
@@ -1352,7 +1352,7 @@
         // ═══════════════════════════════════════════════════════════════
         async function loadPositions() {
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/positions`);
+                const resp = await fetch(`${API_BASE}/api/schwab/positions`);
                 const positions = await resp.json();
 
                 const container = document.getElementById('positionsContainer');
@@ -1409,7 +1409,7 @@
         // ═══════════════════════════════════════════════════════════════
         async function loadOrders() {
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/orders?status=all&limit=20`);
+                const resp = await fetch(`${API_BASE}/api/schwab/orders?status=all&limit=20`);
                 const data = await resp.json();
 
                 const container = document.getElementById('ordersContainer');
@@ -1457,7 +1457,7 @@
         // ═══════════════════════════════════════════════════════════════
         async function loadAccountInfo() {
             try {
-                const resp = await fetch(`${API_BASE}/api/alpaca/account`);
+                const resp = await fetch(`${API_BASE}/api/schwab/account`);
                 const acc = await resp.json();
 
                 if (!acc) return;

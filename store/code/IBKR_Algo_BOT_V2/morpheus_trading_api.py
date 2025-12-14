@@ -1,6 +1,6 @@
 """
-Unified Trading Dashboard API with Alpaca Integration
-Main API server for AI Project Hub
+Morpheus Trading Bot API
+Main API server with Schwab broker integration
 """
 from dotenv import load_dotenv
 load_dotenv()
@@ -23,15 +23,10 @@ import uvicorn
 # Broker configuration
 from config.broker_config import get_broker_config, BrokerType
 
-# Alpaca integration (fallback for paper trading)
-from alpaca_integration import get_alpaca_connector
-from alpaca_market_data import get_alpaca_market_data
-from alpaca_api_routes import router as alpaca_router
-
-# Unified Broker (Schwab primary, Alpaca fallback)
+# Unified Broker (Schwab)
 from unified_broker import get_unified_broker, OrderSide
 
-# Unified Market Data Provider (Schwab primary, Alpaca fallback)
+# Unified Market Data Provider (Schwab)
 try:
     from unified_market_data import (
         get_unified_market_data,
@@ -82,7 +77,12 @@ except ImportError:
     pipeline_router = None
 
 # AI Predictor
-from ai.alpaca_ai_predictor import get_alpaca_predictor
+try:
+    from ai.claude_stock_scanner import get_ai_scanner
+    HAS_AI_SCANNER = True
+except ImportError:
+    HAS_AI_SCANNER = False
+    get_ai_scanner = None
 
 # Claude AI API Router
 try:
@@ -140,9 +140,9 @@ except ImportError as e:
     HAS_SCHWAB_TRADING = False
     schwab_router = None
 
-# Schwab WebSocket Streaming for Real-Time Data
+# Schwab WebSocket Streaming for Real-Time Data (using schwabdev)
 try:
-    from schwab_streaming import (
+    from schwabdev_streaming import (
         start_streaming as start_schwab_streaming,
         stop_streaming as stop_schwab_streaming,
         get_status as get_schwab_stream_status,
@@ -150,10 +150,12 @@ try:
         get_cached_quote as get_schwab_stream_quote
     )
     HAS_SCHWAB_STREAMING = True
+    logger = logging.getLogger(__name__)
+    logger.info("Schwabdev streaming module loaded")
 except ImportError as e:
     HAS_SCHWAB_STREAMING = False
     logger = logging.getLogger(__name__)
-    logger.warning(f"Schwab streaming not available: {e}")
+    logger.warning(f"Schwabdev streaming not available: {e}")
 
 # Schwab Fast Polling (fallback for when WebSocket streaming fails)
 try:
@@ -182,7 +184,7 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI(
     title="Morpheus Trading Bot",
-    description="AI-powered trading platform with Schwab integration (Primary) and Alpaca fallback",
+    description="AI-powered trading platform with Schwab broker integration",
     version="2.1.0"
 )
 
@@ -196,45 +198,50 @@ app.add_middleware(
 )
 
 # =============================================================================
-# PRIMARY ACCOUNT ENDPOINT (Schwab first, Alpaca fallback)
+# PRIMARY ACCOUNT ENDPOINT (Schwab)
 # =============================================================================
 @app.get("/api/account")
 async def get_primary_account():
-    """Get account info from primary broker (Schwab) or fallback (Alpaca)"""
-    # Try Schwab first (primary broker)
+    """Get account info from Schwab broker"""
+    account = None
+    broker = "Unknown"
+    positions = []
+
+    # Get Schwab account
     if HAS_SCHWAB_TRADING:
         try:
             if is_schwab_trading_available():
                 schwab = get_schwab_trading()
                 if schwab:
                     account = schwab.get_account_info()
-                    if account:
-                        return {
-                            **account,
-                            "broker": "Schwab",
-                            "name": "Morpheus Trading Bot"
-                        }
+                    positions = schwab.get_positions() or []
+                    broker = "Schwab"
         except Exception as e:
             logger.warning(f"Schwab account fetch failed: {e}")
 
-    # Fallback to Alpaca
-    try:
-        connector = get_alpaca_connector()
-        if connector.is_connected():
-            account = connector.get_account()
-            return {
-                **account,
-                "broker": "Alpaca (fallback)",
-                "name": "Morpheus Trading Bot"
-            }
-    except Exception as e:
-        logger.warning(f"Alpaca account fetch failed: {e}")
+    if not account:
+        raise HTTPException(status_code=503, detail="No broker available")
 
-    raise HTTPException(status_code=503, detail="No broker available")
+    # Format response for UI compatibility (UI expects 'summary' object)
+    return {
+        "summary": {
+            "account_id": account.get("account_number", account.get("account_id", "Unknown")),
+            "account_type": account.get("type", account.get("account_type", "Unknown")),
+            "net_liquidation": account.get("market_value", account.get("equity", 0)),
+            "buying_power": account.get("buying_power", 0),
+            "total_cash": account.get("cash", account.get("cash_available_for_trading", 0)),
+            "day_trading_buying_power": account.get("day_trading_buying_power", 0),
+            "maintenance_margin": account.get("maintenance_requirement", 0),
+            "broker": broker
+        },
+        "positions": positions,
+        "total_realized_pnl": account.get("daily_pl", 0),
+        "broker": broker,
+        "name": "Morpheus Trading Bot",
+        # Also include raw account data for other uses
+        **account
+    }
 
-
-# Include Alpaca router (fallback broker, paper trading)
-app.include_router(alpaca_router, prefix="/api/alpaca", tags=["Alpaca (Fallback)"])
 
 # Include watchlist router (if available)
 if HAS_WATCHLIST_ROUTES and watchlist_router:
@@ -358,19 +365,20 @@ class ClaudeQueryRequest(BaseModel):
 @app.get("/")
 async def root():
     """Root endpoint"""
-    # Schwab is now the primary broker (Phase 1 migration)
     primary_broker = "Schwab"
+    broker_status = "disconnected"
     if HAS_SCHWAB_TRADING:
         try:
             if is_schwab_trading_available():
-                primary_broker = "Schwab"
+                broker_status = "connected"
         except Exception:
-            primary_broker = "Alpaca (fallback)"
+            broker_status = "error"
 
     return {
         "name": "Morpheus Trading Bot",
         "version": "2.1.0",
         "broker": primary_broker,
+        "broker_status": broker_status,
         "status": "operational",
         "data_source": "Schwab"
     }
@@ -380,7 +388,6 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     config = get_broker_config()
-    connector = get_alpaca_connector()
 
     # Check multi-channel status
     multi_channel_status = "not_available"
@@ -404,9 +411,9 @@ async def health_check():
         except Exception:
             streaming_status = "error"
 
-    # Check unified market data status (Schwab primary)
+    # Check unified market data status (Schwab)
     unified_data_status = "not_available"
-    primary_data_source = "alpaca"
+    primary_data_source = "schwab"
     if HAS_UNIFIED_DATA:
         try:
             unified_provider = get_unified_market_data()
@@ -414,9 +421,6 @@ async def health_check():
             if status["schwab"]["available"]:
                 unified_data_status = "schwab_active"
                 primary_data_source = "schwab"
-            elif status["alpaca"]["available"]:
-                unified_data_status = "alpaca_fallback"
-                primary_data_source = "alpaca"
             else:
                 unified_data_status = "no_source"
         except Exception:
@@ -451,9 +455,9 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "broker": {
-            "type": config.broker_type,
-            "connected": connector.is_connected(),
-            "paper_trading": config.alpaca.paper if config.is_alpaca() else False
+            "type": "schwab",
+            "connected": schwab_trading_status != "not_available",
+            "paper_trading": False
         },
         "services": {
             "api": "operational",
@@ -481,20 +485,157 @@ async def get_config():
     return config.get_config_dict()
 
 
+@app.get("/api/system/status")
+async def get_system_status():
+    """
+    Comprehensive system status endpoint for monitoring.
+
+    Returns detailed status of all system components:
+    - Schwab broker connection
+    - Token lifecycle status
+    - Market data sources
+    - AI modules availability
+    - Real-time streaming status
+    """
+    from datetime import datetime
+
+    status = {
+        "name": "Morpheus Trading Bot",
+        "version": "2.1.0",
+        "timestamp": datetime.now().isoformat(),
+        "overall_status": "operational"
+    }
+
+    # Schwab token status
+    try:
+        from schwab_market_data import get_token_status, is_schwab_available
+        token_status = get_token_status()
+        status["schwab_token"] = token_status
+        status["schwab_available"] = is_schwab_available()
+    except Exception as e:
+        status["schwab_token"] = {"valid": False, "error": str(e)}
+        status["schwab_available"] = False
+
+    # Schwab trading status
+    schwab_trading_info = {"available": False}
+    if HAS_SCHWAB_TRADING:
+        try:
+            if is_schwab_trading_available():
+                schwab = get_schwab_trading()
+                if schwab:
+                    accounts = schwab.get_accounts()
+                    selected = schwab.get_selected_account()
+                    schwab_trading_info = {
+                        "available": True,
+                        "accounts": len(accounts),
+                        "selected_account": f"{selected[:4]}***" if selected else None,
+                        "status": "ready"
+                    }
+        except Exception as e:
+            schwab_trading_info["error"] = str(e)
+    status["schwab_trading"] = schwab_trading_info
+
+    # Unified broker status
+    broker_info = {"active": None}
+    try:
+        broker = get_unified_broker()
+        if broker:
+            broker_info = {
+                "active": broker.broker_name,
+                "is_connected": broker.is_connected,
+                "supports_market_orders": True,
+                "supports_limit_orders": True
+            }
+    except Exception as e:
+        broker_info["error"] = str(e)
+    status["unified_broker"] = broker_info
+
+    # Market data sources
+    data_sources = {"primary": "schwab"}
+    if HAS_UNIFIED_DATA:
+        try:
+            unified_provider = get_unified_market_data()
+            provider_status = unified_provider.get_status()
+            data_sources = {
+                "primary": "schwab",
+                "schwab": provider_status["schwab"],
+                "available": provider_status["schwab"]["available"]
+            }
+        except Exception as e:
+            data_sources["error"] = str(e)
+    status["market_data"] = data_sources
+
+    # Multi-channel data
+    if HAS_MULTI_CHANNEL:
+        try:
+            provider = get_multi_channel_provider()
+            status["multi_channel"] = {
+                "available": True,
+                "channels": len(provider.channels) if hasattr(provider, 'channels') else 0
+            }
+        except Exception:
+            status["multi_channel"] = {"available": False}
+    else:
+        status["multi_channel"] = {"available": False}
+
+    # Streaming status
+    if HAS_STREAMING:
+        try:
+            stream_mgr = get_stream_manager()
+            stream_status = stream_mgr.get_status()
+            status["streaming"] = {
+                "available": True,
+                "running": stream_status["running"],
+                "subscriptions": stream_status.get("subscription_count", 0)
+            }
+        except Exception:
+            status["streaming"] = {"available": False}
+    else:
+        status["streaming"] = {"available": False}
+
+    # AI modules
+    ai_status = {}
+    try:
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
+        ai_status["predictor"] = {
+            "available": predictor is not None,
+            "loaded": predictor.is_loaded if hasattr(predictor, 'is_loaded') else False
+        }
+    except Exception:
+        ai_status["predictor"] = {"available": False}
+
+    try:
+        import os
+        ai_status["claude"] = {
+            "available": bool(os.environ.get("ANTHROPIC_API_KEY")),
+            "api_configured": bool(os.environ.get("ANTHROPIC_API_KEY"))
+        }
+    except Exception:
+        ai_status["claude"] = {"available": False}
+    status["ai_modules"] = ai_status
+
+    # Determine overall status
+    if not status.get("schwab_available"):
+        status["overall_status"] = "degraded"
+        status["issues"] = ["No broker connection available"]
+    elif status.get("schwab_token", {}).get("status") == "expired":
+        status["overall_status"] = "warning"
+        status["issues"] = ["Schwab token expired - will attempt auto-refresh"]
+
+    return status
+
+
 # ============================================================================
 # MARKET DATA ENDPOINTS
 # ============================================================================
 
 @app.get("/api/market/quote/{symbol}")
 async def get_quote(symbol: str):
-    """Get latest quote for a symbol (uses Schwab if available, falls back to Alpaca)"""
+    """Get latest quote for a symbol"""
     try:
-        # Use unified provider (Schwab primary, Alpaca fallback)
-        if HAS_UNIFIED_DATA:
-            quote = unified_get_quote(symbol.upper())
-        else:
-            market_data = get_alpaca_market_data()
-            quote = market_data.get_latest_quote(symbol.upper())
+        if not HAS_UNIFIED_DATA:
+            raise HTTPException(status_code=503, detail="Market data not available")
+        quote = unified_get_quote(symbol.upper())
 
         if quote is None:
             raise HTTPException(status_code=404, detail=f"No quote data for {symbol}")
@@ -508,14 +649,11 @@ async def get_quote(symbol: str):
 
 @app.get("/api/market/snapshot/{symbol}")
 async def get_snapshot(symbol: str):
-    """Get market snapshot for a symbol (uses Schwab if available, falls back to Alpaca)"""
+    """Get market snapshot for a symbol"""
     try:
-        # Use unified provider (Schwab primary, Alpaca fallback)
-        if HAS_UNIFIED_DATA:
-            snapshot = unified_get_snapshot(symbol.upper())
-        else:
-            market_data = get_alpaca_market_data()
-            snapshot = market_data.get_snapshot(symbol.upper())
+        if not HAS_UNIFIED_DATA:
+            raise HTTPException(status_code=503, detail="Market data not available")
+        snapshot = unified_get_snapshot(symbol.upper())
 
         if snapshot is None:
             raise HTTPException(status_code=404, detail=f"No snapshot data for {symbol}")
@@ -531,22 +669,26 @@ async def get_snapshot(symbol: str):
 async def get_historical_bars(request: MarketDataRequest):
     """Get historical bars for a symbol"""
     try:
-        market_data = get_alpaca_market_data()
-        bars = market_data.get_historical_bars(
+        if not HAS_UNIFIED_DATA:
+            raise HTTPException(status_code=503, detail="Market data not available")
+        provider = get_unified_market_data()
+        bars = provider.get_bars(
             symbol=request.symbol.upper(),
             timeframe=request.timeframe,
             limit=request.limit
         )
 
-        if bars.empty:
+        if bars is None or (hasattr(bars, 'empty') and bars.empty):
             raise HTTPException(status_code=404, detail=f"No data for {request.symbol}")
 
-        # Convert DataFrame to dict for JSON response
-        return {
-            "symbol": request.symbol,
-            "timeframe": request.timeframe,
-            "bars": bars.reset_index().to_dict(orient='records')
-        }
+        # Convert DataFrame to dict for JSON response if needed
+        if hasattr(bars, 'reset_index'):
+            return {
+                "symbol": request.symbol,
+                "timeframe": request.timeframe,
+                "bars": bars.reset_index().to_dict(orient='records')
+            }
+        return {"symbol": request.symbol, "timeframe": request.timeframe, "bars": bars}
 
     except Exception as e:
         logger.error(f"Error fetching bars: {e}")
@@ -555,16 +697,13 @@ async def get_historical_bars(request: MarketDataRequest):
 
 @app.get("/api/market/multi-quote")
 async def get_multi_quote(symbols: str = Query(..., description="Comma-separated symbols")):
-    """Get quotes for multiple symbols (uses Schwab if available, falls back to Alpaca)"""
+    """Get quotes for multiple symbols"""
     try:
         symbol_list = [s.strip().upper() for s in symbols.split(',')]
 
-        # Use unified provider (Schwab primary, Alpaca fallback)
-        if HAS_UNIFIED_DATA:
-            quotes = unified_get_quotes(symbol_list)
-        else:
-            market_data = get_alpaca_market_data()
-            quotes = market_data.get_multiple_quotes(symbol_list)
+        if not HAS_UNIFIED_DATA:
+            raise HTTPException(status_code=503, detail="Market data not available")
+        quotes = unified_get_quotes(symbol_list)
 
         return quotes
 
@@ -582,8 +721,7 @@ async def get_unified_data_status():
     """
     Get status of unified market data provider.
 
-    Shows which data source is active (Schwab or Alpaca fallback)
-    and statistics for each source.
+    Shows which data source is active (Schwab) and statistics.
     """
     if not HAS_UNIFIED_DATA:
         return {
@@ -649,11 +787,10 @@ async def get_fast_quote(symbol: str, channel: str = "realtime"):
     - scanner: Market scanning context
     """
     if not HAS_MULTI_CHANNEL:
-        # Fallback to unified market data (Schwab primary)
+        # Use unified market data (Schwab)
         if HAS_UNIFIED_DATA:
             return unified_get_quote(symbol.upper())
-        market_data = get_alpaca_market_data()
-        return market_data.get_latest_quote(symbol.upper())
+        raise HTTPException(status_code=503, detail="Market data not available")
 
     try:
         channel_enum = DataChannel(channel.lower())
@@ -679,12 +816,11 @@ async def get_parallel_quotes(symbols: str = Query(..., description="Comma-separ
     Much faster than sequential fetching for large watchlists.
     """
     if not HAS_MULTI_CHANNEL:
-        # Fallback to unified market data (Schwab primary)
+        # Use unified market data (Schwab)
         symbol_list = [s.strip().upper() for s in symbols.split(',')]
         if HAS_UNIFIED_DATA:
             return unified_get_quotes(symbol_list)
-        market_data = get_alpaca_market_data()
-        return market_data.get_multiple_quotes(symbol_list)
+        raise HTTPException(status_code=503, detail="Market data not available")
 
     try:
         symbol_list = [s.strip().upper() for s in symbols.split(',')]
@@ -751,10 +887,12 @@ async def get_channel_bars(
     - scanner: For market scanning
     """
     if not HAS_MULTI_CHANNEL:
-        # Fallback to standard market data
-        market_data = get_alpaca_market_data()
-        bars = market_data.get_historical_bars(symbol.upper(), timeframe, days * 10)
-        return {"symbol": symbol, "bars": bars.to_dict(orient='records') if hasattr(bars, 'to_dict') else []}
+        # Use unified market data (Schwab)
+        if HAS_UNIFIED_DATA:
+            provider = get_unified_market_data()
+            bars = provider.get_bars(symbol.upper(), timeframe, days * 10)
+            return {"symbol": symbol, "bars": bars.to_dict(orient='records') if hasattr(bars, 'to_dict') else bars or []}
+        raise HTTPException(status_code=503, detail="Market data not available")
 
     try:
         provider = get_multi_channel_provider()
@@ -1121,7 +1259,7 @@ async def websocket_market_stream(websocket: WebSocket):
 async def train_model(request: TrainRequest):
     """Train AI prediction model on a single symbol"""
     try:
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         result = predictor.train(
             symbol=request.symbol.upper(),
             test_size=request.test_size
@@ -1138,7 +1276,7 @@ async def train_model(request: TrainRequest):
 async def train_model_multi(request: TrainMultiRequest):
     """Train AI prediction model on multiple symbols for better generalization"""
     try:
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         symbols = [s.upper() for s in request.symbols]
         result = predictor.train_multi(
             symbols=symbols,
@@ -1157,7 +1295,7 @@ async def train_model_compat(data: dict):
     """Compatibility route for UI - Train AI prediction model"""
     import time
     try:
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         symbol = data.get('symbol', 'AAPL').upper()
         test_size = data.get('test_size', 0.2)
 
@@ -1195,7 +1333,7 @@ async def train_walkforward(data: dict):
         Out-of-sample accuracy, precision, recall, F1 score
     """
     try:
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
 
         # Default to a diverse set of stocks
         default_symbols = ["TSLA", "NVDA", "AMD", "META", "AAPL", "GOOGL", "MSFT",
@@ -1272,7 +1410,7 @@ async def run_backtest_endpoint(data: dict):
 async def predict(request: PredictRequest):
     """Get AI prediction for a symbol"""
     try:
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         prediction = predictor.predict(
             symbol=request.symbol.upper(),
             timeframe=request.timeframe
@@ -1291,7 +1429,7 @@ async def predict(request: PredictRequest):
 async def get_model_info():
     """Get information about the trained model"""
     try:
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
 
         if predictor.model is None:
             return {
@@ -1315,7 +1453,7 @@ async def get_model_info():
                 {"name": name, "importance": float(importance)}
                 for name, importance in sorted_features
             ],
-            "data_source": "Alpaca"
+            "data_source": "Schwab"
         }
 
     except Exception as e:
@@ -1328,7 +1466,7 @@ async def batch_predict(symbols: str = Query(..., description="Comma-separated s
     """Get AI predictions for multiple symbols"""
     try:
         symbol_list = [s.strip().upper() for s in symbols.split(',')]
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
 
         results = []
         for symbol in symbol_list:
@@ -1448,7 +1586,7 @@ async def scan_triggers(symbols: str = Query(..., description="Comma-separated s
 async def predict_with_triggers(symbol: str):
     """Get combined AI prediction with MACD/RSI triggers"""
     try:
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         result = predictor.predict_with_triggers(symbol.upper())
 
         return {
@@ -1508,21 +1646,28 @@ async def batch_triggers(request: dict):
 
 @app.get("/api/watchlist")
 async def get_watchlist():
-    """Get default watchlist (uses Schwab if available, falls back to Alpaca)"""
-    watchlist = [
-        "SPY", "QQQ", "AAPL", "MSFT", "GOOGL",
-        "AMZN", "TSLA", "NVDA", "META", "AMD"
-    ]
+    """Get default watchlist with market data"""
+    # Get symbols from database watchlist manager
+    try:
+        from watchlist_manager import get_watchlist_manager
+        manager = get_watchlist_manager()
+        default_wl = manager.get_default_watchlist()
+        watchlist = default_wl.get('symbols', [])
+        watchlist_name = default_wl.get('name', 'Default Watchlist')
+    except Exception as e:
+        logger.warning(f"Could not load watchlist from database: {e}")
+        # Fallback to hardcoded defaults
+        watchlist = ["SPY", "QQQ", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "AMD"]
+        watchlist_name = "Default Watchlist"
 
-    # Use unified provider (Schwab primary, Alpaca fallback)
+    # Use unified provider (Schwab)
     if HAS_UNIFIED_DATA:
         quotes = unified_get_quotes(watchlist)
     else:
-        market_data = get_alpaca_market_data()
-        quotes = market_data.get_multiple_quotes(watchlist)
+        quotes = {sym: {"symbol": sym, "price": 0} for sym in watchlist}
 
     return {
-        "name": "Default Watchlist",
+        "name": watchlist_name,
         "symbols": watchlist,
         "quotes": quotes
     }
@@ -1559,7 +1704,6 @@ async def claude_query(request: ClaudeQueryRequest):
         if any(kw in query_lower for kw in ['schwab', 'broker', 'connected', 'status', 'account']):
             # Get broker status
             schwab_status = "Not available"
-            alpaca_status = "Not available"
 
             try:
                 from schwab_trading import get_schwab_trading, is_schwab_trading_available
@@ -1574,23 +1718,14 @@ async def claude_query(request: ClaudeQueryRequest):
             except Exception as e:
                 schwab_status = f"Error: {e}"
 
-            try:
-                connector = get_alpaca_connector()
-                if connector and connector.is_connected():
-                    alpaca_status = "Connected"
-                else:
-                    alpaca_status = "Not connected"
-            except:
-                pass
-
             return {
                 "success": True,
                 "data": {
-                    "response": f"📊 **Broker Status**\n\n• **Schwab:** {schwab_status}\n• **Alpaca:** {alpaca_status}\n\nYou can switch brokers using the broker selection buttons at the top of the platform.",
+                    "response": f"📊 **Broker Status**\n\n• **Schwab:** {schwab_status}\n\nSchwab is the active broker for trading.",
                     "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                     "timestamp": datetime.now().isoformat(),
                     "action": "status_check",
-                    "action_details": {"schwab": schwab_status, "alpaca": alpaca_status}
+                    "action_details": {"schwab": schwab_status}
                 }
             }
 
@@ -1598,23 +1733,23 @@ async def claude_query(request: ClaudeQueryRequest):
         from ai.claude_bot_intelligence import get_bot_intelligence
 
         ai = get_bot_intelligence()
-        connector = get_alpaca_connector()
+        broker = get_unified_broker()
 
         # Build rich context for Claude
         trading_context = {
             "current_symbol": symbol,
-            "connected": connector.is_connected() if connector else False,
+            "connected": broker.is_connected if broker else False,
             "account": None,
             "positions": [],
             "recent_orders": []
         }
 
         # Fetch real account data if connected
-        if connector and connector.is_connected():
+        if broker and broker.is_connected:
             try:
-                trading_context["account"] = connector.get_account()
-                trading_context["positions"] = connector.get_positions()
-                trading_context["recent_orders"] = connector.get_orders("all")[:10]
+                trading_context["account"] = broker.get_account()
+                trading_context["positions"] = broker.get_positions()
+                trading_context["recent_orders"] = broker.get_orders()[:10] if broker.get_orders() else []
             except Exception as e:
                 logger.warning(f"Could not fetch trading context: {e}")
 
@@ -1703,7 +1838,7 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
 
         side = OrderSide.BUY if action in ["buy", "purchase"] else OrderSide.SELL
 
-        # Use UnifiedBroker for order execution (Schwab primary, Alpaca fallback)
+        # Use UnifiedBroker for order execution (Schwab)
         try:
             broker = get_unified_broker()
             if not broker.is_connected:
@@ -1941,30 +2076,33 @@ if ui_path.exists():
 async def startup_event():
     """Application startup"""
     logger.info("="*80)
-    logger.info("AI TRADING HUB - ALPACA EDITION")
+    logger.info("MORPHEUS TRADING BOT")
     logger.info("="*80)
 
     # Check broker configuration
     config = get_broker_config()
     logger.info(f"Broker Type: {config.broker_type}")
 
-    # Test Alpaca connection
-    try:
-        connector = get_alpaca_connector()
-        if connector.is_connected():
-            account = connector.get_account()
-            logger.info("[OK] Alpaca Connected")
-            logger.info(f"   Account: {account['account_id']}")
-            logger.info(f"   Buying Power: ${account['buying_power']:,.2f}")
-            logger.info(f"   Paper Trading: {config.alpaca.paper}")
-        else:
-            logger.error("[FAIL] Alpaca connection failed")
-    except Exception as e:
-        logger.error(f"[FAIL] Alpaca initialization error: {e}")
+    # Test Schwab connection
+    if HAS_SCHWAB_TRADING:
+        try:
+            if is_schwab_trading_available():
+                schwab = get_schwab_trading()
+                if schwab:
+                    account = schwab.get_account_info()
+                    logger.info("[OK] Schwab Connected")
+                    logger.info(f"   Account: {account.get('account_number', 'N/A')}")
+                    logger.info(f"   Cash: ${account.get('cash', 0):,.2f}")
+                else:
+                    logger.warning("[WARN] Schwab available but not authenticated")
+            else:
+                logger.warning("[WARN] Schwab trading not available")
+        except Exception as e:
+            logger.error(f"[FAIL] Schwab initialization error: {e}")
 
     # Load AI model if available
     try:
-        predictor = get_alpaca_predictor()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         if predictor.model:
             logger.info(f"[OK] AI Model Loaded (Accuracy: {predictor.accuracy:.4f})")
         else:
@@ -2044,10 +2182,10 @@ async def startup_event():
     try:
         from ai.circuit_breaker import get_circuit_breaker
         breaker = get_circuit_breaker()
-        connector = get_alpaca_connector()
-        if connector.is_connected():
-            account = connector.get_account()
-            equity = float(account.get('equity', 0))
+        broker = get_unified_broker()
+        if broker and broker.is_connected:
+            account = broker.get_account()
+            equity = float(account.get('market_value', account.get('equity', 0)))
             breaker.initialize_day(equity)
             logger.info("[OK] Circuit Breaker Active")
             logger.info(f"     - Starting Equity: ${equity:,.2f}")
@@ -2355,10 +2493,10 @@ async def periodic_risk_broadcast():
     while True:
         try:
             # Get current risk state
-            connector = get_alpaca_connector()
-            if connector.is_connected():
-                account = connector.get_account()
-                equity = float(account.get('equity', 0))
+            broker = get_unified_broker()
+            if broker and broker.is_connected:
+                account = broker.get_account()
+                equity = float(account.get('market_value', account.get('equity', 0)))
 
                 # Broadcast drawdown
                 try:
@@ -2418,7 +2556,7 @@ async def start_periodic_broadcasts():
 
 if __name__ == "__main__":
     print("\n" + "="*80)
-    print("AI TRADING HUB - ALPACA EDITION")
+    print("MORPHEUS TRADING BOT")
     print("="*80)
     print("Starting server on http://localhost:9100")
     print("Dashboard: http://localhost:9100/dashboard")

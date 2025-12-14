@@ -15,19 +15,18 @@ import json
 from pathlib import Path
 
 # Import trading dependencies at module level for faster execution
-from alpaca_integration import get_alpaca_connector
-from ai.alpaca_ai_predictor import get_alpaca_predictor
+from unified_broker import get_unified_broker
+from unified_market_data import get_unified_market_data
 from watchlist_manager import get_watchlist_manager
 from portfolio_analytics import get_portfolio_analytics
 from trade_execution import get_execution_tracker
-from alpaca_market_data import get_alpaca_market_data
 
-# Unified broker for live trading (Schwab primary)
+# AI predictor (Claude-based)
 try:
-    from unified_broker import get_unified_broker
-    HAS_UNIFIED_BROKER = True
+    from ai.claude_stock_scanner import get_ai_scanner
+    HAS_AI_SCANNER = True
 except ImportError:
-    HAS_UNIFIED_BROKER = False
+    HAS_AI_SCANNER = False
 
 # Claude AI Intelligence for adaptive behavior
 from ai.claude_bot_intelligence import get_bot_intelligence, BotMood
@@ -342,7 +341,7 @@ class BotManager:
             return {"regime": "unknown", "adjustments": {}}
 
         try:
-            market_data = get_alpaca_market_data()
+            market_data = get_unified_market_data()
             bars = market_data.get_bars(symbol, timeframe="5Min", limit=50)
 
             if not bars:
@@ -419,9 +418,9 @@ class BotManager:
 
         try:
             # Update account value
-            connector = get_alpaca_connector()
-            account = connector.get_account()
-            equity = float(account.get("equity", 100000))
+            broker = get_unified_broker()
+            account = broker.get_account()
+            equity = float(account.get("market_value", 100000)) if account else 100000
             self.kelly_sizer.update_account_value(equity)
 
             # Get regime adjustments
@@ -567,9 +566,9 @@ class BotManager:
 
         try:
             # Get account info
-            connector = get_alpaca_connector()
-            account = connector.get_account()
-            equity = account.get("equity", 0)
+            broker = get_unified_broker()
+            account = broker.get_account()
+            equity = account.get("market_value", 0) if account else 0
 
             # Get trades with PnL
             trades_with_pnl = []
@@ -606,7 +605,7 @@ class BotManager:
             return {"status": "ai_disabled"}
 
         try:
-            market_data = get_alpaca_market_data()
+            market_data = get_unified_market_data()
             symbols = symbols or ["SPY", "QQQ", "VIX"]
 
             # Gather market data - convert to JSON-serializable format
@@ -805,7 +804,7 @@ class BotManager:
                 logger.debug(f"Order rate limited for {symbol}: {elapsed:.1f}s < {self.config.min_order_interval_seconds}s")
                 return False
 
-        # CRITICAL: Check ACTUAL open orders from Alpaca, not stale counter
+        # CRITICAL: Check ACTUAL open orders from broker, not stale counter
         # The pending_orders_count was never being decremented, causing orders to get stuck
         try:
             open_orders = self.connector.get_orders(status="open", limit=50)
@@ -1164,7 +1163,7 @@ class BotManager:
                 if not current_price or current_price <= 0:
                     continue
 
-                # Get entry price from position data - use avg_price (Alpaca field name)
+                # Get entry price from position data - use avg_price field
                 entry_price = float(position.get("avg_price") or position.get("avg_entry_price") or current_price)
 
                 # Update tracking (this will initialize if needed)
@@ -1257,10 +1256,12 @@ class BotManager:
     def _update_pdt_status(self):
         """Update PDT status from account data"""
         try:
-            connector = get_alpaca_connector()
-            account = connector.get_account()
+            broker = get_unified_broker()
+            account = broker.get_account()
+            if not account:
+                return
 
-            self.pdt_status.equity = account.get("equity", 0.0)
+            self.pdt_status.equity = account.get("market_value", account.get("equity", 0.0))
             self.pdt_status.is_pdt_flagged = account.get("pattern_day_trader", False)
             self.pdt_status.last_updated = datetime.now().isoformat()
 
@@ -1460,12 +1461,15 @@ class BotManager:
 
     async def _trading_loop(self):
         """Main trading loop - runs when bot is started"""
-        # Dependencies imported at module level for faster execution
-        connector = get_alpaca_connector()
-        predictor = get_alpaca_predictor()
+        # Dependencies - use unified broker for Schwab
+        broker = get_unified_broker()
+        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         watchlist_mgr = get_watchlist_manager()
         analytics = get_portfolio_analytics()
         tracker = get_execution_tracker()
+
+        # Store broker reference for use in rate limiting checks
+        self.connector = broker
 
         logger.info("Bot trading loop started")
 
@@ -1480,7 +1484,7 @@ class BotManager:
                     continue
 
                 # Get current positions
-                positions = connector.get_positions()
+                positions = broker.get_positions()
                 self.current_positions = {p["symbol"]: p for p in positions}
 
                 # ============================================================
@@ -1489,7 +1493,7 @@ class BotManager:
                 # ============================================================
                 if self._is_eod_liquidation_time() and positions:
                     logger.warning("🌙 EOD LIQUIDATION TIME - Closing all positions to avoid overnight risk")
-                    liquidation_results = await self._liquidate_all_positions(connector, reason="eod_close")
+                    liquidation_results = await self._liquidate_all_positions(broker, reason="eod_close")
                     if liquidation_results:
                         logger.info(f"EOD Liquidation: {len(liquidation_results)} positions closed")
                         for result in liquidation_results:
@@ -1502,8 +1506,8 @@ class BotManager:
                 # CHECK POSITIONS FOR TRAILING STOP / REVERSAL EXITS (PRIORITY)
                 # ============================================================
                 if self.config.trailing_stop_enabled and positions:
-                    market_data = get_alpaca_market_data()
-                    exit_signals = await self._check_positions_for_exits(connector, market_data)
+                    market_data = get_unified_market_data()
+                    exit_signals = await self._check_positions_for_exits(broker, market_data)
 
                     for exit_sig in exit_signals:
                         symbol = exit_sig["symbol"]
@@ -1521,12 +1525,13 @@ class BotManager:
                             # - All orders are LIMIT with extended_hours=True (never get stuck)
                             # ============================================================
                             is_emergency = exit_sig["urgency"] == "HIGH"
-                            order = connector.place_smart_order(
+                            order_result = broker.place_smart_order(
                                 symbol=symbol,
                                 quantity=exit_sig["quantity"],
                                 side="SELL",
                                 emergency=is_emergency
                             )
+                            order = {"order_id": order_result.order_id} if order_result.success else None
 
                             if order and order.get("order_id"):
                                 self._record_order_placed(symbol)
@@ -1697,7 +1702,7 @@ class BotManager:
                     logger.info(f"Entry order for {best['symbol']}: bid=${quote.get('bid', 0):.2f} ask=${quote.get('ask', 0):.2f} (source: {quote.get('source', 'schwab')})")
 
                     # Place smart order - handles pricing strategy internally
-                    order = connector.place_smart_order(
+                    order_result = broker.place_smart_order(
                         symbol=best["symbol"],
                         quantity=self.config.position_size,
                         side=best["action"].upper(),
@@ -1705,10 +1710,10 @@ class BotManager:
                     )
 
                     # Get limit price from order response for tracking
-                    limit_price = order.get("limit_price", market_price)
+                    limit_price = order_result.price if order_result.price else market_price
 
-                    if order and order.get("order_id"):
-                        order_id = order["order_id"]
+                    if order_result.success and order_result.order_id:
+                        order_id = order_result.order_id
 
                         # Record order for rate limiting
                         self._record_order_placed(best["symbol"])

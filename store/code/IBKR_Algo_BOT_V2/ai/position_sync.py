@@ -1,10 +1,10 @@
 """
 Position Synchronizer & Slippage Combat Module
 ==============================================
-Real-time synchronization with Alpaca and aggressive slippage detection/combat.
+Real-time synchronization with Schwab broker and aggressive slippage detection/combat.
 
 This module:
-1. Periodically syncs positions/orders with Alpaca (every 5 seconds)
+1. Periodically syncs positions/orders with broker (every 5 seconds)
 2. Detects when orders are stale or stuck
 3. Detects slippage during fills
 4. Takes AGGRESSIVE action to combat slippage
@@ -50,6 +50,20 @@ class OrderTracker:
 
 
 @dataclass
+class PositionDrift:
+    """Tracks drift between expected and actual position"""
+    symbol: str
+    expected_qty: float
+    actual_qty: float
+    expected_cost: float
+    actual_cost: float
+    drift_qty: float
+    drift_percent: float
+    detected_at: datetime
+    reconciled: bool = False
+
+
+@dataclass
 class SyncState:
     """Current sync state"""
     last_sync: datetime = None
@@ -58,6 +72,10 @@ class SyncState:
     order_trackers: Dict[str, OrderTracker] = field(default_factory=dict)
     sync_errors: int = 0
     slippage_events: List[Dict] = field(default_factory=list)
+    # Drift detection
+    expected_positions: Dict[str, Dict] = field(default_factory=dict)
+    drift_events: List[PositionDrift] = field(default_factory=list)
+    last_drift_check: datetime = None
 
 
 class PositionSynchronizer:
@@ -116,11 +134,11 @@ class PositionSynchronizer:
 
     def sync_now(self) -> Dict:
         """
-        Perform immediate sync with Alpaca.
+        Perform immediate sync with broker.
         Returns sync results including any slippage alerts.
         """
-        from alpaca_integration import get_alpaca_connector
-        connector = get_alpaca_connector()
+        from unified_broker import get_unified_broker
+        broker = get_unified_broker()
 
         results = {
             "timestamp": datetime.now().isoformat(),
@@ -133,12 +151,12 @@ class PositionSynchronizer:
 
         try:
             # Sync positions
-            positions = connector.get_positions()
+            positions = broker.get_positions()
             self.state.positions = positions
             results["positions_synced"] = len(positions)
 
             # Sync orders
-            orders = connector.get_orders(status="open", limit=50)
+            orders = broker.get_orders(status="open")
             self.state.open_orders = orders
             results["orders_synced"] = len(orders)
 
@@ -168,17 +186,17 @@ class PositionSynchronizer:
                         })
 
                         # Take action on stale orders
-                        action = self._combat_stale_order(tracker, connector)
+                        action = self._combat_stale_order(tracker, broker)
                         if action:
                             results["actions_taken"].append(action)
 
                     # Check for slippage
-                    slippage = self._detect_slippage(tracker, connector)
+                    slippage = self._detect_slippage(tracker, broker)
                     if slippage:
                         results["slippage_alerts"].append(slippage)
 
                         # Take action on slippage
-                        action = self._combat_slippage(tracker, slippage, connector)
+                        action = self._combat_slippage(tracker, slippage, broker)
                         if action:
                             results["actions_taken"].append(action)
 
@@ -200,19 +218,19 @@ class PositionSynchronizer:
 
         # Get expected price from current quote
         try:
-            from alpaca_integration import get_alpaca_connector
-            connector = get_alpaca_connector()
-            quote = connector.get_quote(order.get("symbol", ""))
+            from unified_market_data import get_unified_market_data
+            market_data = get_unified_market_data()
+            quote = market_data.get_quote(order.get("symbol", ""))
 
             side = order.get("side", "").lower()
             if side == "buy":
-                expected_price = quote.get("ask", 0)
+                expected_price = quote.get("ask", 0) if quote else 0
             else:
-                expected_price = quote.get("bid", 0)
+                expected_price = quote.get("bid", 0) if quote else 0
         except:
             expected_price = float(order.get("limit_price", 0) or 0)
 
-        # Parse actual submission time from Alpaca order
+        # Parse actual submission time from order
         submitted_at = datetime.now(self.et_tz)
         if order.get("submitted_at"):
             try:
@@ -444,8 +462,179 @@ class PositionSynchronizer:
         for order_id in to_remove:
             del self.state.order_trackers[order_id]
 
+    # ============================================================================
+    # DRIFT DETECTION
+    # ============================================================================
+
+    def register_expected_position(self, symbol: str, quantity: float, cost_basis: float):
+        """
+        Register an expected position from a trade.
+        Call this when placing orders to track expected vs actual.
+        """
+        symbol = symbol.upper()
+        self.state.expected_positions[symbol] = {
+            "quantity": quantity,
+            "cost_basis": cost_basis,
+            "registered_at": datetime.now(self.et_tz).isoformat()
+        }
+        logger.debug(f"Registered expected position: {symbol} x {quantity} @ ${cost_basis:.2f}")
+
+    def update_expected_position(self, symbol: str, qty_change: float, price: float):
+        """
+        Update expected position after a fill (add or remove shares).
+        """
+        symbol = symbol.upper()
+
+        if symbol not in self.state.expected_positions:
+            self.state.expected_positions[symbol] = {"quantity": 0, "cost_basis": 0}
+
+        current = self.state.expected_positions[symbol]
+        old_qty = current["quantity"]
+        old_cost = current["cost_basis"]
+
+        new_qty = old_qty + qty_change
+        if new_qty > 0:
+            # Weighted average cost basis
+            total_cost = (old_qty * old_cost) + (qty_change * price)
+            new_cost = total_cost / new_qty
+        else:
+            new_cost = 0
+
+        self.state.expected_positions[symbol] = {
+            "quantity": new_qty,
+            "cost_basis": new_cost,
+            "updated_at": datetime.now(self.et_tz).isoformat()
+        }
+
+        # Remove if position closed
+        if abs(new_qty) < 0.01:
+            del self.state.expected_positions[symbol]
+            logger.debug(f"Position closed: {symbol}")
+
+    def detect_drift(self) -> List[PositionDrift]:
+        """
+        Compare expected positions with actual broker positions.
+        Returns list of drift events.
+        """
+        drifts = []
+        now = datetime.now(self.et_tz)
+
+        # Build actual positions map
+        actual_positions = {}
+        for pos in self.state.positions:
+            symbol = pos.get("symbol", "").upper()
+            actual_positions[symbol] = {
+                "quantity": float(pos.get("qty", pos.get("quantity", 0))),
+                "cost_basis": float(pos.get("cost_basis", pos.get("avg_entry_price", 0)))
+            }
+
+        # Check expected vs actual
+        all_symbols = set(self.state.expected_positions.keys()) | set(actual_positions.keys())
+
+        for symbol in all_symbols:
+            expected = self.state.expected_positions.get(symbol, {"quantity": 0, "cost_basis": 0})
+            actual = actual_positions.get(symbol, {"quantity": 0, "cost_basis": 0})
+
+            expected_qty = expected["quantity"]
+            actual_qty = actual["quantity"]
+
+            # Calculate drift
+            drift_qty = actual_qty - expected_qty
+            drift_percent = 0
+
+            if expected_qty != 0:
+                drift_percent = abs(drift_qty / expected_qty) * 100
+            elif actual_qty != 0:
+                drift_percent = 100  # Unexpected position
+
+            # Report significant drift (more than 1 share or 5%)
+            if abs(drift_qty) >= 1 or drift_percent >= 5:
+                drift = PositionDrift(
+                    symbol=symbol,
+                    expected_qty=expected_qty,
+                    actual_qty=actual_qty,
+                    expected_cost=expected["cost_basis"],
+                    actual_cost=actual["cost_basis"],
+                    drift_qty=drift_qty,
+                    drift_percent=drift_percent,
+                    detected_at=now
+                )
+                drifts.append(drift)
+                self.state.drift_events.append(drift)
+
+                if actual_qty > expected_qty:
+                    logger.warning(f"DRIFT: {symbol} has MORE shares than expected: {actual_qty} vs {expected_qty}")
+                elif actual_qty < expected_qty:
+                    logger.warning(f"DRIFT: {symbol} has FEWER shares than expected: {actual_qty} vs {expected_qty}")
+                else:
+                    logger.warning(f"DRIFT: Unexpected position in {symbol}: {actual_qty} shares")
+
+        self.state.last_drift_check = now
+        return drifts
+
+    def reconcile_positions(self):
+        """
+        Reconcile expected positions with actual broker positions.
+        Updates expected to match actual (assumes broker is source of truth).
+        """
+        reconciled_count = 0
+
+        for pos in self.state.positions:
+            symbol = pos.get("symbol", "").upper()
+            actual_qty = float(pos.get("qty", pos.get("quantity", 0)))
+            actual_cost = float(pos.get("cost_basis", pos.get("avg_entry_price", 0)))
+
+            # Update expected to match actual
+            if actual_qty > 0:
+                self.state.expected_positions[symbol] = {
+                    "quantity": actual_qty,
+                    "cost_basis": actual_cost,
+                    "reconciled_at": datetime.now(self.et_tz).isoformat()
+                }
+                reconciled_count += 1
+
+        # Remove expected positions that don't exist in broker
+        actual_symbols = {pos.get("symbol", "").upper() for pos in self.state.positions}
+        to_remove = [s for s in self.state.expected_positions if s not in actual_symbols]
+        for symbol in to_remove:
+            del self.state.expected_positions[symbol]
+
+        logger.info(f"Reconciled {reconciled_count} positions, removed {len(to_remove)} stale expected positions")
+
+        # Mark all drift events as reconciled
+        for drift in self.state.drift_events:
+            if not drift.reconciled:
+                drift.reconciled = True
+
+        return {"reconciled": reconciled_count, "removed": len(to_remove)}
+
+    def get_drift_summary(self) -> Dict:
+        """Get summary of drift detection status"""
+        recent_drifts = [d for d in self.state.drift_events if not d.reconciled]
+
+        return {
+            "expected_positions": len(self.state.expected_positions),
+            "actual_positions": len(self.state.positions),
+            "unreconciled_drifts": len(recent_drifts),
+            "total_drift_events": len(self.state.drift_events),
+            "last_drift_check": self.state.last_drift_check.isoformat() if self.state.last_drift_check else None,
+            "drift_details": [
+                {
+                    "symbol": d.symbol,
+                    "expected": d.expected_qty,
+                    "actual": d.actual_qty,
+                    "drift": d.drift_qty,
+                    "percent": round(d.drift_percent, 2),
+                    "detected_at": d.detected_at.isoformat()
+                }
+                for d in recent_drifts
+            ]
+        }
+
     def get_sync_status(self) -> Dict:
-        """Get current sync status"""
+        """Get current sync status with drift detection info"""
+        drift_summary = self.get_drift_summary()
+
         return {
             "last_sync": self.state.last_sync.isoformat() if self.state.last_sync else None,
             "positions_count": len(self.state.positions),
@@ -453,7 +642,13 @@ class PositionSynchronizer:
             "tracked_orders": len(self.state.order_trackers),
             "sync_errors": self.state.sync_errors,
             "recent_slippage_events": self.state.slippage_events[-10:],
-            "is_running": self._running
+            "is_running": self._running,
+            "drift_detection": {
+                "expected_positions": drift_summary["expected_positions"],
+                "actual_positions": drift_summary["actual_positions"],
+                "unreconciled_drifts": drift_summary["unreconciled_drifts"],
+                "last_check": drift_summary["last_drift_check"]
+            }
         }
 
     def get_positions(self) -> List[Dict]:

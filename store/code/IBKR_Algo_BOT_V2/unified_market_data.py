@@ -96,7 +96,16 @@ class UnifiedMarketData:
     1. Schwab (real-time, most accurate)
     2. Alpaca (reliable fallback)
     3. Cache (last known prices)
+
+    Features:
+    - Automatic health monitoring
+    - Failover on consecutive failures
+    - Auto-recovery attempts
     """
+
+    # Health monitoring thresholds
+    FAILURE_THRESHOLD = 5  # Mark source unhealthy after N consecutive failures
+    RECOVERY_INTERVAL = 60  # Seconds between recovery attempts
 
     def __init__(self):
         """Initialize unified market data provider"""
@@ -111,11 +120,66 @@ class UnifiedMarketData:
             DataSource.ALPACA: {"requests": 0, "success": 0, "failures": 0}
         }
 
+        # Health tracking
+        self._consecutive_failures = {
+            DataSource.SCHWAB: 0,
+            DataSource.ALPACA: 0
+        }
+        self._source_healthy = {
+            DataSource.SCHWAB: True,
+            DataSource.ALPACA: True
+        }
+        self._last_recovery_attempt = {
+            DataSource.SCHWAB: None,
+            DataSource.ALPACA: None
+        }
+
         # Initialize data sources
         self._init_schwab()
         self._init_alpaca()
 
         logger.info(f"[UNIFIED] Market data initialized - Schwab: {self._schwab_available}, Alpaca: {self._alpaca_available}")
+
+    def _record_success(self, source: DataSource):
+        """Record a successful request and reset failure counter"""
+        self._source_stats[source]["success"] += 1
+        self._consecutive_failures[source] = 0
+        if not self._source_healthy[source]:
+            self._source_healthy[source] = True
+            logger.info(f"[UNIFIED] {source.value} recovered - marking as healthy")
+
+    def _record_failure(self, source: DataSource):
+        """Record a failed request and update health status"""
+        self._source_stats[source]["failures"] += 1
+        self._consecutive_failures[source] += 1
+
+        if self._consecutive_failures[source] >= self.FAILURE_THRESHOLD:
+            if self._source_healthy[source]:
+                self._source_healthy[source] = False
+                logger.warning(f"[UNIFIED] {source.value} marked UNHEALTHY after {self._consecutive_failures[source]} consecutive failures")
+
+    def _should_try_source(self, source: DataSource) -> bool:
+        """Check if we should try this source based on health status"""
+        # Always try if healthy
+        if self._source_healthy[source]:
+            return True
+
+        # Try recovery if enough time has passed
+        last_attempt = self._last_recovery_attempt[source]
+        if last_attempt is None or (datetime.now() - last_attempt).total_seconds() >= self.RECOVERY_INTERVAL:
+            self._last_recovery_attempt[source] = datetime.now()
+            logger.info(f"[UNIFIED] Attempting recovery of {source.value} data source")
+            return True
+
+        return False
+
+    def _is_source_available(self, source: DataSource) -> bool:
+        """Check if source is available (configured and healthy)"""
+        if source == DataSource.SCHWAB:
+            return self._schwab_available and self._should_try_source(source)
+        elif source == DataSource.ALPACA:
+            return self._alpaca_available and self._should_try_source(source)
+        return False
 
     def _init_schwab(self):
         """Initialize Schwab client"""
@@ -152,8 +216,8 @@ class UnifiedMarketData:
             logger.warning(f"[UNIFIED] Alpaca init error: {e}")
 
     def _get_from_schwab(self, symbol: str) -> Optional[QuoteData]:
-        """Get quote from Schwab"""
-        if not self._schwab_available or not self._schwab_client:
+        """Get quote from Schwab with health tracking"""
+        if not self._is_source_available(DataSource.SCHWAB) or not self._schwab_client:
             return None
 
         self._source_stats[DataSource.SCHWAB]["requests"] += 1
@@ -161,7 +225,7 @@ class UnifiedMarketData:
         try:
             quote = self._schwab_client.get_quote(symbol)
             if quote:
-                self._source_stats[DataSource.SCHWAB]["success"] += 1
+                self._record_success(DataSource.SCHWAB)
                 return QuoteData(
                     symbol=symbol.upper(),
                     bid=float(quote.get("bid", 0)),
@@ -179,15 +243,17 @@ class UnifiedMarketData:
                     timestamp=quote.get("timestamp", datetime.now().isoformat()),
                     source=DataSource.SCHWAB.value
                 )
+            else:
+                self._record_failure(DataSource.SCHWAB)
         except Exception as e:
-            self._source_stats[DataSource.SCHWAB]["failures"] += 1
+            self._record_failure(DataSource.SCHWAB)
             logger.debug(f"[UNIFIED] Schwab quote failed for {symbol}: {e}")
 
         return None
 
     def _get_from_alpaca(self, symbol: str) -> Optional[QuoteData]:
-        """Get quote from Alpaca"""
-        if not self._alpaca_available or not self._alpaca_client:
+        """Get quote from Alpaca with health tracking"""
+        if not self._is_source_available(DataSource.ALPACA) or not self._alpaca_client:
             return None
 
         self._source_stats[DataSource.ALPACA]["requests"] += 1
@@ -224,7 +290,7 @@ class UnifiedMarketData:
                     change = close - prev_close if prev_close > 0 else 0
                     change_pct = (change / prev_close * 100) if prev_close > 0 else 0
 
-                    self._source_stats[DataSource.ALPACA]["success"] += 1
+                    self._record_success(DataSource.ALPACA)
                     return QuoteData(
                         symbol=symbol.upper(),
                         bid=bid,
@@ -252,7 +318,7 @@ class UnifiedMarketData:
                 bid = float(q.bid_price)
                 ask = float(q.ask_price)
 
-                self._source_stats[DataSource.ALPACA]["success"] += 1
+                self._record_success(DataSource.ALPACA)
                 return QuoteData(
                     symbol=symbol.upper(),
                     bid=bid,
@@ -265,7 +331,7 @@ class UnifiedMarketData:
                 )
 
         except Exception as e:
-            self._source_stats[DataSource.ALPACA]["failures"] += 1
+            self._record_failure(DataSource.ALPACA)
             logger.debug(f"[UNIFIED] Alpaca quote failed for {symbol}: {e}")
 
         return None
@@ -427,21 +493,51 @@ class UnifiedMarketData:
         return None
 
     def get_status(self) -> Dict:
-        """Get status of all data sources"""
+        """Get status of all data sources with health information"""
+        schwab_healthy = self._source_healthy.get(DataSource.SCHWAB, False)
+        alpaca_healthy = self._source_healthy.get(DataSource.ALPACA, False)
+
+        # Determine effective primary source
+        if self._schwab_available and schwab_healthy:
+            primary = DataSource.SCHWAB.value
+        elif self._alpaca_available and alpaca_healthy:
+            primary = DataSource.ALPACA.value
+        else:
+            primary = "none"
+
         return {
             "schwab": {
                 "available": self._schwab_available,
+                "healthy": schwab_healthy,
+                "consecutive_failures": self._consecutive_failures.get(DataSource.SCHWAB, 0),
                 "stats": self._source_stats[DataSource.SCHWAB]
             },
             "alpaca": {
                 "available": self._alpaca_available,
+                "healthy": alpaca_healthy,
+                "consecutive_failures": self._consecutive_failures.get(DataSource.ALPACA, 0),
                 "stats": self._source_stats[DataSource.ALPACA]
             },
             "cache_size": len(self._cache),
             "cache_ttl_seconds": self._cache_ttl,
-            "primary_source": DataSource.SCHWAB.value if self._schwab_available else DataSource.ALPACA.value,
+            "primary_source": primary,
+            "failover_active": not schwab_healthy and alpaca_healthy if self._schwab_available else False,
             "timestamp": datetime.now().isoformat()
         }
+
+    def force_recovery(self, source: str = "all"):
+        """Force immediate recovery attempt for data sources"""
+        if source in ["all", "schwab"]:
+            self._source_healthy[DataSource.SCHWAB] = True
+            self._consecutive_failures[DataSource.SCHWAB] = 0
+            self._last_recovery_attempt[DataSource.SCHWAB] = None
+            logger.info("[UNIFIED] Forced Schwab recovery - marked healthy")
+
+        if source in ["all", "alpaca"]:
+            self._source_healthy[DataSource.ALPACA] = True
+            self._consecutive_failures[DataSource.ALPACA] = 0
+            self._last_recovery_attempt[DataSource.ALPACA] = None
+            logger.info("[UNIFIED] Forced Alpaca recovery - marked healthy")
 
     def clear_cache(self):
         """Clear the quote cache"""

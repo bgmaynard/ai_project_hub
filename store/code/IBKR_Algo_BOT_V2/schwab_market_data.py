@@ -212,6 +212,60 @@ def is_schwab_available() -> bool:
     return _schwab_available
 
 
+def get_token_status() -> Dict:
+    """Get Schwab token status for monitoring"""
+    global _token_data, _token_expiry, _schwab_available
+
+    # Ensure token is loaded
+    if _token_data is None:
+        _load_token()
+
+    now = datetime.now()
+
+    if _token_data is None:
+        return {
+            "valid": False,
+            "status": "no_token",
+            "message": "No Schwab token found. Run schwab_authenticate.py",
+            "expires_in_seconds": 0,
+            "needs_refresh": True
+        }
+
+    if _token_expiry is None:
+        return {
+            "valid": False,
+            "status": "unknown_expiry",
+            "message": "Token expiry unknown",
+            "expires_in_seconds": 0,
+            "needs_refresh": True
+        }
+
+    expires_in = (_token_expiry - now).total_seconds()
+    is_expired = expires_in <= 0
+    needs_refresh = expires_in < 300  # Less than 5 minutes
+
+    if is_expired:
+        status = "expired"
+        message = "Token has expired"
+    elif needs_refresh:
+        status = "expiring_soon"
+        message = f"Token expires in {int(expires_in)}s - will auto-refresh"
+    else:
+        status = "valid"
+        message = f"Token valid for {int(expires_in/60)}m {int(expires_in%60)}s"
+
+    return {
+        "valid": not is_expired,
+        "status": status,
+        "message": message,
+        "expires_in_seconds": max(0, int(expires_in)),
+        "expires_at": _token_expiry.isoformat() if _token_expiry else None,
+        "needs_refresh": needs_refresh,
+        "has_refresh_token": _token_data.get('refresh_token') is not None if _token_data else False,
+        "schwab_available": _schwab_available
+    }
+
+
 class SchwabMarketData:
     """Real-time market data from Schwab/ThinkOrSwim"""
 

@@ -154,7 +154,7 @@ function Start-AlpacaDashboard {
     Write-Host "  Press Ctrl+C to stop the server" -ForegroundColor Gray
     Write-Host ""
 
-    python alpaca_dashboard_api.py
+    python morpheus_trading_api.py
 }
 
 function Start-AutoTrader {

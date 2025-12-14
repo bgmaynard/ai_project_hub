@@ -263,7 +263,7 @@ Write-Info "Server will run on http://localhost:$Port"
 
 # Start the server in a new window
 $serverProcess = Start-Process -FilePath $PythonPath `
-    -ArgumentList "alpaca_dashboard_api.py" `
+    -ArgumentList "morpheus_trading_api.py" `
     -WorkingDirectory $ProjectDir `
     -PassThru `
     -WindowStyle Normal

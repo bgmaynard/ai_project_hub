@@ -11,7 +11,7 @@ echo.
 cd /d C:\ai_project_hub\store\code\IBKR_Algo_BOT_V2
 
 echo [1/4] Starting API Server...
-start "API Server" cmd /k "python alpaca_dashboard_api.py"
+start "API Server" cmd /k "python morpheus_trading_api.py"
 timeout /t 3 /nobreak > nul
 
 echo [2/4] Starting Position Guardian...

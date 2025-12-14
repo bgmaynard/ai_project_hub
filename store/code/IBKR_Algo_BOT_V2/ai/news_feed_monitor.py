@@ -178,12 +178,13 @@ BEARISH_KEYWORDS = [
 class NewsFeedMonitor:
     """
     Real-time news monitoring with AI-powered analysis and trading triggers.
+    Uses Benzinga as primary news source (Schwab-compatible).
     """
 
-    def __init__(self, alpaca_api_key: str = None, alpaca_secret: str = None):
-        self.alpaca_api_key = alpaca_api_key or os.getenv("ALPACA_API_KEY")
-        self.alpaca_secret = alpaca_secret or os.getenv("ALPACA_SECRET_KEY")
-        self.base_url = "https://data.alpaca.markets/v1beta1/news"
+    def __init__(self):
+        # Benzinga API for news (primary source)
+        self.benzinga_api_key = os.getenv("BENZINGA_API_KEY", "bz.MUTADSLMPPPHDWEGOYUMSFHUGH5TS7TD")
+        self.base_url = "https://api.benzinga.com/api/v2/news"
 
         self.news_cache: List[NewsItem] = []
         self.max_cache_size = 500
@@ -370,43 +371,47 @@ class NewsFeedMonitor:
 
     async def fetch_news(self, symbols: List[str] = None,
                         limit: int = 50) -> List[NewsItem]:
-        """Fetch news from Alpaca API"""
-        if not self.alpaca_api_key or not self.alpaca_secret:
-            logger.warning("Alpaca credentials not configured, using mock data")
+        """Fetch news from Benzinga API"""
+        if not self.benzinga_api_key:
+            logger.warning("Benzinga API key not configured, using mock data")
             return self._get_mock_news(symbols, limit)
 
-        headers = {
-            "APCA-API-KEY-ID": self.alpaca_api_key,
-            "APCA-API-SECRET-KEY": self.alpaca_secret
+        headers = {"accept": "application/json"}
+        params = {
+            "token": self.benzinga_api_key,
+            "pageSize": limit,
+            "displayOutput": "full",
+            "sort": "created:desc"
         }
-
-        params = {"limit": limit}
         if symbols:
-            params["symbols"] = ",".join(symbols)
+            params["tickers"] = ",".join(symbols[:10])
 
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.base_url, headers=headers,
-                                      params=params) as response:
+                                      params=params, timeout=aiohttp.ClientTimeout(total=10)) as response:
                     if response.status == 200:
                         data = await response.json()
-                        return self._parse_alpaca_news(data.get("news", []))
+                        return self._parse_benzinga_news(data)
                     else:
                         error = await response.text()
-                        logger.error(f"Alpaca news API error: {response.status} - {error}")
+                        logger.error(f"Benzinga API error: {response.status} - {error}")
                         return self._get_mock_news(symbols, limit)
         except Exception as e:
             logger.error(f"Error fetching news: {e}")
             return self._get_mock_news(symbols, limit)
 
-    def _parse_alpaca_news(self, news_data: List[Dict]) -> List[NewsItem]:
-        """Parse Alpaca news response into NewsItem objects"""
+    def _parse_benzinga_news(self, data: dict) -> List[NewsItem]:
+        """Parse Benzinga API response into NewsItem objects"""
         items = []
 
-        for item in news_data:
+        # Benzinga returns list directly or in 'data' key
+        articles = data if isinstance(data, list) else data.get('data', [])
+
+        for article in articles:
             try:
-                headline = item.get("headline", "")
-                summary = item.get("summary", "")
+                headline = article.get("title", article.get("headline", ""))
+                summary = article.get("teaser", article.get("body", ""))[:500]
                 full_text = f"{headline} {summary}"
 
                 category = self._detect_category(full_text)
@@ -414,27 +419,41 @@ class NewsFeedMonitor:
                 keywords = self._extract_keywords(full_text)
                 impact = self._assess_impact(category, score, keywords)
 
+                # Extract symbols from Benzinga response
+                symbols = []
+                stocks = article.get("stocks", [])
+                if stocks:
+                    symbols = [s.get("name", "") for s in stocks if s.get("name")]
+
+                # Parse published time
+                created = article.get("created", article.get("updated", ""))
+                try:
+                    if created:
+                        published_at = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                    else:
+                        published_at = datetime.now()
+                except:
+                    published_at = datetime.now()
+
                 news_item = NewsItem(
-                    id=str(item.get("id", datetime.now().timestamp())),
+                    id=str(article.get("id", datetime.now().timestamp())),
                     headline=headline,
                     summary=summary,
-                    source=item.get("source", "Unknown"),
-                    published_at=datetime.fromisoformat(
-                        item.get("created_at", datetime.now().isoformat()).replace("Z", "+00:00")
-                    ),
-                    symbols=item.get("symbols", []),
+                    source="Benzinga",
+                    published_at=published_at,
+                    symbols=symbols,
                     category=category,
                     sentiment=sentiment,
                     impact=impact,
                     sentiment_score=score,
                     keywords=keywords,
-                    url=item.get("url"),
-                    raw_data=item
+                    url=article.get("url"),
+                    raw_data=article
                 )
                 items.append(news_item)
 
             except Exception as e:
-                logger.error(f"Error parsing news item: {e}")
+                logger.error(f"Error parsing Benzinga news item: {e}")
                 continue
 
         return items

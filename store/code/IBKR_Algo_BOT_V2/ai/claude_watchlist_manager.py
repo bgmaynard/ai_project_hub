@@ -136,8 +136,8 @@ class ClaudeWatchlistManager:
         momentum_stocks = []
 
         try:
-            from alpaca_market_data import get_alpaca_market_data
-            market_data = get_alpaca_market_data()
+            from unified_market_data import get_unified_market_data
+            market_data = get_unified_market_data()
 
             for symbol in self.nasdaq_universe:
                 try:
