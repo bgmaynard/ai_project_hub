@@ -66,8 +66,8 @@ class Backtester:
     def _get_predictor(self):
         """Lazy load the predictor"""
         if self.predictor is None:
-            from ai.alpaca_ai_predictor import get_alpaca_predictor
-            self.predictor = get_alpaca_predictor()
+            from ai.ai_predictor import get_predictor
+            self.predictor = get_predictor()
         return self.predictor
 
     def _get_historical_data(self, symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
@@ -209,20 +209,25 @@ class Backtester:
 
         # Process each symbol
         all_signals = {}
+        errors = []
         for symbol in symbols:
             df = self._get_historical_data(symbol, start_date, end_date)
             if df.empty:
+                errors.append(f"{symbol}: No historical data")
                 logger.warning(f"No data for {symbol}")
                 continue
 
             try:
                 df = self._generate_signals(df, symbol)
                 all_signals[symbol] = df
+                logger.info(f"Generated signals for {symbol}: {len(df)} rows")
             except Exception as e:
+                errors.append(f"{symbol}: {str(e)}")
                 logger.warning(f"Could not generate signals for {symbol}: {e}")
 
         if not all_signals:
-            raise ValueError("No valid data for any symbols")
+            error_detail = "; ".join(errors) if errors else "Unknown error"
+            raise ValueError(f"No valid data for any symbols. Details: {error_detail}")
 
         # Get all trading days
         all_dates = set()

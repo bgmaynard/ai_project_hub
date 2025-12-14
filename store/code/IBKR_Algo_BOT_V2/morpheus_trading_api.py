@@ -78,7 +78,7 @@ except ImportError:
 
 # AI Predictor
 try:
-    from ai.claude_stock_scanner import get_ai_scanner
+    from ai.ai_predictor import get_predictor as get_ai_scanner
     HAS_AI_SCANNER = True
 except ImportError:
     HAS_AI_SCANNER = False

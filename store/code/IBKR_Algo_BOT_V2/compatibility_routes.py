@@ -689,16 +689,16 @@ async def get_asset_status(symbol: str):
 async def claude_status_compat():
     """Claude AI status endpoint"""
     try:
-        from ai.claude_stock_scanner import get_ai_scanner
-        scanner = get_ai_scanner()
-        has_model = scanner is not None
+        from ai.ai_predictor import get_predictor
+        predictor = get_predictor()
+        has_model = predictor is not None and predictor.model is not None
 
         return {
             "available": has_model,
             "status": "online" if has_model else "offline",
             "model_loaded": has_model,
-            "accuracy": 0.0,
-            "features": 0
+            "accuracy": getattr(predictor, 'accuracy', 0.0) if predictor else 0.0,
+            "features": len(getattr(predictor, 'feature_names', [])) if predictor else 0
         }
     except:
         return {
@@ -796,7 +796,8 @@ async def schwab_backtest_run(data: dict = None):
             symbols = [symbols]
 
         # Convert days to start_date/end_date
-        days = data.get("days", 30)
+        # Need at least 90 days for feature calculation (50 day warmup + trading period)
+        days = max(data.get("days", 90), 90)  # Minimum 90 days for valid backtest
         end_date = datetime.now().strftime("%Y-%m-%d")
         start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
@@ -820,6 +821,48 @@ async def schwab_backtest_run(data: dict = None):
             "success": False,
             "error": "Backtester module not available",
             "message": "Use /api/backtest/run instead"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/api/schwab/ai/backtest/quick")
+async def schwab_backtest_quick(data: dict = None):
+    """Quick backtest - shorter timeframe for rapid testing"""
+    from datetime import datetime, timedelta
+
+    try:
+        from backtester import get_backtester
+        backtester = get_backtester()
+
+        if not data:
+            data = {}
+
+        symbols = data.get("symbols", data.get("symbol", ["SPY"]))
+        if isinstance(symbols, str):
+            symbols = [symbols]
+
+        # Quick backtest needs minimum 90 days for feature warmup
+        days = max(data.get("days", 90), 90)
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+        result = backtester.run_backtest(
+            symbols=symbols,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=data.get("initial_capital", 10000)
+        )
+        # Convert dataclass to dict if needed
+        if hasattr(result, '__dict__'):
+            from dataclasses import asdict
+            result = asdict(result)
+        return {"success": True, "data": result, "type": "quick"}
+    except ImportError:
+        return {
+            "success": False,
+            "error": "Backtester module not available",
+            "message": "Quick backtest requires backtester module"
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
