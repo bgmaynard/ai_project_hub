@@ -118,6 +118,42 @@ async def get_schwab_status():
         return {"available": False, "error": str(e)}
 
 
+@router.post("/connect")
+async def connect_schwab():
+    """Connect to Schwab (validates authentication)"""
+    if not HAS_SCHWAB_TRADING:
+        return {
+            "connected": False,
+            "status": "unavailable",
+            "message": "Schwab trading module not available"
+        }
+
+    try:
+        trading = get_schwab_trading()
+        if not trading:
+            return {
+                "connected": False,
+                "status": "not_authenticated",
+                "message": "Schwab not authenticated. Run schwab_authenticate.py"
+            }
+
+        # Verify connection by getting accounts
+        accounts = trading.get_accounts()
+        selected = trading.get_selected_account()
+
+        return {
+            "connected": True,
+            "status": "connected",
+            "broker": "Schwab",
+            "accounts_count": len(accounts),
+            "selected_account": selected,
+            "message": "Connected to Schwab successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error connecting to Schwab: {e}")
+        return {"connected": False, "status": "error", "error": str(e)}
+
+
 # ============================================================================
 # ACCOUNT ENDPOINTS
 # ============================================================================
@@ -398,6 +434,28 @@ async def cancel_order(order_id: str):
         raise HTTPException(status_code=401, detail="Schwab not authenticated")
 
     result = trading.cancel_order(order_id)
+
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return result
+
+
+class CancelOrderRequest(BaseModel):
+    order_id: str
+
+
+@router.post("/cancel-order")
+async def cancel_order_post(request: CancelOrderRequest):
+    """Cancel a specific order (POST method for UI compatibility)"""
+    if not HAS_SCHWAB_TRADING:
+        raise HTTPException(status_code=503, detail="Schwab trading not available")
+
+    trading = get_schwab_trading()
+    if not trading:
+        raise HTTPException(status_code=401, detail="Schwab not authenticated")
+
+    result = trading.cancel_order(request.order_id)
 
     if result.get("error"):
         raise HTTPException(status_code=400, detail=result["error"])
