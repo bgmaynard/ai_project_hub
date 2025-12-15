@@ -1428,7 +1428,7 @@ async def predict(request: PredictRequest):
             }
         prediction = predictor.predict(
             symbol=request.symbol.upper(),
-            timeframe=request.timeframe
+            period=request.timeframe if request.timeframe else "3mo"
         )
 
         return prediction

@@ -115,9 +115,12 @@ class Backtester:
         actions = []
 
         threshold = getattr(predictor, 'optimal_threshold', 0.5)
+        print(f"[BACKTEST] {symbol}: {len(df)} rows, {len(available_features)} features, threshold={threshold:.3f}")
 
+        buy_count = 0
+        sell_count = 0
         for i in range(len(df)):
-            if i < 50:  # Need warmup period for features
+            if i < 20:  # Need warmup period for features (reduced from 50)
                 signals.append("NEUTRAL")
                 confidences.append(0.0)
                 actions.append("HOLD")
@@ -143,15 +146,19 @@ class Backtester:
                 if prob > bull_strong:
                     signal = "STRONG_BULLISH"
                     action = "BUY"
+                    buy_count += 1
                 elif prob > bull_mild:
                     signal = "BULLISH"
                     action = "BUY"
+                    buy_count += 1
                 elif prob < bear_strong:
                     signal = "STRONG_BEARISH"
                     action = "SELL"
+                    sell_count += 1
                 elif prob < bear_mild:
                     signal = "BEARISH"
                     action = "SELL"
+                    sell_count += 1
                 else:
                     signal = "NEUTRAL"
                     action = "HOLD"
@@ -169,6 +176,7 @@ class Backtester:
         df['confidence'] = confidences
         df['action'] = actions
 
+        print(f"[BACKTEST] {symbol}: Generated {buy_count} BUY, {sell_count} SELL signals")
         return df
 
     def run_backtest(
@@ -220,10 +228,10 @@ class Backtester:
             try:
                 df = self._generate_signals(df, symbol)
                 all_signals[symbol] = df
-                logger.info(f"Generated signals for {symbol}: {len(df)} rows")
+                print(f"[BACKTEST] Generated signals for {symbol}: {len(df)} rows")
             except Exception as e:
                 errors.append(f"{symbol}: {str(e)}")
-                logger.warning(f"Could not generate signals for {symbol}: {e}")
+                print(f"[BACKTEST] ERROR for {symbol}: {e}")
 
         if not all_signals:
             error_detail = "; ".join(errors) if errors else "Unknown error"

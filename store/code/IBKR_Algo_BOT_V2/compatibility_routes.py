@@ -796,8 +796,8 @@ async def schwab_backtest_run(data: dict = None):
             symbols = [symbols]
 
         # Convert days to start_date/end_date
-        # Need at least 90 days for feature calculation (50 day warmup + trading period)
-        days = max(data.get("days", 90), 90)  # Minimum 90 days for valid backtest
+        # Need at least 180 days for feature calculation (50 day indicators + 30 day warmup + trading)
+        days = max(data.get("days", 180), 180)  # Minimum 180 days for valid backtest
         end_date = datetime.now().strftime("%Y-%m-%d")
         start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
@@ -842,8 +842,8 @@ async def schwab_backtest_quick(data: dict = None):
         if isinstance(symbols, str):
             symbols = [symbols]
 
-        # Quick backtest needs minimum 90 days for feature warmup
-        days = max(data.get("days", 90), 90)
+        # Quick backtest needs minimum 180 days for feature warmup
+        days = max(data.get("days", 180), 180)
         end_date = datetime.now().strftime("%Y-%m-%d")
         start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
