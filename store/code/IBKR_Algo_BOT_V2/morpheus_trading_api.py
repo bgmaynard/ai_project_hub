@@ -2063,6 +2063,18 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
 # STATIC FILES
 # ============================================================================
 
+# Favicon endpoint
+@app.get("/favicon.ico")
+async def favicon():
+    """Return a simple SVG favicon"""
+    from fastapi.responses import Response
+    svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+        <rect width="32" height="32" rx="4" fill="#1a1a2e"/>
+        <path d="M8 22 L16 10 L24 22" stroke="#00d4aa" stroke-width="3" fill="none"/>
+        <circle cx="16" cy="8" r="2" fill="#00d4aa"/>
+    </svg>'''
+    return Response(content=svg, media_type="image/svg+xml")
+
 # Mount UI directory if it exists
 ui_path = Path("ui")
 if ui_path.exists():
