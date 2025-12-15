@@ -168,56 +168,225 @@ class EnhancedAIPredictor:
 
 
     def train(self, symbol: str, period: str = "2y", test_size: float = 0.2):
-        """Train LightGBM model"""
+        """Train LightGBM model on single symbol"""
         self.logger.info(f"Training enhanced predictor for {symbol}...")
-        
+
         X, y = self.prepare_training_data(symbol, period=period)
-        
+
+        if len(X) < 200:
+            return {
+                "success": False,
+                "error": f"Insufficient data: {len(X)} samples (need 200+)",
+                "message": "Use train_multi with multiple symbols for better results"
+            }
+
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=test_size, shuffle=False
         )
-        
+
         train_data = lgb.Dataset(X_train, label=y_train, feature_name=self.feature_names)
         test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
-        
+
         self.logger.info("Training LightGBM model...")
         self.model = lgb.train(
             self.params,
             train_data,
-            num_boost_round=200,
+            num_boost_round=500,  # More rounds
             valid_sets=[test_data],
-            callbacks=[lgb.early_stopping(20), lgb.log_evaluation(50)]
+            callbacks=[lgb.early_stopping(50), lgb.log_evaluation(100)]  # More patience
         )
-        
-        # Predict with optimal threshold
+
+        # Get predictions
         y_pred_proba = self.model.predict(X_test)
-        y_pred = (y_pred_proba > 0.4).astype(int)  # Lower threshold for imbalanced data
-        
+
+        # Find optimal threshold
+        from sklearn.metrics import precision_recall_curve, roc_auc_score, f1_score, precision_score, recall_score
+        precisions, recalls, thresholds = precision_recall_curve(y_test, y_pred_proba)
+        f1_scores = 2 * (precisions * recalls) / (precisions + recalls + 1e-8)
+        optimal_idx = np.argmax(f1_scores)
+        self.optimal_threshold = float(thresholds[optimal_idx]) if optimal_idx < len(thresholds) else 0.5
+
+        y_pred = (y_pred_proba > self.optimal_threshold).astype(int)
+
         self.accuracy = accuracy_score(y_test, y_pred)
-        
+        auc_score = roc_auc_score(y_test, y_pred_proba) if len(np.unique(y_test)) > 1 else 0.5
+        precision = precision_score(y_test, y_pred, zero_division=0)
+        recall = recall_score(y_test, y_pred, zero_division=0)
+        f1 = f1_score(y_test, y_pred, zero_division=0)
+
         importance = self.model.feature_importance(importance_type='gain')
         self.feature_importance = dict(zip(self.feature_names, importance))
-        
+
         self.training_date = datetime.now().isoformat()
-        
-        self.logger.info(f"\nAccuracy: {self.accuracy:.4f}")
+
+        # Confidence distribution
+        high_conf = np.sum((y_pred_proba > 0.7) | (y_pred_proba < 0.3)) / len(y_pred_proba)
+
+        self.logger.info(f"\nAccuracy: {self.accuracy:.4f}, AUC: {auc_score:.4f}")
+        self.logger.info(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}")
+        self.logger.info(f"Optimal threshold: {self.optimal_threshold:.4f}")
+        self.logger.info(f"High confidence predictions: {high_conf:.1%}")
         self.logger.info(f"\n{classification_report(y_test, y_pred, zero_division=0)}")
-        
+
         # Show top features
         sorted_features = sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:10]
         self.logger.info("\nTop 10 Features:")
         for i, (feat, imp) in enumerate(sorted_features, 1):
             self.logger.info(f"{i}. {feat}: {imp:.2f}")
+
         self.save_model()
+
+        # Quality assessment
+        quality = "good" if auc_score > 0.65 else "fair" if auc_score > 0.55 else "poor"
+
         return {
-           "success": True,
-           "samples": len(X),
-           "metrics": {
-           "accuracy": float(self.accuracy)
-    },
-    "model_path": ""
-}
-    
+            "success": True,
+            "samples": len(X),
+            "train_samples": len(X_train),
+            "test_samples": len(X_test),
+            "boosting_rounds": self.model.best_iteration,
+            "metrics": {
+                "accuracy": round(float(self.accuracy), 4),
+                "auc": round(float(auc_score), 4),
+                "precision": round(float(precision), 4),
+                "recall": round(float(recall), 4),
+                "f1_score": round(float(f1), 4),
+                "optimal_threshold": round(self.optimal_threshold, 4),
+                "high_confidence_pct": round(float(high_conf) * 100, 1)
+            },
+            "quality": quality,
+            "warning": "Single symbol training - use train_multi for better generalization" if quality != "good" else None
+        }
+
+    def train_multi(self, symbols: list, period: str = "2y", test_size: float = 0.2):
+        """Train LightGBM model on multiple symbols for better generalization"""
+        self.logger.info(f"Training multi-symbol predictor on {len(symbols)} symbols...")
+
+        all_dfs = []
+        symbol_counts = {}
+
+        for symbol in symbols:
+            try:
+                ticker = yf.Ticker(symbol)
+                df = ticker.history(period=period)
+                if df.empty:
+                    self.logger.warning(f"  {symbol}: No data")
+                    continue
+                df = self.calculate_features(df)
+                df['future_return'] = df['Close'].shift(-3) / df['Close'] - 1
+                df['target'] = (df['future_return'] > 0.01).astype(int)
+                df = df.dropna()
+                if len(df) > 50:
+                    all_dfs.append(df)
+                    symbol_counts[symbol] = len(df)
+                    self.logger.info(f"  {symbol}: {len(df)} samples")
+            except Exception as e:
+                self.logger.warning(f"  {symbol}: Failed - {e}")
+
+        if not all_dfs:
+            return {
+                "success": False,
+                "error": "No valid training data from any symbol"
+            }
+
+        # Combine all dataframes
+        combined_df = pd.concat(all_dfs, ignore_index=True)
+
+        # Use consistent feature columns
+        feature_cols = [c for c in combined_df.columns if c not in ['target', 'future_return', 'Close', 'Open', 'High', 'Low', 'Volume', 'Dividends', 'Stock Splits']]
+        self.feature_names = feature_cols
+
+        X = combined_df[feature_cols].values
+        y = combined_df['target'].values
+
+        self.logger.info(f"Total: {len(X)} samples from {len(symbol_counts)} symbols")
+
+        if len(X) < 500:
+            return {
+                "success": False,
+                "error": f"Insufficient total data: {len(X)} samples (need 500+)",
+                "symbols_loaded": symbol_counts
+            }
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, shuffle=True  # Shuffle for multi-symbol
+        )
+
+        train_data = lgb.Dataset(X_train, label=y_train, feature_name=self.feature_names)
+        test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
+
+        self.logger.info("Training LightGBM model...")
+        self.model = lgb.train(
+            self.params,
+            train_data,
+            num_boost_round=1000,  # More rounds for multi-symbol
+            valid_sets=[test_data],
+            callbacks=[lgb.early_stopping(100), lgb.log_evaluation(100)]
+        )
+
+        # Get predictions
+        y_pred_proba = self.model.predict(X_test)
+
+        # Find optimal threshold
+        from sklearn.metrics import precision_recall_curve, roc_auc_score, f1_score, precision_score, recall_score
+        precisions, recalls, thresholds = precision_recall_curve(y_test, y_pred_proba)
+        f1_scores = 2 * (precisions * recalls) / (precisions + recalls + 1e-8)
+        optimal_idx = np.argmax(f1_scores)
+        self.optimal_threshold = float(thresholds[optimal_idx]) if optimal_idx < len(thresholds) else 0.5
+
+        y_pred = (y_pred_proba > self.optimal_threshold).astype(int)
+
+        self.accuracy = accuracy_score(y_test, y_pred)
+        auc_score = roc_auc_score(y_test, y_pred_proba) if len(np.unique(y_test)) > 1 else 0.5
+        precision = precision_score(y_test, y_pred, zero_division=0)
+        recall = recall_score(y_test, y_pred, zero_division=0)
+        f1 = f1_score(y_test, y_pred, zero_division=0)
+
+        importance = self.model.feature_importance(importance_type='gain')
+        self.feature_importance = dict(zip(self.feature_names, importance))
+
+        self.training_date = datetime.now().isoformat()
+
+        # Confidence distribution
+        high_conf = np.sum((y_pred_proba > 0.7) | (y_pred_proba < 0.3)) / len(y_pred_proba)
+
+        self.logger.info(f"\nAccuracy: {self.accuracy:.4f}, AUC: {auc_score:.4f}")
+        self.logger.info(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}")
+        self.logger.info(f"Optimal threshold: {self.optimal_threshold:.4f}")
+        self.logger.info(f"High confidence predictions: {high_conf:.1%}")
+        self.logger.info(f"\n{classification_report(y_test, y_pred, zero_division=0)}")
+
+        # Show top features
+        sorted_features = sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:10]
+        self.logger.info("\nTop 10 Features:")
+        for i, (feat, imp) in enumerate(sorted_features, 1):
+            self.logger.info(f"{i}. {feat}: {imp:.2f}")
+
+        self.save_model()
+
+        # Quality assessment
+        quality = "good" if auc_score > 0.60 else "fair" if auc_score > 0.55 else "poor"
+
+        return {
+            "success": True,
+            "symbols_trained": len(symbol_counts),
+            "symbol_samples": symbol_counts,
+            "total_samples": len(X),
+            "train_samples": len(X_train),
+            "test_samples": len(X_test),
+            "boosting_rounds": self.model.best_iteration,
+            "metrics": {
+                "accuracy": round(float(self.accuracy), 4),
+                "auc": round(float(auc_score), 4),
+                "precision": round(float(precision), 4),
+                "recall": round(float(recall), 4),
+                "f1_score": round(float(f1), 4),
+                "optimal_threshold": round(self.optimal_threshold, 4),
+                "high_confidence_pct": round(float(high_conf) * 100, 1)
+            },
+            "quality": quality
+        }
+
     def predict(self, symbol: str, period: str = "3mo", bidSize=None, askSize=None, sentiment=None) -> dict:
         """Make prediction for a symbol"""
         if self.model is None:
