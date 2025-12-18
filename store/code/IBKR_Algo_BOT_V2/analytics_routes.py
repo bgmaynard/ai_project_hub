@@ -7,12 +7,36 @@ from pydantic import BaseModel
 from typing import Optional, List
 import logging
 
-from portfolio_analytics import get_portfolio_analytics
-from trade_execution import get_execution_tracker
-from unified_broker import get_unified_broker
-from unified_market_data import get_unified_market_data
-
 logger = logging.getLogger(__name__)
+
+# Optional imports - these modules may not exist
+try:
+    from portfolio_analytics import get_portfolio_analytics
+    HAS_PORTFOLIO_ANALYTICS = True
+except ImportError:
+    HAS_PORTFOLIO_ANALYTICS = False
+    get_portfolio_analytics = None
+
+try:
+    from trade_execution import get_execution_tracker
+    HAS_EXECUTION_TRACKER = True
+except ImportError:
+    HAS_EXECUTION_TRACKER = False
+    get_execution_tracker = None
+
+try:
+    from unified_broker import get_unified_broker
+    HAS_UNIFIED_BROKER = True
+except ImportError:
+    HAS_UNIFIED_BROKER = False
+    get_unified_broker = None
+
+try:
+    from unified_market_data import get_unified_market_data
+    HAS_UNIFIED_DATA = True
+except ImportError:
+    HAS_UNIFIED_DATA = False
+    get_unified_market_data = None
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -384,3 +408,317 @@ async def get_analytics_dashboard():
     except Exception as e:
         logger.error(f"Error getting analytics dashboard: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# TRADE JOURNAL & ANALYTICS (TraderVue-style)
+# ============================================================================
+
+# Trade Analytics Module
+try:
+    from trade_analytics import get_trade_analytics
+    HAS_TRADE_ANALYTICS = True
+except ImportError as e:
+    logger.warning(f"Trade analytics not available: {e}")
+    HAS_TRADE_ANALYTICS = False
+
+# Schwab Trading (for account switching)
+try:
+    from schwab_trading import get_schwab_trading
+    HAS_SCHWAB_DIRECT = True
+except ImportError:
+    HAS_SCHWAB_DIRECT = False
+
+
+class ManualTradeRecord(BaseModel):
+    """Trade record for manual entry"""
+    symbol: str
+    side: str
+    quantity: float
+    entry_price: float
+    exit_price: Optional[float] = None
+    pnl: Optional[float] = None
+    strategy: Optional[str] = ""
+    setup: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+@router.get("/accounts/all")
+async def get_all_accounts():
+    """Get all available trading accounts"""
+    if not HAS_SCHWAB_DIRECT:
+        raise HTTPException(status_code=503, detail="Schwab trading not available")
+
+    schwab = get_schwab_trading()
+    accounts = schwab.get_accounts()
+    selected = schwab.get_selected_account()
+
+    return {
+        "accounts": accounts,
+        "selected": selected,
+        "count": len(accounts)
+    }
+
+
+@router.post("/accounts/switch/{account_number}")
+async def switch_account(account_number: str):
+    """Switch to a different trading account"""
+    if not HAS_SCHWAB_DIRECT:
+        raise HTTPException(status_code=503, detail="Schwab trading not available")
+
+    schwab = get_schwab_trading()
+    accounts = schwab.get_accounts()
+    valid_accounts = [a['account_number'] for a in accounts]
+
+    if account_number not in valid_accounts:
+        raise HTTPException(status_code=404, detail=f"Account {account_number} not found")
+
+    success = schwab.select_account(account_number)
+
+    if success:
+        # Get the account info for the newly selected account
+        info = schwab.get_account_info()
+        return {
+            "success": True,
+            "selected_account": account_number,
+            "account_info": info
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to switch account")
+
+
+@router.get("/accounts/summary/all")
+async def get_all_accounts_summary():
+    """Get summary of all accounts with P&L"""
+    if not HAS_SCHWAB_DIRECT:
+        raise HTTPException(status_code=503, detail="Schwab trading not available")
+
+    schwab = get_schwab_trading()
+    accounts = schwab.get_accounts()
+    original_account = schwab.get_selected_account()
+
+    summaries = []
+    total_value = 0
+    total_pnl = 0
+
+    for acc in accounts:
+        acc_num = acc['account_number']
+        schwab.select_account(acc_num)
+        info = schwab.get_account_info()
+        positions = schwab.get_positions()
+
+        if info:
+            summaries.append({
+                "account": acc_num,
+                "type": info.get('type', 'N/A'),
+                "cash": round(info.get('cash', 0), 2),
+                "market_value": round(info.get('market_value', 0), 2),
+                "daily_pnl": round(info.get('daily_pl', 0), 2),
+                "daily_pnl_pct": round(info.get('daily_pl_pct', 0), 2),
+                "positions_count": len(positions) if positions else 0
+            })
+            total_value += info.get('market_value', 0)
+            total_pnl += info.get('daily_pl', 0)
+
+    # Restore original account
+    if original_account:
+        schwab.select_account(original_account)
+
+    return {
+        "accounts": summaries,
+        "totals": {
+            "total_value": round(total_value, 2),
+            "total_daily_pnl": round(total_pnl, 2),
+            "account_count": len(summaries)
+        }
+    }
+
+
+@router.post("/journal/sync")
+async def sync_trades_from_broker():
+    """Sync filled orders from Schwab into trade journal"""
+    if not HAS_SCHWAB_DIRECT or not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Required services not available")
+
+    schwab = get_schwab_trading()
+    analytics = get_trade_analytics()
+
+    accounts = schwab.get_accounts()
+    original_account = schwab.get_selected_account()
+
+    total_imported = 0
+    results = []
+
+    for acc in accounts:
+        acc_num = acc['account_number']
+        schwab.select_account(acc_num)
+
+        # Get filled orders
+        orders = schwab.get_orders(status="FILLED")
+        imported = analytics.sync_from_schwab(orders, acc_num)
+        total_imported += imported
+
+        results.append({
+            "account": acc_num,
+            "orders_found": len(orders),
+            "imported": imported
+        })
+
+    if original_account:
+        schwab.select_account(original_account)
+
+    return {
+        "success": True,
+        "total_imported": total_imported,
+        "by_account": results
+    }
+
+
+@router.post("/journal/record")
+async def record_manual_trade(trade: ManualTradeRecord):
+    """Manually record a trade to the journal"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    from datetime import datetime, date
+    analytics = get_trade_analytics()
+
+    trade_id = f"MANUAL-{datetime.now().strftime('%Y%m%d%H%M%S')}-{trade.symbol}"
+
+    trade_data = {
+        "trade_id": trade_id,
+        "symbol": trade.symbol.upper(),
+        "side": trade.side.upper(),
+        "quantity": trade.quantity,
+        "entry_price": trade.entry_price,
+        "exit_price": trade.exit_price,
+        "pnl": trade.pnl or 0,
+        "strategy": trade.strategy,
+        "setup": trade.setup,
+        "notes": trade.notes,
+        "entry_time": datetime.now().isoformat(),
+        "trade_date": date.today().isoformat()
+    }
+
+    success = analytics.record_trade(trade_data)
+
+    if success:
+        return {"success": True, "trade_id": trade_id}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to record trade")
+
+
+@router.get("/journal/trades")
+async def get_journal_trades(limit: int = Query(default=50, le=200)):
+    """Get recent trades from journal"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    analytics = get_trade_analytics()
+    trades = analytics.get_recent_trades(limit)
+
+    return {"trades": trades, "count": len(trades)}
+
+
+@router.get("/journal/daily")
+async def get_daily_journal_summary(target_date: Optional[str] = None):
+    """Get daily trading summary"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    from datetime import datetime, date
+    analytics = get_trade_analytics()
+
+    if target_date:
+        try:
+            dt = datetime.strptime(target_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    else:
+        dt = date.today()
+
+    return analytics.get_daily_summary(dt)
+
+
+@router.get("/journal/stats")
+async def get_journal_overall_stats(days: int = Query(default=30, ge=1, le=365)):
+    """Get overall trading statistics"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    analytics = get_trade_analytics()
+    return analytics.get_overall_stats(days)
+
+
+@router.get("/journal/symbols")
+async def get_symbol_stats(limit: int = Query(default=20, le=100)):
+    """Get performance breakdown by symbol"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    analytics = get_trade_analytics()
+    return {"symbols": analytics.get_symbol_performance(limit)}
+
+
+@router.get("/journal/strategies")
+async def get_strategy_stats():
+    """Get performance breakdown by strategy/setup"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    analytics = get_trade_analytics()
+    return {"strategies": analytics.get_strategy_performance()}
+
+
+@router.get("/journal/time-analysis")
+async def get_time_stats():
+    """Get performance by time of day and day of week"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    analytics = get_trade_analytics()
+    return analytics.get_time_analysis()
+
+
+@router.get("/journal/insights")
+async def get_trading_insights():
+    """Get actionable trading insights - what's working, what's not"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    analytics = get_trade_analytics()
+    return analytics.get_insights()
+
+
+@router.get("/journal/report")
+async def get_full_trading_report(days: int = Query(default=30, ge=1, le=365)):
+    """Get comprehensive trading report (TraderVue-style)"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    from datetime import datetime
+    analytics = get_trade_analytics()
+
+    return {
+        "report_type": "comprehensive",
+        "period_days": days,
+        "generated_at": datetime.now().isoformat(),
+        "overall_stats": analytics.get_overall_stats(days),
+        "today_summary": analytics.get_daily_summary(),
+        "top_symbols": analytics.get_symbol_performance(10),
+        "strategy_performance": analytics.get_strategy_performance(),
+        "time_analysis": analytics.get_time_analysis(),
+        "insights": analytics.get_insights()
+    }
+
+
+@router.post("/journal/calculate-pnl")
+async def calculate_pnl_from_fills():
+    """Calculate P&L by matching buy/sell fills (FIFO method)"""
+    if not HAS_TRADE_ANALYTICS:
+        raise HTTPException(status_code=503, detail="Trade analytics not available")
+
+    analytics = get_trade_analytics()
+    result = analytics.calculate_pnl_from_fills()
+
+    return result

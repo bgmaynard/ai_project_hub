@@ -1,0 +1,68 @@
+{
+  "splits": {
+    "MBRX": [
+      {
+        "symbol": "MBRX",
+        "split_date": "2021-02-01",
+        "split_ratio": "1:6",
+        "split_type": "REVERSE",
+        "pre_split_price": 2193.75,
+        "post_split_price": 1451.25,
+        "pre_split_float": null,
+        "post_split_float": null,
+        "momentum_day_1": -0.5128205128205128,
+        "momentum_day_5": -20.0,
+        "momentum_day_10": -5.982905982905983,
+        "momentum_day_20": -25.64102564102564,
+        "momentum_day_30": null,
+        "days_since_split": 1780
+      },
+      {
+        "symbol": "MBRX",
+        "split_date": "2024-03-22",
+        "split_ratio": "1:15",
+        "split_type": "REVERSE",
+        "pre_split_price": 206.25,
+        "post_split_price": 107.69999694824219,
+        "pre_split_float": null,
+        "post_split_float": null,
+        "momentum_day_1": -4.7272727272727275,
+        "momentum_day_5": -36.36363636363637,
+        "momentum_day_10": -33.939393939393945,
+        "momentum_day_20": -48.12121212121212,
+        "momentum_day_30": null,
+        "days_since_split": 635
+      },
+      {
+        "symbol": "MBRX",
+        "split_date": "2025-12-01",
+        "split_ratio": "1:25",
+        "split_type": "REVERSE",
+        "pre_split_price": 7.0,
+        "post_split_price": 4.690000057220459,
+        "pre_split_float": null,
+        "post_split_float": null,
+        "momentum_day_1": -2.5000027247837613,
+        "momentum_day_5": 10.142857687813896,
+        "momentum_day_10": -28.57142857142857,
+        "momentum_day_20": null,
+        "momentum_day_30": null,
+        "days_since_split": 16
+      }
+    ]
+  },
+  "stats": {
+    "total_splits_tracked": 0,
+    "avg_day_1_momentum": 0.0,
+    "avg_day_5_momentum": 0.0,
+    "avg_day_10_momentum": 0.0,
+    "avg_day_20_momentum": 0.0,
+    "avg_day_30_momentum": 0.0,
+    "reverse_split_avg_momentum": 0.0,
+    "forward_split_avg_momentum": 0.0,
+    "pct_positive_day_1": 0.0,
+    "pct_positive_day_5": 0.0,
+    "pct_fade_after_day_5": 0.0
+  },
+  "last_updated": "2025-12-17T07:48:24.810640"
+}

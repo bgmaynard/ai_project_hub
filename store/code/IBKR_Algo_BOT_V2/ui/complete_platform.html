@@ -1236,17 +1236,20 @@
         <!-- AI TOOLS MENU -->
         <div class="menu-item" onclick="toggleDropdown('ai-dropdown')" style="background: #1e40af;">
             🤖 AI
-            <div class="dropdown" id="ai-dropdown" style="width: 240px;">
-                <strong style="font-size: 10px;">Control Panels</strong>
-                <a href="/ai-control" target="_blank">🎮 AI Control Dashboard</a>
+            <div class="dropdown" id="ai-dropdown" style="width: 280px;">
+                <strong style="font-size: 10px;">🖥️ OPEN IN SEPARATE WINDOW (for 2nd monitor)</strong>
+                <a href="/dashboard?panel=ai" target="_blank">🎛️ AI Control Panel (Full Screen)</a>
+                <a href="/ai-control" target="_blank">📊 AI Control Center</a>
+                <hr>
+                <strong style="font-size: 10px;">📌 EMBEDDED PANELS (in this window)</strong>
                 <a href="#" onclick="event.preventDefault(); openAIControlPanel()">🎛️ AI Control Panel</a>
                 <a href="#" onclick="event.preventDefault(); openAIMonitor()">📡 AI Monitor</a>
                 <hr>
-                <strong style="font-size: 10px;">Tools</strong>
+                <strong style="font-size: 10px;">🔧 TOOLS</strong>
                 <a href="#" onclick="event.preventDefault(); openScannerPanel()">🔍 Stock Scanner</a>
                 <a href="#" onclick="event.preventDefault(); openClaudeChatWindow()">💬 Claude Chat</a>
                 <hr>
-                <strong style="font-size: 10px;">Backtesting</strong>
+                <strong style="font-size: 10px;">📈 BACKTESTING</strong>
                 <a href="/ui/ensemble_backtest.html" target="_blank">🔬 Ensemble Comparison</a>
             </div>
         </div>
@@ -1265,6 +1268,11 @@
         <div class="menu-item" onclick="connectToSchwab()" style="background: #059669;">
             🔌 CONNECT SCHWAB
         </div>
+
+        <!-- AI CONTROL PANEL - OPEN IN NEW WINDOW -->
+        <a href="/dashboard?panel=ai" target="_blank" class="menu-item" style="background: #7c3aed; text-decoration: none; color: white;">
+            🎛️ AI PANEL ↗
+        </a>
     </div>
 
     <!-- Workspace -->
@@ -3215,6 +3223,106 @@
                             </div>
                         </div>
 
+                        <!-- TRADING PIPELINE - Automated Flow -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #10b981; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-size: 13px; color: #10b981; font-weight: 700;">🔄 TRADING PIPELINE</div>
+                                <div id="pipelineStatusBadge" style="padding: 2px 8px; background: #252525; border-radius: 3px; font-size: 10px;">
+                                    <span style="color: #888;">STOPPED</span>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; font-size: 10px;">
+                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                    <div style="color: #888;">SCANNED</div>
+                                    <div id="pipelineScanned" style="font-weight: 600; color: #007acc;">0</div>
+                                </div>
+                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                    <div style="color: #888;">ADDED</div>
+                                    <div id="pipelineAdded" style="font-weight: 600; color: #22c55e;">0</div>
+                                </div>
+                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                    <div style="color: #888;">ANALYZED</div>
+                                    <div id="pipelineAnalyzed" style="font-weight: 600; color: #f59e0b;">0</div>
+                                </div>
+                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                    <div style="color: #888;">EXECUTED</div>
+                                    <div id="pipelineExecuted" style="font-weight: 600; color: #ef4444;">0</div>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
+                                <button onclick="startPipeline()" style="padding: 8px; background: #10b981; border: none; color: #fff; font-size: 11px; font-weight: 600; border-radius: 3px; cursor: pointer;">
+                                    ▶️ START PIPELINE
+                                </button>
+                                <button onclick="stopPipeline()" style="padding: 8px; background: #6b7280; border: none; color: #fff; font-size: 11px; font-weight: 600; border-radius: 3px; cursor: pointer;">
+                                    ⏹️ STOP PIPELINE
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TRADING COACH -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #8b5cf6; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-size: 13px; color: #8b5cf6; font-weight: 700;">🎯 TRADING COACH</div>
+                                <div id="coachWindowBadge" style="padding: 2px 8px; background: #252525; border-radius: 3px; font-size: 10px; color: #888;">
+                                    AFTER_HOURS
+                                </div>
+                            </div>
+
+                            <div id="coachStatus" style="padding: 8px; background: #252525; border-radius: 3px; margin-bottom: 8px; font-size: 11px; color: #ccc;">
+                                Loading coach status...
+                            </div>
+
+                            <div id="emotionalPatterns" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 8px; font-size: 9px;">
+                                <div style="padding: 4px; background: #252525; border-radius: 2px; text-align: center;">
+                                    <div style="color: #888;">FOMO</div>
+                                    <div id="patternFomo" style="color: #10b981;">0</div>
+                                </div>
+                                <div style="padding: 4px; background: #252525; border-radius: 2px; text-align: center;">
+                                    <div style="color: #888;">REVENGE</div>
+                                    <div id="patternRevenge" style="color: #10b981;">0</div>
+                                </div>
+                                <div style="padding: 4px; background: #252525; border-radius: 2px; text-align: center;">
+                                    <div style="color: #888;">FEAR</div>
+                                    <div id="patternFear" style="color: #10b981;">0</div>
+                                </div>
+                            </div>
+
+                            <div id="coachAssessment" style="padding: 6px; background: #252525; border-radius: 3px; font-size: 10px; color: #22c55e; text-align: center;">
+                                ✓ No emotional trading detected
+                            </div>
+                        </div>
+
+                        <!-- AI TRADER QUEUE -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #f59e0b; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-size: 13px; color: #f59e0b; font-weight: 700;">🤖 AI TRADER QUEUE</div>
+                                <div id="aiTraderMode" style="padding: 2px 8px; background: #252525; border-radius: 3px; font-size: 10px; color: #f59e0b;">
+                                    PAPER
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; font-size: 10px;">
+                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                    <div style="color: #888;">PENDING</div>
+                                    <div id="aiTraderPending" style="font-weight: 600; color: #007acc;">0</div>
+                                </div>
+                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                    <div style="color: #888;">TODAY</div>
+                                    <div id="aiTraderToday" style="font-weight: 600; color: #22c55e;">0</div>
+                                </div>
+                                <div style="padding: 6px; background: #252525; border-radius: 3px; text-align: center;">
+                                    <div style="color: #888;">MAX/DAY</div>
+                                    <div id="aiTraderMax" style="font-weight: 600; color: #888;">10</div>
+                                </div>
+                            </div>
+
+                            <div id="aiTraderQueue" style="max-height: 80px; overflow-y: auto; font-size: 10px; background: #252525; border-radius: 3px; padding: 6px;">
+                                <div style="color: #666; text-align: center;">No opportunities in queue</div>
+                            </div>
+                        </div>
+
                         <!-- WORKLIST (Shared with Platform) -->
                         <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -4375,7 +4483,7 @@
                     return await response.json();
                 } else if (response.status === 503) {
                     if (!demoModeLogged) {
-                        console.log('%c⚠️ Alpaca not connected. Please click "Connect Alpaca" in the menu.', 'color: #ef4444; font-weight: bold;');
+                        console.log('%c⚠️ Broker not connected. Please check Schwab connection.', 'color: #ef4444; font-weight: bold;');
                         demoModeLogged = true;
                     }
                     return null;
@@ -4622,11 +4730,11 @@
 
                 if (!bidsEl || !asksEl) return;
 
-                // Fetch ONLY from API
+                // Fetch ONLY from API (Schwab provides basic bid/ask only)
                 const apiData = await apiFetch(`/api/level2/${currentSymbol}`);
                 if (!apiData) {
-                    bidsEl.innerHTML = '<div class="empty-state">Connect to Alpaca for Level 2 data</div>';
-                    asksEl.innerHTML = '<div class="empty-state">Connect to Alpaca for Level 2 data</div>';
+                    bidsEl.innerHTML = '<div class="empty-state">Level 2 data unavailable</div>';
+                    asksEl.innerHTML = '<div class="empty-state">Level 2 data unavailable</div>';
                     return;
                 }
 
@@ -4682,10 +4790,10 @@
                 const displayEl = document.getElementById('timesalesDisplay');
                 if (!displayEl) return;
 
-                // Fetch ONLY from API
+                // Fetch from API (requires real tick data subscription)
                 const apiData = await apiFetch(`/api/timesales/${currentSymbol}?limit=50`);
                 if (!apiData || !apiData.trades || apiData.trades.length === 0) {
-                    displayEl.innerHTML = '<div class="empty-state">No trade data available. Subscribe to symbol for updates.</div>';
+                    displayEl.innerHTML = '<div class="empty-state">Time & Sales requires tick data subscription<br><small style="color: #666;">Polygon.io or Finnhub Premium needed.</small></div>';
                     return;
                 }
 
@@ -4696,8 +4804,8 @@
                     trades.forEach(trade => {
                         // Use trade.time directly (already formatted as HH:MM:SS)
                         const time = trade.time || '--:--:--';
-                        // Use side from API: B=buy (green), S=sell (red)
-                        const isBuy = trade.side === 'B';
+                        // Use side from API: BUY/B = green, SELL/S = red
+                        const isBuy = trade.side === 'BUY' || trade.side === 'B';
                         const rowColor = isBuy ? '#22c55e' : '#ef4444';
 
                         html += `
@@ -5475,7 +5583,7 @@ Confirm order?`;
                     }
                 } catch (error) {
                     console.error('Close position error:', error);
-                    alert(`✗ Failed to close position\n\nError: ${error.message}\n\nMake sure Alpaca is connected.`);
+                    alert(`✗ Failed to close position\n\nError: ${error.message}\n\nMake sure broker is connected.`);
                 }
             }
         }
@@ -5506,7 +5614,7 @@ Confirm order?`;
                     }
                 } catch (error) {
                     console.error('Cancel order error:', error);
-                    alert(`✗ Failed to cancel order\n\nError: ${error.message}\n\nMake sure Alpaca is connected.`);
+                    alert(`✗ Failed to cancel order\n\nError: ${error.message}\n\nMake sure broker is connected.`);
                 }
             }
         }
@@ -5766,31 +5874,86 @@ Confirm order?`;
             }
 
             try {
-                let html = '<table class="data-table" style="font-size: 13px;"><thead><tr><th style="padding: 4px 6px;">Symbol</th><th style="padding: 4px 6px; text-align: right;">Price</th><th style="padding: 4px 6px; text-align: right;">Change</th><th style="padding: 4px 6px; text-align: center;">Action</th></tr></thead><tbody>';
+                // Enhanced watchlist with color-coded technical metrics
+                let html = `
+                <table class="data-table" style="font-size: 14px; width: 100%;">
+                    <thead>
+                        <tr style="background: #1a1a1a;">
+                            <th style="padding: 6px 6px; text-align: left; font-size: 12px;">SYM</th>
+                            <th style="padding: 6px 6px; text-align: right; font-size: 12px;">PRICE</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;">CHG%</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="Trading Halt Status">HALT</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="News Catalyst">CAT</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="MACD Signal">MACD</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="Relative Volume">RVOL</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="VWAP Extension %">VWAP</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="% From High of Day">HOD</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="Entry Quality Score">SCORE</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="Entry Status">GO</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
 
                 for (const item of worklistData) {
-                    // Use item data directly (already has price from API)
                     const price = item.price ? `$${item.price.toFixed(2)}` : '-';
-                    const change = item.change_percent !== undefined ? item.change_percent.toFixed(2) + '%' :
-                                   (item.change !== undefined ? item.change.toFixed(2) : '-');
-                    const changeClass = (item.change_percent >= 0 || item.change >= 0) ? 'positive' : 'negative';
+                    const changePct = item.change_percent !== undefined ? item.change_percent.toFixed(1) : '0.0';
+                    const changeColor = (parseFloat(changePct) >= 0) ? '#22c55e' : '#ef4444';
+
+                    // HALT indicator with time
+                    const isHalted = item.is_halted || false;
+                    const haltColor = item.halt_color || '#666';
+                    const haltTime = item.halt_time_str || '';
+                    const haltType = item.halt_type || '';
+                    let haltDisplay = '-';
+                    if (isHalted) {
+                        haltDisplay = `<span style="background: #ff00ff; color: #000; padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: 700; animation: pulse 1s infinite;">${haltType} ${haltTime}</span>`;
+                    }
+
+                    // Technical metrics with colors
+                    const catalystColor = item.catalyst_color || '#666';
+                    const catalystText = item.has_news ? 'NEWS' : '-';
+
+                    const macdColor = item.macd_color || '#666';
+                    const macdText = item.macd_signal || '-';
+
+                    const rvolColor = item.rel_volume_color || '#666';
+                    const rvolText = item.rel_volume ? item.rel_volume.toFixed(1) + 'x' : '-';
+
+                    const vwapColor = item.vwap_color || '#666';
+                    const vwapExt = item.vwap_extension !== undefined ? (item.vwap_extension > 0 ? '+' : '') + item.vwap_extension.toFixed(1) + '%' : '-';
+
+                    const hodColor = item.hod_color || '#666';
+                    const hodText = item.percent_from_hod !== undefined ? item.percent_from_hod.toFixed(1) + '%' : '-';
+
+                    const scoreColor = item.entry_color || '#666';
+                    const scoreText = item.entry_score || 0;
+
+                    const statusColor = item.status_color || '#ef4444';
+                    const statusText = item.entry_status || 'WAIT';
+
+                    // Row background highlight for halted stocks
+                    const rowBg = isHalted ? 'background: rgba(255, 0, 255, 0.15);' : '';
 
                     html += `
-                        <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="font-size: 13px; cursor: pointer;">
-                            <td style="padding: 6px 8px;"><strong style="color: #fff;">${item.symbol}</strong></td>
-                            <td style="padding: 6px 8px; text-align: right; font-family: monospace;">${price}</td>
-                            <td class="${changeClass}" style="padding: 6px 8px; text-align: right; font-family: monospace;">${change}</td>
-                            <td style="padding: 6px 8px; text-align: center;">
-                                <button onclick="event.stopPropagation(); removeFromWorklist('${item.symbol}')"
-                                        style="background: #7f1d1d; color: #ef4444; border: none; padding: 3px 8px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600;">✕</button>
-                            </td>
+                        <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="cursor: pointer; border-bottom: 1px solid #252525; ${rowBg}">
+                            <td style="padding: 8px 6px;"><strong style="color: #fff; font-size: 15px;">${item.symbol}</strong></td>
+                            <td style="padding: 8px 6px; text-align: right; font-family: monospace; font-size: 14px; color: #ccc;">${price}</td>
+                            <td style="padding: 8px 6px; text-align: center; font-family: monospace; font-size: 14px; color: ${changeColor}; font-weight: 600;">${changePct}%</td>
+                            <td style="padding: 8px 6px; text-align: center;">${haltDisplay}</td>
+                            <td style="padding: 8px 6px; text-align: center;"><span style="color: ${catalystColor}; font-size: 13px; font-weight: 700;">${catalystText}</span></td>
+                            <td style="padding: 8px 6px; text-align: center;"><span style="color: ${macdColor}; font-size: 13px; font-weight: 600;">${macdText}</span></td>
+                            <td style="padding: 8px 6px; text-align: center;"><span style="color: ${rvolColor}; font-size: 13px;">${rvolText}</span></td>
+                            <td style="padding: 8px 6px; text-align: center;"><span style="color: ${vwapColor}; font-size: 13px;">${vwapExt}</span></td>
+                            <td style="padding: 8px 6px; text-align: center;"><span style="color: ${hodColor}; font-size: 13px;">${hodText}</span></td>
+                            <td style="padding: 8px 6px; text-align: center;"><span style="background: ${scoreColor}20; color: ${scoreColor}; padding: 4px 8px; border-radius: 3px; font-size: 13px; font-weight: 700;">${scoreText}</span></td>
+                            <td style="padding: 8px 6px; text-align: center;"><span style="background: ${statusColor}; color: #000; padding: 4px 10px; border-radius: 3px; font-size: 12px; font-weight: 700;">${statusText}</span></td>
                         </tr>
                     `;
                 }
 
                 html += '</tbody></table>';
                 display.innerHTML = html;
-                console.log(`Worklist display updated with ${worklistData.length} symbols`);
+                console.log(`Worklist display updated with ${worklistData.length} symbols (enhanced view)`);
             } catch (error) {
                 console.error('Error rendering worklist display:', error);
                 display.innerHTML = '<div class="empty-state" style="padding: 20px; text-align: center; color: #ef4444;">Error loading worklist. Please refresh.</div>';
@@ -5932,7 +6095,7 @@ Confirm order?`;
 
                 const html = `
                     <div style="padding: 16px; background: #1a1a1a; border: 2px solid #007acc; border-radius: 4px; width: 400px;">
-                        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 18px;">Alpaca Market Scanner</h3>
+                        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 18px;">Market Scanner</h3>
                         <select id="scannerSelect" style="width: 100%; padding: 8px; background: #252525; color: #fff; border: 1px solid #404040; margin-bottom: 12px;">
                             ${options}
                         </select>
@@ -5977,7 +6140,7 @@ Confirm order?`;
             if (!select || !resultsDiv) return;
 
             const preset = select.value;
-            resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Scanning with Alpaca API...</div>';
+            resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Scanning market...</div>';
 
             try {
                 // Use Alpaca scanner API with correct parameters
@@ -6436,6 +6599,97 @@ Confirm order?`;
         async function stopBot() {
             return stopAutonomousBot();
         }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     TRADING PIPELINE FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        async function startPipeline() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/pipeline/start', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    updatePipelineStatus(data.status);
+                    alert('✓ Trading Pipeline started!');
+                } else {
+                    alert('Pipeline: ' + (data.message || 'Already running'));
+                }
+            } catch (error) {
+                console.error('Error starting pipeline:', error);
+                alert('Error starting pipeline');
+            }
+        }
+
+        async function stopPipeline() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/pipeline/stop', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    updatePipelineStatus(data.status);
+                    alert('✓ Trading Pipeline stopped');
+                }
+            } catch (error) {
+                console.error('Error stopping pipeline:', error);
+            }
+        }
+
+        function updatePipelineStatus(status) {
+            if (!status) return;
+
+            // Update badge
+            const badge = document.getElementById('pipelineStatusBadge');
+            if (badge) {
+                const isRunning = status.is_running;
+                badge.innerHTML = `<span style="color: ${isRunning ? '#22c55e' : '#888'};">${isRunning ? 'RUNNING' : 'STOPPED'}</span>`;
+            }
+
+            // Update stats
+            const stats = status.stats || {};
+            const el = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+            el('pipelineScanned', stats.stocks_scanned || 0);
+            el('pipelineAdded', stats.stocks_added_to_watchlist || 0);
+            el('pipelineAnalyzed', stats.stocks_analyzed || 0);
+            el('pipelineExecuted', stats.trades_executed || 0);
+        }
+
+        async function updateTradingDashboard() {
+            try {
+                // Pipeline status
+                const pipelineRes = await fetch(API_BASE_URL + '/api/pipeline/status');
+                if (pipelineRes.ok) {
+                    const pipeline = await pipelineRes.json();
+                    updatePipelineStatus(pipeline);
+                }
+
+                // Coach status
+                const coachRes = await fetch(API_BASE_URL + '/api/coach/window');
+                if (coachRes.ok) {
+                    const coach = await coachRes.json();
+                    const coachBadge = document.getElementById('coachWindowBadge');
+                    if (coachBadge) coachBadge.textContent = coach.window || 'UNKNOWN';
+                    const coachStatus = document.getElementById('coachStatus');
+                    if (coachStatus) coachStatus.textContent = coach.status || '';
+                }
+
+                // AI Trader status
+                const traderRes = await fetch(API_BASE_URL + '/api/ai-trader/status');
+                if (traderRes.ok) {
+                    const trader = await traderRes.json();
+                    const el = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+                    el('aiTraderPending', trader.pending_opportunities || 0);
+                    el('aiTraderToday', trader.today_trades || 0);
+                    el('aiTraderMax', trader.max_daily_trades || 10);
+                    const modeEl = document.getElementById('aiTraderMode');
+                    if (modeEl) modeEl.textContent = trader.paper_mode ? 'PAPER' : 'LIVE';
+                }
+
+            } catch (error) {
+                console.error('Error updating trading dashboard:', error);
+            }
+        }
+
+        // Update trading dashboard every 15 seconds
+        setInterval(updateTradingDashboard, 15000);
 
         async function getPrediction() {
             try {
@@ -8512,18 +8766,24 @@ Confirm order?`;
         }
 
         function displayEnhancedBacktestResults(data) {
-            // Handle both 'result' and 'results' keys, and also data.summary
-            const r = data.result || data.results || data;
+            // Handle different response formats: data.data, data.result, data.results, or data directly
+            const r = data.data || data.result || data.results || data;
             const summary = data.summary || r;
 
-            const totalReturn = summary.total_return_pct || r.total_return_pct || 0;
+            // Handle both _pct and _percent naming conventions
+            const totalReturn = summary.total_return_pct || r.total_return_pct || summary.total_return_percent || r.total_return_percent || 0;
             const finalCapital = r.final_capital || 0;
             const winRate = summary.win_rate || r.win_rate || 0;
-            const maxDrawdown = summary.max_drawdown_pct || r.max_drawdown_pct || 0;
+            const maxDrawdown = summary.max_drawdown_pct || r.max_drawdown_pct || summary.max_drawdown_percent || r.max_drawdown_percent || 0;
             const sharpe = summary.sharpe_ratio || r.sharpe_ratio || 0;
             const profitFactor = summary.profit_factor || r.profit_factor || 0;
             const totalTrades = summary.total_trades || r.total_trades || 0;
             const slippageCost = r.total_slippage || r.total_slippage_cost || 0;
+            const initialCapital = r.initial_capital || 10000;
+            const winningTrades = r.winning_trades || 0;
+            const losingTrades = r.losing_trades || 0;
+
+            console.log('Parsed backtest results:', { totalReturn, finalCapital, winRate, maxDrawdown, totalTrades });
 
             const profitFactorDisplay = profitFactor >= 999 ? '∞' : profitFactor.toFixed(2);
             const profitFactorColor = profitFactor >= 1.5 ? '#22c55e' : (profitFactor >= 1 ? '#f59e0b' : '#ef4444');
@@ -8534,14 +8794,17 @@ Confirm order?`;
                     <div style="font-size: 18px; font-weight: 700; color: ${totalReturn >= 0 ? '#22c55e' : '#ef4444'};">
                         ${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%
                     </div>
+                    <div style="font-size: 10px; color: #888;">$${(finalCapital - initialCapital).toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
                 </div>
                 <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
                     <div style="font-size: 10px; color: #666;">FINAL CAPITAL</div>
                     <div style="font-size: 18px; font-weight: 700; color: #60a5fa;">$${finalCapital.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+                    <div style="font-size: 10px; color: #888;">from $${initialCapital.toLocaleString()}</div>
                 </div>
                 <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
                     <div style="font-size: 10px; color: #666;">WIN RATE</div>
                     <div style="font-size: 18px; font-weight: 700; color: ${winRate >= 50 ? '#22c55e' : '#f59e0b'};">${winRate.toFixed(1)}%</div>
+                    <div style="font-size: 10px; color: #888;">${winningTrades}W / ${losingTrades}L</div>
                 </div>
                 <div style="padding: 8px; background: #252525; border-radius: 3px; text-align: center;">
                     <div style="font-size: 10px; color: #666;">MAX DRAWDOWN</div>
@@ -9873,7 +10136,7 @@ Confirm order?`;
                 statusHtml += `
                     <div style="background: #161b22; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
                         <div style="color: ${health.broker?.connected ? '#22c55e' : '#ef4444'}; font-weight: 600;">
-                            ${health.broker?.connected ? '✅' : '❌'} Alpaca: ${health.broker?.connected ? 'CONNECTED' : 'DISCONNECTED'}
+                            ${health.broker?.connected ? '✅' : '❌'} Broker: ${health.broker?.connected ? 'CONNECTED' : 'DISCONNECTED'}
                         </div>
                         <div style="color: #888; font-size: 12px; margin-top: 4px;">
                             Paper Trading: <span style="color: #fff;">${health.broker?.paper_trading ? 'Yes' : 'No'}</span>
@@ -12574,8 +12837,35 @@ Confirm order?`;
             }
         }
 
+        // Function to load AI-Only layout (full screen AI Control Panel)
+        function loadAIOnlyLayout() {
+            // Hide menu bar and make workspace full height
+            const menuBar = document.querySelector('.menu-bar');
+            if (menuBar) menuBar.style.display = 'none';
+
+            // Get viewport dimensions
+            const viewportWidth = window.innerWidth - 20;
+            const viewportHeight = window.innerHeight - 60;
+
+            // Create maximized AI Control Panel
+            createWindow('aicontrol', '🤖 AI CONTROL PANEL', windowTemplates.aicontrol, 10, 10, viewportWidth, viewportHeight);
+
+            // Make it non-closable and remove resize
+            setTimeout(() => {
+                const win = windows.find(w => w.id === 'aicontrol');
+                if (win && win.element) {
+                    const closeBtn = win.element.querySelector('.window-close');
+                    if (closeBtn) closeBtn.style.display = 'none';
+                }
+            }, 100);
+        }
+
         window.addEventListener('load', async () => {
             console.log('%c🚀 Morpheus Trading Bot - Professional Platform', 'color: #007acc; font-size: 18px; font-weight: bold;');
+
+            // Check for URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const panelMode = urlParams.get('panel');
 
             // Start unified price refresh system
             startUnifiedRefresh();
@@ -12592,6 +12882,25 @@ Confirm order?`;
 
             // Load auto-submit orders setting
             loadAutoSubmitSetting();
+
+            // Check if AI-only mode requested via URL parameter
+            if (panelMode === 'ai') {
+                console.log('🤖 Loading AI-Only mode...');
+                loadAIOnlyLayout();
+
+                // Still need to subscribe and initialize broker
+                const subscribePromises = watchlist.map(symbol => subscribeToSymbol(symbol));
+                subscribePromises.push(subscribeToSymbol(currentSymbol));
+                await Promise.all(subscribePromises);
+
+                await initBrokerState();
+
+                // Start data updates
+                setInterval(() => { loadPrice(); }, 5000);
+                setInterval(() => { loadPositions(); loadAccount(); }, 15000);
+
+                return; // Skip normal layout loading
+            }
 
             // Priority: 1. Startup Default Layout (user's saved preference)
             //           2. Custom Layout (legacy)
@@ -12706,7 +13015,7 @@ Confirm order?`;
                     });
 
                     if (!initResponse.ok) {
-                        alert('❌ Failed to initialize bot. Check Alpaca connection.');
+                        alert('❌ Failed to initialize bot. Check broker connection.');
                         return;
                     }
 

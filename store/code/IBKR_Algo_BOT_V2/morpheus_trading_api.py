@@ -78,11 +78,16 @@ except ImportError:
 
 # AI Predictor
 try:
-    from ai.ai_predictor import get_predictor as get_ai_scanner
+    from ai.ai_predictor import get_predictor as get_ai_scanner, EnhancedAIPredictor
     HAS_AI_SCANNER = True
-except ImportError:
+    # Pre-load the model at startup
+    _cached_predictor = EnhancedAIPredictor()
+    print(f"[INFO] AI Predictor loaded: Model={_cached_predictor.model is not None}, Accuracy={_cached_predictor.accuracy:.2%}")
+except ImportError as e:
     HAS_AI_SCANNER = False
     get_ai_scanner = None
+    _cached_predictor = None
+    print(f"[WARNING] AI Predictor not available: {e}")
 
 # Claude AI API Router
 try:
@@ -325,6 +330,26 @@ try:
 except ImportError as e:
     logger.warning(f"AI Watchlist not available: {e}")
     HAS_WATCHLIST_AI = False
+
+# Trading Pipeline & Coach (Automated Trading Flow)
+try:
+    from ai.pipeline_api_routes import router as pipeline_coach_router
+    app.include_router(pipeline_coach_router, tags=["Trading Pipeline", "Trading Coach"])
+    HAS_PIPELINE_COACH = True
+    logger.info("Trading Pipeline & Coach router included")
+except ImportError as e:
+    logger.warning(f"Trading Pipeline/Coach not available: {e}")
+    HAS_PIPELINE_COACH = False
+
+# News Trade Pipeline (News -> Filter -> Analyze -> Alert)
+try:
+    from ai.news_pipeline_routes import router as news_pipeline_router
+    app.include_router(news_pipeline_router, tags=["News Pipeline", "Halt Detection"])
+    HAS_NEWS_PIPELINE = True
+    logger.info("News Trade Pipeline router included")
+except ImportError as e:
+    logger.warning(f"News Trade Pipeline not available: {e}")
+    HAS_NEWS_PIPELINE = False
 
 
 # ============================================================================
@@ -1412,36 +1437,113 @@ async def run_backtest_endpoint(data: dict):
         }
 
 
+def _sync_predict(predictor, symbol: str, timeframe: str):
+    """Synchronous prediction function to run in thread pool"""
+    import traceback
+    try:
+        print(f"[_sync_predict] Calling predict for {symbol}, tf={timeframe}, predictor={predictor}")
+        result = predictor.predict(symbol, period=timeframe)
+        print(f"[_sync_predict] Result: {result}")
+        return result
+    except Exception as e:
+        print(f"[_sync_predict] Error: {e}\n{traceback.format_exc()}")
+        raise
+
+
 @app.post("/api/ai/predict")
 async def predict(request: PredictRequest):
     """Get AI prediction for a symbol"""
-    try:
-        predictor = get_ai_scanner() if HAS_AI_SCANNER else None
-        if not predictor or not hasattr(predictor, 'model') or predictor.model is None:
-            return {
-                "success": False,
-                "symbol": request.symbol.upper(),
-                "prediction": "neutral",
-                "confidence": 0.0,
-                "error": "Model not trained",
-                "message": "Train the AI model first with /api/ai/train"
-            }
-        prediction = predictor.predict(
-            symbol=request.symbol.upper(),
-            period=request.timeframe if request.timeframe else "3mo"
-        )
+    symbol = request.symbol.upper()
 
-        return prediction
+    # Convert timeframe to valid yfinance period
+    # Valid: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+    timeframe_map = {
+        "1day": "3mo", "1d": "3mo", "1Day": "3mo",
+        "5day": "3mo", "5d": "3mo", "5Day": "3mo",
+        "1week": "3mo", "1w": "3mo", "1Week": "3mo",
+        "1month": "3mo", "1m": "3mo", "1Month": "3mo", "1mo": "3mo",
+        "3month": "3mo", "3m": "3mo", "3Month": "3mo", "3mo": "3mo",
+        "6month": "6mo", "6m": "6mo", "6Month": "6mo", "6mo": "6mo",
+        "1year": "1y", "1y": "1y", "1Year": "1y",
+        "2year": "2y", "2y": "2y", "2Year": "2y",
+    }
+    raw_timeframe = request.timeframe if request.timeframe else "3mo"
+    timeframe = timeframe_map.get(raw_timeframe, "3mo")  # Default to 3mo
+
+    logger.info(f"[PREDICT] Request for {symbol}, raw_timeframe={raw_timeframe}, mapped_timeframe={timeframe}")
+    logger.info(f"[PREDICT] _cached_predictor={_cached_predictor}, model_loaded={_cached_predictor.model is not None if _cached_predictor else 'N/A'}")
+
+    try:
+        # Check if predictor is available
+        if not _cached_predictor or _cached_predictor.model is None:
+            # Try fallback
+            predictor = get_ai_scanner() if HAS_AI_SCANNER else None
+            if not predictor or not hasattr(predictor, 'model') or predictor.model is None:
+                return {
+                    "success": False,
+                    "symbol": symbol,
+                    "signal": "NEUTRAL",
+                    "confidence": 0.0,
+                    "action": "HOLD",
+                    "error": "No model available - train the AI first"
+                }
+        else:
+            predictor = _cached_predictor
+
+        # Run prediction in thread pool to avoid blocking async loop
+        result = await asyncio.to_thread(_sync_predict, predictor, symbol, timeframe)
+
+        # Map the result format
+        signal = result.get('signal', 'NEUTRAL')
+        confidence = result.get('confidence', 0.5)
+        prob_up = result.get('prob_up', 0.5)
+
+        # Determine action
+        if 'BULLISH' in signal:
+            action = 'BUY'
+        elif 'BEARISH' in signal:
+            action = 'SELL'
+        else:
+            action = 'HOLD'
+
+        return {
+            "success": True,
+            "symbol": symbol,
+            "signal": signal,
+            "confidence": confidence / 100 if confidence > 1 else confidence,
+            "prob_up": prob_up / 100 if prob_up > 1 else prob_up,
+            "action": action,
+            "model": result.get('signal_detail', 'LightGBM (70% accuracy)')
+        }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        error_msg = str(e)
+        if "No data" in error_msg:
+            return {
+                "success": False,
+                "symbol": symbol,
+                "signal": "NEUTRAL",
+                "confidence": 0.0,
+                "action": "HOLD",
+                "error": error_msg,
+                "message": "Unable to fetch market data. Try a different symbol or check if market is open."
+            }
+        return {
+            "success": False,
+            "symbol": symbol,
+            "signal": "NEUTRAL",
+            "confidence": 0.0,
+            "action": "HOLD",
+            "error": error_msg
+        }
     except Exception as e:
         logger.error(f"Error making prediction: {e}")
         return {
             "success": False,
-            "symbol": request.symbol.upper(),
-            "prediction": "neutral",
+            "symbol": symbol,
+            "signal": "NEUTRAL",
             "confidence": 0.0,
+            "action": "HOLD",
             "error": str(e)
         }
 

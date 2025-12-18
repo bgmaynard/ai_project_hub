@@ -484,112 +484,85 @@ class UpdateCriteriaRequest(BaseModel):
 
 @router.get("/ALPACA/status")
 async def alpaca_scanner_status():
-    """Get Alpaca momentum scanner status"""
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
-    scanner = get_momentum_scanner()
-    return scanner.get_status()
+    """DEPRECATED: Alpaca removed - use Warrior scanner"""
+    return {
+        "deprecated": True,
+        "message": "Alpaca broker removed. Use Warrior scanner instead.",
+        "redirect": "/api/scanner/warrior/status",
+        "alternative_endpoints": [
+            "/api/scanner/warrior/status",
+            "/api/scanner/warrior/scan",
+            "/api/scanner/warrior/gaps"
+        ]
+    }
 
 
 @router.get("/ALPACA/presets")
 async def alpaca_scanner_presets():
-    """Get Alpaca scanner presets"""
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
+    """DEPRECATED: Alpaca removed - use Warrior scanner"""
     return {
-        "presets": list(SCANNER_PRESETS.keys()),
-        "criteria": CRITERIA
+        "deprecated": True,
+        "message": "Alpaca broker removed. Use Warrior scanner instead.",
+        "redirect": "/api/scanner/warrior/status",
+        "presets": ["warrior_gaps", "warrior_momentum", "warrior_a_grade"]
     }
 
 
 @router.get("/ALPACA/criteria")
 async def alpaca_get_criteria():
-    """Get current Alpaca trading criteria"""
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
+    """DEPRECATED: Alpaca removed - use Warrior scanner"""
     return {
-        "criteria": CRITERIA,
-        "presets": list(SCANNER_PRESETS.keys())
+        "deprecated": True,
+        "message": "Alpaca broker removed. Use Warrior scanner config instead.",
+        "redirect": "/api/scanner/warrior/status"
     }
 
 
 @router.post("/ALPACA/criteria")
-async def alpaca_update_criteria(request: UpdateCriteriaRequest):
-    """Update Alpaca trading criteria"""
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
-
-    updates = {}
-    if request.min_price is not None:
-        CRITERIA['min_price'] = request.min_price
-        updates['min_price'] = request.min_price
-    if request.max_price is not None:
-        CRITERIA['max_price'] = request.max_price
-        updates['max_price'] = request.max_price
-    if request.min_volume is not None:
-        CRITERIA['min_volume'] = request.min_volume
-        updates['min_volume'] = request.min_volume
-    if request.max_spread_pct is not None:
-        CRITERIA['max_spread_pct'] = request.max_spread_pct
-        updates['max_spread_pct'] = request.max_spread_pct
-    if request.max_float is not None:
-        CRITERIA['max_float'] = request.max_float
-        updates['max_float'] = request.max_float
-    if request.min_gap_pct is not None:
-        CRITERIA['min_gap_pct'] = request.min_gap_pct
-        updates['min_gap_pct'] = request.min_gap_pct
-    if request.min_momentum_pct is not None:
-        CRITERIA['min_momentum_pct'] = request.min_momentum_pct
-        updates['min_momentum_pct'] = request.min_momentum_pct
-    if request.min_rvol is not None:
-        CRITERIA['min_rvol'] = request.min_rvol
-        updates['min_rvol'] = request.min_rvol
-
+async def alpaca_update_criteria(request: UpdateCriteriaRequest = None):
+    """DEPRECATED: Alpaca removed - use Warrior scanner"""
     return {
-        "success": True,
-        "updated": updates,
-        "current_criteria": CRITERIA
+        "deprecated": True,
+        "message": "Alpaca broker removed. Edit config/warrior_config.json instead.",
+        "success": False
     }
 
 
 @router.get("/ALPACA/scan")
 async def alpaca_run_scan(preset: str = "warrior_momentum"):
-    """Run Alpaca momentum scan with preset"""
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
-
-    scanner = get_momentum_scanner()
-
-    # Apply preset if specified
-    if preset in SCANNER_PRESETS:
-        for key, value in SCANNER_PRESETS[preset].items():
-            CRITERIA[key] = value
-
-    result = scanner.run_full_scan()
-    return result
+    """DEPRECATED: Alpaca removed - forwards to Warrior scanner"""
+    return {
+        "deprecated": True,
+        "message": "Alpaca removed. Use /api/scanner/warrior/scan instead.",
+        "redirect": "/api/scanner/warrior/scan"
+    }
 
 
 @router.get("/ALPACA/top")
 async def alpaca_get_top(limit: int = 10):
-    """Get current top momentum stocks from Alpaca scanner"""
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
-
-    scanner = get_momentum_scanner()
+    """DEPRECATED: Alpaca removed - use Warrior scanner"""
     return {
-        "top_stocks": scanner.get_top_stocks(limit),
-        "last_scan": scanner.last_scan_time
+        "deprecated": True,
+        "message": "Alpaca removed. Use /api/scanner/warrior/a-grade instead.",
+        "redirect": "/api/scanner/warrior/a-grade"
     }
 
 
 @router.post("/ALPACA/check")
-async def alpaca_check_symbols(request: CheckSymbolsRequest):
-    """
-    Check specific symbols against Alpaca trading criteria.
-    Use this to compare with Day Trade Dash scanner results.
-    """
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
+async def alpaca_check_symbols(request: CheckSymbolsRequest = None):
+    """DEPRECATED: Alpaca removed - use Warrior scanner"""
+    return {
+        "deprecated": True,
+        "message": "Alpaca removed. Use /api/scanner/warrior/scan instead.",
+        "redirect": "/api/scanner/warrior/scan"
+    }
+
+
+@router.post("/ALPACA/check_OLD_DISABLED")
+async def alpaca_check_symbols_disabled(request: CheckSymbolsRequest = None):
+    """OLD DISABLED: Alpaca check symbols - kept for reference"""
+    if True:  # Always disabled
+        return {"deprecated": True, "message": "Use Warrior scanner"}
 
     scanner = get_momentum_scanner()
     results = []
@@ -676,16 +649,19 @@ async def alpaca_check_symbols(request: CheckSymbolsRequest):
 
 @router.get("/ALPACA/analyze/{symbol}")
 async def alpaca_analyze_symbol(symbol: str):
-    """
-    Get detailed analysis of a single symbol via Alpaca.
-    Perfect for comparing with Day Trade Dash scanner output.
-    """
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
+    """DEPRECATED: Alpaca removed - use AI trader analyze"""
+    return {
+        "deprecated": True,
+        "symbol": symbol.upper(),
+        "message": "Alpaca removed. Use /api/schwab/ai/trader/analyze/{symbol} instead.",
+        "redirect": f"/api/schwab/ai/trader/analyze/{symbol.upper()}"
+    }
 
-    scanner = get_momentum_scanner()
-    symbol = symbol.upper()
-    scanner.add_symbol_to_universe(symbol)
+
+@router.get("/ALPACA/analyze_OLD_DISABLED/{symbol}")
+async def alpaca_analyze_symbol_disabled(symbol: str):
+    """OLD DISABLED: kept for reference"""
+    return {"deprecated": True}
 
     quote = scanner.get_quote(symbol)
     if not quote:
@@ -769,30 +745,605 @@ async def alpaca_analyze_symbol(symbol: str):
 
 @router.post("/ALPACA/start")
 async def alpaca_start_continuous(interval: int = 60):
-    """Start continuous Alpaca scanning"""
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
-
-    scanner = get_momentum_scanner()
-    scanner.start_continuous_scan(interval)
+    """DEPRECATED: Alpaca removed - use Warrior scanner"""
     return {
-        "success": True,
-        "message": f"Continuous scanning started (every {interval}s)"
+        "deprecated": True,
+        "message": "Alpaca removed. Use /api/scanner/warrior/start instead.",
+        "redirect": "/api/scanner/warrior/start"
     }
 
 
 @router.post("/ALPACA/stop")
 async def alpaca_stop_continuous():
-    """Stop continuous Alpaca scanning"""
-    if not HAS_ALPACA_SCANNER:
-        raise HTTPException(status_code=503, detail="Alpaca scanner not available")
-
-    scanner = get_momentum_scanner()
-    scanner.stop_continuous_scan()
+    """DEPRECATED: Alpaca removed - use Warrior scanner"""
     return {
-        "success": True,
-        "message": "Continuous scanning stopped"
+        "deprecated": True,
+        "message": "Alpaca removed. Use /api/scanner/warrior/stop instead.",
+        "redirect": "/api/scanner/warrior/stop"
     }
 
 
-logger.info("Scanner API routes initialized (includes Penny, Warrior & Alpaca scanners)")
+# ============ Split Tracker Endpoints ============
+
+@router.get("/split/{symbol}")
+async def get_split_info(symbol: str):
+    """Get split momentum index for a symbol"""
+    try:
+        from .split_tracker import check_split_momentum
+        result = check_split_momentum(symbol.upper())
+        return result
+    except Exception as e:
+        logger.error(f"Split check error for {symbol}: {e}")
+        return {
+            "symbol": symbol.upper(),
+            "has_split": False,
+            "smi_score": 0,
+            "smi_signal": "UNKNOWN",
+            "error": str(e)
+        }
+
+
+@router.get("/split/{symbol}/history")
+async def get_split_history(symbol: str):
+    """Get full split history for a symbol"""
+    try:
+        from .split_tracker import get_split_tracker
+        tracker = get_split_tracker()
+        splits = tracker.fetch_split_history(symbol.upper())
+        return {
+            "symbol": symbol.upper(),
+            "split_count": len(splits),
+            "splits": [s.to_dict() for s in splits]
+        }
+    except Exception as e:
+        logger.error(f"Split history error for {symbol}: {e}")
+        return {
+            "symbol": symbol.upper(),
+            "split_count": 0,
+            "splits": [],
+            "error": str(e)
+        }
+
+
+@router.get("/splits/stats")
+async def get_split_stats():
+    """Get aggregate split momentum statistics"""
+    try:
+        from .split_tracker import get_split_tracker
+        tracker = get_split_tracker()
+        tracker.update_momentum_stats()
+        return {
+            "success": True,
+            "stats": tracker.get_stats()
+        }
+    except Exception as e:
+        logger.error(f"Split stats error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/splits/scan")
+async def scan_watchlist_splits():
+    """Scan watchlist for recent splits and get SMI scores"""
+    try:
+        from .split_tracker import get_split_tracker
+        import httpx
+
+        tracker = get_split_tracker()
+
+        # Get watchlist
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:9100/api/worklist", timeout=5.0)
+            if response.status_code != 200:
+                return {"success": False, "error": "Could not fetch watchlist"}
+
+            data = response.json()
+            symbols = [item.get('symbol') for item in data.get('data', [])]
+
+        results = []
+        for symbol in symbols:
+            smi = tracker.get_split_momentum_index(symbol)
+            if smi.get('has_split'):
+                results.append(smi)
+
+        # Sort by days since split (most recent first)
+        results.sort(key=lambda x: x.get('days_since_split', 999))
+
+        return {
+            "success": True,
+            "scanned": len(symbols),
+            "with_splits": len(results),
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Split scan error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ Pattern Correlation Endpoints ============
+
+@router.post("/patterns/record/{symbol}")
+async def record_mover_pattern(symbol: str):
+    """Record a moving stock for pattern analysis"""
+    try:
+        from .pattern_correlator import get_pattern_correlator
+        import httpx
+
+        correlator = get_pattern_correlator()
+
+        # Get quote
+        async with httpx.AsyncClient() as client:
+            quote_resp = await client.get(f"http://localhost:9100/api/price/{symbol.upper()}", timeout=5.0)
+            quote = quote_resp.json() if quote_resp.status_code == 200 else {}
+
+            # Get additional context
+            context = {}
+
+            # Float
+            float_resp = await client.get(f"http://localhost:9100/api/stock/float/{symbol.upper()}", timeout=5.0)
+            if float_resp.status_code == 200:
+                float_data = float_resp.json()
+                context['float'] = float_data.get('float')
+
+            # SPY for market context
+            spy_resp = await client.get("http://localhost:9100/api/price/SPY", timeout=3.0)
+            if spy_resp.status_code == 200:
+                spy = spy_resp.json()
+                context['spy_change'] = spy.get('change_percent', 0)
+                if context['spy_change'] > 0.5:
+                    context['market_trend'] = 'BULLISH'
+                elif context['spy_change'] < -0.5:
+                    context['market_trend'] = 'BEARISH'
+                else:
+                    context['market_trend'] = 'NEUTRAL'
+
+        # Record it
+        record = await correlator.record_mover(symbol.upper(), quote, context)
+
+        return {
+            "success": True,
+            "record_id": record.record_id,
+            "symbol": symbol.upper(),
+            "price": record.price,
+            "change_percent": record.change_percent,
+            "message": "Mover recorded for pattern analysis"
+        }
+    except Exception as e:
+        logger.error(f"Record pattern error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/patterns/outcome/{record_id}")
+async def update_pattern_outcome(record_id: str, outcome_15min: float = None,
+                                  outcome_30min: float = None, outcome_1hr: float = None,
+                                  outcome_eod: float = None, max_gain: float = None,
+                                  max_loss: float = None):
+    """Update outcome for a recorded pattern"""
+    try:
+        from .pattern_correlator import get_pattern_correlator
+        correlator = get_pattern_correlator()
+
+        await correlator.update_outcome(record_id, {
+            "outcome_15min": outcome_15min,
+            "outcome_30min": outcome_30min,
+            "outcome_1hr": outcome_1hr,
+            "outcome_eod": outcome_eod,
+            "max_gain": max_gain,
+            "max_loss": max_loss
+        })
+
+        return {"success": True, "record_id": record_id, "message": "Outcome updated"}
+    except Exception as e:
+        logger.error(f"Update outcome error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/patterns/correlations")
+async def get_pattern_correlations():
+    """Get correlation analysis between factors and outcomes"""
+    try:
+        from .pattern_correlator import get_pattern_correlator
+        correlator = get_pattern_correlator()
+        return correlator.analyze_correlations()
+    except Exception as e:
+        logger.error(f"Correlations error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@router.get("/patterns/predict/{symbol}")
+async def get_pattern_prediction(symbol: str):
+    """Get prediction score based on historical patterns"""
+    try:
+        from .pattern_correlator import get_pattern_correlator
+        import httpx
+
+        correlator = get_pattern_correlator()
+
+        # Get current quote
+        async with httpx.AsyncClient() as client:
+            quote_resp = await client.get(f"http://localhost:9100/api/price/{symbol.upper()}", timeout=5.0)
+            quote = quote_resp.json() if quote_resp.status_code == 200 else {}
+
+        # Get context from worklist if available
+        context = {}
+        async with httpx.AsyncClient() as client:
+            worklist_resp = await client.get("http://localhost:9100/api/worklist", timeout=5.0)
+            if worklist_resp.status_code == 200:
+                data = worklist_resp.json()
+                for item in data.get('data', []):
+                    if item.get('symbol') == symbol.upper():
+                        context['rel_volume'] = item.get('rel_volume', 1.0)
+                        context['vwap_extension'] = item.get('vwap_extension', 0)
+                        context['macd_signal'] = item.get('macd_signal', 'UNKNOWN')
+                        context['news_heat'] = item.get('news_heat', 'COLD')
+                        break
+
+        return correlator.get_prediction_score(symbol.upper(), quote, context)
+    except Exception as e:
+        logger.error(f"Prediction error for {symbol}: {e}")
+        return {"symbol": symbol.upper(), "score": 50, "signal": "UNKNOWN", "error": str(e)}
+
+
+@router.get("/patterns/stats")
+async def get_pattern_stats():
+    """Get pattern tracking statistics"""
+    try:
+        from .pattern_correlator import get_pattern_correlator
+        correlator = get_pattern_correlator()
+        return {
+            "success": True,
+            **correlator.get_stats()
+        }
+    except Exception as e:
+        logger.error(f"Pattern stats error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/patterns/recent")
+async def get_recent_patterns(limit: int = 20):
+    """Get recent recorded patterns"""
+    try:
+        from .pattern_correlator import get_pattern_correlator
+        correlator = get_pattern_correlator()
+        return {
+            "success": True,
+            "records": correlator.get_recent_records(limit)
+        }
+    except Exception as e:
+        logger.error(f"Recent patterns error: {e}")
+        return {"success": False, "records": [], "error": str(e)}
+
+
+@router.post("/patterns/record-watchlist")
+async def record_watchlist_movers():
+    """Record all current watchlist items that are moving significantly"""
+    try:
+        from .pattern_correlator import get_pattern_correlator
+        import httpx
+
+        correlator = get_pattern_correlator()
+        recorded = []
+
+        async with httpx.AsyncClient() as client:
+            # Get watchlist
+            worklist_resp = await client.get("http://localhost:9100/api/worklist", timeout=5.0)
+            if worklist_resp.status_code != 200:
+                return {"success": False, "error": "Could not fetch watchlist"}
+
+            data = worklist_resp.json()
+
+            # Get market context
+            spy_resp = await client.get("http://localhost:9100/api/price/SPY", timeout=3.0)
+            spy_change = 0
+            market_trend = "NEUTRAL"
+            if spy_resp.status_code == 200:
+                spy = spy_resp.json()
+                spy_change = spy.get('change_percent', 0)
+                if spy_change > 0.5:
+                    market_trend = 'BULLISH'
+                elif spy_change < -0.5:
+                    market_trend = 'BEARISH'
+
+            # Record movers (>10% change)
+            for item in data.get('data', []):
+                change_pct = item.get('change_percent', 0)
+                if abs(change_pct) >= 10:  # Only record significant movers
+                    quote = {
+                        'price': item.get('price'),
+                        'change_percent': change_pct,
+                        'volume': item.get('volume'),
+                        'bid': item.get('bid'),
+                        'ask': item.get('ask'),
+                        'high': item.get('high'),
+                        'low': item.get('low')
+                    }
+                    context = {
+                        'float': item.get('float'),
+                        'rel_volume': item.get('rel_volume', 1.0),
+                        'vwap': item.get('vwap'),
+                        'vwap_extension': item.get('vwap_extension', 0),
+                        'macd_signal': item.get('macd_signal', 'UNKNOWN'),
+                        'has_news': item.get('has_news', False),
+                        'news_heat': item.get('news_heat', 'COLD'),
+                        'spy_change': spy_change,
+                        'market_trend': market_trend
+                    }
+
+                    record = await correlator.record_mover(item['symbol'], quote, context)
+                    recorded.append({
+                        "symbol": item['symbol'],
+                        "record_id": record.record_id,
+                        "change_percent": change_pct
+                    })
+
+        return {
+            "success": True,
+            "recorded_count": len(recorded),
+            "recorded": recorded
+        }
+    except Exception as e:
+        logger.error(f"Record watchlist error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ HFT Scalper Endpoints ============
+
+class ScalperConfigUpdate(BaseModel):
+    """Request model for scalper config updates"""
+    enabled: Optional[bool] = None
+    paper_mode: Optional[bool] = None
+    account_size: Optional[float] = None
+    risk_percent: Optional[float] = None
+    use_risk_based_sizing: Optional[bool] = None
+    max_position_size: Optional[float] = None
+    max_shares: Optional[int] = None
+    min_shares: Optional[int] = None
+    min_spike_percent: Optional[float] = None
+    min_volume_surge: Optional[float] = None
+    max_spread_percent: Optional[float] = None
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    profit_target_percent: Optional[float] = None
+    stop_loss_percent: Optional[float] = None
+    trailing_stop_percent: Optional[float] = None
+    max_hold_seconds: Optional[int] = None
+    max_daily_loss: Optional[float] = None
+    max_daily_trades: Optional[int] = None
+    cooldown_after_loss: Optional[int] = None
+
+
+@router.get("/scalper/status")
+async def get_scalper_status():
+    """Get HFT scalper status"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        return scalper.get_status()
+    except Exception as e:
+        logger.error(f"Scalper status error: {e}")
+        return {"is_running": False, "enabled": False, "error": str(e)}
+
+
+@router.post("/scalper/start")
+async def start_scalper(symbols: List[str] = None):
+    """Start the HFT scalper"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+
+        # Get watchlist if no symbols provided
+        if not symbols:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.get("http://localhost:9100/api/worklist", timeout=5.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    symbols = [item.get('symbol') for item in data.get('data', [])]
+
+        scalper.start(symbols)
+
+        return {
+            "status": "started",
+            "is_running": scalper.is_running,
+            "enabled": scalper.config.enabled,
+            "paper_mode": scalper.config.paper_mode,
+            "watchlist_count": len(scalper.config.watchlist),
+            "message": "Scalper monitoring started (set enabled=true to trade)"
+        }
+    except Exception as e:
+        logger.error(f"Start scalper error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@router.post("/scalper/stop")
+async def stop_scalper():
+    """Stop the HFT scalper"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        scalper.stop()
+        return {
+            "status": "stopped",
+            "is_running": False,
+            "open_positions": len(scalper.open_positions)
+        }
+    except Exception as e:
+        logger.error(f"Stop scalper error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@router.post("/scalper/enable")
+async def enable_scalper(paper_mode: bool = True):
+    """Enable scalper trading (paper or live)"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        scalper.update_config(enabled=True, paper_mode=paper_mode)
+
+        mode = "PAPER" if paper_mode else "LIVE"
+        logger.warning(f"HFT SCALPER ENABLED - {mode} MODE")
+
+        return {
+            "status": "enabled",
+            "enabled": True,
+            "paper_mode": paper_mode,
+            "mode": mode,
+            "warning": "LIVE trading active!" if not paper_mode else "Paper trading mode"
+        }
+    except Exception as e:
+        logger.error(f"Enable scalper error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@router.post("/scalper/disable")
+async def disable_scalper():
+    """Disable scalper trading"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        scalper.update_config(enabled=False)
+        return {"status": "disabled", "enabled": False}
+    except Exception as e:
+        logger.error(f"Disable scalper error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@router.get("/scalper/config")
+async def get_scalper_config():
+    """Get scalper configuration"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        return {
+            "success": True,
+            "config": scalper.config.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Get config error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/scalper/config")
+async def update_scalper_config(request: ScalperConfigUpdate):
+    """Update scalper configuration"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+
+        updates = {k: v for k, v in request.dict().items() if v is not None}
+        scalper.update_config(**updates)
+
+        return {
+            "success": True,
+            "updated": updates,
+            "config": scalper.config.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Update config error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/scalper/positions")
+async def get_scalper_positions():
+    """Get open scalper positions"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        return {
+            "count": len(scalper.open_positions),
+            "positions": scalper.get_open_positions()
+        }
+    except Exception as e:
+        logger.error(f"Get positions error: {e}")
+        return {"count": 0, "positions": [], "error": str(e)}
+
+
+@router.get("/scalper/trades")
+async def get_scalper_trades(limit: int = 50):
+    """Get scalper trade history"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        trades = scalper.get_trade_history(limit)
+        return {
+            "count": len(trades),
+            "trades": trades
+        }
+    except Exception as e:
+        logger.error(f"Get trades error: {e}")
+        return {"count": 0, "trades": [], "error": str(e)}
+
+
+@router.get("/scalper/stats")
+async def get_scalper_stats():
+    """Get scalper trading statistics"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        return scalper.get_stats()
+    except Exception as e:
+        logger.error(f"Get stats error: {e}")
+        return {"message": "Error getting stats", "error": str(e)}
+
+
+@router.post("/scalper/watchlist/add/{symbol}")
+async def add_to_scalper_watchlist(symbol: str):
+    """Add symbol to scalper watchlist"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        scalper.add_to_watchlist(symbol)
+        return {
+            "status": "added",
+            "symbol": symbol.upper(),
+            "watchlist_count": len(scalper.config.watchlist)
+        }
+    except Exception as e:
+        logger.error(f"Add to watchlist error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@router.delete("/scalper/watchlist/{symbol}")
+async def remove_from_scalper_watchlist(symbol: str):
+    """Remove symbol from scalper watchlist"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        scalper.remove_from_watchlist(symbol)
+        return {
+            "status": "removed",
+            "symbol": symbol.upper(),
+            "watchlist_count": len(scalper.config.watchlist)
+        }
+    except Exception as e:
+        logger.error(f"Remove from watchlist error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@router.get("/scalper/watchlist")
+async def get_scalper_watchlist():
+    """Get scalper watchlist"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        return {
+            "count": len(scalper.config.watchlist),
+            "symbols": scalper.config.watchlist
+        }
+    except Exception as e:
+        logger.error(f"Get watchlist error: {e}")
+        return {"count": 0, "symbols": [], "error": str(e)}
+
+
+@router.post("/scalper/reset")
+async def reset_scalper_daily():
+    """Reset daily stats for fresh start"""
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        return scalper.reset_daily()
+    except Exception as e:
+        logger.error(f"Reset daily error: {e}")
+        return {"reset": False, "error": str(e)}
+
+
+logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper)")

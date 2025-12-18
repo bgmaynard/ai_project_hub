@@ -79,7 +79,24 @@
       "Bash(python -m json.tool:*)",
       "Bash(timeout /t 5 /nobreak)",
       "Bash(cmd //c \"taskkill /F /PID 6324\")",
-      "Bash(timeout /t 3 /nobreak)"
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(cmd //c \"tasklist | findstr python\")",
+      "Bash(git ls-tree:*)",
+      "Bash(schtasks /create:*)",
+      "Bash(cmd //c \"schtasks /create /tn \"\"Morpheus_4AM_PreMarket\"\" /tr \"\"C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\START_4AM_PREMARKET.bat\"\" /sc daily /st 03:00 /f\")",
+      "Bash(for sym in RADX MIST QIPT ASTI)",
+      "Bash(do curl -s \"http://localhost:9100/api/price/$sym\")",
+      "Bash(done)",
+      "Bash(start /min cmd /c \"python morpheus_trading_api.py 2>&1\")",
+      "Bash(for sym in TSLA NVDA MSFT SPY)",
+      "Bash(do)",
+      "Bash(python check_accounts.py:*)",
+      "Bash(for sym in AMCI ASNS CYN AZI BDRX)",
+      "Bash(do echo -n \"$sym: \" curl -s \"http://localhost:9100/api/price/$sym\")",
+      "Bash(tasklist:*)",
+      "Bash(for sym in MRK BA NVDA TSM META)",
+      "Bash(do echo -n \"$sym: \")",
+      "Bash(cmd //c \"taskkill /F /PID 34228\")"
     ]
   }
 }

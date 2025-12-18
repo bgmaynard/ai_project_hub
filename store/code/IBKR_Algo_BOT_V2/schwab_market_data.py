@@ -324,6 +324,10 @@ class SchwabMarketData:
                 "source": "schwab"
             }
 
+            # Calculate change_percent if API returns 0 (common in pre-market)
+            if result["change_percent"] == 0 and result["close"] > 0:
+                result["change_percent"] = round((result["change"] / result["close"]) * 100, 2)
+
             # Update cache
             self._cache[symbol] = result
             self._cache_time[symbol] = datetime.now()
@@ -395,6 +399,11 @@ class SchwabMarketData:
                         "timestamp": datetime.now().isoformat(),
                         "source": "schwab"
                     }
+
+                    # Calculate change_percent if API returns 0 (common in pre-market)
+                    if result["change_percent"] == 0 and result["close"] > 0:
+                        result["change_percent"] = round((result["change"] / result["close"]) * 100, 2)
+
                     results[symbol] = result
 
                     # Update cache

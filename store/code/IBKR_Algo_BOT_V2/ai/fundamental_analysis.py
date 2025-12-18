@@ -63,6 +63,7 @@ class FundamentalMetrics:
     fifty_two_week_low: Optional[float] = None
     avg_volume: Optional[float] = None
     shares_outstanding: Optional[float] = None
+    float_shares: Optional[float] = None  # Free float - critical for small cap trading
 
     # Ratings
     analyst_rating: Optional[str] = None
@@ -203,6 +204,7 @@ class FundamentalAnalyzer:
                 fifty_two_week_low=info.get('fiftyTwoWeekLow'),
                 avg_volume=info.get('averageVolume'),
                 shares_outstanding=info.get('sharesOutstanding'),
+                float_shares=info.get('floatShares'),  # Free float
 
                 # Ratings
                 analyst_rating=info.get('recommendationKey'),
