@@ -89,6 +89,10 @@ class ScalperConfig:
     use_order_flow_filter: bool = True  # Filter entries with bid/ask imbalance
     min_buy_pressure: float = 0.55  # Minimum buy pressure to enter (55%)
 
+    # Regime Gating filter
+    use_regime_gating: bool = True  # Filter entries by market regime
+    valid_regimes: List[str] = field(default_factory=lambda: ['TRENDING_UP', 'RANGING'])
+
     # ATR-based dynamic stops
     use_atr_stops: bool = True  # Use ATR-based stops instead of fixed %
     atr_stop_multiplier: float = 1.5  # Stop at 1.5x ATR
@@ -469,6 +473,25 @@ class HFTScalper:
                     signal['order_flow_spread'] = flow_signal.spread_percent
             except Exception as e:
                 logger.warning(f"Order flow check failed for {symbol}: {e}")
+
+        # Apply Regime Gating filter if enabled
+        if signal and getattr(self.config, 'use_regime_gating', False):
+            try:
+                from ai.chronos_adapter import get_chronos_adapter
+                adapter = get_chronos_adapter()
+                context = adapter.get_context(symbol)
+
+                valid_regimes = getattr(self.config, 'valid_regimes', ['TRENDING_UP', 'RANGING'])
+
+                if context.market_regime not in valid_regimes:
+                    logger.info(f"REGIME REJECT: {symbol} - {context.market_regime} not in {valid_regimes}")
+                    signal = None
+                else:
+                    logger.info(f"REGIME APPROVE: {symbol} - {context.market_regime} ({context.regime_confidence:.0%} conf)")
+                    signal['market_regime'] = context.market_regime
+                    signal['regime_confidence'] = context.regime_confidence
+            except Exception as e:
+                logger.warning(f"Regime gating check failed for {symbol}: {e}")
 
         if signal and self.on_signal:
             self.on_signal(signal)

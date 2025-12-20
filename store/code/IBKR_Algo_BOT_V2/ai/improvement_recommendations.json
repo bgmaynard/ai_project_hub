@@ -1,0 +1,67 @@
+{
+  "current_performance": {
+    "win_rate": 0.5773,
+    "directional_accuracy": 0.5714,
+    "model_r2": 0.0011342766451696296
+  },
+  "target_performance": {
+    "win_rate": 0.6,
+    "directional_accuracy": 0.6
+  },
+  "quick_wins": [
+    "1. Enable regime gating (already built) - blocks trades in VOLATILE regime",
+    "2. Raise confidence threshold from 0.55 to 0.60",
+    "3. Add order flow filter requirement (min 55% buy pressure)",
+    "4. Reduce max daily trades from 100 to 20 (quality over quantity)"
+  ],
+  "improvements": [
+    {
+      "name": "Add Intraday Momentum Features",
+      "impact": "HIGH",
+      "effort": "MEDIUM",
+      "desc": "Add 5min/15min/1hr momentum, VWAP distance, volume profile"
+    },
+    {
+      "name": "Integrate Gating Engine Regime Filter",
+      "impact": "HIGH",
+      "effort": "LOW",
+      "desc": "Only trade when Chronos says TRENDING_UP or RANGING"
+    },
+    {
+      "name": "Add Order Flow to Model",
+      "impact": "MEDIUM",
+      "effort": "LOW",
+      "desc": "Include bid/ask imbalance as training feature"
+    },
+    {
+      "name": "Reduce Overfitting",
+      "impact": "MEDIUM",
+      "effort": "MEDIUM",
+      "desc": "More regularization, early stopping, feature selection"
+    },
+    {
+      "name": "Time-of-Day Filter",
+      "impact": "MEDIUM",
+      "effort": "LOW",
+      "desc": "Different thresholds for pre-market vs regular hours"
+    },
+    {
+      "name": "News Sentiment Feature",
+      "impact": "HIGH",
+      "effort": "MEDIUM",
+      "desc": "Add Benzinga news sentiment as model input"
+    },
+    {
+      "name": "Ensemble with Chronos",
+      "impact": "MEDIUM",
+      "effort": "LOW",
+      "desc": "Weight model signal by Chronos confidence"
+    },
+    {
+      "name": "Walk-Forward Validation",
+      "impact": "MEDIUM",
+      "effort": "MEDIUM",
+      "desc": "Use rolling window training to reduce lookahead bias"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "period": "Last 30 days",
+  "symbols": [
+    "AAPL",
+    "TSLA",
+    "NVDA",
+    "AMD",
+    "SPY"
+  ],
+  "total_predictions": 105,
+  "buy_signals": 97,
+  "directional_accuracy": 0.5714,
+  "model_win_rate": 0.5773,
+  "model_pnl": 26.45,
+  "avg_buy_hold_return": 3.31
+}
