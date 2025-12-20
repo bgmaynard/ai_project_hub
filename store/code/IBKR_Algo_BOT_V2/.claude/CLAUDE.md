@@ -504,3 +504,140 @@ curl http://localhost:9100/api/scanner/news-trader/status
 # Open dashboard
 start http://localhost:9100/dashboard
 ```
+
+## Dec 20, 2024 Session - Signal Contract & Gating Architecture
+
+### Architectural Refactor
+Implemented proper separation of concerns between Qlib, Chronos, and execution based on ChatGPT's feedback.
+
+**Key Principles:**
+1. **Chronos MUST NOT place trades** - Only provides regime/context classification
+2. **Qlib MUST NOT do live inference** - Offline research only, exports SignalContracts
+3. **Execution MUST validate** - ALL trades go through Signal Gating Engine
+4. **Every veto is logged** - Full audit trail of gating decisions
+
+### New Architecture Files
+
+| File | Purpose |
+|------|---------|
+| `ai/signal_contract.py` | Immutable signal definition schema |
+| `ai/signal_gating_engine.py` | Enforces sequencing, veto logging |
+| `ai/chronos_adapter.py` | Chronos wrapper - context only, no trades |
+| `ai/qlib_exporter.py` | Exports SignalContracts from offline research |
+| `ai/gated_trading.py` | Integration layer with HFT Scalper |
+| `ai/signal_contracts.json` | Pre-approved signal contracts |
+
+### Signal Flow Diagram
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        OFFLINE PHASE                            │
+├─────────────────────────────────────────────────────────────────┤
+│  Historical Data → Qlib Research → SignalContracts (exported)  │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                        LIVE PHASE                               │
+├─────────────────────────────────────────────────────────────────┤
+│  Trigger → Find Contract → Chronos Context → Gating Engine     │
+│                                                    ↓            │
+│                                        [APPROVED | VETOED]      │
+│                                                    ↓            │
+│                                          Risk Engine → Execute  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### SignalContract Schema
+```python
+@dataclass
+class SignalContract:
+    signal_id: str
+    symbol: str
+    direction: str       # LONG | SHORT
+    horizon: str         # SCALP | INTRADAY | SWING | POSITION
+    features: List[str]  # Features that triggered in research
+    confidence_required: float  # Min Chronos confidence to execute
+    valid_regimes: List[str]    # TRENDING_UP, RANGING, etc.
+    invalid_regimes: List[str]  # Regimes that veto the signal
+    max_drawdown_allowed: float
+    expected_return: float
+    historical_win_rate: float
+    profit_factor: float
+    source: str          # "QLIB"
+    expires_at: str
+```
+
+### Gating Engine Checks
+1. **Contract expired?** → VETO (CONTRACT_EXPIRED)
+2. **Regime mismatch?** → VETO (REGIME_MISMATCH)
+3. **Invalid regime?** → VETO (INVALID_REGIME)
+4. **Low confidence?** → VETO (CONFIDENCE_LOW)
+5. **Symbol cooldown?** → VETO (COOLDOWN_ACTIVE)
+6. **Risk limits?** → VETO (RISK_LIMIT_EXCEEDED)
+7. **All pass** → APPROVED
+
+### ChronosAdapter Output
+```python
+@dataclass
+class ChronosContext:
+    market_regime: str      # TRENDING_UP, TRENDING_DOWN, RANGING, VOLATILE
+    regime_confidence: float
+    prob_up: float          # Informational only
+    expected_return_5d: float
+    current_volatility: float
+    trend_strength: float
+    trend_direction: int    # -1, 0, 1
+```
+
+### Initial Contracts Generated
+Exported 7 validated contracts from Qlib research:
+- AAPL: 56.7% WR, 1.66 PF, Sharpe 2.75
+- TSLA: 56.7% WR, 1.22 PF, Sharpe 1.28
+- NVDA: 52.2% WR, 1.09 PF, Sharpe 0.53
+- AMD: 52.6% WR, 1.72 PF, Sharpe 2.76
+- SPY: 59.7% WR, 1.21 PF, Sharpe 1.18
+- QQQ: 56.7% WR, 1.19 PF, Sharpe 1.03
+- GOOGL: 53.7% WR, 1.55 PF, Sharpe 2.73
+
+### Usage
+```python
+# Get gated trading manager
+from ai.gated_trading import get_gated_trading_manager
+manager = get_gated_trading_manager()
+
+# Gate a trade attempt
+approved, exec_request, reason = manager.gate_trade_attempt(
+    symbol="AAPL",
+    trigger_type="momentum_spike",
+    quote=current_quote
+)
+
+if approved:
+    # Proceed with execution
+    execute_trade(exec_request)
+else:
+    # Log veto reason
+    log.warning(f"Trade vetoed: {reason}")
+
+# Export new contracts from Qlib research
+from ai.qlib_exporter import run_research_export
+results = run_research_export(["AAPL", "TSLA", "NVDA"])
+```
+
+### Integration with Scalper
+```python
+# Wrap scalper with gating
+from ai.gated_trading import integrate_gating_with_scalper
+from ai.hft_scalper import get_hft_scalper
+
+scalper = get_hft_scalper()
+wrapper = integrate_gating_with_scalper(scalper)
+
+# All trades now go through gating automatically
+```
+
+### Benefits
+1. **Auditability**: Every trade attempt logged with approval/veto reason
+2. **Separation of concerns**: Chronos=context, Qlib=research, Execution=execution
+3. **Pre-approved signals**: No live inference, only validated contracts
+4. **Regime-aware**: Trades blocked in unfavorable market conditions
+5. **Risk protection**: Multiple layers of validation before execution

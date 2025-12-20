@@ -1,0 +1,276 @@
+{
+  "contracts": [
+    {
+      "signal_id": "7936a4bb-fa7a-40c3-8d4c-aa3a4763f5ac",
+      "symbol": "AAPL",
+      "direction": "LONG",
+      "horizon": "SCALP",
+      "features": [
+        "ROC_5",
+        "ROC_10",
+        "MA_5",
+        "MA_10",
+        "RSV_20",
+        "RANK_20",
+        "VMA_5",
+        "VWAP_RATIO",
+        "KMID",
+        "CORR_5"
+      ],
+      "confidence_required": 0.5,
+      "valid_regimes": [
+        "TRENDING_UP",
+        "TRENDING_DOWN"
+      ],
+      "invalid_regimes": [
+        "RANGING",
+        "VOLATILE"
+      ],
+      "max_drawdown_allowed": 0.07521230291641816,
+      "max_position_pct": 0.02,
+      "expected_return": 0.0021696676108580136,
+      "historical_win_rate": 0.5671641791044776,
+      "profit_factor": 1.6586267971217739,
+      "source": "QLIB",
+      "created_at": "2025-12-20T00:24:24.863053",
+      "expires_at": "2026-01-19T00:24:24.863053",
+      "backtest_period": "2025-06-20 to 2025-12-19",
+      "sample_size": 67,
+      "sharpe_ratio": 2.7456203496960008
+    },
+    {
+      "signal_id": "c0e248b2-e102-47de-b2bf-36ebedcbb7bd",
+      "symbol": "TSLA",
+      "direction": "LONG",
+      "horizon": "SCALP",
+      "features": [
+        "ROC_5",
+        "ROC_10",
+        "MA_5",
+        "MA_10",
+        "RSV_20",
+        "RANK_20",
+        "VMA_5",
+        "VWAP_RATIO",
+        "KMID",
+        "CORR_5"
+      ],
+      "confidence_required": 0.5,
+      "valid_regimes": [
+        "VOLATILE"
+      ],
+      "invalid_regimes": [
+        "TRENDING_UP",
+        "TRENDING_DOWN",
+        "RANGING",
+        "VOLATILE"
+      ],
+      "max_drawdown_allowed": 0.24749663594471272,
+      "max_position_pct": 0.02,
+      "expected_return": 0.0024250176911859646,
+      "historical_win_rate": 0.5671641791044776,
+      "profit_factor": 1.2161791022252464,
+      "source": "QLIB",
+      "created_at": "2025-12-20T00:24:25.128414",
+      "expires_at": "2026-01-19T00:24:25.128414",
+      "backtest_period": "2025-06-20 to 2025-12-19",
+      "sample_size": 67,
+      "sharpe_ratio": 1.2845266076533692
+    },
+    {
+      "signal_id": "11936b0d-dd63-4f61-bf05-689dbacdebf7",
+      "symbol": "NVDA",
+      "direction": "LONG",
+      "horizon": "SCALP",
+      "features": [
+        "ROC_5",
+        "ROC_10",
+        "MA_5",
+        "MA_10",
+        "RSV_20",
+        "RANK_20",
+        "VMA_5",
+        "VWAP_RATIO",
+        "KMID",
+        "CORR_5"
+      ],
+      "confidence_required": 0.5,
+      "valid_regimes": [
+        "RANGING"
+      ],
+      "invalid_regimes": [
+        "TRENDING_UP",
+        "TRENDING_DOWN",
+        "VOLATILE"
+      ],
+      "max_drawdown_allowed": 0.2614746895926822,
+      "max_position_pct": 0.02,
+      "expected_return": 0.0007918559677766446,
+      "historical_win_rate": 0.5223880597014925,
+      "profit_factor": 1.0858612642115613,
+      "source": "QLIB",
+      "created_at": "2025-12-20T00:24:25.411380",
+      "expires_at": "2026-01-19T00:24:25.411380",
+      "backtest_period": "2025-06-20 to 2025-12-19",
+      "sample_size": 67,
+      "sharpe_ratio": 0.5328214689987949
+    },
+    {
+      "signal_id": "5eda3c29-1c8f-4d0d-aab9-895c81f162f5",
+      "symbol": "AMD",
+      "direction": "LONG",
+      "horizon": "SCALP",
+      "features": [
+        "ROC_5",
+        "ROC_10",
+        "MA_5",
+        "MA_10",
+        "RSV_20",
+        "RANK_20",
+        "VMA_5",
+        "VWAP_RATIO",
+        "KMID",
+        "CORR_5"
+      ],
+      "confidence_required": 0.5,
+      "valid_regimes": [
+        "RANGING",
+        "VOLATILE"
+      ],
+      "invalid_regimes": [
+        "TRENDING_UP",
+        "TRENDING_DOWN",
+        "VOLATILE"
+      ],
+      "max_drawdown_allowed": 0.31930557042134966,
+      "max_position_pct": 0.02,
+      "expected_return": 0.008387913893206934,
+      "historical_win_rate": 0.5263157894736842,
+      "profit_factor": 1.722837279277885,
+      "source": "QLIB",
+      "created_at": "2025-12-20T00:24:25.620940",
+      "expires_at": "2026-01-19T00:24:25.620940",
+      "backtest_period": "2025-06-20 to 2025-12-19",
+      "sample_size": 57,
+      "sharpe_ratio": 2.7557653570930722
+    },
+    {
+      "signal_id": "ae536baa-1f31-42eb-a6d0-fa21fd0d36f5",
+      "symbol": "SPY",
+      "direction": "LONG",
+      "horizon": "SCALP",
+      "features": [
+        "ROC_5",
+        "ROC_10",
+        "MA_5",
+        "MA_10",
+        "RSV_20",
+        "RANK_20",
+        "VMA_5",
+        "VWAP_RATIO",
+        "KMID",
+        "CORR_5"
+      ],
+      "confidence_required": 0.5,
+      "valid_regimes": [
+        "TRENDING_UP",
+        "TRENDING_DOWN",
+        "RANGING"
+      ],
+      "invalid_regimes": [
+        "VOLATILE"
+      ],
+      "max_drawdown_allowed": 0.0760702829107843,
+      "max_position_pct": 0.02,
+      "expected_return": 0.0005739556224895574,
+      "historical_win_rate": 0.5970149253731343,
+      "profit_factor": 1.2147120665817848,
+      "source": "QLIB",
+      "created_at": "2025-12-20T00:24:25.928964",
+      "expires_at": "2026-01-19T00:24:25.928964",
+      "backtest_period": "2025-06-20 to 2025-12-19",
+      "sample_size": 67,
+      "sharpe_ratio": 1.1796599206202771
+    },
+    {
+      "signal_id": "407fb1a8-719c-4518-951b-98bf77338126",
+      "symbol": "QQQ",
+      "direction": "LONG",
+      "horizon": "SCALP",
+      "features": [
+        "ROC_5",
+        "ROC_10",
+        "MA_5",
+        "MA_10",
+        "RSV_20",
+        "RANK_20",
+        "VMA_5",
+        "VWAP_RATIO",
+        "KMID",
+        "CORR_5"
+      ],
+      "confidence_required": 0.5,
+      "valid_regimes": [
+        "RANGING"
+      ],
+      "invalid_regimes": [
+        "TRENDING_UP",
+        "TRENDING_DOWN",
+        "VOLATILE"
+      ],
+      "max_drawdown_allowed": 0.1182032065416492,
+      "max_position_pct": 0.02,
+      "expected_return": 0.0007176699486733857,
+      "historical_win_rate": 0.5671641791044776,
+      "profit_factor": 1.18503644622946,
+      "source": "QLIB",
+      "created_at": "2025-12-20T00:24:26.766494",
+      "expires_at": "2026-01-19T00:24:26.766494",
+      "backtest_period": "2025-06-20 to 2025-12-19",
+      "sample_size": 67,
+      "sharpe_ratio": 1.0343368791836431
+    },
+    {
+      "signal_id": "e5810c9d-aa77-4719-9c2c-c4cc71d37008",
+      "symbol": "GOOGL",
+      "direction": "LONG",
+      "horizon": "SCALP",
+      "features": [
+        "ROC_5",
+        "ROC_10",
+        "MA_5",
+        "MA_10",
+        "RSV_20",
+        "RANK_20",
+        "VMA_5",
+        "VWAP_RATIO",
+        "KMID",
+        "CORR_5"
+      ],
+      "confidence_required": 0.5,
+      "valid_regimes": [
+        "RANGING",
+        "VOLATILE"
+      ],
+      "invalid_regimes": [
+        "TRENDING_UP",
+        "TRENDING_DOWN",
+        "VOLATILE"
+      ],
+      "max_drawdown_allowed": 0.12301778379263362,
+      "max_position_pct": 0.02,
+      "expected_return": 0.0031889174652992404,
+      "historical_win_rate": 0.5373134328358209,
+      "profit_factor": 1.5541335601032134,
+      "source": "QLIB",
+      "created_at": "2025-12-20T00:24:27.037073",
+      "expires_at": "2026-01-19T00:24:27.037073",
+      "backtest_period": "2025-06-20 to 2025-12-19",
+      "sample_size": 67,
+      "sharpe_ratio": 2.72863203826368
+    }
+  ],
+  "exported_at": "2025-12-20T00:24:27.038072",
+  "count": 7,
+  "source": "QLIB_EXPORTER"
+}
