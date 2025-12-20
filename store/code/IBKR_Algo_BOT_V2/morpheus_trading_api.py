@@ -291,6 +291,16 @@ except ImportError as e:
     logger.warning(f"Morphic AI not available: {e}")
     HAS_MORPHIC = False
 
+# AI Predictor Routes (Chronos, LightGBM, Ensemble)
+try:
+    from ai.ai_api_routes import router as ai_predictor_router
+    app.include_router(ai_predictor_router, tags=["AI Predictors"])
+    HAS_AI_PREDICTORS = True
+    logger.info("AI Predictor routes included (Chronos, LightGBM, Ensemble)")
+except ImportError as e:
+    logger.warning(f"AI Predictors not available: {e}")
+    HAS_AI_PREDICTORS = False
+
 # Strategy Template Library & Monitor (Claude-driven strategy management)
 try:
     from ai.strategy_api_routes import router as strategy_router
@@ -350,6 +360,16 @@ try:
 except ImportError as e:
     logger.warning(f"News Trade Pipeline not available: {e}")
     HAS_NEWS_PIPELINE = False
+
+# Data Collection & Backtest Routes (Schwab minute data, PyBroker)
+try:
+    from ai.data_api_routes import router as data_router
+    app.include_router(data_router, tags=["Data Collection"])
+    HAS_DATA_COLLECTION = True
+    logger.info("Data Collection routes included")
+except ImportError as e:
+    logger.warning(f"Data Collection routes not available: {e}")
+    HAS_DATA_COLLECTION = False
 
 
 # ============================================================================

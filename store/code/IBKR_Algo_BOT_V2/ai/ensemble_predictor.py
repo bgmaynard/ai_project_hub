@@ -3,6 +3,7 @@ Ensemble AI Predictor
 =====================
 Combines multiple prediction methods for robust trading signals:
 - LightGBM (ML model)
+- Chronos (Amazon foundation model for time series)
 - Heuristic rules (technical analysis patterns)
 - Momentum scoring
 - Regime-aware weighting
@@ -10,7 +11,14 @@ Combines multiple prediction methods for robust trading signals:
 The ensemble uses weighted voting based on market conditions
 and recent performance of each component.
 
+New Technologies (Dec 2024):
+- Amazon Chronos: Zero-shot time series forecasting
+- Google TimesFM: Foundation model (requires Python 3.11)
+- Microsoft Qlib: Quant research platform (requires Python 3.11)
+- FinRL: Reinforcement learning for trading
+
 Created: December 2025
+Updated: December 2024 - Added Chronos integration
 """
 
 import numpy as np
@@ -36,11 +44,13 @@ class EnsemblePrediction:
 
     # Component scores (0.0 to 1.0)
     lgb_score: float
+    chronos_score: float  # Amazon Chronos foundation model
     heuristic_score: float
     momentum_score: float
 
     # Weights used
     lgb_weight: float
+    chronos_weight: float
     heuristic_weight: float
     momentum_weight: float
 
@@ -319,6 +329,61 @@ class HeuristicEngine:
         return normalized_score, signals
 
 
+class ChronosScorer:
+    """
+    Amazon Chronos foundation model scorer.
+    Provides zero-shot time series forecasting.
+    """
+
+    def __init__(self):
+        self.predictor = None
+        self.available = False
+        self._init_predictor()
+
+    def _init_predictor(self):
+        """Initialize Chronos predictor (lazy load on first use)."""
+        try:
+            from ai.chronos_predictor import get_chronos_predictor
+            self.predictor = get_chronos_predictor()
+            self.available = True
+            logger.info("Chronos predictor initialized")
+        except Exception as e:
+            logger.warning(f"Chronos not available: {e}")
+            self.available = False
+
+    def calculate(self, symbol: str, df: pd.DataFrame = None) -> Tuple[float, Dict]:
+        """
+        Get Chronos prediction score.
+
+        Returns:
+            (score 0-1, details dict)
+        """
+        if not self.available or self.predictor is None:
+            return 0.5, {"available": False}
+
+        try:
+            result = self.predictor.predict(symbol, horizon=5)
+
+            if "error" in result:
+                return 0.5, {"available": False, "error": result["error"]}
+
+            prob_up = result.get("probabilities", {}).get("prob_up", 0.5)
+            expected_return = result.get("expected_return_pct", 0)
+            confidence = result.get("confidence", 0.5)
+
+            return prob_up, {
+                "available": True,
+                "signal": result.get("signal", "NEUTRAL"),
+                "prob_up": prob_up,
+                "expected_return": expected_return,
+                "confidence": confidence,
+                "forecast": result.get("forecast", {}),
+            }
+        except Exception as e:
+            logger.warning(f"Chronos calculation failed: {e}")
+            return 0.5, {"available": False, "error": str(e)}
+
+
 class MomentumScorer:
     """
     Multi-timeframe momentum scoring.
@@ -375,6 +440,7 @@ class EnsemblePredictor:
         self.regime_detector = MarketRegimeDetector()
         self.heuristic_engine = HeuristicEngine()
         self.momentum_scorer = MomentumScorer()
+        self.chronos_scorer = ChronosScorer()
 
         # Try to load LightGBM predictor
         self.lgb_predictor = None
@@ -397,18 +463,20 @@ class EnsemblePredictor:
             logger.warning(f"RL agent not available: {e}")
 
         # Base weights (adjusted by regime)
+        # Chronos gets high weight as it's a foundation model with zero-shot capability
         self.base_weights = {
-            'lgb': 0.5,
-            'heuristic': 0.3,
-            'momentum': 0.2
+            'lgb': 0.30,
+            'chronos': 0.35,  # Foundation model - most sophisticated
+            'heuristic': 0.20,
+            'momentum': 0.15
         }
 
         # Regime-specific weight adjustments
         self.regime_adjustments = {
-            'TRENDING_UP': {'lgb': 0.4, 'heuristic': 0.3, 'momentum': 0.3},
-            'TRENDING_DOWN': {'lgb': 0.4, 'heuristic': 0.4, 'momentum': 0.2},
-            'RANGING': {'lgb': 0.5, 'heuristic': 0.35, 'momentum': 0.15},
-            'VOLATILE': {'lgb': 0.3, 'heuristic': 0.5, 'momentum': 0.2},
+            'TRENDING_UP': {'lgb': 0.25, 'chronos': 0.35, 'heuristic': 0.20, 'momentum': 0.20},
+            'TRENDING_DOWN': {'lgb': 0.25, 'chronos': 0.30, 'heuristic': 0.30, 'momentum': 0.15},
+            'RANGING': {'lgb': 0.30, 'chronos': 0.35, 'heuristic': 0.25, 'momentum': 0.10},
+            'VOLATILE': {'lgb': 0.20, 'chronos': 0.25, 'heuristic': 0.40, 'momentum': 0.15},
         }
 
         # Performance tracking for adaptive weighting
@@ -454,15 +522,38 @@ class EnsemblePredictor:
         # Redistribute weights if LGB not available
         if weights['lgb'] == 0:
             remaining = self.base_weights['lgb']
-            weights['heuristic'] += remaining * 0.6
-            weights['momentum'] += remaining * 0.4
+            weights['chronos'] += remaining * 0.5
+            weights['heuristic'] += remaining * 0.3
+            weights['momentum'] += remaining * 0.2
 
-        # 2. Heuristic Score
+        # 2. Chronos Score (Amazon Foundation Model)
+        chronos_score = 0.5
+        chronos_details = {}
+        if self.chronos_scorer.available:
+            try:
+                chronos_score, chronos_details = self.chronos_scorer.calculate(symbol, df)
+                if chronos_details.get('available'):
+                    signals.append(f"Chronos: {chronos_score:.2%} bullish ({chronos_details.get('signal', 'N/A')}, exp_ret: {chronos_details.get('expected_return', 0):.1f}%)")
+                else:
+                    weights['chronos'] = 0
+            except Exception as e:
+                logger.debug(f"Chronos prediction failed: {e}")
+                weights['chronos'] = 0
+        else:
+            weights['chronos'] = 0
+
+        # Redistribute weights if Chronos not available
+        if weights.get('chronos', 0) == 0:
+            remaining = self.base_weights.get('chronos', 0.35)
+            weights['heuristic'] += remaining * 0.5
+            weights['momentum'] += remaining * 0.5
+
+        # 3. Heuristic Score
         heuristic_score, heuristic_signals = self.heuristic_engine.analyze(df)
         for hs in heuristic_signals:
             signals.append(f"Heuristic: {hs.description}")
 
-        # 3. Momentum Score
+        # 4. Momentum Score
         momentum_score = self.momentum_scorer.calculate(df)
         if momentum_score > 0.6:
             signals.append(f"Momentum: Strong bullish ({momentum_score:.2%})")
@@ -471,11 +562,12 @@ class EnsemblePredictor:
         else:
             signals.append(f"Momentum: Neutral ({momentum_score:.2%})")
 
-        # Calculate weighted ensemble score
-        total_weight = weights['lgb'] + weights['heuristic'] + weights['momentum']
+        # Calculate weighted ensemble score (includes Chronos)
+        total_weight = weights['lgb'] + weights.get('chronos', 0) + weights['heuristic'] + weights['momentum']
 
         ensemble_score = (
             lgb_score * weights['lgb'] +
+            chronos_score * weights.get('chronos', 0) +
             heuristic_score * weights['heuristic'] +
             momentum_score * weights['momentum']
         ) / total_weight
@@ -490,8 +582,8 @@ class EnsemblePredictor:
 
         signal_strength = abs(ensemble_score - 0.5) * 2  # 0 to 1
 
-        # Agreement score (how much components agree)
-        scores = [lgb_score, heuristic_score, momentum_score]
+        # Agreement score (how much components agree) - includes Chronos
+        scores = [lgb_score, chronos_score, heuristic_score, momentum_score]
         score_std = np.std(scores)
         agreement = 1 - min(score_std * 2, 1)  # Lower std = higher agreement
 
@@ -576,9 +668,11 @@ class EnsemblePredictor:
             prediction=prediction,
             confidence=confidence,
             lgb_score=lgb_score,
+            chronos_score=chronos_score,
             heuristic_score=heuristic_score,
             momentum_score=momentum_score,
             lgb_weight=weights['lgb'] / total_weight,
+            chronos_weight=weights.get('chronos', 0) / total_weight,
             heuristic_weight=weights['heuristic'] / total_weight,
             momentum_weight=weights['momentum'] / total_weight,
             market_regime=regime,
@@ -657,6 +751,7 @@ if __name__ == "__main__":
         print(f"Confidence: {result.confidence:.1%}")
         print(f"\nComponent Scores:")
         print(f"  LightGBM:  {result.lgb_score:.2%} (weight: {result.lgb_weight:.1%})")
+        print(f"  Chronos:   {result.chronos_score:.2%} (weight: {result.chronos_weight:.1%})")
         print(f"  Heuristic: {result.heuristic_score:.2%} (weight: {result.heuristic_weight:.1%})")
         print(f"  Momentum:  {result.momentum_score:.2%} (weight: {result.momentum_weight:.1%})")
         print(f"\nRL Agent: {result.rl_action} ({result.rl_confidence:.1%} confidence)")

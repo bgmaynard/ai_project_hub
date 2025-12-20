@@ -96,7 +96,21 @@
       "Bash(tasklist:*)",
       "Bash(for sym in MRK BA NVDA TSM META)",
       "Bash(do echo -n \"$sym: \")",
-      "Bash(cmd //c \"taskkill /F /PID 34228\")"
+      "Bash(cmd //c \"taskkill /F /PID 34228\")",
+      "Bash(python schwab_authenticate.py:*)",
+      "Bash(python schwab_complete_auth.py:*)",
+      "Bash(start \"https://api.schwabapi.com/v1/oauth/authorize?client_id=iYa2563asjgdr2RAYpJxAcATc1yPkzEB&redirect_uri=HTTPS%3A//127.0.0.1%3A6969\")",
+      "Bash(python ai/run_backtest_analysis.py:*)",
+      "Bash(python ai/analyze_trades.py:*)",
+      "Bash(pip index:*)",
+      "Bash(pip uninstall:*)",
+      "Bash(where:*)",
+      "Bash(py:*)",
+      "Bash(python ai/backtest_with_chronos.py:*)",
+      "Bash(python ai/evaluate_watchlist.py:*)",
+      "Bash(schtasks:*)",
+      "Bash(python news_spike_scanner.py:*)",
+      "WebFetch(domain:tradingeconomics.com)"
     ]
   }
 }

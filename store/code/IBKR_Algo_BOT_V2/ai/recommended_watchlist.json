@@ -1,0 +1,16 @@
+{
+  "symbols": [
+    "RKLB",
+    "LHAI",
+    "PLTR",
+    "TSLA",
+    "AMD",
+    "SOFI",
+    "RIOT",
+    "CLSK"
+  ],
+  "generated": "chronos_filtered",
+  "bullish_count": 4,
+  "neutral_count": 10,
+  "bearish_count": 9
+}

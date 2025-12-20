@@ -81,6 +81,10 @@ class ScalperConfig:
     reversal_candle_percent: float = 2.0  # Red candle size to trigger exit
     macd_reversal_exit: bool = True
 
+    # Chronos AI filter
+    use_chronos_filter: bool = True  # Filter entries with Chronos AI
+    chronos_min_prob_up: float = 0.5  # Min probability to enter (0.5 = 50%)
+
     # Risk management
     max_daily_loss: float = 50.0  # Max daily loss before stopping
     max_daily_trades: int = 20  # Max trades per day
@@ -248,6 +252,24 @@ class HFTScalper:
         except Exception as e:
             logger.error(f"Error saving trades: {e}")
 
+    def _check_chronos_signal(self, symbol: str) -> Optional[Dict]:
+        """
+        Check Chronos AI prediction for a symbol.
+        Returns dict with 'signal' and 'prob_up' or None if unavailable.
+        """
+        try:
+            from ai.chronos_predictor import get_chronos_predictor
+            chronos = get_chronos_predictor()
+            result = chronos.predict(symbol, horizon=1)
+            return {
+                'signal': result.get('signal', 'NEUTRAL'),
+                'prob_up': result.get('probabilities', {}).get('prob_up', 0.5),
+                'expected_return': result.get('expected_return_pct', 0)
+            }
+        except Exception as e:
+            logger.warning(f"Chronos check failed for {symbol}: {e}")
+            return None
+
     def update_config(self, **kwargs):
         """Update configuration"""
         for key, value in kwargs.items():
@@ -361,6 +383,22 @@ class HFTScalper:
                         "timestamp": datetime.now().isoformat()
                     }
                     logger.info(f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f}")
+
+        # Apply Chronos AI filter if enabled
+        if signal and self.config.use_chronos_filter:
+            chronos_result = self._check_chronos_signal(symbol)
+            if chronos_result:
+                prob_up = chronos_result.get('prob_up', 0.5)
+                chronos_signal = chronos_result.get('signal', 'NEUTRAL')
+
+                # Reject if Chronos says BEARISH or probability too low
+                if 'BEARISH' in chronos_signal or prob_up < self.config.chronos_min_prob_up:
+                    logger.info(f"CHRONOS REJECT: {symbol} - {chronos_signal} ({prob_up:.0%} prob up)")
+                    signal = None
+                else:
+                    logger.info(f"CHRONOS APPROVE: {symbol} - {chronos_signal} ({prob_up:.0%} prob up)")
+                    signal['chronos_signal'] = chronos_signal
+                    signal['chronos_prob_up'] = prob_up
 
         if signal and self.on_signal:
             self.on_signal(signal)

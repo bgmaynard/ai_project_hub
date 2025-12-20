@@ -5702,6 +5702,39 @@ Confirm order?`;
         let worklistData = [];
         let worklistLoading = false;  // Prevent duplicate calls
         let worklistLastLoad = 0;     // Debounce timestamp
+        let worklistSortField = null;  // Current sort field
+        let worklistSortAsc = true;    // Sort direction
+
+        function sortWorklist(field) {
+            // Toggle direction if same field, otherwise default to descending for numbers
+            if (worklistSortField === field) {
+                worklistSortAsc = !worklistSortAsc;
+            } else {
+                worklistSortField = field;
+                // Default: descending for numbers (highest first), ascending for symbol
+                worklistSortAsc = (field === 'symbol');
+            }
+
+            worklistData.sort((a, b) => {
+                let valA = a[field];
+                let valB = b[field];
+
+                // Handle nulls/undefined
+                if (valA === null || valA === undefined) valA = field === 'symbol' ? '' : -Infinity;
+                if (valB === null || valB === undefined) valB = field === 'symbol' ? '' : -Infinity;
+
+                // String comparison for symbol and text fields
+                if (typeof valA === 'string' && typeof valB === 'string') {
+                    return worklistSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+
+                // Numeric comparison
+                return worklistSortAsc ? valA - valB : valB - valA;
+            });
+
+            updateWorklistDisplay();
+            showNotification(`Sorted by ${field} ${worklistSortAsc ? '↑' : '↓'}`, 'info');
+        }
 
         async function loadWorklist() {
             // Debounce: skip if loaded within last 2 seconds or currently loading
@@ -5876,20 +5909,21 @@ Confirm order?`;
             try {
                 // Enhanced watchlist with color-coded technical metrics
                 let html = `
-                <table class="data-table" style="font-size: 14px; width: 100%;">
+                <table class="data-table" style="font-size: 14px; width: 100%;" id="worklistTable">
                     <thead>
                         <tr style="background: #1a1a1a;">
-                            <th style="padding: 6px 6px; text-align: left; font-size: 12px;">SYM</th>
-                            <th style="padding: 6px 6px; text-align: right; font-size: 12px;">PRICE</th>
-                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;">CHG%</th>
+                            <th style="padding: 6px 6px; text-align: left; font-size: 12px; cursor: pointer;" onclick="sortWorklist('symbol')" title="Click to sort">SYM ⇅</th>
+                            <th style="padding: 6px 6px; text-align: right; font-size: 12px; cursor: pointer;" onclick="sortWorklist('price')" title="Click to sort">PRICE ⇅</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px; cursor: pointer;" onclick="sortWorklist('change_percent')" title="Click to sort">CHG% ⇅</th>
                             <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="Trading Halt Status">HALT</th>
                             <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="News Catalyst">CAT</th>
-                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="MACD Signal">MACD</th>
-                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="Relative Volume">RVOL</th>
-                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="VWAP Extension %">VWAP</th>
-                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="% From High of Day">HOD</th>
-                            <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="Entry Quality Score">SCORE</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px; cursor: pointer;" onclick="sortWorklist('macd_signal')" title="Click to sort">MACD ⇅</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px; cursor: pointer;" onclick="sortWorklist('rel_volume')" title="Click to sort">RVOL ⇅</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px; cursor: pointer;" onclick="sortWorklist('vwap_extension')" title="Click to sort">VWAP ⇅</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px; cursor: pointer;" onclick="sortWorklist('percent_from_hod')" title="Click to sort">HOD ⇅</th>
+                            <th style="padding: 6px 6px; text-align: center; font-size: 12px; cursor: pointer;" onclick="sortWorklist('entry_score')" title="Click to sort">SCORE ⇅</th>
                             <th style="padding: 6px 6px; text-align: center; font-size: 12px;" title="Entry Status">GO</th>
+                            <th style="padding: 6px 4px; text-align: center; font-size: 12px; width: 30px;" title="Remove">✕</th>
                         </tr>
                     </thead>
                     <tbody>`;
@@ -5947,6 +5981,7 @@ Confirm order?`;
                             <td style="padding: 8px 6px; text-align: center;"><span style="color: ${hodColor}; font-size: 13px;">${hodText}</span></td>
                             <td style="padding: 8px 6px; text-align: center;"><span style="background: ${scoreColor}20; color: ${scoreColor}; padding: 4px 8px; border-radius: 3px; font-size: 13px; font-weight: 700;">${scoreText}</span></td>
                             <td style="padding: 8px 6px; text-align: center;"><span style="background: ${statusColor}; color: #000; padding: 4px 10px; border-radius: 3px; font-size: 12px; font-weight: 700;">${statusText}</span></td>
+                            <td style="padding: 8px 4px; text-align: center;"><button onclick="event.stopPropagation(); removeFromWorklist('${item.symbol}')" style="background: transparent; border: none; color: #666; cursor: pointer; font-size: 14px; padding: 2px 6px;" title="Remove ${item.symbol}" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#666'">✕</button></td>
                         </tr>
                     `;
                 }

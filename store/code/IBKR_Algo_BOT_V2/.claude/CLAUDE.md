@@ -256,6 +256,33 @@ Pre-market has different characteristics:
 - Need to handle reversal detection better for faster moves
 - Consider time-of-day adjustments to parameters
 
+## Dec 18, 2024 Session
+
+### Manual Trading (WeBull) - GREEN DAY
+- ATHA: -$21.57 (stopped out, no momentum)
+- EVTV: +$3.50 (grinder, took profit on pullback)
+- LHAI: +$20.45 (breakout over $14, nailed it)
+- **Net: +$2.38** - recovered from red to green
+
+### Scalper Paper Trading
+- 57 trades, -$170.66 (overtrading in holiday chop)
+- Adjusted params: 7% spike, 5x volume surge, 2% trailing
+
+### New Components Added
+- `ai/trade_signals.py` - Secondary trigger capture for correlation analysis
+- `ai/pybroker_walkforward.py` - Walkforward analysis framework (needs minute data)
+
+### Research: Financial Libraries
+- **PyBroker** - Installed, walkforward framework ready
+- **Microsoft Qlib** - For future model research (40+ quant models)
+
+### TODO: Future Work
+1. Connect Polygon minute data to PyBroker for proper walkforward testing
+2. Wire trade_signals.py into scalper for correlation data capture
+3. Add ETB/HTB borrow status to watchlist (Schwab has `shortable` field)
+4. Investigate Qlib for advanced alpha factor discovery
+5. Build correlation report: which secondary triggers predict winners?
+
 ## Known Issues / Notes
 
 - Market data only works during market hours
