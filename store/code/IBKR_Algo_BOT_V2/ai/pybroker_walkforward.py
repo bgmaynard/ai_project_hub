@@ -20,11 +20,13 @@ logger = logging.getLogger(__name__)
 
 # Strategy parameters (matching our scalper config)
 SCALPER_PARAMS = {
-    "min_spike_percent": 7.0,  # Entry threshold
+    "min_spike_percent": 5.0,  # Entry threshold (updated Dec 19)
     "profit_target_percent": 3.0,
     "stop_loss_percent": 3.0,
-    "trailing_stop_percent": 2.0,
-    "min_volume_surge": 5.0,
+    "trailing_stop_percent": 1.5,  # Trailing after target hit
+    "min_volume_surge": 3.0,
+    "use_atr_stops": True,  # Use ATR-based dynamic stops
+    "atr_multiplier": 1.5,  # Stop at 1.5x ATR
 }
 
 
@@ -565,17 +567,131 @@ def run_full_analysis(
     return results
 
 
+def sync_with_scalper_config():
+    """
+    Sync SCALPER_PARAMS with the current HFT scalper configuration.
+
+    Call this before running backtests to ensure params match live trading.
+    """
+    global SCALPER_PARAMS
+    try:
+        from ai.hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        config = scalper.config
+
+        SCALPER_PARAMS.update({
+            "min_spike_percent": config.min_spike_percent,
+            "profit_target_percent": config.profit_target_percent,
+            "stop_loss_percent": config.stop_loss_percent,
+            "trailing_stop_percent": config.trailing_stop_percent,
+            "min_volume_surge": config.min_volume_surge,
+            "use_atr_stops": config.use_atr_stops,
+            "atr_multiplier": config.atr_stop_multiplier,
+        })
+        print(f"Synced params from scalper config: {SCALPER_PARAMS}")
+        return True
+    except Exception as e:
+        print(f"Could not sync with scalper config: {e}")
+        return False
+
+
+def validate_current_params(symbols: list = None, days: int = 30) -> dict:
+    """
+    Validate current scalper parameters using walkforward analysis.
+
+    This helps detect if parameters are overfit or if they generalize well.
+
+    Args:
+        symbols: Symbols to test (defaults to recent movers)
+        days: Days of history to test
+
+    Returns:
+        Validation report with recommendations
+    """
+    if symbols is None:
+        symbols = ["SOUN", "AAPL", "TSLA", "NVDA"]  # Mix of volatile + stable
+
+    # Sync with current config
+    sync_with_scalper_config()
+
+    print("\n" + "=" * 60)
+    print("PARAMETER VALIDATION REPORT")
+    print("=" * 60)
+    print(f"Testing current scalper parameters on {days} days of data")
+    print(f"Symbols: {symbols}")
+    print(f"Parameters: {SCALPER_PARAMS}")
+    print("=" * 60)
+
+    # Run backtest
+    result = run_walkforward_test(
+        symbols=symbols,
+        start_date=(datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d"),
+        end_date=datetime.now().strftime("%Y-%m-%d"),
+        initial_cash=1000.0
+    )
+
+    # Generate recommendations
+    recommendations = []
+
+    if result.get('success') and result.get('metrics'):
+        metrics = result['metrics']
+
+        win_rate = metrics.get('win_rate', 0)
+        total_return = metrics.get('total_return_pct', 0)
+        max_dd = abs(metrics.get('max_drawdown_pct', 0))
+        trades = metrics.get('total_trades', 0)
+
+        print("\n--- ANALYSIS ---")
+
+        if win_rate < 35:
+            recommendations.append(f"WIN RATE LOW ({win_rate:.1f}%): Consider tighter entry filters")
+        elif win_rate > 60:
+            recommendations.append(f"WIN RATE HIGH ({win_rate:.1f}%): Parameters may be overfit")
+        else:
+            recommendations.append(f"WIN RATE OK ({win_rate:.1f}%)")
+
+        if max_dd > 20:
+            recommendations.append(f"MAX DRAWDOWN HIGH ({max_dd:.1f}%): Reduce position size or tighten stops")
+        else:
+            recommendations.append(f"MAX DRAWDOWN OK ({max_dd:.1f}%)")
+
+        if trades < 5:
+            recommendations.append(f"LOW TRADE COUNT ({trades}): Entry criteria may be too strict")
+        elif trades > 50:
+            recommendations.append(f"HIGH TRADE COUNT ({trades}): May be overtrading")
+
+        if total_return < 0:
+            recommendations.append(f"NEGATIVE RETURN ({total_return:.1f}%): Strategy needs adjustment")
+        else:
+            recommendations.append(f"POSITIVE RETURN ({total_return:.1f}%)")
+
+    else:
+        recommendations.append("VALIDATION FAILED: Check data availability")
+
+    print("\n--- RECOMMENDATIONS ---")
+    for rec in recommendations:
+        print(f"  - {rec}")
+
+    return {
+        "success": result.get('success', False),
+        "params_tested": SCALPER_PARAMS.copy(),
+        "symbols": symbols,
+        "days": days,
+        "metrics": result.get('metrics', {}),
+        "recommendations": recommendations
+    }
+
+
 # Quick test
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    print("Testing PyBroker with Schwab minute data...")
+    print("Running Parameter Validation...")
 
-    # Test minute backtest
-    result = run_minute_backtest(
-        symbols=["SPY"],
-        days=5,
-        initial_cash=1000.0
+    # Validate current params
+    report = validate_current_params(
+        symbols=["SOUN", "AAPL", "TSLA"],
+        days=30
     )
 
-    print(f"\nResult: {result}")
+    print(f"\n\nFinal Report: {report}")

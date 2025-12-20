@@ -1346,4 +1346,405 @@ async def reset_scalper_daily():
         return {"reset": False, "error": str(e)}
 
 
-logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper)")
+# ============ Trade Correlation Report Endpoints ============
+
+@router.get("/scalper/correlation-report")
+async def get_correlation_report():
+    """
+    Get trade correlation report analyzing which secondary triggers predict winners.
+
+    Returns analysis of:
+    - Time of day patterns
+    - Day of week patterns
+    - Entry/exit signal performance
+    - Technical indicator correlations
+    - Symbol performance
+    - Actionable recommendations
+    """
+    try:
+        from .correlation_report import generate_correlation_report
+        report = generate_correlation_report()
+        return {
+            "success": True,
+            **report
+        }
+    except Exception as e:
+        logger.error(f"Correlation report error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/scalper/correlation-report/text")
+async def get_correlation_report_text():
+    """Get correlation report as formatted text"""
+    try:
+        from .correlation_report import generate_correlation_report, print_report
+        import io
+        import sys
+
+        report = generate_correlation_report()
+
+        # Capture print output
+        old_stdout = sys.stdout
+        sys.stdout = buffer = io.StringIO()
+        print_report(report)
+        text_output = buffer.getvalue()
+        sys.stdout = old_stdout
+
+        return {
+            "success": True,
+            "text": text_output
+        }
+    except Exception as e:
+        logger.error(f"Correlation report text error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/scalper/correlation-report/recommendations")
+async def get_correlation_recommendations():
+    """Get just the recommendations from correlation analysis"""
+    try:
+        from .correlation_report import generate_correlation_report
+        report = generate_correlation_report()
+        return {
+            "success": True,
+            "summary": report.get('summary', {}),
+            "recommendations": report.get('recommendations', [])
+        }
+    except Exception as e:
+        logger.error(f"Correlation recommendations error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ Order Flow Analysis Endpoints ============
+
+@router.get("/order-flow/{symbol}")
+async def get_order_flow(symbol: str):
+    """
+    Get order flow analysis for a symbol.
+
+    Returns bid/ask imbalance, buy pressure, and entry recommendation.
+    """
+    try:
+        from .order_flow_analyzer import get_order_flow_signal
+        signal = await get_order_flow_signal(symbol.upper())
+        return {
+            "success": True,
+            **signal.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Order flow error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/order-flow/batch/{symbols}")
+async def get_order_flow_batch(symbols: str):
+    """
+    Get order flow analysis for multiple symbols (comma-separated).
+
+    Example: /api/scanner/order-flow/batch/AAPL,TSLA,NVDA
+    """
+    try:
+        from .order_flow_analyzer import get_order_flow_signal
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
+
+        results = {}
+        for symbol in symbol_list[:10]:  # Limit to 10 symbols
+            signal = await get_order_flow_signal(symbol)
+            results[symbol] = signal.to_dict()
+
+        return {
+            "success": True,
+            "count": len(results),
+            "signals": results
+        }
+    except Exception as e:
+        logger.error(f"Order flow batch error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/order-flow/summary")
+async def get_order_flow_summary():
+    """Get order flow summary for all tracked symbols"""
+    try:
+        from .order_flow_analyzer import get_order_flow_analyzer
+        analyzer = get_order_flow_analyzer()
+
+        summaries = []
+        for symbol in analyzer.history.keys():
+            summaries.append(analyzer.get_summary(symbol))
+
+        # Sort by buy pressure
+        summaries.sort(key=lambda x: x.get('avg_buy_pressure', 0), reverse=True)
+
+        return {
+            "success": True,
+            "count": len(summaries),
+            "summaries": summaries
+        }
+    except Exception as e:
+        logger.error(f"Order flow summary error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ Borrow Status Endpoints ============
+
+@router.get("/borrow-status/{symbol}")
+async def get_borrow_status(symbol: str):
+    """
+    Get borrow status (ETB/HTB) for a symbol.
+
+    Returns short interest data and borrow classification.
+    """
+    try:
+        from .borrow_status import get_borrow_status as get_status
+        status = await get_status(symbol.upper())
+        return {
+            "success": True,
+            **status
+        }
+    except Exception as e:
+        logger.error(f"Borrow status error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/borrow-status/batch/{symbols}")
+async def get_borrow_status_batch(symbols: str):
+    """
+    Get borrow status for multiple symbols (comma-separated).
+
+    Example: /api/scanner/borrow-status/batch/AAPL,GME,SOUN
+    """
+    try:
+        from .borrow_status import get_borrow_tracker
+        tracker = get_borrow_tracker()
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
+
+        results = await tracker.get_batch_status(symbol_list[:10])
+
+        return {
+            "success": True,
+            "count": len(results),
+            "statuses": {s: info.to_dict() for s, info in results.items()}
+        }
+    except Exception as e:
+        logger.error(f"Borrow status batch error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/borrow-status/htb-list")
+async def get_htb_list():
+    """Get list of HTB (Hard to Borrow) symbols from cache"""
+    try:
+        from .borrow_status import get_borrow_tracker
+        tracker = get_borrow_tracker()
+        htb_symbols = tracker.get_htb_symbols()
+        return {
+            "success": True,
+            "count": len(htb_symbols),
+            "htb_symbols": htb_symbols
+        }
+    except Exception as e:
+        logger.error(f"HTB list error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ Backtest Validation Endpoints ============
+
+@router.get("/backtest/validate")
+async def validate_scalper_params(symbols: str = "SOUN,AAPL,TSLA", days: int = 30):
+    """
+    Validate current scalper parameters using walkforward analysis.
+
+    Tests parameters on historical data to detect overfitting.
+    """
+    try:
+        from .pybroker_walkforward import validate_current_params
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
+        report = validate_current_params(symbols=symbol_list, days=days)
+        return {
+            "success": True,
+            **report
+        }
+    except Exception as e:
+        logger.error(f"Backtest validation error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/backtest/walkforward")
+async def run_walkforward(symbols: str = "SPY", days: int = 60):
+    """
+    Run walkforward analysis on specified symbols.
+    """
+    try:
+        from .pybroker_walkforward import run_walkforward_test
+        from datetime import datetime, timedelta
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
+
+        result = run_walkforward_test(
+            symbols=symbol_list,
+            start_date=(datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d"),
+            end_date=datetime.now().strftime("%Y-%m-%d"),
+            initial_cash=1000.0
+        )
+        return {
+            "success": result.get('success', False),
+            "metrics": result.get('metrics', {}),
+            "note": result.get('note', '')
+        }
+    except Exception as e:
+        logger.error(f"Walkforward error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ ATR Stops Endpoints ============
+
+@router.get("/atr-stops/{symbol}")
+async def get_atr_stops(symbol: str, entry_price: float = 0):
+    """
+    Get ATR-based dynamic stop levels for a symbol.
+
+    If entry_price is 0, uses current market price.
+    """
+    try:
+        from .atr_stops import get_atr_calculator
+        calculator = get_atr_calculator()
+
+        if entry_price <= 0:
+            # Get current price
+            from schwab_market_data import get_schwab_market_data
+            schwab = get_schwab_market_data()
+            quote = schwab.get_quote(symbol.upper())
+            if quote:
+                entry_price = quote.get('last', 0) or quote.get('price', 0)
+
+        if entry_price <= 0:
+            return {"success": False, "error": "Could not determine entry price"}
+
+        stops = calculator.calculate_stops(symbol.upper(), entry_price)
+        if stops:
+            return {
+                "success": True,
+                **stops.to_dict()
+            }
+        else:
+            return {"success": False, "error": "ATR calculation failed"}
+
+    except Exception as e:
+        logger.error(f"ATR stops error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ News Auto-Trader Endpoints ============
+
+@router.get("/news-trader/status")
+async def get_news_trader_status():
+    """Get news auto-trader status and configuration"""
+    try:
+        from .news_auto_trader import get_news_auto_trader
+        trader = get_news_auto_trader()
+        return {"success": True, **trader.get_status()}
+    except Exception as e:
+        logger.error(f"News trader status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/news-trader/start")
+async def start_news_trader(paper_mode: bool = True):
+    """
+    Start the news auto-trader.
+
+    Args:
+        paper_mode: If True, trades are simulated (default True for safety)
+    """
+    try:
+        from .news_auto_trader import start_news_auto_trader
+        result = await start_news_auto_trader(paper_mode=paper_mode)
+        return {"success": True, "message": "News auto-trader started", **result}
+    except Exception as e:
+        logger.error(f"News trader start error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/news-trader/stop")
+async def stop_news_trader():
+    """Stop the news auto-trader"""
+    try:
+        from .news_auto_trader import stop_news_auto_trader
+        result = await stop_news_auto_trader()
+        return {"success": True, "message": "News auto-trader stopped", **result}
+    except Exception as e:
+        logger.error(f"News trader stop error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/news-trader/config")
+async def get_news_trader_config():
+    """Get news auto-trader configuration"""
+    try:
+        from .news_auto_trader import get_news_auto_trader
+        trader = get_news_auto_trader()
+        return {"success": True, "config": trader.config.to_dict()}
+    except Exception as e:
+        logger.error(f"News trader config error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+class NewsTraderConfigUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    paper_mode: Optional[bool] = None
+    min_news_confidence: Optional[float] = None
+    min_news_urgency: Optional[str] = None
+    require_chronos: Optional[bool] = None
+    min_chronos_score: Optional[float] = None
+    require_qlib: Optional[bool] = None
+    min_qlib_score: Optional[float] = None
+    require_order_flow: Optional[bool] = None
+    min_buy_pressure: Optional[float] = None
+    max_concurrent_trades: Optional[int] = None
+    symbol_cooldown_minutes: Optional[int] = None
+    max_daily_trades: Optional[int] = None
+    auto_add_to_watchlist: Optional[bool] = None
+
+
+@router.post("/news-trader/config")
+async def update_news_trader_config(update: NewsTraderConfigUpdate):
+    """Update news auto-trader configuration"""
+    try:
+        from .news_auto_trader import get_news_auto_trader
+        trader = get_news_auto_trader()
+
+        # Only update fields that were provided
+        updates = {k: v for k, v in update.dict().items() if v is not None}
+        new_config = trader.update_config(**updates)
+
+        return {"success": True, "config": new_config}
+    except Exception as e:
+        logger.error(f"News trader config update error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/news-trader/candidates")
+async def get_news_trader_candidates(limit: int = 50):
+    """Get recent trade candidates evaluated by the news auto-trader"""
+    try:
+        from .news_auto_trader import get_news_auto_trader
+        trader = get_news_auto_trader()
+        return {"success": True, "candidates": trader.get_candidates(limit)}
+    except Exception as e:
+        logger.error(f"News trader candidates error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/news-trader/trades")
+async def get_news_trader_trades(limit: int = 20):
+    """Get trades executed by the news auto-trader"""
+    try:
+        from .news_auto_trader import get_news_auto_trader
+        trader = get_news_auto_trader()
+        return {"success": True, "trades": trader.get_executed_trades(limit)}
+    except Exception as e:
+        logger.error(f"News trader trades error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader)")

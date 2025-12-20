@@ -1,0 +1,191 @@
+{
+  "trained_at": "2025-12-19T22:17:44.061924",
+  "metrics": {
+    "mse": 0.0029067949059457324,
+    "rmse": 0.053914700276879335,
+    "mae": 0.03089685930457163,
+    "r2": 0.02167739932538537,
+    "train_samples": 11928,
+    "test_samples": 2982,
+    "best_iteration": 20,
+    "num_features": 92,
+    "directional_accuracy": 0.5985915492957746,
+    "top_features": [
+      {
+        "feature": "TURN_MA10",
+        "importance": 27.380761295557022
+      },
+      {
+        "feature": "WVMA_60",
+        "importance": 23.37838014960289
+      },
+      {
+        "feature": "QTLD_30",
+        "importance": 18.623270273208618
+      },
+      {
+        "feature": "ROC_30",
+        "importance": 17.736461862921715
+      },
+      {
+        "feature": "BETA_60",
+        "importance": 16.16731506586075
+      },
+      {
+        "feature": "WVMA_30",
+        "importance": 16.03709400445223
+      },
+      {
+        "feature": "CORD_30",
+        "importance": 15.796333275735378
+      },
+      {
+        "feature": "CORR_30",
+        "importance": 12.886495932936668
+      },
+      {
+        "feature": "STD_30",
+        "importance": 12.842815719544888
+      },
+      {
+        "feature": "MIN_60",
+        "importance": 12.621188133955002
+      },
+      {
+        "feature": "CORR_60",
+        "importance": 12.319412924349308
+      },
+      {
+        "feature": "STD_5",
+        "importance": 9.727097943425179
+      },
+      {
+        "feature": "CORR_20",
+        "importance": 8.585335060954094
+      },
+      {
+        "feature": "MA_60",
+        "importance": 8.33403991162777
+      },
+      {
+        "feature": "STD_10",
+        "importance": 7.633776009082794
+      },
+      {
+        "feature": "ROC_20",
+        "importance": 6.402103081345558
+      },
+      {
+        "feature": "ROC_60",
+        "importance": 6.373647928237915
+      },
+      {
+        "feature": "BETA_30",
+        "importance": 6.355751022696495
+      },
+      {
+        "feature": "CORD_60",
+        "importance": 5.101624995470047
+      },
+      {
+        "feature": "WVMA_20",
+        "importance": 4.9892288744449615
+      }
+    ]
+  },
+  "feature_names": [
+    "ROC_5",
+    "MA_5",
+    "STD_5",
+    "BETA_5",
+    "MAX_5",
+    "MIN_5",
+    "QTLU_5",
+    "QTLD_5",
+    "RANK_5",
+    "RSV_5",
+    "CORR_5",
+    "CORD_5",
+    "ROC_10",
+    "MA_10",
+    "STD_10",
+    "BETA_10",
+    "MAX_10",
+    "MIN_10",
+    "QTLU_10",
+    "QTLD_10",
+    "RANK_10",
+    "RSV_10",
+    "CORR_10",
+    "CORD_10",
+    "ROC_20",
+    "MA_20",
+    "STD_20",
+    "BETA_20",
+    "MAX_20",
+    "MIN_20",
+    "QTLU_20",
+    "QTLD_20",
+    "RANK_20",
+    "RSV_20",
+    "CORR_20",
+    "CORD_20",
+    "ROC_30",
+    "MA_30",
+    "STD_30",
+    "BETA_30",
+    "MAX_30",
+    "MIN_30",
+    "QTLU_30",
+    "QTLD_30",
+    "RANK_30",
+    "RSV_30",
+    "CORR_30",
+    "CORD_30",
+    "ROC_60",
+    "MA_60",
+    "STD_60",
+    "BETA_60",
+    "MAX_60",
+    "MIN_60",
+    "QTLU_60",
+    "QTLD_60",
+    "RANK_60",
+    "RSV_60",
+    "CORR_60",
+    "CORD_60",
+    "VMA_5",
+    "VSTD_5",
+    "WVMA_5",
+    "VMA_10",
+    "VSTD_10",
+    "WVMA_10",
+    "VMA_20",
+    "VSTD_20",
+    "WVMA_20",
+    "VMA_30",
+    "VSTD_30",
+    "WVMA_30",
+    "VMA_60",
+    "VSTD_60",
+    "WVMA_60",
+    "KMID",
+    "KLEN",
+    "KMID2",
+    "KUP",
+    "KUP2",
+    "KLOW",
+    "KLOW2",
+    "KSFT",
+    "KSFT2",
+    "OPEN_RATIO",
+    "HIGH_RATIO",
+    "LOW_RATIO",
+    "CLOSE_RATIO",
+    "VWAP_RATIO",
+    "TURN",
+    "TURN_MA5",
+    "TURN_MA10"
+  ],
+  "model_path": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\ai\\qlib_model.pkl"
+}

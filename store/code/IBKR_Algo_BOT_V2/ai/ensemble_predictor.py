@@ -4,6 +4,7 @@ Ensemble AI Predictor
 Combines multiple prediction methods for robust trading signals:
 - LightGBM (ML model)
 - Chronos (Amazon foundation model for time series)
+- Qlib Alpha158 (Microsoft's 158 quant factors)
 - Heuristic rules (technical analysis patterns)
 - Momentum scoring
 - Regime-aware weighting
@@ -11,14 +12,14 @@ Combines multiple prediction methods for robust trading signals:
 The ensemble uses weighted voting based on market conditions
 and recent performance of each component.
 
-New Technologies (Dec 2024):
+Technologies:
 - Amazon Chronos: Zero-shot time series forecasting
-- Google TimesFM: Foundation model (requires Python 3.11)
-- Microsoft Qlib: Quant research platform (requires Python 3.11)
+- Microsoft Qlib Alpha158: 158 pre-computed technical factors
+- LightGBM: Gradient boosting classifier
 - FinRL: Reinforcement learning for trading
 
 Created: December 2025
-Updated: December 2024 - Added Chronos integration
+Updated: December 2024 - Added Chronos and Qlib integration
 """
 
 import numpy as np
@@ -45,12 +46,14 @@ class EnsemblePrediction:
     # Component scores (0.0 to 1.0)
     lgb_score: float
     chronos_score: float  # Amazon Chronos foundation model
+    qlib_score: float  # Microsoft Qlib Alpha158
     heuristic_score: float
     momentum_score: float
 
     # Weights used
     lgb_weight: float
     chronos_weight: float
+    qlib_weight: float
     heuristic_weight: float
     momentum_weight: float
 
@@ -384,6 +387,56 @@ class ChronosScorer:
             return 0.5, {"available": False, "error": str(e)}
 
 
+class QlibScorer:
+    """
+    Microsoft Qlib Alpha158 scorer.
+    Provides 158 pre-computed technical factors for stock scoring.
+    """
+
+    def __init__(self):
+        self.predictor = None
+        self.available = False
+        self._init_predictor()
+
+    def _init_predictor(self):
+        """Initialize Qlib predictor (lazy load on first use)."""
+        try:
+            from ai.qlib_predictor import get_qlib_predictor
+            self.predictor = get_qlib_predictor()
+            self.available = True
+            logger.info("Qlib Alpha158 predictor initialized")
+        except Exception as e:
+            logger.warning(f"Qlib not available: {e}")
+            self.available = False
+
+    def calculate(self, symbol: str, df: pd.DataFrame = None) -> Tuple[float, Dict]:
+        """
+        Get Qlib Alpha158 prediction score.
+
+        Returns:
+            (score 0-1, details dict)
+        """
+        if not self.available or self.predictor is None:
+            return 0.5, {"available": False}
+
+        try:
+            result = self.predictor.predict(symbol)
+
+            if result.signal == "ERROR":
+                return 0.5, {"available": False, "error": "Prediction failed"}
+
+            return result.score, {
+                "available": True,
+                "signal": result.signal,
+                "confidence": result.confidence,
+                "feature_count": result.feature_count,
+                "top_features": result.top_features[:5],
+            }
+        except Exception as e:
+            logger.warning(f"Qlib calculation failed: {e}")
+            return 0.5, {"available": False, "error": str(e)}
+
+
 class MomentumScorer:
     """
     Multi-timeframe momentum scoring.
@@ -441,6 +494,7 @@ class EnsemblePredictor:
         self.heuristic_engine = HeuristicEngine()
         self.momentum_scorer = MomentumScorer()
         self.chronos_scorer = ChronosScorer()
+        self.qlib_scorer = QlibScorer()
 
         # Try to load LightGBM predictor
         self.lgb_predictor = None
@@ -463,20 +517,21 @@ class EnsemblePredictor:
             logger.warning(f"RL agent not available: {e}")
 
         # Base weights (adjusted by regime)
-        # Chronos gets high weight as it's a foundation model with zero-shot capability
+        # 5 components: LGB, Chronos, Qlib, Heuristic, Momentum
         self.base_weights = {
-            'lgb': 0.30,
-            'chronos': 0.35,  # Foundation model - most sophisticated
-            'heuristic': 0.20,
+            'lgb': 0.20,
+            'chronos': 0.25,  # Amazon foundation model
+            'qlib': 0.25,     # Microsoft Alpha158 (158 factors)
+            'heuristic': 0.15,
             'momentum': 0.15
         }
 
         # Regime-specific weight adjustments
         self.regime_adjustments = {
-            'TRENDING_UP': {'lgb': 0.25, 'chronos': 0.35, 'heuristic': 0.20, 'momentum': 0.20},
-            'TRENDING_DOWN': {'lgb': 0.25, 'chronos': 0.30, 'heuristic': 0.30, 'momentum': 0.15},
-            'RANGING': {'lgb': 0.30, 'chronos': 0.35, 'heuristic': 0.25, 'momentum': 0.10},
-            'VOLATILE': {'lgb': 0.20, 'chronos': 0.25, 'heuristic': 0.40, 'momentum': 0.15},
+            'TRENDING_UP': {'lgb': 0.20, 'chronos': 0.25, 'qlib': 0.25, 'heuristic': 0.15, 'momentum': 0.15},
+            'TRENDING_DOWN': {'lgb': 0.20, 'chronos': 0.20, 'qlib': 0.25, 'heuristic': 0.25, 'momentum': 0.10},
+            'RANGING': {'lgb': 0.25, 'chronos': 0.25, 'qlib': 0.25, 'heuristic': 0.15, 'momentum': 0.10},
+            'VOLATILE': {'lgb': 0.15, 'chronos': 0.20, 'qlib': 0.20, 'heuristic': 0.30, 'momentum': 0.15},
         }
 
         # Performance tracking for adaptive weighting
@@ -544,16 +599,40 @@ class EnsemblePredictor:
 
         # Redistribute weights if Chronos not available
         if weights.get('chronos', 0) == 0:
-            remaining = self.base_weights.get('chronos', 0.35)
-            weights['heuristic'] += remaining * 0.5
-            weights['momentum'] += remaining * 0.5
+            remaining = self.base_weights.get('chronos', 0.25)
+            weights['qlib'] = weights.get('qlib', 0.25) + remaining * 0.4
+            weights['heuristic'] += remaining * 0.3
+            weights['momentum'] += remaining * 0.3
 
-        # 3. Heuristic Score
+        # 3. Qlib Alpha158 Score (Microsoft Quant Factors)
+        qlib_score = 0.5
+        qlib_details = {}
+        if self.qlib_scorer.available:
+            try:
+                qlib_score, qlib_details = self.qlib_scorer.calculate(symbol, df)
+                if qlib_details.get('available'):
+                    signals.append(f"Qlib: {qlib_score:.2%} ({qlib_details.get('signal', 'N/A')}, {qlib_details.get('feature_count', 0)} features)")
+                else:
+                    weights['qlib'] = 0
+            except Exception as e:
+                logger.debug(f"Qlib prediction failed: {e}")
+                weights['qlib'] = 0
+        else:
+            weights['qlib'] = 0
+
+        # Redistribute weights if Qlib not available
+        if weights.get('qlib', 0) == 0:
+            remaining = self.base_weights.get('qlib', 0.25)
+            weights['chronos'] = weights.get('chronos', 0) + remaining * 0.4
+            weights['heuristic'] += remaining * 0.3
+            weights['momentum'] += remaining * 0.3
+
+        # 4. Heuristic Score
         heuristic_score, heuristic_signals = self.heuristic_engine.analyze(df)
         for hs in heuristic_signals:
             signals.append(f"Heuristic: {hs.description}")
 
-        # 4. Momentum Score
+        # 5. Momentum Score
         momentum_score = self.momentum_scorer.calculate(df)
         if momentum_score > 0.6:
             signals.append(f"Momentum: Strong bullish ({momentum_score:.2%})")
@@ -562,12 +641,19 @@ class EnsemblePredictor:
         else:
             signals.append(f"Momentum: Neutral ({momentum_score:.2%})")
 
-        # Calculate weighted ensemble score (includes Chronos)
-        total_weight = weights['lgb'] + weights.get('chronos', 0) + weights['heuristic'] + weights['momentum']
+        # Calculate weighted ensemble score (5 components)
+        total_weight = (
+            weights['lgb'] +
+            weights.get('chronos', 0) +
+            weights.get('qlib', 0) +
+            weights['heuristic'] +
+            weights['momentum']
+        )
 
         ensemble_score = (
             lgb_score * weights['lgb'] +
             chronos_score * weights.get('chronos', 0) +
+            qlib_score * weights.get('qlib', 0) +
             heuristic_score * weights['heuristic'] +
             momentum_score * weights['momentum']
         ) / total_weight
@@ -582,8 +668,8 @@ class EnsemblePredictor:
 
         signal_strength = abs(ensemble_score - 0.5) * 2  # 0 to 1
 
-        # Agreement score (how much components agree) - includes Chronos
-        scores = [lgb_score, chronos_score, heuristic_score, momentum_score]
+        # Agreement score (how much components agree) - includes all 5 components
+        scores = [lgb_score, chronos_score, qlib_score, heuristic_score, momentum_score]
         score_std = np.std(scores)
         agreement = 1 - min(score_std * 2, 1)  # Lower std = higher agreement
 
@@ -669,10 +755,12 @@ class EnsemblePredictor:
             confidence=confidence,
             lgb_score=lgb_score,
             chronos_score=chronos_score,
+            qlib_score=qlib_score,
             heuristic_score=heuristic_score,
             momentum_score=momentum_score,
             lgb_weight=weights['lgb'] / total_weight,
             chronos_weight=weights.get('chronos', 0) / total_weight,
+            qlib_weight=weights.get('qlib', 0) / total_weight,
             heuristic_weight=weights['heuristic'] / total_weight,
             momentum_weight=weights['momentum'] / total_weight,
             market_regime=regime,
