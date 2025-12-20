@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "paper_mode": true,
+  "min_news_confidence": 0.7,
+  "min_news_urgency": "high",
+  "require_chronos": true,
+  "min_chronos_score": 0.55,
+  "require_qlib": true,
+  "min_qlib_score": 0.52,
+  "require_order_flow": true,
+  "min_buy_pressure": 0.55,
+  "max_concurrent_trades": 2,
+  "symbol_cooldown_minutes": 5,
+  "max_daily_trades": 10,
+  "auto_add_to_watchlist": true,
+  "watchlist_expiry_minutes": 30
+}

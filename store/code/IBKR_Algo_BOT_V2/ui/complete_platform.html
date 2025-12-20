@@ -1244,6 +1244,8 @@
                 <strong style="font-size: 10px;">📌 EMBEDDED PANELS (in this window)</strong>
                 <a href="#" onclick="event.preventDefault(); openAIControlPanel()">🎛️ AI Control Panel</a>
                 <a href="#" onclick="event.preventDefault(); openAIMonitor()">📡 AI Monitor</a>
+                <a href="#" onclick="event.preventDefault(); openNewsTraderPanel()">📰 News Auto-Trader</a>
+                <a href="#" onclick="event.preventDefault(); openAISignalsPanel()">📊 AI Signals (Watchlist)</a>
                 <hr>
                 <strong style="font-size: 10px;">🔧 TOOLS</strong>
                 <a href="#" onclick="event.preventDefault(); openScannerPanel()">🔍 Stock Scanner</a>
@@ -4395,6 +4397,107 @@
                         <button onclick="filterMonitorLog('error')" class="mon-filter" style="flex: 1; padding: 2px; background: #252525; border: none; color: #888; font-size: 9px; border-radius: 2px; cursor: pointer;">ERRORS</button>
                         <button onclick="filterMonitorLog('system')" class="mon-filter" style="flex: 1; padding: 2px; background: #252525; border: none; color: #888; font-size: 9px; border-radius: 2px; cursor: pointer;">SYSTEM</button>
                         <button onclick="clearMonitorLog()" style="padding: 2px 6px; background: #333; border: none; color: #666; font-size: 9px; border-radius: 2px; cursor: pointer;">CLR</button>
+                    </div>
+                </div>
+            `,
+
+            // AI News Auto-Trader Panel
+            newsTrader: `
+                <div class="module-content" style="display: flex; flex-direction: column; height: 100%; padding: 0; font-size: 10px;">
+                    <!-- Status Bar -->
+                    <div style="background: #0d1117; padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <span id="newsTraderStatus" style="width: 8px; height: 8px; border-radius: 50%; background: #666;"></span>
+                                <span style="color: #888;">News Trader</span>
+                            </div>
+                            <div id="newsTraderMode" style="padding: 2px 6px; background: #065f46; color: #10b981; border-radius: 3px; font-size: 9px; font-weight: 600;">PAPER</div>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="toggleNewsTrader()" id="newsTraderToggle" style="padding: 3px 8px; background: #22c55e; border: none; color: #fff; font-size: 9px; border-radius: 3px; cursor: pointer;">START</button>
+                        </div>
+                    </div>
+
+                    <!-- Stats Row -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #333; border-bottom: 1px solid #333;">
+                        <div style="background: #1a1a1a; padding: 4px 6px; text-align: center;">
+                            <div style="color: #666; font-size: 9px;">NEWS</div>
+                            <div id="newsCount" style="color: #60a5fa; font-weight: 600; font-size: 14px;">0</div>
+                        </div>
+                        <div style="background: #1a1a1a; padding: 4px 6px; text-align: center;">
+                            <div style="color: #666; font-size: 9px;">CANDIDATES</div>
+                            <div id="candidateCount" style="color: #fbbf24; font-weight: 600; font-size: 14px;">0</div>
+                        </div>
+                        <div style="background: #1a1a1a; padding: 4px 6px; text-align: center;">
+                            <div style="color: #666; font-size: 9px;">TRADES</div>
+                            <div id="newsTradeCount" style="color: #22c55e; font-weight: 600; font-size: 14px;">0</div>
+                        </div>
+                        <div style="background: #1a1a1a; padding: 4px 6px; text-align: center;">
+                            <div style="color: #666; font-size: 9px;">FILTERED</div>
+                            <div id="filteredCount" style="color: #ef4444; font-weight: 600; font-size: 14px;">0</div>
+                        </div>
+                    </div>
+
+                    <!-- AI Filter Thresholds -->
+                    <div style="padding: 6px 8px; background: #111; border-bottom: 1px solid #333;">
+                        <div style="color: #888; font-size: 9px; margin-bottom: 4px;">AI FILTER THRESHOLDS</div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <span id="chronosFilter" style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
+                                <span style="color: #aaa;">Chronos 55%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <span id="qlibFilter" style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
+                                <span style="color: #aaa;">Qlib 52%</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <span id="orderFlowFilter" style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
+                                <span style="color: #aaa;">OrderFlow 55%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Candidates Feed -->
+                    <div style="flex: 1; overflow-y: auto; background: #0a0a0a;" id="newsCandidateFeed">
+                        <div style="padding: 8px; color: #666; text-align: center;">
+                            Waiting for news signals...
+                        </div>
+                    </div>
+
+                    <!-- Recent Signals Log -->
+                    <div style="height: 100px; overflow-y: auto; background: #111; border-top: 1px solid #333;" id="newsSignalLog">
+                        <div style="padding: 4px 6px; color: #444; font-size: 9px; border-bottom: 1px solid #1a1a1a;">
+                            Signal log will appear here...
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            // AI Signals Panel - Shows real-time AI filter results for watchlist
+            aiSignals: `
+                <div class="module-content" style="display: flex; flex-direction: column; height: 100%; padding: 0; font-size: 10px;">
+                    <!-- Header -->
+                    <div style="background: #0d1117; padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333;">
+                        <span style="color: #60a5fa; font-weight: 600;">AI SIGNALS - WATCHLIST</span>
+                        <button onclick="refreshAISignals()" style="padding: 2px 8px; background: #333; border: none; color: #888; font-size: 9px; border-radius: 3px; cursor: pointer;">REFRESH</button>
+                    </div>
+
+                    <!-- Signal Table -->
+                    <div style="flex: 1; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                            <thead style="position: sticky; top: 0; background: #1a1a1a;">
+                                <tr>
+                                    <th style="padding: 4px 6px; text-align: left; color: #888; border-bottom: 1px solid #333;">SYM</th>
+                                    <th style="padding: 4px 6px; text-align: center; color: #888; border-bottom: 1px solid #333;">CHRONOS</th>
+                                    <th style="padding: 4px 6px; text-align: center; color: #888; border-bottom: 1px solid #333;">QLIB</th>
+                                    <th style="padding: 4px 6px; text-align: center; color: #888; border-bottom: 1px solid #333;">FLOW</th>
+                                    <th style="padding: 4px 6px; text-align: center; color: #888; border-bottom: 1px solid #333;">SIGNAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="aiSignalsTable">
+                                <tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">Loading...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             `,
@@ -9386,6 +9489,216 @@ Confirm order?`;
             createWindow('claudechat', '💬 CLAUDE AI CHAT', windowTemplates.claudechat, 1000, 100, 450, 550);
             // Initialize live monitoring after a brief delay to ensure DOM is ready
             setTimeout(initClaudeLiveMonitoring, 100);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     NEWS AUTO-TRADER PANEL
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let newsTraderInterval = null;
+
+        function openNewsTraderPanel() {
+            const existing = windows.find(w => w.id === 'newstrader');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                return;
+            }
+            createWindow('newstrader', '📰 NEWS AUTO-TRADER', windowTemplates.newsTrader, 100, 100, 380, 450);
+            setTimeout(initNewsTraderPanel, 100);
+        }
+
+        function initNewsTraderPanel() {
+            updateNewsTraderStatus();
+            // Poll every 3 seconds
+            if (newsTraderInterval) clearInterval(newsTraderInterval);
+            newsTraderInterval = setInterval(updateNewsTraderStatus, 3000);
+        }
+
+        async function updateNewsTraderStatus() {
+            try {
+                const response = await fetch('/api/scanner/news-trader/status');
+                const data = await response.json();
+
+                if (data.success) {
+                    // Update status indicator
+                    const statusDot = document.getElementById('newsTraderStatus');
+                    const toggleBtn = document.getElementById('newsTraderToggle');
+                    const modeDiv = document.getElementById('newsTraderMode');
+
+                    if (statusDot) {
+                        statusDot.style.background = data.is_running ? '#22c55e' : '#666';
+                    }
+                    if (toggleBtn) {
+                        toggleBtn.textContent = data.is_running ? 'STOP' : 'START';
+                        toggleBtn.style.background = data.is_running ? '#ef4444' : '#22c55e';
+                    }
+                    if (modeDiv) {
+                        modeDiv.textContent = data.paper_mode ? 'PAPER' : 'LIVE';
+                        modeDiv.style.background = data.paper_mode ? '#065f46' : '#7c2d12';
+                        modeDiv.style.color = data.paper_mode ? '#10b981' : '#f97316';
+                    }
+
+                    // Update stats
+                    const stats = data.stats || {};
+                    updateElement('newsCount', stats.news_received || 0);
+                    updateElement('candidateCount', stats.candidates_evaluated || 0);
+                    updateElement('newsTradeCount', stats.trades_triggered || 0);
+                    updateElement('filteredCount', stats.trades_filtered_out || 0);
+                }
+
+                // Also fetch candidates
+                const candResponse = await fetch('/api/scanner/news-trader/candidates?limit=10');
+                const candData = await candResponse.json();
+
+                if (candData.success && candData.candidates) {
+                    updateCandidateFeed(candData.candidates);
+                }
+            } catch (e) {
+                console.error('News trader update error:', e);
+            }
+        }
+
+        function updateElement(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+
+        function updateCandidateFeed(candidates) {
+            const feed = document.getElementById('newsCandidateFeed');
+            if (!feed) return;
+
+            if (candidates.length === 0) {
+                feed.innerHTML = '<div style="padding: 8px; color: #666; text-align: center;">Waiting for news signals...</div>';
+                return;
+            }
+
+            feed.innerHTML = candidates.map(c => {
+                const passedColor = c.all_filters_passed ? '#22c55e' : '#ef4444';
+                const passedText = c.all_filters_passed ? 'PASS' : 'FILTERED';
+                const timeStr = new Date(c.news_detected_at).toLocaleTimeString();
+
+                return `
+                    <div style="padding: 6px 8px; border-bottom: 1px solid #222; background: ${c.all_filters_passed ? '#0a1a0a' : '#1a0a0a'};">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                            <span style="color: #60a5fa; font-weight: 600;">${c.symbol}</span>
+                            <span style="color: ${passedColor}; font-size: 9px; font-weight: 600;">${passedText}</span>
+                        </div>
+                        <div style="color: #888; font-size: 9px; margin-bottom: 2px;">${(c.news_headline || '').substring(0, 60)}...</div>
+                        <div style="display: flex; gap: 8px; font-size: 9px; color: #666;">
+                            <span>Chronos: ${c.chronos_score ? (c.chronos_score * 100).toFixed(0) + '%' : '--'}</span>
+                            <span>Qlib: ${c.qlib_score ? (c.qlib_score * 100).toFixed(0) + '%' : '--'}</span>
+                            <span>Flow: ${c.order_flow_buy_pressure ? (c.order_flow_buy_pressure * 100).toFixed(0) + '%' : '--'}</span>
+                            <span style="margin-left: auto;">${timeStr}</span>
+                        </div>
+                        ${c.rejection_reason ? `<div style="color: #f87171; font-size: 9px; margin-top: 2px;">❌ ${c.rejection_reason}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleNewsTrader() {
+            try {
+                const response = await fetch('/api/scanner/news-trader/status');
+                const data = await response.json();
+
+                const endpoint = data.is_running ? '/api/scanner/news-trader/stop' : '/api/scanner/news-trader/start?paper_mode=true';
+                await fetch(endpoint, { method: 'POST' });
+
+                setTimeout(updateNewsTraderStatus, 500);
+                showNotification(data.is_running ? 'News Trader stopped' : 'News Trader started (paper mode)', 'info');
+            } catch (e) {
+                showNotification('Error toggling news trader', 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     AI SIGNALS PANEL
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function openAISignalsPanel() {
+            const existing = windows.find(w => w.id === 'aisignals');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                return;
+            }
+            createWindow('aisignals', '📊 AI SIGNALS', windowTemplates.aiSignals, 500, 100, 400, 350);
+            setTimeout(refreshAISignals, 100);
+        }
+
+        async function refreshAISignals() {
+            const table = document.getElementById('aiSignalsTable');
+            if (!table) return;
+
+            table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">Loading...</td></tr>';
+
+            try {
+                // Get watchlist symbols
+                const wlResponse = await fetch('/api/worklist');
+                const wlData = await wlResponse.json();
+
+                if (!wlData.symbols || wlData.symbols.length === 0) {
+                    table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">No symbols in watchlist</td></tr>';
+                    return;
+                }
+
+                const symbols = wlData.symbols.slice(0, 10); // Limit to 10
+                const rows = [];
+
+                for (const sym of symbols) {
+                    try {
+                        // Get AI prediction
+                        const predResponse = await fetch(`/api/stock/ai-prediction/${sym}`);
+                        const predData = await predResponse.json();
+
+                        // Get order flow
+                        const flowResponse = await fetch(`/api/scanner/order-flow/${sym}`);
+                        const flowData = await flowResponse.json();
+
+                        const chronosScore = predData.chronos?.prob_up ? (predData.chronos.prob_up * 100).toFixed(0) : '--';
+                        const qlibScore = predData.qlib?.score ? (predData.qlib.score * 100).toFixed(0) : '--';
+                        const flowScore = flowData.buy_pressure ? (flowData.buy_pressure * 100).toFixed(0) : '--';
+
+                        // Determine overall signal
+                        let signal = 'NEUTRAL';
+                        let signalColor = '#888';
+
+                        const chronosNum = parseFloat(chronosScore) || 50;
+                        const qlibNum = parseFloat(qlibScore) || 50;
+                        const flowNum = parseFloat(flowScore) || 50;
+
+                        if (chronosNum >= 55 && qlibNum >= 52 && flowNum >= 55) {
+                            signal = 'BUY';
+                            signalColor = '#22c55e';
+                        } else if (chronosNum < 45 || flowNum < 45) {
+                            signal = 'AVOID';
+                            signalColor = '#ef4444';
+                        }
+
+                        rows.push(`
+                            <tr style="border-bottom: 1px solid #222;">
+                                <td style="padding: 4px 6px; color: #60a5fa; font-weight: 600;">${sym}</td>
+                                <td style="padding: 4px 6px; text-align: center; color: ${chronosNum >= 55 ? '#22c55e' : chronosNum < 45 ? '#ef4444' : '#888'};">${chronosScore}%</td>
+                                <td style="padding: 4px 6px; text-align: center; color: ${qlibNum >= 52 ? '#22c55e' : qlibNum < 48 ? '#ef4444' : '#888'};">${qlibScore}%</td>
+                                <td style="padding: 4px 6px; text-align: center; color: ${flowNum >= 55 ? '#22c55e' : flowNum < 45 ? '#ef4444' : '#888'};">${flowScore}%</td>
+                                <td style="padding: 4px 6px; text-align: center; color: ${signalColor}; font-weight: 600;">${signal}</td>
+                            </tr>
+                        `);
+                    } catch (e) {
+                        rows.push(`
+                            <tr style="border-bottom: 1px solid #222;">
+                                <td style="padding: 4px 6px; color: #60a5fa;">${sym}</td>
+                                <td colspan="4" style="padding: 4px 6px; text-align: center; color: #666;">Error loading</td>
+                            </tr>
+                        `);
+                    }
+                }
+
+                table.innerHTML = rows.join('');
+            } catch (e) {
+                table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #ef4444;">Error loading signals</td></tr>';
+            }
         }
 
         // Open PDT Monitor window
