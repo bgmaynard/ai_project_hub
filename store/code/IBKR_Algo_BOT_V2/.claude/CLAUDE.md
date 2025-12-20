@@ -464,3 +464,43 @@ GET /api/scanner/backtest/walkforward?symbols=X&days=60 - Run walkforward test
 ## Dependencies
 
 Core: `fastapi`, `uvicorn`, `anthropic`, `pandas`, `numpy`, `scikit-learn`, `lightgbm`, `yfinance`, `ta`, `httpx`, `python-dotenv`
+
+## Dec 19, 2024 Evening Session
+
+### Completed This Session
+1. **News Auto-Trader Pipeline** - Full implementation connecting news → watchlist → AI filters → HFT scalper
+2. **Retrained AI Models**:
+   - Qlib: 54.4% accuracy on 41 momentum stocks (20,459 samples)
+   - AI Predictor: 64.7% accuracy (76.7% AUC) on 23 stocks
+3. **Dashboard Panels Added**:
+   - 📰 News Auto-Trader panel (AI Menu) - Shows live status, candidates, AI filter results
+   - 📊 AI Signals panel (AI Menu) - Shows Chronos/Qlib/OrderFlow scores for watchlist
+4. **Optimized Scalper Config**: 7% spike, 5x volume, 2% stop (tighter stops)
+5. **Backtest Validated**: Chronos enhancement +$5.47 improvement
+
+### Current State
+- News Auto-Trader: **RUNNING** (paper mode)
+- Server: Running on port 9100
+- All TODO items from Dec 18-19: **COMPLETED**
+
+### Next Steps (When Resuming)
+1. Monitor pre-market (4AM-9:30AM) with news auto-trader
+2. Review correlation report after more trades
+3. Consider adding VWAP/EMA confirmation filters
+4. Target: Improve win rate from 27.7% → 40%+
+5. Eventually switch to live trading when paper results improve
+
+### Quick Start Commands
+```bash
+# Start server
+python morpheus_trading_api.py
+
+# Start news auto-trader (API)
+curl -X POST "http://localhost:9100/api/scanner/news-trader/start?paper_mode=true"
+
+# Check status
+curl http://localhost:9100/api/scanner/news-trader/status
+
+# Open dashboard
+start http://localhost:9100/dashboard
+```
