@@ -65,6 +65,10 @@ class EnsemblePrediction:
     rl_action: str = "N/A"  # HOLD, BUY, SELL
     rl_confidence: float = 0.0
 
+    # Polygon scalp model (spike continuation prediction)
+    scalp_score: float = 0.5  # Probability spike continues (vs fades)
+    scalp_verdict: str = "N/A"  # LIKELY_CONTINUE, LIKELY_FADE, NEUTRAL
+
     # Explanation
     signals: List[str] = field(default_factory=list)  # Human-readable signal descriptions
 
@@ -476,6 +480,141 @@ class MomentumScorer:
         return (momentum_score + 1) / 2
 
 
+class PolygonScalpScorer:
+    """
+    Polygon-trained scalp model scorer.
+    Predicts spike continuation probability (will the spike continue or fade?).
+    Trained on Polygon.io minute data with 60.9% AUC.
+    Key insight: Only 47% of spikes continue, 53% fade.
+    """
+
+    def __init__(self):
+        self.model = None
+        self.feature_names = None
+        self.available = False
+        self._load_model()
+
+    def _load_model(self):
+        """Load the trained Polygon scalp model."""
+        import pickle
+        from pathlib import Path
+
+        model_path = Path(__file__).parent / "polygon_scalp_model.pkl"
+        if model_path.exists():
+            try:
+                with open(model_path, 'rb') as f:
+                    data = pickle.load(f)
+                    self.model = data['model']
+                    self.feature_names = data.get('features', [])
+                self.available = True
+                logger.info("Polygon scalp model loaded")
+            except Exception as e:
+                logger.warning(f"Failed to load Polygon scalp model: {e}")
+        else:
+            logger.info("Polygon scalp model not found - run polygon_deep_training.py first")
+
+    def calculate(self, df: pd.DataFrame) -> Tuple[float, Dict]:
+        """
+        Calculate spike continuation probability.
+
+        Returns:
+            (probability 0-1, details dict)
+            Higher = more likely to continue
+        """
+        if not self.available or self.model is None:
+            return 0.5, {"available": False}
+
+        if len(df) < 20:
+            return 0.5, {"available": True, "error": "Insufficient data"}
+
+        try:
+            # Build features matching training pipeline
+            features = self._compute_features(df)
+            if features is None:
+                return 0.5, {"available": True, "error": "Feature computation failed"}
+
+            # Predict
+            prob = self.model.predict_proba([features])[0][1]  # Probability of continuation
+
+            return prob, {
+                "available": True,
+                "prob_continue": prob,
+                "prob_fade": 1 - prob,
+                "verdict": "LIKELY_CONTINUE" if prob > 0.55 else "LIKELY_FADE" if prob < 0.45 else "NEUTRAL"
+            }
+        except Exception as e:
+            logger.debug(f"Polygon scalp calculation failed: {e}")
+            return 0.5, {"available": True, "error": str(e)}
+
+    def _compute_features(self, df: pd.DataFrame) -> Optional[List[float]]:
+        """Compute features for scalp model prediction."""
+        try:
+            close = df['Close'].values
+            high = df['High'].values
+            low = df['Low'].values
+            volume = df['Volume'].values
+
+            # Current spike characteristics
+            spike_size = (close[-1] / close[-2] - 1) * 100 if len(close) > 1 else 0
+            vol_surge = volume[-1] / np.mean(volume[-20:]) if len(volume) > 20 else 1.0
+
+            # Velocity features
+            velocity_1m = spike_size  # 1-min velocity
+            velocity_5m = ((close[-1] / close[-5]) - 1) * 100 if len(close) > 5 else 0
+            accel = velocity_1m - velocity_5m / 5 if velocity_5m != 0 else 0
+
+            # Price position
+            day_range = (max(high[-20:]) - min(low[-20:])) if len(high) > 20 else 1
+            if day_range > 0:
+                price_position = (close[-1] - min(low[-20:])) / day_range
+            else:
+                price_position = 0.5
+
+            # Volume profile
+            vol_consistency = np.std(volume[-10:]) / np.mean(volume[-10:]) if len(volume) > 10 else 1
+
+            # RSI approximation
+            gains = np.diff(close[-15:])
+            avg_gain = np.mean(gains[gains > 0]) if np.any(gains > 0) else 0
+            avg_loss = abs(np.mean(gains[gains < 0])) if np.any(gains < 0) else 1
+            rsi = 100 - (100 / (1 + avg_gain / avg_loss)) if avg_loss > 0 else 50
+
+            # Price momentum
+            ma_5 = np.mean(close[-5:]) if len(close) > 5 else close[-1]
+            ma_20 = np.mean(close[-20:]) if len(close) > 20 else close[-1]
+            above_vwap = 1 if close[-1] > ma_5 else 0
+
+            # Range analysis
+            recent_range = (max(high[-5:]) - min(low[-5:])) / close[-1] * 100 if len(high) > 5 else 0
+
+            # Build feature vector (must match training)
+            features = [
+                spike_size,          # spike_pct
+                vol_surge,           # volume_surge
+                velocity_1m,         # velocity
+                velocity_5m,         # velocity_5m
+                accel,               # acceleration
+                price_position,      # price_position
+                rsi,                 # rsi_proxy
+                vol_consistency,     # vol_consistency
+                recent_range,        # range_pct
+                above_vwap,          # above_ma
+                ma_5 / ma_20 - 1 if ma_20 > 0 else 0,  # trend
+                close[-1],           # price
+                np.mean(volume[-10:]),  # avg_volume
+                max(high[-10:]) - min(low[-10:]) if len(high) > 10 else 0,  # atr_proxy
+                len([g for g in gains if g > 0]) / len(gains) if len(gains) > 0 else 0.5,  # win_rate
+                spike_size * vol_surge,  # momentum_score
+                1 if spike_size > 3 else 0,  # is_strong_spike
+                1 if vol_surge > 3 else 0,  # is_volume_spike
+            ]
+
+            return features
+        except Exception as e:
+            logger.debug(f"Feature computation error: {e}")
+            return None
+
+
 class EnsemblePredictor:
     """
     Ensemble predictor combining multiple methods.
@@ -495,6 +634,7 @@ class EnsemblePredictor:
         self.momentum_scorer = MomentumScorer()
         self.chronos_scorer = ChronosScorer()
         self.qlib_scorer = QlibScorer()
+        self.polygon_scalp_scorer = PolygonScalpScorer()
 
         # Try to load LightGBM predictor
         self.lgb_predictor = None
@@ -641,6 +781,19 @@ class EnsemblePredictor:
         else:
             signals.append(f"Momentum: Neutral ({momentum_score:.2%})")
 
+        # 6. Polygon Scalp Score (spike continuation prediction)
+        scalp_score = 0.5
+        scalp_verdict = "N/A"
+        scalp_details = {}
+        if self.polygon_scalp_scorer.available:
+            try:
+                scalp_score, scalp_details = self.polygon_scalp_scorer.calculate(df)
+                scalp_verdict = scalp_details.get("verdict", "N/A")
+                if scalp_details.get("available"):
+                    signals.append(f"Scalp: {scalp_score:.2%} continue ({scalp_verdict})")
+            except Exception as e:
+                logger.debug(f"Polygon scalp prediction failed: {e}")
+
         # Calculate weighted ensemble score (5 components)
         total_weight = (
             weights['lgb'] +
@@ -767,6 +920,8 @@ class EnsemblePredictor:
             regime_confidence=regime_confidence,
             rl_action=rl_action,
             rl_confidence=rl_confidence,
+            scalp_score=scalp_score,
+            scalp_verdict=scalp_verdict,
             signals=signals
         )
 

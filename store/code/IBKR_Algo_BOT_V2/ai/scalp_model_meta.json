@@ -1,0 +1,130 @@
+{
+  "trained_at": "2025-12-20T11:19:47.976074",
+  "metrics": {
+    "model_type": "LightGBM_Scalp",
+    "total_samples": 106,
+    "positive_rate": 0.36792452830188677,
+    "avg_val_accuracy": 0.6235294117647058,
+    "avg_val_auc": 0.5358669108669109,
+    "avg_precision": 0.1,
+    "avg_recall": 0.02222222222222222,
+    "fold_metrics": [
+      {
+        "fold": 1,
+        "val_acc": 0.47058823529411764,
+        "val_auc": 0.5,
+        "val_precision": 0.0,
+        "val_recall": 0.0
+      },
+      {
+        "fold": 2,
+        "val_acc": 0.5882352941176471,
+        "val_auc": 0.5,
+        "val_precision": 0.0,
+        "val_recall": 0.0
+      },
+      {
+        "fold": 3,
+        "val_acc": 0.47058823529411764,
+        "val_auc": 0.4861111111111111,
+        "val_precision": 0.5,
+        "val_recall": 0.1111111111111111
+      },
+      {
+        "fold": 4,
+        "val_acc": 0.8235294117647058,
+        "val_auc": 0.6547619047619047,
+        "val_precision": 0.0,
+        "val_recall": 0.0
+      },
+      {
+        "fold": 5,
+        "val_acc": 0.7647058823529411,
+        "val_auc": 0.5384615384615384,
+        "val_precision": 0.0,
+        "val_recall": 0.0
+      }
+    ],
+    "top_features": [
+      {
+        "feature": "range_pct",
+        "importance": 2.5088999271392822
+      },
+      {
+        "feature": "return_2m",
+        "importance": 0.0
+      },
+      {
+        "feature": "return_1m",
+        "importance": 0.0
+      },
+      {
+        "feature": "return_5m",
+        "importance": 0.0
+      },
+      {
+        "feature": "vol_surge",
+        "importance": 0.0
+      },
+      {
+        "feature": "velocity_1m",
+        "importance": 0.0
+      },
+      {
+        "feature": "velocity_2m",
+        "importance": 0.0
+      },
+      {
+        "feature": "vwap_dev",
+        "importance": 0.0
+      },
+      {
+        "feature": "trades_surge",
+        "importance": 0.0
+      },
+      {
+        "feature": "is_premarket",
+        "importance": 0.0
+      },
+      {
+        "feature": "is_open",
+        "importance": 0.0
+      },
+      {
+        "feature": "is_power_hour",
+        "importance": 0.0
+      },
+      {
+        "feature": "prev_5m_trend",
+        "importance": 0.0
+      },
+      {
+        "feature": "hour",
+        "importance": 0.0
+      },
+      {
+        "feature": "minute",
+        "importance": 0.0
+      }
+    ],
+    "trained_at": "2025-12-20T11:19:47.976074"
+  },
+  "feature_names": [
+    "return_1m",
+    "return_2m",
+    "return_5m",
+    "vol_surge",
+    "velocity_1m",
+    "velocity_2m",
+    "range_pct",
+    "vwap_dev",
+    "trades_surge",
+    "is_premarket",
+    "is_open",
+    "is_power_hour",
+    "prev_5m_trend",
+    "hour",
+    "minute"
+  ],
+  "model_path": "ai/scalp_model.pkl"
+}

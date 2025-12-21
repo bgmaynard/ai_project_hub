@@ -371,6 +371,26 @@ except ImportError as e:
     logger.warning(f"Data Collection routes not available: {e}")
     HAS_DATA_COLLECTION = False
 
+# Scalp Assistant Routes (HFT Exit Manager)
+try:
+    from ai.scalp_assistant_routes import router as scalp_router
+    app.include_router(scalp_router, tags=["Scalp Assistant"])
+    HAS_SCALP_ASSISTANT = True
+    logger.info("Scalp Assistant routes included")
+except ImportError as e:
+    logger.warning(f"Scalp Assistant routes not available: {e}")
+    HAS_SCALP_ASSISTANT = False
+
+# Polygon Real-Time Streaming Routes
+try:
+    from polygon_streaming_routes import router as polygon_stream_router
+    app.include_router(polygon_stream_router, tags=["Polygon Streaming"])
+    HAS_POLYGON_STREAMING = True
+    logger.info("Polygon Streaming routes included")
+except ImportError as e:
+    logger.warning(f"Polygon Streaming routes not available: {e}")
+    HAS_POLYGON_STREAMING = False
+
 
 # ============================================================================
 # PYDANTIC MODELS
@@ -707,6 +727,74 @@ async def get_snapshot(symbol: str):
 
     except Exception as e:
         logger.error(f"Error fetching snapshot: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/movers")
+async def get_market_movers(index: str = "$SPX", direction: str = "up"):
+    """
+    Get top market movers (gainers or losers) from Schwab
+
+    Args:
+        index: Index to scan ($SPX, $COMPX, $DJI)
+        direction: "up" for gainers, "down" for losers
+    """
+    try:
+        from schwab_market_data import get_schwab_movers, get_all_movers
+
+        if direction == "all":
+            return get_all_movers()
+        else:
+            movers = get_schwab_movers(index, direction)
+            return {
+                "index": index,
+                "direction": direction,
+                "count": len(movers),
+                "movers": movers
+            }
+    except Exception as e:
+        logger.error(f"Error getting movers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/movers/scalp")
+async def get_scalp_candidates():
+    """
+    Get movers filtered for scalping criteria:
+    - Price $1-$20
+    - Change 5%+
+    - Volume 500K+
+    """
+    try:
+        from schwab_market_data import get_all_movers
+
+        all_movers = get_all_movers()
+        scalp_candidates = []
+
+        for mover in all_movers.get('gainers', []):
+            price = mover.get('price', 0)
+            change = mover.get('change_pct', 0)
+            volume = mover.get('volume', 0)
+
+            if 1.0 <= price <= 20.0 and change >= 5.0 and volume >= 500000:
+                mover['scalp_score'] = int(change * 2 + (volume / 1000000))
+                scalp_candidates.append(mover)
+
+        # Sort by scalp score
+        scalp_candidates.sort(key=lambda x: x.get('scalp_score', 0), reverse=True)
+
+        return {
+            "count": len(scalp_candidates),
+            "candidates": scalp_candidates[:20],
+            "criteria": {
+                "min_price": 1.0,
+                "max_price": 20.0,
+                "min_change_pct": 5.0,
+                "min_volume": 500000
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting scalp candidates: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -93,6 +93,11 @@ class ScalperConfig:
     use_regime_gating: bool = True  # Filter entries by market regime
     valid_regimes: List[str] = field(default_factory=lambda: ['TRENDING_UP', 'RANGING'])
 
+    # Scalp Fade Filter (uses Polygon real-time data)
+    use_scalp_fade_filter: bool = True  # Filter fading spikes
+    scalp_fade_threshold: float = 0.45  # Below this = FADE
+    scalp_continue_threshold: float = 0.55  # Above this = CONTINUE
+
     # ATR-based dynamic stops
     use_atr_stops: bool = True  # Use ATR-based stops instead of fixed %
     atr_stop_multiplier: float = 1.5  # Stop at 1.5x ATR
@@ -214,6 +219,10 @@ class HFTScalper:
         self.daily_trades = 0
         self.last_loss_time: Optional[datetime] = None
 
+        # Filter stats
+        self.fade_filter_rejects = 0
+        self.fade_filter_approves = 0
+
         # Priority queue for news-triggered entries
         self.priority_symbols: List[str] = []  # Symbols to check immediately
 
@@ -296,6 +305,45 @@ class HFTScalper:
         except Exception as e:
             logger.warning(f"Chronos check failed for {symbol}: {e}")
             return None
+
+    def _check_scalp_fade_signal(self, symbol: str) -> tuple:
+        """
+        Check if scalp model predicts fade using real-time Polygon data.
+
+        Returns:
+            (should_trade, probability, verdict)
+        """
+        try:
+            from ai.ensemble_predictor import PolygonScalpScorer
+            from polygon_streaming import get_polygon_stream
+
+            # Get or create scorer (singleton)
+            if not hasattr(self, '_scalp_scorer'):
+                self._scalp_scorer = PolygonScalpScorer()
+
+            if not self._scalp_scorer.available:
+                return True, 0.5, "MODEL_N/A"
+
+            # Get real-time minute bars from Polygon stream
+            stream = get_polygon_stream()
+            df = stream.get_minute_bars(symbol, minutes=30)
+
+            if df is None or len(df) < 20:
+                return True, 0.5, "INSUFFICIENT_DATA"
+
+            prob, details = self._scalp_scorer.calculate(df)
+            verdict = details.get("verdict", "NEUTRAL")
+
+            fade_threshold = getattr(self.config, 'scalp_fade_threshold', 0.45)
+
+            if prob < fade_threshold:
+                return False, prob, "LIKELY_FADE"
+
+            return True, prob, verdict
+
+        except Exception as e:
+            logger.warning(f"Scalp fade check failed for {symbol}: {e}")
+            return True, 0.5, "ERROR"
 
     def update_config(self, **kwargs):
         """Update configuration"""
@@ -492,6 +540,23 @@ class HFTScalper:
                     signal['regime_confidence'] = context.regime_confidence
             except Exception as e:
                 logger.warning(f"Regime gating check failed for {symbol}: {e}")
+
+        # Apply Scalp Fade Filter if enabled
+        if signal and getattr(self.config, 'use_scalp_fade_filter', False):
+            should_trade, prob, verdict = self._check_scalp_fade_signal(symbol)
+
+            if not should_trade:
+                logger.info(f"🚫 FADE FILTER: {symbol} rejected - {prob:.0%} continuation ({verdict})")
+                self.fade_filter_rejects += 1
+                return None
+
+            # Add scalp data to signal
+            signal['scalp_prob'] = prob
+            signal['scalp_verdict'] = verdict
+            self.fade_filter_approves += 1
+
+            if verdict == "LIKELY_CONTINUE":
+                logger.info(f"✅ FADE FILTER: {symbol} approved - {prob:.0%} continuation")
 
         if signal and self.on_signal:
             self.on_signal(signal)
@@ -805,6 +870,19 @@ class HFTScalper:
         if symbols:
             self.config.watchlist = [s.upper() for s in symbols]
             self._save_config()
+
+        # Subscribe watchlist to Polygon stream for fade filter
+        if getattr(self.config, 'use_scalp_fade_filter', False):
+            try:
+                from polygon_streaming import get_polygon_stream
+                stream = get_polygon_stream()
+                for symbol in self.config.watchlist:
+                    stream.subscribe_trades(symbol)
+                    stream.subscribe_luld(symbol)
+                stream.start()
+                logger.info(f"Polygon stream started for fade filter: {len(self.config.watchlist)} symbols")
+            except Exception as e:
+                logger.warning(f"Polygon stream failed to start: {e}")
 
         self.is_running = True
         self._thread = threading.Thread(target=self._run_loop, daemon=True)

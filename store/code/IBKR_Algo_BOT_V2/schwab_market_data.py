@@ -509,6 +509,85 @@ def get_schwab_quote(symbol: str) -> Optional[Dict]:
     return None
 
 
+def get_schwab_movers(index: str = "$SPX", direction: str = "up", change_type: str = "percent") -> List[Dict]:
+    """
+    Get top movers from Schwab (gainers or losers)
+
+    Args:
+        index: Index to get movers for ($SPX, $COMPX, $DJI)
+        direction: "up" for gainers, "down" for losers
+        change_type: "percent" or "value"
+
+    Returns:
+        List of mover dictionaries
+    """
+    try:
+        # Schwab movers endpoint
+        endpoint = f"/marketdata/v1/movers/{index}"
+        params = {
+            "sort": "PERCENT_CHANGE_UP" if direction == "up" else "PERCENT_CHANGE_DOWN",
+            "frequency": "0"  # 0 = all, 1 = 5 min, etc.
+        }
+
+        data = _make_request(endpoint, params)
+
+        if not data:
+            logger.warning(f"No movers data returned for {index}")
+            return []
+
+        movers = []
+        screeners = data.get('screeners', [])
+
+        for screener in screeners:
+            instruments = screener.get('instruments', [])
+            for inst in instruments:
+                movers.append({
+                    'symbol': inst.get('symbol', ''),
+                    'description': inst.get('description', ''),
+                    'price': inst.get('last', 0),
+                    'change': inst.get('netChange', 0),
+                    'change_pct': inst.get('netPercentChange', 0),
+                    'volume': inst.get('totalVolume', 0),
+                    'direction': direction
+                })
+
+        return movers
+
+    except Exception as e:
+        logger.error(f"Error getting Schwab movers: {e}")
+        return []
+
+
+def get_all_movers() -> Dict[str, List[Dict]]:
+    """
+    Get both gainers and losers from multiple indices
+
+    Returns:
+        Dictionary with 'gainers' and 'losers' lists
+    """
+    results = {
+        'gainers': [],
+        'losers': [],
+        'timestamp': datetime.now().isoformat()
+    }
+
+    # Get SPX movers (most common)
+    results['gainers'] = get_schwab_movers("$SPX", "up")
+    results['losers'] = get_schwab_movers("$SPX", "down")
+
+    # Also try NASDAQ
+    nasdaq_gainers = get_schwab_movers("$COMPX", "up")
+    for m in nasdaq_gainers:
+        if m['symbol'] not in [g['symbol'] for g in results['gainers']]:
+            results['gainers'].append(m)
+
+    # Sort by change percent
+    results['gainers'] = sorted(results['gainers'], key=lambda x: x.get('change_pct', 0), reverse=True)
+    results['losers'] = sorted(results['losers'], key=lambda x: x.get('change_pct', 0))
+
+    return results
+
+
 # ============================================================================
 # TEST
 # ============================================================================

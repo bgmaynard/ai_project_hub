@@ -701,9 +701,10 @@ async def get_price_compat(symbol: str):
 
 @router.get("/api/level2/{symbol}")
 async def get_level2_compat(symbol: str):
-    """Level 2 endpoint - uses Schwab"""
+    """Level 2 endpoint - uses Schwab + Polygon LULD"""
     try:
         quote = None
+        luld = None
 
         # Use unified market data (Schwab)
         if HAS_UNIFIED:
@@ -713,18 +714,27 @@ async def get_level2_compat(symbol: str):
             except Exception:
                 pass
 
-        if not quote:
-            return {"bids": [], "asks": []}
+        # Get LULD bands from Polygon stream
+        try:
+            from polygon_streaming import get_polygon_stream
+            stream = get_polygon_stream()
+            luld = stream.get_luld_bands(symbol.upper())
+        except Exception:
+            pass
 
-        # Simple bid/ask structure with source info
+        if not quote:
+            return {"bids": [], "asks": [], "luld": luld}
+
+        # Simple bid/ask structure with source info and LULD
         return {
             "symbol": symbol.upper(),
             "bids": [{"price": quote.get("bid", 0), "size": quote.get("bid_size", 100)}],
             "asks": [{"price": quote.get("ask", 0), "size": quote.get("ask_size", 100)}],
-            "source": quote.get("source", "unknown")
+            "source": quote.get("source", "unknown"),
+            "luld": luld
         }
     except Exception as e:
-        return {"bids": [], "asks": []}
+        return {"bids": [], "asks": [], "luld": None}
 
 
 @router.get("/api/timesales/{symbol}")

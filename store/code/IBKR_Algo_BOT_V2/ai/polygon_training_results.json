@@ -1,0 +1,143 @@
+{
+  "start_time": "2025-12-20T12:34:40.712977",
+  "data_collection": {
+    "daily_symbols": 69,
+    "daily_samples": 126233,
+    "minute_samples": 191170
+  },
+  "models": {
+    "lightgbm_daily": {
+      "model_type": "LightGBM Daily",
+      "samples": 112502,
+      "features": 39,
+      "avg_accuracy": 0.5374186666666667,
+      "avg_auc": 0.546726978516283,
+      "fold_results": [
+        {
+          "fold": 1,
+          "accuracy": 0.5365333333333333,
+          "auc": 0.542301214636842,
+          "best_iteration": 78
+        },
+        {
+          "fold": 2,
+          "accuracy": 0.54112,
+          "auc": 0.5542171662400237,
+          "best_iteration": 65
+        },
+        {
+          "fold": 3,
+          "accuracy": 0.5289066666666666,
+          "auc": 0.537169072590952,
+          "best_iteration": 102
+        },
+        {
+          "fold": 4,
+          "accuracy": 0.5486933333333334,
+          "auc": 0.5618930520934086,
+          "best_iteration": 169
+        },
+        {
+          "fold": 5,
+          "accuracy": 0.53184,
+          "auc": 0.5380543870201888,
+          "best_iteration": 207
+        }
+      ],
+      "top_features": [
+        {
+          "feature": "return_1d",
+          "importance": 367
+        },
+        {
+          "feature": "gap",
+          "importance": 325
+        },
+        {
+          "feature": "volume_ratio",
+          "importance": 294
+        },
+        {
+          "feature": "bb_pct",
+          "importance": 278
+        },
+        {
+          "feature": "return_5d",
+          "importance": 267
+        },
+        {
+          "feature": "price_vs_sma200",
+          "importance": 246
+        },
+        {
+          "feature": "rsi_14",
+          "importance": 243
+        },
+        {
+          "feature": "volatility_60d",
+          "importance": 234
+        },
+        {
+          "feature": "volatility_10d",
+          "importance": 233
+        },
+        {
+          "feature": "macd_hist",
+          "importance": 232
+        },
+        {
+          "feature": "daily_range",
+          "importance": 220
+        },
+        {
+          "feature": "price_vs_sma10",
+          "importance": 216
+        },
+        {
+          "feature": "range_ma10",
+          "importance": 207
+        },
+        {
+          "feature": "return_10d",
+          "importance": 200
+        },
+        {
+          "feature": "volume_ma20",
+          "importance": 200
+        },
+        {
+          "feature": "atr_pct",
+          "importance": 197
+        },
+        {
+          "feature": "macd_signal",
+          "importance": 190
+        },
+        {
+          "feature": "volume_ma10",
+          "importance": 182
+        },
+        {
+          "feature": "return_20d",
+          "importance": 179
+        },
+        {
+          "feature": "volatility_20d",
+          "importance": 173
+        }
+      ],
+      "model_path": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\ai\\polygon_lgb_daily.pkl"
+    },
+    "scalp_model": {
+      "model_type": "Scalp Model",
+      "spike_events": 5180,
+      "spike_continuation_rate": 0.4714285714285714,
+      "val_accuracy": 0.5752895752895753,
+      "val_auc": 0.6093360183475974,
+      "model_path": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\ai\\polygon_scalp_model.pkl"
+    }
+  },
+  "end_time": "2025-12-20T12:35:43.003819",
+  "duration_seconds": 62.290842,
+  "duration_minutes": 1.0381807
+}

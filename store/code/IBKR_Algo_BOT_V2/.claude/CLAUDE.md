@@ -133,12 +133,84 @@ DELETE /api/scanner/scalper/watchlist/{symbol}      - Remove symbol
 4. **Reversal detection (2% drop)** - Exit if was up
 5. **Max hold time (3 min)** - Only exit if flat/down, let winners run
 
+## HFT Scalp Assistant (Dec 20, 2024)
+
+AI-assisted exit manager for manual trades. Human enters via ThinkOrSwim, AI monitors and auto-exits.
+
+| File | Purpose |
+|------|---------|
+| `ai/scalp_assistant.py` | Core monitoring logic, exit triggers |
+| `ai/scalp_assistant_routes.py` | REST API endpoints |
+| `ai/scalp_assistant_config.json` | Configuration (persisted) |
+| `ai/scalp_assistant_history.json` | Exit history |
+
+### Scalp Assistant API Endpoints
+
+```
+GET  /api/scalp/status             - Status & monitored positions
+POST /api/scalp/start              - Start monitoring
+POST /api/scalp/stop               - Stop monitoring
+POST /api/scalp/takeover/{symbol}  - Enable AI control for position
+POST /api/scalp/release/{symbol}   - Disable AI, return to manual
+GET  /api/scalp/config             - Get configuration
+POST /api/scalp/config             - Update configuration
+GET  /api/scalp/positions          - Get all positions
+GET  /api/scalp/history            - Get exit history
+POST /api/scalp/sync               - Force sync from broker
+POST /api/scalp/paper/{mode}       - Enable/disable paper mode
+GET  /api/scalp/stats              - Performance statistics
+POST /api/scalp/reset-stats        - Reset statistics
+```
+
+### Dashboard Integration
+
+- **Positions Table**: New "AI" column with checkbox to enable/disable AI takeover per position
+- **Scalp Monitor Window**: Tools > Scalp Assistant - shows real-time monitoring status
+- AI status indicator in positions header
+
+### Exit Triggers
+
+1. **Stop Loss (-3%)** - Always protect capital
+2. **Profit Target (+3%)** - Activates trailing mode
+3. **Trailing Stop (1.5%)** - Locks in gains from high
+4. **Momentum Reversal** - 3 consecutive red candles
+5. **Velocity Death** - Price stalls while down
+6. **Max Hold Time (180s)** - Only exits if flat/down
+
+### Key Insight (from training analysis)
+
+- 63% of momentum spikes fade within 3 minutes
+- Prediction models don't work for scalping - execution/exit strategy matters
+- Human edge: Entry identification (intuition, pattern recognition)
+- AI edge: Exit discipline (no emotion, no FOMO)
+
 ## Market Data Providers
 
 | File | Purpose |
 |------|---------|
 | `schwab_market_data.py` | Real-time quotes & price history |
 | `polygon_data.py` | Polygon.io historical bars & reference data |
+| `polygon_streaming.py` | Real-time WebSocket trades/quotes (paid tier) |
+| `polygon_streaming_routes.py` | Streaming API endpoints |
+
+### Polygon Streaming API (Advanced Plan - $199/mo)
+
+```
+GET  /api/polygon/stream/status          - Stream status
+POST /api/polygon/stream/start           - Start WebSocket
+POST /api/polygon/stream/subscribe       - Subscribe to symbol
+GET  /api/polygon/stream/trades/{sym}    - Get real-time trades (tape)
+GET  /api/polygon/stream/quote/{sym}     - Get real-time quote
+GET  /api/polygon/stream/tape            - Combined tape all symbols
+POST /api/polygon/stream/subscribe-watchlist - Subscribe multiple symbols
+```
+
+**Features:**
+- Real-time trades (time & sales) via WebSocket (~50ms latency)
+- Real-time NBBO quotes
+- Level 2 order book depth
+- 20 years historical data
+- Dashboard Time & Sales auto-uses Polygon when streaming
 
 The `ai/` directory also contains 50+ "warrior_" prefixed modules for momentum scanning, pattern detection, risk management, and sentiment analysis.
 
