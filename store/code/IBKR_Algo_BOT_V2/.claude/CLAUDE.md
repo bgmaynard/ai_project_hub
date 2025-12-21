@@ -713,3 +713,110 @@ wrapper = integrate_gating_with_scalper(scalper)
 3. **Pre-approved signals**: No live inference, only validated contracts
 4. **Regime-aware**: Trades blocked in unfavorable market conditions
 5. **Risk protection**: Multiple layers of validation before execution
+
+## Dec 20, 2024 Afternoon - Pre-Market Automation System
+
+### New Automation Components
+
+| File | Purpose |
+|------|---------|
+| `auto_scan_trade.py` | Auto-scan + trade with watchlist sync |
+| `premarket_scanner.py` | Multi-source scanner (Yahoo + Schwab + News) |
+| `monitor.py` | Quick system status overview |
+| `SCHEDULE_4AM_PREMARKET.bat` | Windows Task Scheduler setup |
+
+### Auto Scan & Trade Pipeline
+
+**Flow:**
+1. Scan Yahoo Finance (day_gainers, most_actives) - works 24/7
+2. Scan Schwab movers (market hours only)
+3. Filter for scalp criteria: $1-$20 price, 5%+ gap, 500K+ volume
+4. Score = (Change% × 2) + (Volume in millions)
+5. Add top 5 picks to BOTH watchlists (scalper + dashboard)
+6. Start HFT Scalper in paper mode
+
+**Usage:**
+```bash
+# One-time scan
+python auto_scan_trade.py
+
+# Continuous mode (every 5 min)
+python auto_scan_trade.py --continuous
+
+# Scheduled 4AM start
+START_4AM_PREMARKET.bat
+```
+
+### Watchlist Sync Fix
+
+**Problem:** Scanner added stocks to scalper's internal watchlist but not the dashboard worklist user sees.
+
+**Solution:** `auto_scan_trade.py` now adds to BOTH:
+- `POST /api/scanner/scalper/watchlist/add/{symbol}` - for trading
+- `POST /api/worklist/add` with `{"symbol": "XXX"}` - for visibility
+
+### Market Movers API Endpoints
+
+Added to `schwab_market_data.py` and `morpheus_trading_api.py`:
+
+```
+GET /api/market/movers?direction=up      - Schwab gainers
+GET /api/market/movers?direction=down    - Schwab losers
+GET /api/market/movers?direction=all     - Both gainers & losers
+GET /api/market/movers/scalp             - Pre-filtered for scalping
+```
+
+### Monitor Tool
+
+Quick status check for all system components:
+```bash
+python monitor.py
+```
+
+Shows:
+- Server status
+- Scalper status (monitoring, trading, paper mode)
+- Current watchlist with prices
+- AI filters status (Chronos, Qlib, Order Flow, Regime, Scalp Fade)
+- Recent trades
+- Lifetime statistics
+
+### Batch Files Updated
+
+| File | Purpose |
+|------|---------|
+| `START_4AM_PREMARKET.bat` | Now uses auto_scan_trade.py |
+| `SCHEDULE_4AM_PREMARKET.bat` | Creates Windows Task Scheduler job for weekdays 4AM |
+
+**To schedule 4AM auto-start:**
+1. Right-click `SCHEDULE_4AM_PREMARKET.bat` → Run as Administrator
+2. Task "Morpheus_4AM_PreMarket" created for weekdays at 4:00 AM
+
+### Quick Start for Monday
+
+```bash
+# Option 1: Manual start
+python morpheus_trading_api.py
+python auto_scan_trade.py
+
+# Option 2: Batch file
+START_4AM_PREMARKET.bat
+
+# Monitor
+python monitor.py
+start http://localhost:9100/dashboard
+```
+
+### Current Model Accuracies
+
+| Model | Accuracy | Samples |
+|-------|----------|---------|
+| Qlib | 56.1% | - |
+| Momentum | 54.1% | - |
+| Scalp | 62.4% | - |
+| Polygon Daily | 53.7% | - |
+| Polygon Scalp | 57.5% | - |
+
+### Win Rate Status
+- Backtest: 28.9% win rate, -$304.45 total PnL
+- Target: Improve to 40%+ through better entry filtering
