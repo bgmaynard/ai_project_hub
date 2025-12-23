@@ -149,8 +149,8 @@ class IntelligentWatchlistManager:
         self.max_watchlist_size = 50
 
         # Qualification thresholds
-        self.min_price = 0.50
-        self.max_price = 50.00
+        self.min_price = 1.00   # Warrior method: $1 minimum
+        self.max_price = 20.00  # Warrior method: $20 maximum
         self.min_volume_ratio = 1.5  # 1.5x average volume
         self.min_spike_pct = 2.0     # 2% move to qualify
 

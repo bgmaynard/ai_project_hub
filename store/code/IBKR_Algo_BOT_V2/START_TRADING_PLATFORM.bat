@@ -33,14 +33,23 @@ if not exist ".env" (
 )
 echo       [OK] .env file found
 
-:: Check Python
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo       [X] Python not found!
+:: Activate Python 3.11 Virtual Environment
+if exist "venv311\Scripts\activate.bat" (
+    call venv311\Scripts\activate.bat
+    echo       [OK] Python 3.11 venv activated
+) else (
+    echo       [X] venv311 not found! Run setup first.
     pause
     exit /b 1
 )
-echo       [OK] Python found
+
+:: Check Python version
+python --version 2>&1 | findstr "3.11" >nul
+if errorlevel 1 (
+    echo       [!] Warning: Not using Python 3.11
+) else (
+    echo       [OK] Python 3.11 confirmed
+)
 
 :: ============================================================================
 :: STEP 2: Kill existing processes on port 9100

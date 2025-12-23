@@ -16,8 +16,11 @@ logger = logging.getLogger(__name__)
 # Global state
 _stream_client = None
 _quote_cache: Dict[str, Dict] = {}
+_book_cache: Dict[str, Dict] = {}  # Level 2 order book cache
 _quote_callbacks: List[Callable] = []
+_book_callbacks: List[Callable] = []  # L2 book callbacks
 _subscribed_symbols: Set[str] = set()
+_book_symbols: Set[str] = set()  # Symbols with L2 book subscription
 _stream_thread: Optional[threading.Thread] = None
 _stream_loop: Optional[asyncio.AbstractEventLoop] = None
 _is_running = False
@@ -33,6 +36,31 @@ def get_quote_cache() -> Dict[str, Dict]:
 def get_cached_quote(symbol: str) -> Optional[Dict]:
     """Get cached quote for a symbol"""
     return _quote_cache.get(symbol.upper())
+
+
+def get_book_cache() -> Dict[str, Dict]:
+    """Get the current L2 book cache"""
+    return _book_cache.copy()
+
+
+def get_cached_book(symbol: str) -> Optional[Dict]:
+    """Get cached L2 book for a symbol"""
+    return _book_cache.get(symbol.upper())
+
+
+def register_book_callback(callback: Callable):
+    """Register a callback for L2 book updates"""
+    if callback not in _book_callbacks:
+        _book_callbacks.append(callback)
+
+
+def _notify_book_callbacks(symbol: str, book: Dict):
+    """Notify all registered callbacks of a book update"""
+    for callback in _book_callbacks:
+        try:
+            callback(symbol, book)
+        except Exception as e:
+            logger.error(f"Book callback error: {e}")
 
 
 def register_callback(callback: Callable):
@@ -116,10 +144,96 @@ async def _run_stream():
         # Add handler
         _stream_client.add_level_one_equity_handler(quote_handler)
 
+        # Handler for NYSE Level 2 book updates
+        def nyse_book_handler(msg):
+            """Process NYSE L2 book messages"""
+            try:
+                if 'content' in msg:
+                    for item in msg['content']:
+                        symbol = item.get('key', '').upper()
+                        if symbol:
+                            # Parse bids and asks from book data
+                            bids = []
+                            asks = []
+                            # Book data comes as arrays of price/size/exchange
+                            for i in range(10):  # Up to 10 levels
+                                bid_price = item.get(f'BID_PRICE_{i}', item.get(str(i*3), 0))
+                                bid_size = item.get(f'BID_SIZE_{i}', item.get(str(i*3+1), 0))
+                                ask_price = item.get(f'ASK_PRICE_{i}', item.get(str(i*3+10), 0))
+                                ask_size = item.get(f'ASK_SIZE_{i}', item.get(str(i*3+11), 0))
+                                if bid_price and bid_size:
+                                    bids.append({'price': bid_price, 'size': bid_size, 'exchange': 'NYSE'})
+                                if ask_price and ask_size:
+                                    asks.append({'price': ask_price, 'size': ask_size, 'exchange': 'NYSE'})
+
+                            book = {
+                                'symbol': symbol,
+                                'bids': sorted(bids, key=lambda x: x['price'], reverse=True),
+                                'asks': sorted(asks, key=lambda x: x['price']),
+                                'timestamp': datetime.now().isoformat(),
+                                'source': 'schwab_nyse_book'
+                            }
+                            _book_cache[symbol] = book
+                            _notify_book_callbacks(symbol, book)
+                            logger.debug(f"NYSE book update: {symbol} - {len(bids)} bids, {len(asks)} asks")
+            except Exception as e:
+                logger.error(f"NYSE book handler error: {e}")
+
+        # Handler for NASDAQ Level 2 book updates
+        def nasdaq_book_handler(msg):
+            """Process NASDAQ L2 book messages"""
+            try:
+                if 'content' in msg:
+                    for item in msg['content']:
+                        symbol = item.get('key', '').upper()
+                        if symbol:
+                            bids = []
+                            asks = []
+                            for i in range(10):
+                                bid_price = item.get(f'BID_PRICE_{i}', item.get(str(i*3), 0))
+                                bid_size = item.get(f'BID_SIZE_{i}', item.get(str(i*3+1), 0))
+                                ask_price = item.get(f'ASK_PRICE_{i}', item.get(str(i*3+10), 0))
+                                ask_size = item.get(f'ASK_SIZE_{i}', item.get(str(i*3+11), 0))
+                                mm = item.get(f'MARKET_MAKER_{i}', '')
+                                if bid_price and bid_size:
+                                    bids.append({'price': bid_price, 'size': bid_size, 'market_maker': mm})
+                                if ask_price and ask_size:
+                                    asks.append({'price': ask_price, 'size': ask_size, 'market_maker': mm})
+
+                            book = {
+                                'symbol': symbol,
+                                'bids': sorted(bids, key=lambda x: x['price'], reverse=True),
+                                'asks': sorted(asks, key=lambda x: x['price']),
+                                'timestamp': datetime.now().isoformat(),
+                                'source': 'schwab_nasdaq_book'
+                            }
+                            _book_cache[symbol] = book
+                            _notify_book_callbacks(symbol, book)
+                            logger.debug(f"NASDAQ book update: {symbol} - {len(bids)} bids, {len(asks)} asks")
+            except Exception as e:
+                logger.error(f"NASDAQ book handler error: {e}")
+
+        # Add book handlers
+        try:
+            _stream_client.add_nyse_book_handler(nyse_book_handler)
+            _stream_client.add_nasdaq_book_handler(nasdaq_book_handler)
+            logger.info("Schwab streaming: L2 book handlers registered")
+        except Exception as e:
+            logger.warning(f"Could not add book handlers: {e}")
+
         # Subscribe to symbols if any are pending
         if _subscribed_symbols:
             await _stream_client.level_one_equity_subs(list(_subscribed_symbols))
             logger.info(f"Schwab streaming: subscribed to {len(_subscribed_symbols)} symbols")
+
+        # Subscribe to L2 books if any symbols pending
+        if _book_symbols:
+            try:
+                await _stream_client.nasdaq_book_subs(list(_book_symbols))
+                await _stream_client.nyse_book_subs(list(_book_symbols))
+                logger.info(f"Schwab streaming: L2 book subscribed to {len(_book_symbols)} symbols")
+            except Exception as e:
+                logger.warning(f"Could not subscribe to L2 books: {e}")
 
         _is_running = True
         logger.info("Schwab streaming: started")
@@ -216,12 +330,48 @@ def unsubscribe(symbols: List[str]):
         _subscribed_symbols.discard(s.upper())
 
 
+async def _subscribe_book(symbols: List[str]):
+    """Subscribe to L2 book (async)"""
+    global _stream_client, _book_symbols
+    if _stream_client and _is_running:
+        try:
+            await _stream_client.nasdaq_book_subs(symbols)
+            await _stream_client.nyse_book_subs(symbols)
+            _book_symbols.update(s.upper() for s in symbols)
+            logger.info(f"L2 book subscribed: {symbols}")
+        except Exception as e:
+            logger.error(f"L2 book subscribe error: {e}")
+
+
+def subscribe_book(symbols: List[str]):
+    """Subscribe to L2 order book for symbols"""
+    global _book_symbols, _stream_loop
+
+    symbols = [s.upper() for s in symbols]
+    _book_symbols.update(symbols)
+
+    if _is_running and _stream_loop:
+        try:
+            future = asyncio.run_coroutine_threadsafe(
+                _subscribe_book(symbols),
+                _stream_loop
+            )
+            future.result(timeout=5)
+            return True
+        except Exception as e:
+            logger.error(f"L2 book subscribe error: {e}")
+            return False
+    return False
+
+
 def get_status() -> Dict:
     """Get streaming status"""
     return {
         "running": _is_running,
         "subscribed_symbols": list(_subscribed_symbols),
+        "book_symbols": list(_book_symbols),
         "cached_quotes": len(_quote_cache),
+        "cached_books": len(_book_cache),
         "callbacks_registered": len(_quote_callbacks)
     }
 

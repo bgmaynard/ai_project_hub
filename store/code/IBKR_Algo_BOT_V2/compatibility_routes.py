@@ -3,6 +3,7 @@ Compatibility Routes for Legacy UI
 Maps old IBKR endpoints to new broker endpoints
 Primary broker: Schwab (as of v2.1.0)
 """
+import os
 import asyncio
 import time
 import logging
@@ -701,16 +702,46 @@ async def get_price_compat(symbol: str):
 
 @router.get("/api/level2/{symbol}")
 async def get_level2_compat(symbol: str):
-    """Level 2 endpoint - uses Schwab + Polygon LULD"""
+    """Level 2 endpoint - uses Schwab L2 book, falls back to quote + Polygon LULD"""
     try:
+        symbol = symbol.upper()
+        book = None
         quote = None
         luld = None
 
-        # Use unified market data (Schwab)
+        # Try Schwab L2 order book first
+        try:
+            from schwab_streaming import get_cached_book, subscribe_book
+            book = get_cached_book(symbol)
+            if not book:
+                # Subscribe to L2 book for this symbol
+                subscribe_book([symbol])
+        except Exception as e:
+            logger.debug(f"Schwab L2 book not available: {e}")
+
+        # If we have real L2 book data, return it
+        if book and book.get('bids'):
+            # Get LULD bands from Polygon stream
+            try:
+                from polygon_streaming import get_polygon_stream
+                stream = get_polygon_stream()
+                luld = stream.get_luld_bands(symbol)
+            except Exception:
+                pass
+
+            return {
+                "symbol": symbol,
+                "bids": book.get('bids', []),
+                "asks": book.get('asks', []),
+                "source": book.get('source', 'schwab_book'),
+                "luld": luld
+            }
+
+        # Fall back to basic quote (top of book only)
         if HAS_UNIFIED:
             try:
                 unified = get_unified_market_data()
-                quote = unified.get_quote(symbol.upper())
+                quote = unified.get_quote(symbol)
             except Exception:
                 pass
 
@@ -718,7 +749,7 @@ async def get_level2_compat(symbol: str):
         try:
             from polygon_streaming import get_polygon_stream
             stream = get_polygon_stream()
-            luld = stream.get_luld_bands(symbol.upper())
+            luld = stream.get_luld_bands(symbol)
         except Exception:
             pass
 
@@ -727,10 +758,10 @@ async def get_level2_compat(symbol: str):
 
         # Simple bid/ask structure with source info and LULD
         return {
-            "symbol": symbol.upper(),
+            "symbol": symbol,
             "bids": [{"price": quote.get("bid", 0), "size": quote.get("bid_size", 100)}],
             "asks": [{"price": quote.get("ask", 0), "size": quote.get("ask_size", 100)}],
-            "source": quote.get("source", "unknown"),
+            "source": "cache",
             "luld": luld
         }
     except Exception as e:
@@ -1153,12 +1184,39 @@ async def scan_patterns(symbols: str = ""):
 
 @router.post("/api/worklist/add")
 async def add_to_worklist_compat(data: dict):
-    """Add symbol to worklist"""
+    """Add symbol to worklist with strategy screening"""
     global _worklist_cache
     try:
         symbol = data.get("symbol", "").upper()
+        skip_screening = data.get("skip_screening", False)  # Allow override
+
         if not symbol:
             return {"success": False, "message": "No symbol provided"}
+
+        # Screen by price range (Warrior method: $1-$20)
+        if not skip_screening:
+            MIN_PRICE = 1.0
+            MAX_PRICE = 20.0
+
+            try:
+                # Get current price
+                price = None
+                if HAS_UNIFIED:
+                    md = get_unified_market_data()
+                    quote = md.get_quote(symbol)
+                    if quote:
+                        # Check all possible price field names
+                        price = quote.get("price") or quote.get("last") or quote.get("lastPrice") or quote.get("mark") or quote.get("regularMarketPrice")
+                        logger.info(f"Screening {symbol}: price={price}")
+
+                if price is not None:
+                    if price < MIN_PRICE:
+                        return {"success": False, "message": f"REJECTED: {symbol} price ${price:.2f} < ${MIN_PRICE} minimum"}
+                    if price > MAX_PRICE:
+                        return {"success": False, "message": f"REJECTED: {symbol} price ${price:.2f} > ${MAX_PRICE} maximum"}
+                    logger.info(f"Screening PASSED: {symbol} @ ${price:.2f}")
+            except Exception as e:
+                logger.warning(f"Could not screen {symbol}: {e}, allowing add")
 
         if HAS_WATCHLIST:
             mgr = get_watchlist_manager()
@@ -1196,6 +1254,68 @@ async def remove_from_worklist_compat(symbol: str):
         return {"success": False, "message": "Watchlist manager not available"}
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+
+# ============================================================================
+# MOMENTUM SCORING API
+# ============================================================================
+
+@router.get("/api/momentum/rankings")
+async def get_momentum_rankings(limit: int = 50):
+    """Get watchlist ranked by momentum score"""
+    try:
+        from ai.momentum_scorer import get_momentum_scorer
+        scorer = get_momentum_scorer()
+        rankings = await scorer.rank_watchlist()
+
+        return {
+            "success": True,
+            "count": len(rankings),
+            "rankings": [r.to_dict() for r in rankings[:limit]],
+            "grade_summary": scorer.get_grade_summary()
+        }
+    except Exception as e:
+        logger.error(f"Momentum rankings error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/api/momentum/top")
+async def get_top_momentum(limit: int = 5):
+    """Get top N momentum stocks"""
+    try:
+        from ai.momentum_scorer import get_momentum_scorer
+        scorer = get_momentum_scorer()
+        await scorer.rank_watchlist()  # Refresh rankings
+        top = scorer.get_top_movers(limit)
+
+        return {
+            "success": True,
+            "count": len(top),
+            "top_movers": [r.to_dict() for r in top]
+        }
+    except Exception as e:
+        logger.error(f"Top momentum error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/api/momentum/score/{symbol}")
+async def get_momentum_score(symbol: str):
+    """Get momentum score for a single symbol"""
+    try:
+        from ai.momentum_scorer import get_momentum_scorer
+        scorer = get_momentum_scorer()
+        score = await scorer.score_symbol(symbol.upper())
+
+        if score:
+            return {
+                "success": True,
+                "score": score.to_dict()
+            }
+        else:
+            return {"success": False, "error": f"Could not score {symbol}"}
+    except Exception as e:
+        logger.error(f"Momentum score error: {e}")
+        return {"success": False, "error": str(e)}
 
 
 # ============================================================================
@@ -3280,14 +3400,17 @@ def _process_premarket_setup(setup: dict):
 @router.get("/api/polygon/status")
 async def get_polygon_status():
     """Get Polygon.io connection status"""
+    # Check tier from env or default to paid (Advanced plan)
+    polygon_tier = os.getenv("POLYGON_TIER", "paid").lower()
+    is_paid = polygon_tier in ("paid", "advanced", "premium")
     return {
         "available": HAS_POLYGON,
-        "tier": "free" if HAS_POLYGON else None,
+        "tier": polygon_tier if HAS_POLYGON else None,
         "features": {
             "reference_data": HAS_POLYGON,
             "historical_bars": HAS_POLYGON,
-            "real_time_trades": False,  # Requires paid
-            "snapshots": False  # Requires paid
+            "real_time_trades": is_paid,
+            "snapshots": is_paid
         }
     }
 

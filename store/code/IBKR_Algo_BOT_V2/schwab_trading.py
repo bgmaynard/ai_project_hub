@@ -299,6 +299,45 @@ class SchwabTrading:
 
         return result
 
+    def get_all_positions(self) -> List[Dict]:
+        """Get positions from ALL accounts"""
+        all_positions = []
+
+        for acc in self._accounts:
+            acc_hash = acc.get('hashValue')
+            acc_number = acc.get('accountNumber')
+
+            if not acc_hash:
+                continue
+
+            try:
+                data = _make_trading_request("GET", f"/accounts/{acc_hash}", params={"fields": "positions"})
+
+                if not data:
+                    continue
+
+                positions = data.get('securitiesAccount', {}).get('positions', [])
+
+                for pos in positions:
+                    instrument = pos.get('instrument', {})
+                    all_positions.append({
+                        "symbol": instrument.get('symbol'),
+                        "asset_type": instrument.get('assetType'),
+                        "quantity": float(pos.get('longQuantity', 0) or 0) - float(pos.get('shortQuantity', 0) or 0),
+                        "avg_price": float(pos.get('averagePrice', 0) or 0),
+                        "current_price": float(pos.get('currentDayProfitLossPercentage', 0) or 0),
+                        "market_value": float(pos.get('marketValue', 0) or 0),
+                        "cost_basis": float(pos.get('longQuantity', 0) or 0) * float(pos.get('averagePrice', 0) or 0),
+                        "unrealized_pl": float(pos.get('currentDayProfitLoss', 0) or 0),
+                        "unrealized_pl_pct": float(pos.get('currentDayProfitLossPercentage', 0) or 0),
+                        "account": acc_number,
+                        "source": "schwab"
+                    })
+            except Exception as e:
+                logger.error(f"Error getting positions for account {acc_number}: {e}")
+
+        return all_positions
+
     def get_orders(self, status: Optional[str] = None) -> List[Dict]:
         """Get orders for the account"""
         if not self._ensure_account():

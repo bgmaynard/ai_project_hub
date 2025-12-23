@@ -98,6 +98,13 @@ class ScalperConfig:
     scalp_fade_threshold: float = 0.45  # Below this = FADE
     scalp_continue_threshold: float = 0.55  # Above this = CONTINUE
 
+    # Warrior Pullback Confirmation (prevents chasing pump & dumps)
+    use_pullback_confirmation: bool = True  # Wait for pullback before entry
+    pullback_min_percent: float = 2.0  # Min pullback from spike high (%)
+    pullback_max_percent: float = 10.0  # Max pullback (too deep = failed)
+    confirmation_break_percent: float = 0.5  # Break above pullback high by X%
+    pullback_timeout_seconds: int = 120  # Max time to wait for confirmation
+
     # ATR-based dynamic stops
     use_atr_stops: bool = True  # Use ATR-based stops instead of fixed %
     atr_stop_multiplier: float = 1.5  # Stop at 1.5x ATR
@@ -198,6 +205,22 @@ class PricePoint:
     volume: int
 
 
+@dataclass
+class PullbackWatch:
+    """Track a symbol waiting for pullback confirmation (Warrior method)"""
+    symbol: str
+    spike_time: datetime
+    spike_price: float  # Price when spike detected
+    spike_high: float  # Highest price during spike
+    pullback_low: float  # Lowest price during pullback
+    state: str = "WATCHING"  # WATCHING -> PULLBACK -> CONFIRMING -> READY
+    # WATCHING: Just detected spike, watching for pullback
+    # PULLBACK: Price pulled back enough, waiting for new high
+    # CONFIRMING: Price breaking above pullback high
+    # READY: Confirmed, ready to enter
+    # FAILED: Pullback too deep or timed out
+
+
 class HFTScalper:
     """
     High-frequency momentum scalper.
@@ -225,6 +248,9 @@ class HFTScalper:
 
         # Priority queue for news-triggered entries
         self.priority_symbols: List[str] = []  # Symbols to check immediately
+
+        # Pullback confirmation tracking (Warrior method)
+        self.pullback_watches: Dict[str, PullbackWatch] = {}  # symbol -> watch state
 
         # Threading
         self._thread: Optional[threading.Thread] = None
@@ -367,6 +393,112 @@ class HFTScalper:
             self.config.watchlist.remove(symbol)
             self._save_config()
 
+    def _check_pullback_confirmation(self, symbol: str, price: float,
+                                      momentum: float, change_pct: float,
+                                      volume: int) -> Optional[Dict]:
+        """
+        Warrior Trading Method: Wait for pullback confirmation before entry.
+
+        Flow:
+        1. Spike detected -> Add to watch list (WATCHING)
+        2. Price pulls back X% from high -> State = PULLBACK
+        3. Price breaks above pullback high -> State = READY, return signal
+        4. Timeout or pullback too deep -> State = FAILED, remove from watch
+        """
+        now = datetime.now()
+
+        # Check if we're already watching this symbol
+        if symbol in self.pullback_watches:
+            watch = self.pullback_watches[symbol]
+
+            # Check for timeout
+            elapsed = (now - watch.spike_time).total_seconds()
+            if elapsed > self.config.pullback_timeout_seconds:
+                logger.info(f"PULLBACK TIMEOUT: {symbol} - no confirmation in {elapsed:.0f}s")
+                del self.pullback_watches[symbol]
+                return None
+
+            # Update high/low tracking
+            if price > watch.spike_high:
+                watch.spike_high = price
+            if price < watch.pullback_low:
+                watch.pullback_low = price
+
+            # Calculate pullback from high
+            pullback_pct = (watch.spike_high - price) / watch.spike_high * 100 if watch.spike_high > 0 else 0
+            recovery_pct = (price - watch.pullback_low) / watch.pullback_low * 100 if watch.pullback_low > 0 else 0
+
+            # State machine
+            if watch.state == "WATCHING":
+                # Waiting for pullback to start
+                if pullback_pct >= self.config.pullback_min_percent:
+                    watch.state = "PULLBACK"
+                    watch.pullback_low = price
+                    logger.info(f"PULLBACK DETECTED: {symbol} -{pullback_pct:.1f}% from high ${watch.spike_high:.2f}")
+                elif pullback_pct > self.config.pullback_max_percent:
+                    # Pullback too deep - failed
+                    logger.info(f"PULLBACK FAILED: {symbol} too deep -{pullback_pct:.1f}%")
+                    del self.pullback_watches[symbol]
+                    return None
+
+            elif watch.state == "PULLBACK":
+                # Check if pullback too deep
+                total_pullback = (watch.spike_high - watch.pullback_low) / watch.spike_high * 100
+                if total_pullback > self.config.pullback_max_percent:
+                    logger.info(f"PULLBACK FAILED: {symbol} too deep -{total_pullback:.1f}%")
+                    del self.pullback_watches[symbol]
+                    return None
+
+                # Check for confirmation - price breaking above pullback high
+                break_level = watch.pullback_low * (1 + self.config.confirmation_break_percent / 100)
+                if price > break_level and recovery_pct >= self.config.confirmation_break_percent:
+                    # CONFIRMED! Ready to enter
+                    logger.info(f"PULLBACK CONFIRMED: {symbol} @ ${price:.2f} (broke ${break_level:.2f})")
+                    del self.pullback_watches[symbol]
+
+                    return {
+                        "type": SignalType.MOMENTUM_SPIKE.value,
+                        "symbol": symbol,
+                        "price": price,
+                        "momentum": momentum,
+                        "change_percent": change_pct,
+                        "volume": volume,
+                        "pullback_confirmed": True,
+                        "spike_high": watch.spike_high,
+                        "pullback_low": watch.pullback_low,
+                        "timestamp": datetime.now().isoformat()
+                    }
+
+            return None  # Still watching/waiting
+
+        else:
+            # New spike detected - start watching for pullback
+            self.pullback_watches[symbol] = PullbackWatch(
+                symbol=symbol,
+                spike_time=now,
+                spike_price=price,
+                spike_high=price,
+                pullback_low=price,
+                state="WATCHING"
+            )
+            logger.info(f"SPIKE DETECTED: {symbol} +{momentum:.1f}% @ ${price:.2f} - watching for pullback")
+            return None  # Don't enter yet - wait for confirmation
+
+    def get_pullback_watches(self) -> Dict[str, Dict]:
+        """Get current pullback watch states for dashboard"""
+        result = {}
+        for symbol, watch in self.pullback_watches.items():
+            result[symbol] = {
+                "symbol": watch.symbol,
+                "state": watch.state,
+                "spike_time": watch.spike_time.isoformat(),
+                "spike_price": watch.spike_price,
+                "spike_high": watch.spike_high,
+                "pullback_low": watch.pullback_low,
+                "age_seconds": (datetime.now() - watch.spike_time).total_seconds()
+            }
+        return result
+
     async def check_entry_signal(self, symbol: str, quote: Dict,
                                   priority: bool = False) -> Optional[Dict]:
         """
@@ -457,16 +589,21 @@ class HFTScalper:
             signal = None
 
             if momentum >= self.config.min_spike_percent:
-                signal = {
-                    "type": SignalType.MOMENTUM_SPIKE.value,
-                    "symbol": symbol,
-                    "price": price,
-                    "momentum": momentum,
-                    "change_percent": change_pct,
-                    "volume": volume,
-                    "timestamp": datetime.now().isoformat()
-                }
-                logger.info(f"MOMENTUM SPIKE: {symbol} +{momentum:.1f}% in 5 ticks @ ${price:.2f}")
+                # WARRIOR METHOD: Pullback Confirmation
+                if self.config.use_pullback_confirmation:
+                    signal = self._check_pullback_confirmation(symbol, price, momentum, change_pct, volume)
+                else:
+                    # Original behavior - enter immediately on spike
+                    signal = {
+                        "type": SignalType.MOMENTUM_SPIKE.value,
+                        "symbol": symbol,
+                        "price": price,
+                        "momentum": momentum,
+                        "change_percent": change_pct,
+                        "volume": volume,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    logger.info(f"MOMENTUM SPIKE: {symbol} +{momentum:.1f}% in 5 ticks @ ${price:.2f}")
 
             # Volume surge detection
             if signal is None and len(prices) >= 10:

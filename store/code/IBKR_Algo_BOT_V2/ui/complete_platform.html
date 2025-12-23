@@ -1260,6 +1260,7 @@
         <div class="menu-item" onclick="toggleDropdown('tools-dropdown')">
             🛠️ TOOLS
             <div class="dropdown" id="tools-dropdown" style="width: 200px;">
+                <a href="#" onclick="event.preventDefault(); openScalpMonitor()">⚡ Scalp Assistant</a>
                 <a href="#" onclick="event.preventDefault(); openPDTMonitor()">⚖️ PDT Monitor</a>
                 <a href="#" onclick="event.preventDefault(); exportWatchlist()">⬇️ Export Watchlist</a>
                 <a href="#" onclick="event.preventDefault(); copyWatchlistToClipboard()">📋 Copy Watchlist</a>
@@ -2175,6 +2176,11 @@
             `,
 
             level2: `
+                <div id="luld-indicator" style="display: none; padding: 4px 8px; background: #1a1a1a; border-bottom: 1px solid #333; font-size: 11px;">
+                    <span style="color: #888;">LULD:</span>
+                    <span style="color: #22c55e;">▲ <span id="luld-upper">--</span></span>
+                    <span style="margin-left: 12px; color: #ef4444;">▼ <span id="luld-lower">--</span></span>
+                </div>
                 <div class="level2-container">
                     <div class="level2-column">
                         <div class="level2-header">
@@ -2210,6 +2216,17 @@
 
             order: `
                 <div class="module-content">
+                    <!-- Account Selector -->
+                    <div class="order-field" style="margin-bottom: 8px;">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Trading Account</span>
+                            <span id="accountTypeLabel" style="font-size: 10px; color: #22c55e;"></span>
+                        </label>
+                        <select id="tradingAccount" onchange="selectTradingAccount(this.value)" style="background: #1a1a1a; font-weight: 600;">
+                            <option value="">Loading accounts...</option>
+                        </select>
+                    </div>
+
                     <div class="order-field">
                         <label>Symbol</label>
                         <input type="text" id="orderSymbol" value="AAPL"
@@ -2356,9 +2373,21 @@
             `,
 
             positions: `
+                <div style="padding: 4px 8px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 11px; color: #888;">
+                        <span id="scalpAssistantStatus" style="color: #ef4444;">AI: OFF</span>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary" onclick="toggleScalpAssistant()" id="scalpToggleBtn"
+                                style="padding: 3px 8px; font-size: 11px; background: #1a472a; border: 1px solid #22c55e;">
+                            Start AI Monitor
+                        </button>
+                    </div>
+                </div>
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th style="width: 60px;">AI</th>
                             <th>Symbol</th>
                             <th>Side</th>
                             <th>Qty</th>
@@ -2370,7 +2399,7 @@
                         </tr>
                     </thead>
                     <tbody id="positionsDisplay">
-                        <tr><td colspan="8" class="empty-state">No open positions</td></tr>
+                        <tr><td colspan="9" class="empty-state">No open positions</td></tr>
                     </tbody>
                 </table>
             `,
@@ -2623,6 +2652,82 @@
                     <button class="btn btn-secondary" onclick="getPrediction()" style="width: 100%; margin-top: 12px;">
                         🤖 GET AI PREDICTION
                     </button>
+                </div>
+            `,
+
+            scalpmonitor: `
+                <div class="module-content" style="padding: 10px; overflow-y: auto;">
+                    <!-- Scalp Assistant Status -->
+                    <div id="scalpMonitorHeader" style="text-align: center; padding: 12px; background: #1a1a1a; border-radius: 6px; margin-bottom: 10px;">
+                        <div style="font-size: 11px; color: #666; letter-spacing: 1px; margin-bottom: 4px;">SCALP ASSISTANT</div>
+                        <div id="scalpMonitorStatus" style="font-size: 18px; font-weight: 700; color: #ef4444;">OFFLINE</div>
+                        <div style="margin-top: 6px;">
+                            <button id="scalpMonitorToggle" onclick="toggleScalpAssistant()" class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px;">Start</button>
+                            <button onclick="loadScalpMonitorDetails()" class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px; margin-left: 4px;">Refresh</button>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px;">
+                        <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                            <div style="font-size: 10px; color: #666; margin-bottom: 2px;">MONITORED</div>
+                            <div id="scalpMonitored" style="font-size: 18px; font-weight: 700; color: #60a5fa;">0</div>
+                        </div>
+                        <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                            <div style="font-size: 10px; color: #666; margin-bottom: 2px;">EXITS</div>
+                            <div id="scalpExits" style="font-size: 18px; font-weight: 700; color: #f59e0b;">0</div>
+                        </div>
+                        <div style="padding: 8px; background: #1a1a1a; border-radius: 4px; text-align: center;">
+                            <div style="font-size: 10px; color: #666; margin-bottom: 2px;">WIN %</div>
+                            <div id="scalpWinRate" style="font-size: 18px; font-weight: 700; color: #22c55e;">0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Total P/L -->
+                    <div style="padding: 10px; background: #1a1a1a; border-radius: 4px; margin-bottom: 10px; text-align: center;">
+                        <div style="font-size: 10px; color: #666; margin-bottom: 2px;">TOTAL P/L</div>
+                        <div id="scalpTotalPnl" style="font-size: 22px; font-weight: 700; color: #888;">$0.00</div>
+                    </div>
+
+                    <!-- Config -->
+                    <div style="padding: 8px; background: #252525; border: 1px solid #333; border-radius: 4px; margin-bottom: 10px;">
+                        <div style="font-size: 11px; color: #888; margin-bottom: 6px; font-weight: 700;">EXIT RULES</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #666;">Stop Loss:</span>
+                                <span id="scalpStopLoss" style="color: #ef4444;">-3%</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #666;">Target:</span>
+                                <span id="scalpTarget" style="color: #22c55e;">+3%</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #666;">Trailing:</span>
+                                <span id="scalpTrailing" style="color: #f59e0b;">1.5%</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #666;">Max Hold:</span>
+                                <span id="scalpMaxHold" style="color: #60a5fa;">180s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monitored Positions -->
+                    <div style="padding: 8px; background: #252525; border: 1px solid #333; border-radius: 4px;">
+                        <div style="font-size: 11px; color: #888; margin-bottom: 6px; font-weight: 700;">MONITORED POSITIONS</div>
+                        <div id="scalpPositionsList" style="max-height: 150px; overflow-y: auto; font-size: 11px;">
+                            <div class="empty-state" style="padding: 12px; font-size: 11px;">No positions monitored</div>
+                        </div>
+                    </div>
+
+                    <!-- Paper Mode Toggle -->
+                    <div style="margin-top: 8px; padding: 6px; background: #1a1a1a; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; color: #666;">Paper Mode:</span>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="scalpPaperMode" checked onchange="toggleScalpPaperMode(this.checked)" style="margin-right: 4px;">
+                            <span id="scalpPaperLabel" style="font-size: 11px; color: #22c55e;">ON (safe)</span>
+                        </label>
+                    </div>
                 </div>
             `,
 
@@ -4510,6 +4615,80 @@
         };
 
         // ═══════════════════════════════════════════════════════════════════════
+        //                     ACCOUNT MANAGEMENT
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let availableAccounts = [];
+        let selectedTradingAccount = null;
+
+        async function loadTradingAccounts() {
+            try {
+                const resp = await fetch(API_BASE_URL + '/api/schwab/accounts');
+                const data = await resp.json();
+
+                if (data.accounts && data.accounts.length > 0) {
+                    availableAccounts = data.accounts;
+                    const select = document.getElementById('tradingAccount');
+                    if (select) {
+                        select.innerHTML = data.accounts.map(acc =>
+                            `<option value="${acc.account_number}" ${acc.selected ? 'selected' : ''}>
+                                ${acc.account_number}
+                            </option>`
+                        ).join('');
+
+                        // Set selected account
+                        selectedTradingAccount = data.selected;
+                        // Fetch account type from API
+                        updateAccountLabelFromAPI();
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load trading accounts:', e);
+            }
+        }
+
+        async function selectTradingAccount(accountNumber) {
+            if (!accountNumber) return;
+
+            try {
+                const resp = await fetch(API_BASE_URL + '/api/schwab/accounts/select', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({account_number: accountNumber})
+                });
+
+                const data = await resp.json();
+                if (data.success) {
+                    selectedTradingAccount = accountNumber;
+                    await updateAccountLabelFromAPI();
+                    showNotification(`Trading account switched to ${accountNumber}`, 'success');
+                    // Refresh positions and account for new account
+                    loadPositions();
+                    loadAccount();
+                }
+            } catch (e) {
+                console.error('Failed to switch account:', e);
+                showNotification('Failed to switch account', 'error');
+            }
+        }
+
+        async function updateAccountLabelFromAPI() {
+            const label = document.getElementById('accountTypeLabel');
+            if (label) {
+                try {
+                    const resp = await fetch(API_BASE_URL + '/api/account');
+                    const data = await resp.json();
+                    if (data.type) {
+                        label.textContent = data.type;
+                        label.style.color = data.type === 'CASH' ? '#22c55e' : '#60a5fa';
+                    }
+                } catch (e) {
+                    console.error('Failed to get account type:', e);
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
         //                     SYMBOL MANAGEMENT
         // ═══════════════════════════════════════════════════════════════════════
 
@@ -4616,6 +4795,16 @@
                     })
                 });
                 console.log(`✓ Subscribed to ${symbol}`);
+
+                // Also subscribe to Polygon streaming if active
+                if (polygonStreamActive) {
+                    await fetch(API_BASE_URL + '/api/polygon/stream/subscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbol: symbol, data_type: 'trades' })
+                    });
+                    console.log(`✓ Polygon stream subscribed: ${symbol}`);
+                }
             } catch (error) {
                 console.error(`Error subscribing to ${symbol}:`, error);
             }
@@ -4833,58 +5022,167 @@
 
                 if (!bidsEl || !asksEl) return;
 
-                // Fetch ONLY from API (Schwab provides basic bid/ask only)
+                let data = null;
+                let source = 'schwab';
+
+                // Try Schwab L2 first (real order book - shows pending orders)
                 const apiData = await apiFetch(`/api/level2/${currentSymbol}`);
-                if (!apiData) {
+                if (apiData && apiData.bids && apiData.bids.length > 1) {
+                    // Real L2 book data (more than just top of book)
+                    data = apiData;
+                    source = apiData.source || 'schwab_book';
+                }
+
+                // If only top of book from Schwab, try Polygon synthetic depth
+                if (!data || data.bids.length <= 1) {
+                    // Always try Polygon depth for real volume data
+                    try {
+                        const depthResp = await fetch(API_BASE_URL + `/api/polygon/stream/depth/${currentSymbol}?levels=15`);
+                        if (depthResp.ok) {
+                            const depthData = await depthResp.json();
+                            if (depthData.bids && depthData.bids.length > 0) {
+                                data = depthData;
+                                source = 'polygon_synthetic';
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Polygon depth fetch error:', e);
+                    }
+                }
+
+                // Final fallback to basic Schwab quote
+                if (!data && apiData) {
+                    data = apiData;
+                    source = 'cache';
+                }
+
+                if (!data) {
                     bidsEl.innerHTML = '<div class="empty-state">Level 2 data unavailable</div>';
                     asksEl.innerHTML = '<div class="empty-state">Level 2 data unavailable</div>';
                     return;
                 }
 
-                if (apiData.status === 'requesting') {
-                    bidsEl.innerHTML = '<div class="empty-state">Requesting Level 2 data...</div>';
-                    asksEl.innerHTML = '<div class="empty-state">Requesting Level 2 data...</div>';
-                    return;
+                // Source indicator
+                let sourceLabel = '';
+                if (source.includes('schwab_book') || source.includes('nyse') || source.includes('nasdaq')) {
+                    sourceLabel = '<div style="font-size: 9px; color: #22c55e; text-align: center; padding: 2px;">L2 ORDER BOOK</div>';
+                } else if (source === 'polygon_synthetic') {
+                    sourceLabel = '<div style="font-size: 9px; color: #f59e0b; text-align: center; padding: 2px;">TRADE DEPTH</div>';
                 }
 
-                const data = apiData;
-
-                let bidsHtml = '';
+                let bidsHtml = sourceLabel;
                 if (data.bids && data.bids.length > 0) {
-                    data.bids.slice(0, 20).forEach((bid, i) => {
+                    data.bids.slice(0, 15).forEach((bid, i) => {
                         bidsHtml += `
                             <div class="level2-row clickable" onclick="setOrderPrice(${bid.price}, 'BUY')">
                                 <div>${bid.market_maker || ''}</div>
-                                <div style="color: #22c55e;">${bid.size}</div>
+                                <div style="color: #22c55e;">${bid.size.toLocaleString()}</div>
                                 <div class="level2-price" style="color: #22c55e; font-weight: 700;">${bid.price.toFixed(2)}</div>
-                                <div style="color: #666;">1</div>
+                                <div style="color: #666;">${bid.orders || 1}</div>
                             </div>
                         `;
                     });
                 } else {
-                    bidsHtml = '<div class="empty-state">No bid data</div>';
+                    bidsHtml += '<div class="empty-state">No bid data</div>';
                 }
 
-                let asksHtml = '';
+                let asksHtml = sourceLabel;
                 if (data.asks && data.asks.length > 0) {
-                    data.asks.slice(0, 20).forEach((ask, i) => {
+                    data.asks.slice(0, 15).forEach((ask, i) => {
                         asksHtml += `
                             <div class="level2-row clickable" onclick="setOrderPrice(${ask.price}, 'SELL')">
-                                <div style="color: #666;">1</div>
+                                <div style="color: #666;">${ask.orders || 1}</div>
                                 <div class="level2-price" style="color: #ef4444; font-weight: 700;">${ask.price.toFixed(2)}</div>
-                                <div style="color: #ef4444;">${ask.size}</div>
+                                <div style="color: #ef4444;">${ask.size.toLocaleString()}</div>
                                 <div>${ask.market_maker || ''}</div>
                             </div>
                         `;
                     });
                 } else {
-                    asksHtml = '<div class="empty-state">No ask data</div>';
+                    asksHtml += '<div class="empty-state">No ask data</div>';
                 }
 
                 bidsEl.innerHTML = bidsHtml;
                 asksEl.innerHTML = asksHtml;
+
+                // Update LULD indicator
+                const luldIndicator = document.getElementById('luld-indicator');
+                const luldUpper = document.getElementById('luld-upper');
+                const luldLower = document.getElementById('luld-lower');
+
+                if (data.luld && data.luld.upper && data.luld.lower && luldIndicator) {
+                    luldIndicator.style.display = 'block';
+                    if (luldUpper) luldUpper.textContent = data.luld.upper.toFixed(2);
+                    if (luldLower) luldLower.textContent = data.luld.lower.toFixed(2);
+
+                    // Color code if price is close to bands (within 2%)
+                    const price = data.bids[0]?.price || data.asks[0]?.price || 0;
+                    if (price > 0) {
+                        const upperPct = ((data.luld.upper - price) / price) * 100;
+                        const lowerPct = ((price - data.luld.lower) / price) * 100;
+                        const upperSpan = luldUpper?.parentElement;
+                        const lowerSpan = luldLower?.parentElement;
+
+                        if (upperSpan) {
+                            upperSpan.style.color = upperPct < 2 ? '#ff6b6b' : '#22c55e';
+                            if (upperPct < 2) upperSpan.style.fontWeight = '700';
+                        }
+                        if (lowerSpan) {
+                            lowerSpan.style.color = lowerPct < 2 ? '#ff6b6b' : '#ef4444';
+                            if (lowerPct < 2) lowerSpan.style.fontWeight = '700';
+                        }
+                    }
+                } else if (luldIndicator) {
+                    luldIndicator.style.display = 'none';
+                }
             } catch (error) {
                 console.error('Error loading level2:', error);
+            }
+        }
+
+        // Polygon streaming state
+        let polygonStreamActive = false;
+
+        async function checkPolygonStream() {
+            try {
+                const resp = await fetch(API_BASE_URL + '/api/polygon/stream/status');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const wasActive = polygonStreamActive;
+                    polygonStreamActive = data.connected && data.available;
+
+                    // If stream just became active or current symbol not subscribed, subscribe it
+                    if (polygonStreamActive && currentSymbol) {
+                        const subs = data.trade_subscriptions || [];
+                        if (!subs.includes(currentSymbol)) {
+                            await fetch(API_BASE_URL + '/api/polygon/stream/subscribe', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ symbol: currentSymbol, data_type: 'trades' })
+                            });
+                            console.log(`✓ Auto-subscribed ${currentSymbol} to Polygon stream`);
+                        }
+                    }
+                    return polygonStreamActive;
+                }
+            } catch (e) {}
+            return false;
+        }
+
+        async function startPolygonStream(symbol) {
+            try {
+                // Start the stream if not running
+                await fetch(API_BASE_URL + '/api/polygon/stream/start', { method: 'POST' });
+                // Subscribe to the symbol
+                await fetch(API_BASE_URL + '/api/polygon/stream/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol, trades: true, quotes: true })
+                });
+                polygonStreamActive = true;
+                console.log(`Polygon stream started for ${symbol}`);
+            } catch (e) {
+                console.log('Polygon stream not available:', e);
             }
         }
 
@@ -4893,39 +5191,236 @@
                 const displayEl = document.getElementById('timesalesDisplay');
                 if (!displayEl) return;
 
-                // Fetch from API (requires real tick data subscription)
-                const apiData = await apiFetch(`/api/timesales/${currentSymbol}?limit=50`);
-                if (!apiData || !apiData.trades || apiData.trades.length === 0) {
-                    displayEl.innerHTML = '<div class="empty-state">Time & Sales requires tick data subscription<br><small style="color: #666;">Polygon.io or Finnhub Premium needed.</small></div>';
+                let trades = [];
+                let source = 'none';
+
+                // Try Polygon streaming first
+                if (polygonStreamActive) {
+                    try {
+                        const polygonResp = await fetch(API_BASE_URL + `/api/polygon/stream/trades/${currentSymbol}?limit=50`);
+                        if (polygonResp.ok) {
+                            const data = await polygonResp.json();
+                            if (data.trades && data.trades.length > 0) {
+                                trades = data.trades;
+                                source = 'polygon';
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                // Fall back to REST API
+                if (trades.length === 0) {
+                    const apiData = await apiFetch(`/api/timesales/${currentSymbol}?limit=50`);
+                    if (apiData && apiData.trades && apiData.trades.length > 0) {
+                        trades = apiData.trades;
+                        source = 'rest';
+                    }
+                }
+
+                if (trades.length === 0) {
+                    displayEl.innerHTML = `
+                        <div class="empty-state">
+                            Time & Sales requires tick data<br>
+                            <small style="color: #666;">
+                                ${polygonStreamActive ? 'Waiting for trades...' : 'Start Polygon stream or upgrade subscription'}
+                            </small>
+                            <button onclick="startPolygonStream('${currentSymbol}')" class="btn btn-secondary" style="margin-top: 8px; font-size: 11px; padding: 4px 8px;">
+                                Start Polygon Stream
+                            </button>
+                        </div>`;
                     return;
                 }
 
-                const trades = apiData.trades;
-
                 let html = '';
-                if (trades.length > 0) {
-                    trades.forEach(trade => {
-                        // Use trade.time directly (already formatted as HH:MM:SS)
-                        const time = trade.time || '--:--:--';
-                        // Use side from API: BUY/B = green, SELL/S = red
-                        const isBuy = trade.side === 'BUY' || trade.side === 'B';
-                        const rowColor = isBuy ? '#22c55e' : '#ef4444';
+                const sourceIndicator = source === 'polygon' ?
+                    '<div style="font-size: 10px; color: #22c55e; text-align: center; padding: 2px;">LIVE - Polygon</div>' :
+                    '<div style="font-size: 10px; color: #f59e0b; text-align: center; padding: 2px;">Delayed</div>';
 
-                        html += `
-                            <div class="timesales-row" style="color: ${rowColor};">
-                                <div class="timesales-time">${time}</div>
-                                <div class="timesales-price">${trade.price.toFixed(2)}</div>
-                                <div class="timesales-size">${trade.size}</div>
-                            </div>
-                        `;
-                    });
-                } else {
-                    html = '<div class="empty-state">No trade data</div>';
-                }
+                html += sourceIndicator;
+
+                // Reverse so newest trades appear at top
+                trades.reverse().forEach(trade => {
+                    const time = trade.time || '--:--:--';
+                    // Determine color: green for buys, red for sells, or by price movement
+                    const isBuy = trade.side === 'BUY' || trade.side === 'B' || (trade.conditions && trade.conditions.includes(0));
+                    const rowColor = isBuy ? '#22c55e' : '#ef4444';
+
+                    html += `
+                        <div class="timesales-row" style="color: ${rowColor};">
+                            <div class="timesales-time">${time}</div>
+                            <div class="timesales-price">${parseFloat(trade.price).toFixed(2)}</div>
+                            <div class="timesales-size">${trade.size}</div>
+                        </div>
+                    `;
+                });
 
                 displayEl.innerHTML = html;
             } catch (error) {
                 console.error('Error loading time & sales:', error);
+            }
+        }
+
+        // Scalp Assistant state
+        let scalpAssistantRunning = false;
+        let scalpMonitoredSymbols = new Set();
+
+        async function loadScalpStatus() {
+            try {
+                const resp = await fetch(API_BASE_URL + '/api/scalp/status');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    scalpAssistantRunning = data.running;
+                    scalpMonitoredSymbols = new Set(data.monitored_positions?.map(p => p.symbol) || []);
+
+                    // Update UI
+                    const statusEl = document.getElementById('scalpAssistantStatus');
+                    const btnEl = document.getElementById('scalpToggleBtn');
+                    if (statusEl) {
+                        if (scalpAssistantRunning) {
+                            statusEl.textContent = `AI: ON (${scalpMonitoredSymbols.size} monitored)`;
+                            statusEl.style.color = '#22c55e';
+                        } else {
+                            statusEl.textContent = 'AI: OFF';
+                            statusEl.style.color = '#ef4444';
+                        }
+                    }
+                    if (btnEl) {
+                        btnEl.textContent = scalpAssistantRunning ? 'Stop AI Monitor' : 'Start AI Monitor';
+                        btnEl.style.background = scalpAssistantRunning ? '#7f1d1d' : '#1a472a';
+                        btnEl.style.borderColor = scalpAssistantRunning ? '#ef4444' : '#22c55e';
+                    }
+                }
+            } catch (e) {
+                console.log('Scalp status not available');
+            }
+        }
+
+        async function toggleScalpAssistant() {
+            try {
+                const endpoint = scalpAssistantRunning ? '/api/scalp/stop' : '/api/scalp/start';
+                const resp = await fetch(API_BASE_URL + endpoint, { method: 'POST' });
+                if (resp.ok) {
+                    await loadScalpStatus();
+                    await loadScalpMonitorDetails();
+                }
+            } catch (e) {
+                console.error('Error toggling scalp assistant:', e);
+            }
+        }
+
+        async function toggleAiTakeover(symbol, checkbox) {
+            try {
+                const endpoint = checkbox.checked ? `/api/scalp/takeover/${symbol}` : `/api/scalp/release/${symbol}`;
+                const resp = await fetch(API_BASE_URL + endpoint, { method: 'POST' });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success) {
+                        await loadScalpStatus();
+                        await loadScalpMonitorDetails();
+                        console.log(`AI takeover ${checkbox.checked ? 'enabled' : 'disabled'} for ${symbol}`);
+                    }
+                } else {
+                    checkbox.checked = !checkbox.checked; // Revert
+                    console.error('Failed to toggle AI takeover');
+                }
+            } catch (e) {
+                checkbox.checked = !checkbox.checked; // Revert
+                console.error('Error toggling AI takeover:', e);
+            }
+        }
+
+        async function loadScalpMonitorDetails() {
+            try {
+                const resp = await fetch(API_BASE_URL + '/api/scalp/status');
+                if (!resp.ok) return;
+
+                const data = await resp.json();
+
+                // Update status
+                const statusEl = document.getElementById('scalpMonitorStatus');
+                const toggleBtn = document.getElementById('scalpMonitorToggle');
+                if (statusEl) {
+                    statusEl.textContent = data.running ? 'ONLINE' : 'OFFLINE';
+                    statusEl.style.color = data.running ? '#22c55e' : '#ef4444';
+                }
+                if (toggleBtn) {
+                    toggleBtn.textContent = data.running ? 'Stop' : 'Start';
+                }
+
+                // Update stats
+                const monitored = data.monitored_positions?.length || 0;
+                const exits = data.stats?.total_exits || 0;
+                const winRate = data.win_rate || 0;
+                const totalPnl = data.stats?.total_pnl || 0;
+
+                safeUpdate('scalpMonitored', monitored);
+                safeUpdate('scalpExits', exits);
+                safeUpdate('scalpWinRate', winRate.toFixed(0) + '%');
+
+                const pnlEl = document.getElementById('scalpTotalPnl');
+                if (pnlEl) {
+                    pnlEl.textContent = '$' + totalPnl.toFixed(2);
+                    pnlEl.style.color = totalPnl >= 0 ? '#22c55e' : '#ef4444';
+                }
+
+                // Update config display
+                if (data.config) {
+                    safeUpdate('scalpStopLoss', '-' + data.config.stop_loss_pct + '%');
+                    safeUpdate('scalpTarget', '+' + data.config.profit_target_pct + '%');
+                    safeUpdate('scalpTrailing', data.config.trailing_stop_pct + '%');
+                    safeUpdate('scalpMaxHold', data.config.max_hold_seconds + 's');
+
+                    // Update paper mode checkbox
+                    const paperCheck = document.getElementById('scalpPaperMode');
+                    const paperLabel = document.getElementById('scalpPaperLabel');
+                    if (paperCheck) paperCheck.checked = data.config.paper_mode;
+                    if (paperLabel) {
+                        paperLabel.textContent = data.config.paper_mode ? 'ON (safe)' : 'OFF (LIVE!)';
+                        paperLabel.style.color = data.config.paper_mode ? '#22c55e' : '#ef4444';
+                    }
+                }
+
+                // Update monitored positions list
+                const listEl = document.getElementById('scalpPositionsList');
+                if (listEl && data.monitored_positions) {
+                    if (data.monitored_positions.length === 0) {
+                        listEl.innerHTML = '<div class="empty-state" style="padding: 12px; font-size: 11px;">No positions monitored</div>';
+                    } else {
+                        let html = '';
+                        data.monitored_positions.forEach(pos => {
+                            const pnlColor = pos.pnl >= 0 ? '#22c55e' : '#ef4444';
+                            const trailStatus = pos.trailing_active ? '<span style="color: #f59e0b;">TRAILING</span>' : '';
+                            html += `
+                                <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #333;">
+                                    <div>
+                                        <strong style="color: #fff;">${pos.symbol}</strong>
+                                        <span style="color: #666; margin-left: 6px;">x${pos.quantity}</span>
+                                        ${trailStatus}
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <span style="color: ${pnlColor};">$${pos.pnl.toFixed(2)} (${pos.pnl_pct >= 0 ? '+' : ''}${pos.pnl_pct.toFixed(1)}%)</span>
+                                        <span style="color: #666; margin-left: 6px;">${Math.floor(pos.hold_seconds)}s</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        listEl.innerHTML = html;
+                    }
+                }
+            } catch (e) {
+                console.log('Error loading scalp monitor details:', e);
+            }
+        }
+
+        async function toggleScalpPaperMode(enabled) {
+            try {
+                const resp = await fetch(API_BASE_URL + `/api/scalp/paper/${enabled}`, { method: 'POST' });
+                if (resp.ok) {
+                    await loadScalpMonitorDetails();
+                    console.log(`Paper mode ${enabled ? 'enabled' : 'DISABLED - LIVE TRADING'}`);
+                }
+            } catch (e) {
+                console.error('Error toggling paper mode:', e);
             }
         }
 
@@ -4934,10 +5429,13 @@
                 const displayEl = document.getElementById('positionsDisplay');
                 if (!displayEl) return;
 
+                // Load scalp status in parallel
+                loadScalpStatus();
+
                 // Fetch ONLY from API (broker-aware endpoint)
                 const apiData = await apiFetch('/api/account');
                 if (!apiData || !apiData.positions) {
-                    displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">No broker connected</td></tr>';
+                    displayEl.innerHTML = '<tr><td colspan="9" class="empty-state">No broker connected</td></tr>';
                     return;
                 }
 
@@ -4951,9 +5449,17 @@
                         const pnlClass = pnl >= 0 ? 'positive' : 'negative';
                         const side = pos.quantity > 0 ? 'LONG' : 'SHORT';
                         const sideClass = pos.quantity > 0 ? 'long' : 'short';
+                        const isAiMonitored = scalpMonitoredSymbols.has(pos.symbol);
 
                         html += `
                             <tr class="clickable" onclick="setCurrentSymbol('${pos.symbol}')">
+                                <td style="text-align: center;">
+                                    <input type="checkbox"
+                                           ${isAiMonitored ? 'checked' : ''}
+                                           onclick="toggleAiTakeover('${pos.symbol}', this); event.stopPropagation();"
+                                           title="Enable AI auto-exit"
+                                           style="cursor: pointer; width: 16px; height: 16px;">
+                                </td>
                                 <td><strong>${pos.symbol}</strong></td>
                                 <td><span class="pos-badge ${sideClass}">${side}</span></td>
                                 <td>${Math.abs(pos.quantity)}</td>
@@ -4968,7 +5474,7 @@
                     displayEl.innerHTML = html;
                     positionsCache = positions;
                 } else {
-                    displayEl.innerHTML = '<tr><td colspan="8" class="empty-state">No open positions</td></tr>';
+                    displayEl.innerHTML = '<tr><td colspan="9" class="empty-state">No open positions</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading positions:', error);
@@ -9701,6 +10207,20 @@ Confirm order?`;
             }
         }
 
+        // Open Scalp Monitor window
+        function openScalpMonitor() {
+            const existing = windows.find(w => w.id === 'scalpmonitor');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                loadScalpMonitorDetails();
+                return;
+            }
+            createWindow('scalpmonitor', '⚡ SCALP ASSISTANT', windowTemplates.scalpmonitor, 100, 100, 320, 480);
+            // Load scalp status after window opens
+            setTimeout(loadScalpMonitorDetails, 100);
+        }
+
         // Open PDT Monitor window
         function openPDTMonitor() {
             const existing = windows.find(w => w.id === 'pdtmonitor');
@@ -13302,6 +13822,10 @@ Confirm order?`;
             await initBrokerState();
             console.log(`✓ Broker state initialized in ${(performance.now()-t0).toFixed(0)}ms`);
 
+            // Load trading accounts for account selector
+            await loadTradingAccounts();
+            console.log(`✓ Trading accounts loaded`);
+
             // Now load initial data IN PARALLEL (was sequential)
             t0 = performance.now();
             await Promise.all([
@@ -13316,11 +13840,23 @@ Confirm order?`;
                 loadPrice();
             }, 5000);
 
-            // Level 2 and Time & Sales less frequent (every 10 seconds)
+            // Check Polygon stream status on startup
+            checkPolygonStream().then(active => {
+                console.log(`Polygon stream: ${active ? 'ACTIVE' : 'inactive'}`);
+            });
+
+            // Level 2 refresh (every 2 seconds)
             setInterval(() => {
                 loadLevel2();
+            }, 2000);
+
+            // Time & Sales - fast refresh for real-time tape (every 50ms)
+            setInterval(() => {
                 loadTimeSales();
-            }, 10000);
+            }, 50);
+
+            // Periodically re-check Polygon stream status
+            setInterval(checkPolygonStream, 30000);
 
             // Slower updates for account data (every 15 seconds)
             setInterval(() => {

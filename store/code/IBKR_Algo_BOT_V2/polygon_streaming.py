@@ -40,7 +40,10 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 POLYGON_WS_URL = "wss://socket.polygon.io/stocks"
-POLYGON_API_KEY = os.getenv("POLYGON_API_KEY", "")
+
+def get_polygon_api_key():
+    """Get Polygon API key at runtime (after dotenv loads)"""
+    return os.getenv("POLYGON_API_KEY", "")
 
 
 class PolygonStream:
@@ -54,7 +57,7 @@ class PolygonStream:
     """
 
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or POLYGON_API_KEY
+        self.api_key = api_key or get_polygon_api_key()
         self.ws = None
         self.running = False
         self._thread: Optional[threading.Thread] = None
@@ -99,16 +102,52 @@ class PolygonStream:
     def subscribe_trades(self, symbol: str):
         """Subscribe to trade stream for symbol"""
         symbol = symbol.upper()
+        is_new = symbol not in self.trade_symbols
         self.trade_symbols.add(symbol)
         if symbol not in self.trades:
             self.trades[symbol] = deque(maxlen=200)
         logger.info(f"Subscribed to trades: {symbol}")
+        print(f"[PolygonStream] subscribe_trades({symbol}), is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}")
+        # Send subscription to WebSocket if already connected
+        if is_new and self.ws and self.stats.get('connected'):
+            print(f"[PolygonStream] Sending live subscription for T.{symbol}")
+            self._send_live_subscription(f"T.{symbol}")
+        else:
+            print(f"[PolygonStream] NOT sending live sub - is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}")
 
     def subscribe_quotes(self, symbol: str):
         """Subscribe to quote stream for symbol"""
         symbol = symbol.upper()
+        is_new = symbol not in self.quote_symbols
         self.quote_symbols.add(symbol)
         logger.info(f"Subscribed to quotes: {symbol}")
+        # Send subscription to WebSocket if already connected
+        if is_new and self.ws and self.stats.get('connected'):
+            self._send_live_subscription(f"Q.{symbol}")
+
+    def _send_live_subscription(self, channel: str):
+        """Send a subscription message to the live WebSocket"""
+        print(f"[PolygonStream] _send_live_subscription({channel}), loop={self._loop is not None}, ws={self.ws is not None}")
+        if self._loop and self.ws:
+            try:
+                msg = {"action": "subscribe", "params": channel}
+                print(f"[PolygonStream] Sending msg: {msg}")
+                future = asyncio.run_coroutine_threadsafe(
+                    self.ws.send(json.dumps(msg)),
+                    self._loop
+                )
+                # Wait briefly for the result to ensure it's sent
+                try:
+                    future.result(timeout=2)
+                    print(f"[PolygonStream] Sent subscription: {channel}")
+                except Exception as e:
+                    print(f"[PolygonStream] Subscription send error: {e}")
+                logger.info(f"Sent live subscription: {channel}")
+            except Exception as e:
+                print(f"[PolygonStream] Failed to send subscription: {e}")
+                logger.error(f"Failed to send live subscription: {e}")
+        else:
+            print(f"[PolygonStream] Cannot send - no loop or ws")
 
     def subscribe_luld(self, symbol: str):
         """Subscribe to LULD (Limit Up/Limit Down) events for symbol"""
@@ -130,17 +169,21 @@ class PolygonStream:
 
     async def _connect(self):
         """Connect to Polygon WebSocket"""
+        print(f"[PolygonStream] _connect() called, api_key len: {len(self.api_key)}")
         if not self.api_key:
             logger.error("Polygon API key not configured")
+            print("[PolygonStream] No API key in _connect!")
             return
 
         try:
+            print(f"[PolygonStream] Connecting to {POLYGON_WS_URL}...")
             self.ws = await websockets.connect(
                 POLYGON_WS_URL,
                 ping_interval=30,
                 ping_timeout=10
             )
             logger.info("Connected to Polygon WebSocket")
+            print("[PolygonStream] WebSocket connected!")
 
             # Authenticate
             auth_msg = {"action": "auth", "params": self.api_key}
@@ -301,16 +344,26 @@ class PolygonStream:
 
     async def _message_loop(self):
         """Main message processing loop"""
+        print("[PolygonStream] Message loop started")
+        msg_count = 0
         while self.running:
             try:
-                if not self.ws or self.ws.closed:
+                if not self.ws or self.ws.close_code is not None:
+                    print("[PolygonStream] WS not connected, calling _connect()")
                     await self._connect()
                     if not self.ws:
                         await asyncio.sleep(5)
                         continue
 
-                message = await self.ws.recv()
+                print(f"[PolygonStream] Waiting for recv()... (count so far: {msg_count})")
+                message = await asyncio.wait_for(self.ws.recv(), timeout=30)
+                msg_count += 1
                 data = json.loads(message)
+                print(f"[PolygonStream] Got message, total: {msg_count}")
+
+                # Debug first few messages
+                if msg_count <= 5:
+                    print(f"[PolygonStream] Received msg #{msg_count}: {str(data)[:200]}")
 
                 # Handle array of messages
                 if isinstance(data, list):
@@ -323,9 +376,15 @@ class PolygonStream:
                         elif ev == "LULD":  # Limit Up/Limit Down
                             self._process_luld(msg)
                         elif ev == "status":
+                            print(f"[PolygonStream] Status: {msg.get('message')}")
                             logger.info(f"Polygon status: {msg.get('message')}")
 
+            except asyncio.TimeoutError:
+                print(f"[PolygonStream] Recv timeout - no data for 30s")
+                # Keep connection alive, just no data
+
             except ConnectionClosed:
+                print("[PolygonStream] WebSocket disconnected!")
                 logger.warning("Polygon WebSocket disconnected, reconnecting...")
                 self.stats['connected'] = False
                 self.stats['reconnects'] += 1
@@ -333,6 +392,7 @@ class PolygonStream:
                 await asyncio.sleep(2)
 
             except Exception as e:
+                print(f"[PolygonStream] Error in message loop: {e}")
                 logger.error(f"Polygon stream error: {e}")
                 await asyncio.sleep(1)
 
@@ -346,16 +406,20 @@ class PolygonStream:
         """Start the streaming connection"""
         if self.running:
             logger.warning("PolygonStream already running")
+            print("[PolygonStream] Already running")
             return
 
         if not self.api_key:
             logger.error("Cannot start - Polygon API key not configured")
+            print(f"[PolygonStream] No API key! Key length: {len(self.api_key)}")
             return
 
+        print(f"[PolygonStream] Starting with API key: {self.api_key[:5]}...")
         self.running = True
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
         logger.info("PolygonStream started")
+        print("[PolygonStream] Thread started")
 
     def stop(self):
         """Stop the streaming connection"""
@@ -382,6 +446,52 @@ class PolygonStream:
     def get_quote(self, symbol: str) -> Optional[dict]:
         """Get latest quote for symbol"""
         return self.quotes.get(symbol.upper())
+
+    def get_synthetic_depth(self, symbol: str, levels: int = 10) -> dict:
+        """
+        Build synthetic depth from recent trades.
+        Groups trades by price level to show volume distribution.
+        Returns bids (below current) and asks (above current).
+        """
+        symbol = symbol.upper()
+        if symbol not in self.trades or len(self.trades[symbol]) < 5:
+            return {'bids': [], 'asks': [], 'source': 'polygon_synthetic'}
+
+        trades = list(self.trades[symbol])
+        quote = self.quotes.get(symbol, {})
+        mid_price = quote.get('bid', 0) if quote else 0
+        if not mid_price and trades:
+            mid_price = trades[-1].get('price', 0)
+
+        # Aggregate volume by price
+        price_volume = {}
+        for t in trades:
+            price = round(t.get('price', 0), 2)
+            size = t.get('size', 0)
+            if price > 0:
+                price_volume[price] = price_volume.get(price, 0) + size
+
+        # Split into bids (at or below mid) and asks (above mid)
+        bids = []
+        asks = []
+        for price, volume in sorted(price_volume.items(), reverse=True):
+            entry = {'price': price, 'size': volume, 'orders': 1}
+            if price <= mid_price:
+                bids.append(entry)
+            else:
+                asks.append(entry)
+
+        # Sort: bids descending (highest first), asks ascending (lowest first)
+        bids = sorted(bids, key=lambda x: x['price'], reverse=True)[:levels]
+        asks = sorted(asks, key=lambda x: x['price'])[:levels]
+
+        return {
+            'bids': bids,
+            'asks': asks,
+            'mid_price': mid_price,
+            'source': 'polygon_synthetic',
+            'trade_count': len(trades)
+        }
 
     def get_luld_bands(self, symbol: str) -> Optional[dict]:
         """Get current LULD bands for symbol"""
@@ -455,7 +565,7 @@ def get_polygon_stream() -> PolygonStream:
 
 def is_polygon_streaming_available() -> bool:
     """Check if Polygon streaming is available"""
-    return bool(POLYGON_API_KEY)
+    return bool(get_polygon_api_key())
 
 
 if __name__ == "__main__":

@@ -131,6 +131,54 @@ async def fetch_fresh_news(
     }
 
 
+@router.get("/feed")
+async def get_news_feed(
+    limit: int = 30,
+    symbols: Optional[str] = None
+):
+    """
+    Get a clean news feed with time, symbol, headline, and URL.
+    Perfect for dashboard display.
+    """
+    monitor = get_news_monitor()
+    symbol_list = symbols.split(",") if symbols else None
+
+    # Fetch fresh news if cache is empty
+    if not monitor.news_cache:
+        try:
+            fresh_news = await monitor.fetch_news(symbol_list, limit=limit)
+            for item in fresh_news:
+                if not any(cached.id == item.id for cached in monitor.news_cache):
+                    monitor.news_cache.insert(0, item)
+        except Exception as e:
+            logger.warning(f"Could not fetch news: {e}")
+
+    # Filter by symbols if specified
+    news_items = monitor.news_cache[:limit]
+    if symbol_list:
+        news_items = [n for n in news_items if any(s in n.symbols for s in symbol_list)]
+
+    # Format cleanly
+    feed = []
+    for item in news_items[:limit]:
+        feed.append({
+            "time": item.published_at[:19].replace("T", " ") if item.published_at else "",
+            "symbol": item.symbols[0] if item.symbols else "",
+            "symbols": item.symbols,
+            "headline": item.headline,
+            "url": item.url,
+            "sentiment": item.sentiment,
+            "impact": item.impact,
+            "id": item.id
+        })
+
+    return {
+        "success": True,
+        "feed": feed,
+        "count": len(feed)
+    }
+
+
 @router.get("/sentiment")
 async def get_sentiment_summary(
     symbols: Optional[str] = None,

@@ -281,12 +281,16 @@ class ScalpAssistant:
             logger.error(f"Failed to save exit history: {e}")
 
     def sync_positions_from_broker(self):
-        """Sync positions from Schwab broker"""
+        """Sync positions from ALL Schwab accounts"""
         if not self.broker:
             return
 
         try:
-            broker_positions = self.broker.get_positions()
+            # Try to get positions from all accounts
+            if hasattr(self.broker, '_schwab') and self.broker._schwab:
+                broker_positions = self.broker._schwab.get_all_positions()
+            else:
+                broker_positions = self.broker.get_positions()
 
             with self._lock:
                 # Track which symbols are still in broker
@@ -299,7 +303,7 @@ class ScalpAssistant:
 
                     broker_symbols.add(symbol)
                     quantity = int(float(pos.get('qty', pos.get('quantity', 0))))
-                    avg_cost = float(pos.get('avg_cost', pos.get('average_price', 0)))
+                    avg_cost = float(pos.get('avg_price', pos.get('avg_cost', pos.get('average_price', 0))))
 
                     if quantity > 0:  # Only long positions
                         if symbol not in self.positions:
@@ -316,6 +320,10 @@ class ScalpAssistant:
                             # Update existing position quantity if changed
                             if self.positions[symbol].quantity != quantity:
                                 self.positions[symbol].quantity = quantity
+                            # Fix entry_price if it was 0.0
+                            if self.positions[symbol].entry_price == 0.0 and avg_cost > 0:
+                                self.positions[symbol].entry_price = avg_cost
+                                logger.info(f"Updated {symbol} entry_price to ${avg_cost:.4f}")
 
                 # Remove positions no longer in broker
                 for symbol in list(self.positions.keys()):
@@ -333,9 +341,20 @@ class ScalpAssistant:
         symbol = symbol.upper()
         with self._lock:
             if symbol in self.positions:
-                self.positions[symbol].ai_takeover = True
-                self.positions[symbol].entry_time = datetime.now()  # Reset timer
-                logger.info(f"AI takeover ENABLED for {symbol}")
+                pos = self.positions[symbol]
+                pos.ai_takeover = True
+                pos.entry_time = datetime.now()  # Reset timer
+                # Clear any previous exit state (for re-enabling after paper exit)
+                pos.exit_reason = None
+                pos.exit_price = None
+                pos.exit_time = None
+                pos.trailing_active = False
+                pos.trailing_high = 0.0
+                pos.high_since_entry = pos.current_price if pos.current_price > 0 else pos.entry_price
+                pos.low_since_entry = pos.current_price if pos.current_price > 0 else 999999.0
+                pos.price_history = []
+                pos.candle_colors = []
+                logger.info(f"AI takeover ENABLED for {symbol} (state reset)")
                 return True
             else:
                 logger.warning(f"Cannot enable AI takeover - no position for {symbol}")

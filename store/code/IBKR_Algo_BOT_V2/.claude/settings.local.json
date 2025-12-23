@@ -110,7 +110,31 @@
       "Bash(python ai/evaluate_watchlist.py:*)",
       "Bash(schtasks:*)",
       "Bash(python news_spike_scanner.py:*)",
-      "WebFetch(domain:tradingeconomics.com)"
+      "WebFetch(domain:tradingeconomics.com)",
+      "Bash(robocopy:*)",
+      "Bash(cmd //c:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\\\ai_project_hub\\\\store\\\\code\\\\IBKR_Algo_BOT_V2\\\\backup_now.ps1\")",
+      "Bash(grep:*)",
+      "Bash(./venv311/Scripts/python.exe -m pip install:*)",
+      "Bash(./venv311/Scripts/pip.exe install:*)",
+      "Bash(./venv311/Scripts/python.exe:*)",
+      "Bash(timeout 15 ./venv311/Scripts/python.exe:*)",
+      "Bash(../venv311/Scripts/python.exe:*)",
+      "Bash(timeout 120 ./venv311/Scripts/python.exe:*)",
+      "Bash(timeout:*)",
+      "Bash(python -m ai.polygon_deep_training:*)",
+      "Bash(start /min cmd /c:*)",
+      "Bash(python monitor.py:*)",
+      "Bash(python:*)",
+      "Bash(C:/ai_project_hub/store/code/IBKR_Algo_BOT_V2/START_4AM_PREMARKET.bat)",
+      "Bash(for sym in AZI FOLD BBAI ONDS DJT DNN)",
+      "Bash(do curl -s -X POST \"http://localhost:9100/api/polygon/stream/subscribe\" -H \"Content-Type: application/json\" -d \"{\"\"symbol\"\":\"\"$sym\"\",\"\"data_type\"\":\"\"trades\"\"}\")",
+      "Bash(for sym in ONDS JLHL DJT NRXS WULF BBAI LHAI DNN FOLD)",
+      "Bash(do curl -s -X POST http://localhost:9100/api/polygon/stream/subscribe -H \"Content-Type: application/json\" -d \"{\"\"symbol\"\":\"\"$sym\"\",\"\"data_type\"\":\"\"trades\"\"}\")",
+      "WebFetch(domain:schwab-py.readthedocs.io)",
+      "Bash(for sym in FOLD BBAI ONDS DJT DNN)",
+      "Bash(for sym in SIDU QUBT CLSK SMR PSKY AZI DJT ONDS)",
+      "Bash(for sym in HOV WGO TRCK LW BDL USBC DE TOL PMCB ABM SRCO SNPS YYAI ALUB EPAC MWYN AVGO NNE VHAI MSS HPE SDCH FDX BLIN KCRD MDLN SSUP PNXP ASNS A UEEC HEI SCHL ZUMZ PAYX AZO)"
     ]
   }
 }

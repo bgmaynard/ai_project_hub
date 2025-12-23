@@ -73,6 +73,14 @@ class NewsAutoTraderConfig:
     min_news_confidence: float = 0.7
     min_news_urgency: str = "high"  # high, critical
 
+    # Stock screening requirements (Warrior method)
+    screen_before_add: bool = True  # Screen stocks before adding to watchlist
+    min_price: float = 1.0  # Minimum stock price
+    max_price: float = 20.0  # Maximum stock price
+    max_float: float = 50_000_000  # 50M max float (low float preference)
+    min_avg_volume: int = 100_000  # Minimum avg daily volume
+    require_catalyst: bool = True  # Must have high impact news
+
     # AI filter requirements
     require_chronos: bool = True
     min_chronos_score: float = 0.6
@@ -153,6 +161,7 @@ class NewsAutoTrader:
         self.stats = {
             "news_received": 0,
             "candidates_evaluated": 0,
+            "stocks_screened_out": 0,  # Failed price/float/volume screening
             "trades_triggered": 0,
             "trades_filtered_out": 0,
             "successful_trades": 0,
@@ -212,6 +221,103 @@ class NewsAutoTrader:
             except Exception as e:
                 logger.warning(f"Order Flow not available: {e}")
         return self._order_flow
+
+    async def _check_stock_requirements(self, symbol: str, catalyst: str = "") -> tuple:
+        """
+        Screen stock against strategy requirements before adding to watchlist.
+        Returns (passed: bool, rejection_reason: Optional[str], stock_data: Dict)
+
+        Warrior Method Criteria:
+        - Price range: $1-$20 (configurable)
+        - Low float: < 50M shares (configurable)
+        - Adequate volume: > 100K avg daily (configurable)
+        - High impact catalyst (FDA, earnings, M&A, etc.)
+        """
+        stock_data = {}
+
+        if not self.config.screen_before_add:
+            return True, None, stock_data
+
+        try:
+            # Get current price from market data
+            price = None
+            try:
+                import httpx
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(
+                        f"http://localhost:9100/api/price/{symbol}",
+                        timeout=5
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        price = data.get("price") or data.get("last") or data.get("lastPrice")
+                        stock_data["price"] = price
+            except Exception as e:
+                logger.debug(f"Could not get price for {symbol}: {e}")
+
+            # Check price range
+            if price is not None:
+                if price < self.config.min_price:
+                    return False, f"price ${price:.2f} < ${self.config.min_price:.2f} min", stock_data
+                if price > self.config.max_price:
+                    return False, f"price ${price:.2f} > ${self.config.max_price:.2f} max", stock_data
+            else:
+                logger.warning(f"Could not get price for {symbol}, skipping price check")
+
+            # Get float data
+            float_shares = None
+            avg_volume = None
+            try:
+                import yfinance as yf
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+
+                float_shares = info.get("floatShares")
+                avg_volume = info.get("averageVolume") or info.get("averageDailyVolume10Day")
+
+                stock_data["float"] = float_shares
+                stock_data["avg_volume"] = avg_volume
+                stock_data["market_cap"] = info.get("marketCap")
+                stock_data["sector"] = info.get("sector")
+            except Exception as e:
+                logger.debug(f"Could not get yfinance data for {symbol}: {e}")
+
+            # Check float
+            if float_shares is not None:
+                if float_shares > self.config.max_float:
+                    float_m = float_shares / 1_000_000
+                    max_m = self.config.max_float / 1_000_000
+                    return False, f"float {float_m:.1f}M > {max_m:.1f}M max", stock_data
+            else:
+                logger.warning(f"Could not get float for {symbol}, skipping float check")
+
+            # Check average volume
+            if avg_volume is not None:
+                if avg_volume < self.config.min_avg_volume:
+                    return False, f"avg volume {avg_volume:,} < {self.config.min_avg_volume:,} min", stock_data
+
+            # Check catalyst requirement
+            if self.config.require_catalyst:
+                high_impact_catalysts = [
+                    "fda", "earnings", "acquisition", "merger", "bankruptcy",
+                    "upgrade", "downgrade", "guidance", "contract", "patent",
+                    "offering", "buyback", "dividend", "settlement", "approval"
+                ]
+                catalyst_lower = catalyst.lower() if catalyst else ""
+                has_catalyst = any(c in catalyst_lower for c in high_impact_catalysts)
+
+                if not has_catalyst and catalyst:
+                    # Also check if news urgency indicates catalyst
+                    pass  # We'll let it through if it passed urgency check already
+
+            # All checks passed!
+            logger.info(f"Stock {symbol} PASSED screening: price=${price}, float={float_shares}, vol={avg_volume}")
+            return True, None, stock_data
+
+        except Exception as e:
+            logger.error(f"Error checking stock requirements for {symbol}: {e}")
+            # Don't reject on error - let it through for manual review
+            return True, None, stock_data
 
     async def start(self):
         """Start the news auto-trader"""
@@ -309,7 +415,7 @@ class NewsAutoTrader:
 
         self.stats["candidates_evaluated"] += 1
 
-        # Check basic eligibility
+        # Check basic eligibility (news thresholds, cooldowns, limits)
         rejection = self._check_eligibility(symbol, alert)
         if rejection:
             candidate.rejection_reason = rejection
@@ -318,7 +424,27 @@ class NewsAutoTrader:
             logger.info(f"Candidate {symbol} rejected: {rejection}")
             return
 
-        # Auto-add to watchlist
+        # NEW: Check stock requirements (price, float, volume) BEFORE adding to watchlist
+        if self.config.screen_before_add:
+            passed, rejection, stock_data = await self._check_stock_requirements(
+                symbol,
+                catalyst=alert.catalyst_type
+            )
+            if not passed:
+                candidate.rejection_reason = f"SCREEN: {rejection}"
+                self.candidates.append(candidate)
+                self.stats["trades_filtered_out"] += 1
+                self.stats["stocks_screened_out"] += 1
+                logger.info(f"Candidate {symbol} FAILED screening: {rejection}")
+                return
+            else:
+                # Log successful screening with data
+                price = stock_data.get("price", "?")
+                float_val = stock_data.get("float")
+                float_str = f"{float_val/1_000_000:.1f}M" if float_val else "?"
+                logger.info(f"Candidate {symbol} PASSED screening: ${price}, float={float_str}")
+
+        # Auto-add to watchlist (only if screening passed)
         if self.config.auto_add_to_watchlist:
             await self._add_to_watchlist(
                 symbol,

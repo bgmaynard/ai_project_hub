@@ -43,26 +43,41 @@ SCHWABDEV_TOKEN_FILE = Path(__file__).parent / "schwabdev_tokens.json"
 
 
 def _convert_token_format():
-    """Convert existing schwab_token.json to schwabdev format"""
+    """
+    Convert/sync schwab_token.json to schwabdev format.
+    Always syncs if the source file is newer than the destination.
+    """
     try:
         if not TOKEN_FILE.exists():
             logger.warning("[SCHWABDEV] No source token file found")
             return False
 
-        with open(TOKEN_FILE, 'r') as f:
-            old_token = json.load(f)
+        # Check if we need to sync (source newer than destination)
+        source_mtime = TOKEN_FILE.stat().st_mtime
+        dest_mtime = SCHWABDEV_TOKEN_FILE.stat().st_mtime if SCHWABDEV_TOKEN_FILE.exists() else 0
 
-        # Check if already in schwabdev format
-        if "token_dictionary" in old_token:
+        if SCHWABDEV_TOKEN_FILE.exists() and dest_mtime >= source_mtime:
+            # Destination is up to date
+            logger.debug("[SCHWABDEV] Token file already up to date")
             return True
 
-        # Convert to schwabdev format
+        with open(TOKEN_FILE, 'r') as f:
+            source_token = json.load(f)
+
+        # Skip if source is already in schwabdev format (wrong file)
+        if "token_dictionary" in source_token:
+            return True
+
+        # Convert to schwabdev format with current timestamp
         now = datetime.now(tz=__import__('datetime').timezone.utc).isoformat()
         schwabdev_token = {
             "token_dictionary": {
-                "access_token": old_token.get("access_token"),
-                "refresh_token": old_token.get("refresh_token"),
-                "id_token": old_token.get("id_token")
+                "access_token": source_token.get("access_token"),
+                "refresh_token": source_token.get("refresh_token"),
+                "id_token": source_token.get("id_token"),
+                "expires_in": source_token.get("expires_in", 1800),
+                "token_type": source_token.get("token_type", "Bearer"),
+                "scope": source_token.get("scope", "api")
             },
             "access_token_issued": now,
             "refresh_token_issued": now
@@ -71,7 +86,7 @@ def _convert_token_format():
         with open(SCHWABDEV_TOKEN_FILE, 'w') as f:
             json.dump(schwabdev_token, f, indent=2)
 
-        logger.info(f"[SCHWABDEV] Token converted to schwabdev format: {SCHWABDEV_TOKEN_FILE}")
+        logger.info(f"[SCHWABDEV] Token synced from {TOKEN_FILE} to {SCHWABDEV_TOKEN_FILE}")
         return True
 
     except Exception as e:
@@ -101,11 +116,13 @@ def _get_client():
             logger.error("SCHWAB_APP_KEY or SCHWAB_APP_SECRET not configured")
             return None
 
-        # Convert existing token to schwabdev format if needed
+        # Always sync tokens from source (prevents stale refresh token issues)
+        _convert_token_format()
+
+        # Verify token file exists
         if not SCHWABDEV_TOKEN_FILE.exists():
-            if not _convert_token_format():
-                logger.error("[SCHWABDEV] Failed to convert token format")
-                return None
+            logger.error("[SCHWABDEV] Token file not found after sync")
+            return None
 
         # Use schwabdev-specific token file
         _client = schwabdev.Client(

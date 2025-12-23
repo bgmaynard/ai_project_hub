@@ -17,7 +17,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -4.497138184791502,
       "hold_time_seconds": 21,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_083131",
@@ -36,7 +42,13 @@
       "max_gain_percent": 5.3398058252427125,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 34,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ISPO_20251217_083131",
@@ -55,7 +67,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 301,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "RILY_20251217_083141",
@@ -74,7 +92,13 @@
       "max_gain_percent": 0.41981528127624446,
       "max_drawdown_percent": -0.755667506297228,
       "hold_time_seconds": 14,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "RILY_20251217_083208",
@@ -93,7 +117,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.0100334448160635,
       "hold_time_seconds": 113,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_083209",
@@ -112,7 +142,13 @@
       "max_gain_percent": 0.9259259259259267,
       "max_drawdown_percent": -4.629629629629633,
       "hold_time_seconds": 42,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "SOUN_20251217_083354",
@@ -131,7 +167,13 @@
       "max_gain_percent": 0.8802816901408576,
       "max_drawdown_percent": -0.17605633802816525,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_083354",
@@ -150,7 +192,13 @@
       "max_gain_percent": 1.4218009478673106,
       "max_drawdown_percent": -1.4218009478672893,
       "hold_time_seconds": 83,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "RILY_20251217_083509",
@@ -169,7 +217,13 @@
       "max_gain_percent": 1.6949152542372818,
       "max_drawdown_percent": -0.847457627118656,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_083522",
@@ -188,7 +242,13 @@
       "max_gain_percent": 7.6212471131639745,
       "max_drawdown_percent": -1.385681293302552,
       "hold_time_seconds": 122,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_083522",
@@ -207,7 +267,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -6.190476190476195,
       "hold_time_seconds": 10,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ISPO_20251217_083636",
@@ -226,7 +292,13 @@
       "max_gain_percent": 0.12077294685990082,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 301,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_083727",
@@ -245,7 +317,13 @@
       "max_gain_percent": 0.429184549356214,
       "max_drawdown_percent": -4.5064377682403425,
       "hold_time_seconds": 26,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_083750",
@@ -264,7 +342,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.7735849056603805,
       "hold_time_seconds": 28,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_083924",
@@ -283,7 +367,13 @@
       "max_gain_percent": 0.44642857142856185,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 11,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "SOUN_20251217_083924",
@@ -302,7 +392,13 @@
       "max_gain_percent": 0.3508771929824486,
       "max_drawdown_percent": -0.7894736842105251,
       "hold_time_seconds": 302,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_083938",
@@ -321,7 +417,13 @@
       "max_gain_percent": 4.444444444444448,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 39,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "AZI_20251217_084008",
@@ -340,7 +442,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.864734299516901,
       "hold_time_seconds": 133,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "RILY_20251217_084122",
@@ -359,7 +467,13 @@
       "max_gain_percent": 1.1393514460999037,
       "max_drawdown_percent": -2.278702892199823,
       "hold_time_seconds": 222,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ISPO_20251217_084141",
@@ -378,7 +492,13 @@
       "max_gain_percent": 0.7237635705669542,
       "max_drawdown_percent": -0.12062726176115546,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_084324",
@@ -397,7 +517,13 @@
       "max_gain_percent": 2.422907488986791,
       "max_drawdown_percent": -1.7621145374449354,
       "hold_time_seconds": 92,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "SOUN_20251217_084527",
@@ -416,7 +542,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -1.3181019332161716,
       "hold_time_seconds": 301,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ISPO_20251217_084643",
@@ -435,7 +567,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -0.35928143712574084,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_084751",
@@ -454,7 +592,13 @@
       "max_gain_percent": 2.4752475247524663,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 32,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_084827",
@@ -473,7 +617,13 @@
       "max_gain_percent": 1.456310679611641,
       "max_drawdown_percent": -4.854368932038839,
       "hold_time_seconds": 119,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "SOUN_20251217_085129",
@@ -492,7 +642,13 @@
       "max_gain_percent": 0.7964601769911492,
       "max_drawdown_percent": -0.30973451327433754,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_085131",
@@ -511,7 +667,13 @@
       "max_gain_percent": 0.4975124378109568,
       "max_drawdown_percent": -4.477611940298501,
       "hold_time_seconds": 166,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_085245",
@@ -530,7 +692,13 @@
       "max_gain_percent": 2.510460251046027,
       "max_drawdown_percent": -0.836820083682009,
       "hold_time_seconds": 84,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "BDRX_20251217_085536",
@@ -549,7 +717,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -0.750750750750748,
       "hold_time_seconds": 302,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_085543",
@@ -568,7 +742,13 @@
       "max_gain_percent": 0.41841004184099523,
       "max_drawdown_percent": -3.347280334728036,
       "hold_time_seconds": 82,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "SOUN_20251217_085632",
@@ -587,7 +767,13 @@
       "max_gain_percent": 0.483516483516481,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 305,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_085808",
@@ -606,7 +792,13 @@
       "max_gain_percent": 3.8461538461538596,
       "max_drawdown_percent": -0.8547008547008554,
       "hold_time_seconds": 156,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_090141",
@@ -625,7 +817,13 @@
       "max_gain_percent": 0.8438818565400852,
       "max_drawdown_percent": -2.742616033755272,
       "hold_time_seconds": 302,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "SOUN_20251217_090141",
@@ -644,7 +842,13 @@
       "max_gain_percent": 1.1423550087873375,
       "max_drawdown_percent": -0.13181019332162186,
       "hold_time_seconds": 302,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "RILY_20251217_090145",
@@ -663,7 +867,13 @@
       "max_gain_percent": 1.6339869281045694,
       "max_drawdown_percent": -1.7973856209150378,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "SOUN_20251217_090646",
@@ -682,7 +892,13 @@
       "max_gain_percent": 0.21720243266724898,
       "max_drawdown_percent": -0.347523892267586,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_090647",
@@ -701,7 +917,13 @@
       "max_gain_percent": 0.5571030640668528,
       "max_drawdown_percent": -2.506963788300832,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "RILY_20251217_090648",
@@ -720,7 +942,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -1.785714285714291,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "MBRX_20251217_093134",
@@ -739,7 +967,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 301,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "AZI_20251217_093352",
@@ -758,7 +992,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -2.9126213592233037,
       "hold_time_seconds": 303,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "MBRX_20251217_093639",
@@ -777,7 +1017,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_093812",
@@ -796,7 +1042,13 @@
       "max_gain_percent": 3.6414565826330634,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 302,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "AZI_20251217_093958",
@@ -815,7 +1067,13 @@
       "max_gain_percent": 0.48780487804879175,
       "max_drawdown_percent": -0.9756097560975618,
       "hold_time_seconds": 301,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "MBRX_20251217_094143",
@@ -834,7 +1092,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 302,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251217_094447",
@@ -853,7 +1117,13 @@
       "max_gain_percent": 0.5464480874316944,
       "max_drawdown_percent": -2.1857923497267775,
       "hold_time_seconds": 301,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "AZI_20251217_094600",
@@ -872,7 +1142,13 @@
       "max_gain_percent": 0.980392156862746,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 301,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "MBRX_20251217_094648",
@@ -891,7 +1167,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 302,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "BDRX_20251217_094855",
@@ -910,7 +1192,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -1.3595166163141972,
       "hold_time_seconds": 300,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251217_124447",
@@ -929,7 +1217,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 0,
-      "status": "open"
+      "status": "open",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "AMCI_20251217_125239",
@@ -948,7 +1242,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -0.30456852791877526,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "AMCI_20251217_125642",
@@ -967,7 +1267,13 @@
       "max_gain_percent": 0.46367851622874734,
       "max_drawdown_percent": -0.5151983513652829,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "AMCI_20251217_125953",
@@ -986,7 +1292,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "AMCI_20251217_130257",
@@ -1005,7 +1317,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "DJT_20251218_070019",
@@ -1024,7 +1342,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.1321619556913682,
       "hold_time_seconds": 59,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_070029",
@@ -1043,7 +1367,13 @@
       "max_gain_percent": 0.8474576271186449,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "DJT_20251218_070220",
@@ -1062,7 +1392,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -2.2870662460567757,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_070333",
@@ -1081,7 +1417,13 @@
       "max_gain_percent": 0.8403361344537823,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "DJT_20251218_070624",
@@ -1100,7 +1442,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_070637",
@@ -1119,7 +1467,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "DJT_20251218_070927",
@@ -1138,7 +1492,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_070941",
@@ -1157,7 +1517,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -0.8333333333333341,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "EVTV_20251218_071539",
@@ -1176,7 +1542,13 @@
       "max_gain_percent": 5.357142857142842,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 78,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "EVTV_20251218_071728",
@@ -1195,7 +1567,13 @@
       "max_gain_percent": 3.539823008849561,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 48,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "EVTV_20251218_071826",
@@ -1214,7 +1592,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.508771929824545,
       "hold_time_seconds": 64,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "EVTV_20251218_072033",
@@ -1233,7 +1617,13 @@
       "max_gain_percent": 0.8849557522123902,
       "max_drawdown_percent": -3.5398230088495417,
       "hold_time_seconds": 37,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "LHAI_20251218_081844",
@@ -1252,7 +1642,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -9.81468771448181,
       "hold_time_seconds": 80,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "LHAI_20251218_082542",
@@ -1271,7 +1667,13 @@
       "max_gain_percent": 7.336683417085432,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 161,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "LHAI_20251218_082826",
@@ -1290,7 +1692,13 @@
       "max_gain_percent": 0.6756756756756785,
       "max_drawdown_percent": -3.281853281853281,
       "hold_time_seconds": 138,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ATHA_20251218_083146",
@@ -1309,7 +1717,13 @@
       "max_gain_percent": 1.8205461638491505,
       "max_drawdown_percent": -1.820546163849162,
       "hold_time_seconds": 183,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "KLRS_20251218_083209",
@@ -1328,7 +1742,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -0.466635557629498,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_083343",
@@ -1347,7 +1767,13 @@
       "max_gain_percent": 1.307189542483671,
       "max_drawdown_percent": -0.8714596949891076,
       "hold_time_seconds": 183,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ATHA_20251218_083453",
@@ -1366,7 +1792,13 @@
       "max_gain_percent": 0.38659793814433313,
       "max_drawdown_percent": -1.546391752577321,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "KLRS_20251218_083611",
@@ -1385,7 +1817,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ATHA_20251218_083759",
@@ -1404,7 +1842,13 @@
       "max_gain_percent": 5.739795918367338,
       "max_drawdown_percent": -2.551020408163268,
       "hold_time_seconds": 171,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_083818",
@@ -1423,7 +1867,13 @@
       "max_gain_percent": 10.893246187363834,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 165,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PHUN_20251218_083842",
@@ -1442,7 +1892,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ATHA_20251218_084055",
@@ -1461,7 +1917,13 @@
       "max_gain_percent": 0.7299270072992544,
       "max_drawdown_percent": -2.0681265206812642,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "KLRS_20251218_084129",
@@ -1480,7 +1942,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -0.8904719501335676,
       "hold_time_seconds": 185,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_084134",
@@ -1499,7 +1967,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.6290322580645102,
       "hold_time_seconds": 38,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_084318",
@@ -1518,7 +1992,13 @@
       "max_gain_percent": 2.2774327122153273,
       "max_drawdown_percent": -0.20703933747411568,
       "hold_time_seconds": 105,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ATHA_20251218_084535",
@@ -1537,7 +2017,13 @@
       "max_gain_percent": 1.831501831501836,
       "max_drawdown_percent": -1.7094017094016947,
       "hold_time_seconds": 170,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "INBS_20251218_084535",
@@ -1556,7 +2042,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_084537",
@@ -1575,7 +2067,13 @@
       "max_gain_percent": 0.41322314049587733,
       "max_drawdown_percent": -1.446280991735543,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PHUN_20251218_084651",
@@ -1594,7 +2092,13 @@
       "max_gain_percent": 0.5319148936170218,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "INBS_20251218_084926",
@@ -1613,7 +2117,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ATHA_20251218_084933",
@@ -1632,7 +2142,13 @@
       "max_gain_percent": 0.8505467800729074,
       "max_drawdown_percent": -4.495747266099636,
       "hold_time_seconds": 183,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PHUN_20251218_085022",
@@ -1651,7 +2167,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 183,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "INBS_20251218_085230",
@@ -1670,7 +2192,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PHUN_20251218_085337",
@@ -1689,7 +2217,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "INBS_20251218_085535",
@@ -1708,7 +2242,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PHUN_20251218_085843",
@@ -1727,7 +2267,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "LHAI_20251218_090153",
@@ -1746,7 +2292,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "LHAI_20251218_090458",
@@ -1765,7 +2317,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_090513",
@@ -1784,7 +2342,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -2.1052631578947385,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "LHAI_20251218_090804",
@@ -1803,7 +2367,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_091021",
@@ -1822,7 +2392,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -2.43055555555555,
       "hold_time_seconds": 180,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "LHAI_20251218_091108",
@@ -1841,7 +2417,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -13.090909090909086,
       "hold_time_seconds": 103,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_093003",
@@ -1860,7 +2442,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -4.0000000000000036,
       "hold_time_seconds": 23,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_093139",
@@ -1879,7 +2467,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -4.075235109717865,
       "hold_time_seconds": 98,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_093445",
@@ -1898,7 +2492,13 @@
       "max_gain_percent": 4.838709677419352,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 198,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_093905",
@@ -1917,7 +2517,13 @@
       "max_gain_percent": 1.6077170418006517,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 54,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_095009",
@@ -1936,7 +2542,13 @@
       "max_gain_percent": 2.7027027027026933,
       "max_drawdown_percent": -2.4324324324324405,
       "hold_time_seconds": 50,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_095300",
@@ -1955,7 +2567,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.089887640449435,
       "hold_time_seconds": 3,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_095548",
@@ -1974,7 +2592,13 @@
       "max_gain_percent": 1.4164305949008575,
       "max_drawdown_percent": 0.0,
       "hold_time_seconds": 7,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_095623",
@@ -1993,7 +2617,13 @@
       "max_gain_percent": 0.837988826815637,
       "max_drawdown_percent": -3.9106145251396685,
       "hold_time_seconds": 125,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_101447",
@@ -2012,7 +2642,13 @@
       "max_gain_percent": 3.064066852367697,
       "max_drawdown_percent": -1.9498607242339787,
       "hold_time_seconds": 117,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "PAVS_20251218_101656",
@@ -2031,7 +2667,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.047091412742379,
       "hold_time_seconds": 47,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_101739",
@@ -2050,7 +2692,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -1.5486725663716683,
       "hold_time_seconds": 181,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_114705",
@@ -2069,7 +2717,13 @@
       "max_gain_percent": 0.6382978723404308,
       "max_drawdown_percent": -3.191489361702135,
       "hold_time_seconds": 87,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251218_121257",
@@ -2088,7 +2742,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.394255874673626,
       "hold_time_seconds": 4,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "ADTX_20251219_070143",
@@ -2107,7 +2767,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -3.1250000000000027,
       "hold_time_seconds": 30,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251219_070343",
@@ -2126,7 +2792,13 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -2.3391812865497097,
       "hold_time_seconds": 154,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
     },
     {
       "trade_id": "YCBD_20251219_070726",
@@ -2145,8 +2817,554 @@
       "max_gain_percent": 0.0,
       "max_drawdown_percent": -1.1904761904761916,
       "hold_time_seconds": 182,
-      "status": "closed"
+      "status": "closed",
+      "secondary_triggers": null,
+      "atr": 0.0,
+      "atr_stop_price": 0.0,
+      "atr_target_price": 0.0,
+      "atr_trail_distance": 0.0,
+      "volatility_regime": ""
+    },
+    {
+      "trade_id": "NRXS_20251220_110833",
+      "symbol": "NRXS",
+      "entry_time": "2025-12-20T11:08:33.439951",
+      "entry_price": 3.1,
+      "entry_signal": "volume_surge",
+      "shares": 161,
+      "exit_time": "2025-12-20T11:11:35.013227",
+      "exit_price": 3.1,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": 0.0,
+      "pnl_percent": 0.0,
+      "high_price": 3.1,
+      "low_price": 3.1,
+      "max_gain_percent": 0.0,
+      "max_drawdown_percent": 0.0,
+      "hold_time_seconds": 181,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "morning",
+        "day_of_week": "Saturday",
+        "entry_timestamp": "2025-12-20T11:08:30.710561",
+        "spread_at_entry": 0.323,
+        "day_change_at_entry": 7.64,
+        "volume_at_entry": 15241281,
+        "momentum_strength": 0,
+        "volume_spike_percent": 167.94244818353113,
+        "distance_from_hod": 16.22,
+        "distance_from_lod": 4.73,
+        "float_shares": 7486690,
+        "float_rotation": 203.58,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.07169098998531245,
+      "atr_stop_price": 2.9924635150220316,
+      "atr_target_price": 3.243381979970625,
+      "atr_trail_distance": 0.07169098998531245,
+      "volatility_regime": "NORMAL"
+    },
+    {
+      "trade_id": "DJT_20251222_030056",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:00:56.731964",
+      "entry_price": 16.46,
+      "entry_signal": "volume_surge",
+      "shares": 30,
+      "exit_time": "2025-12-22T03:03:59.224545",
+      "exit_price": 16.43,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -0.9000000000000341,
+      "pnl_percent": -0.18226002430134347,
+      "high_price": 16.49,
+      "low_price": 16.38,
+      "max_gain_percent": 0.18226002430132188,
+      "max_drawdown_percent": -0.4860267314702421,
+      "hold_time_seconds": 182,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "overnight",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T03:00:55.204578",
+        "spread_at_entry": 0.608,
+        "day_change_at_entry": 2.3,
+        "volume_at_entry": 7972,
+        "momentum_strength": 0,
+        "volume_spike_percent": 5.486579490708878,
+        "distance_from_hod": 0.0,
+        "distance_from_lod": 0.0,
+        "float_shares": 155093491,
+        "float_rotation": 0.01,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "flat",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.1732281583355639,
+      "atr_stop_price": 16.200157762496655,
+      "atr_target_price": 16.806456316671127,
+      "atr_trail_distance": 0.1732281583355639,
+      "volatility_regime": "NORMAL"
+    },
+    {
+      "trade_id": "DJT_20251222_030505",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:05:05.465448",
+      "entry_price": 16.43,
+      "entry_signal": "volume_surge",
+      "shares": 30,
+      "exit_time": "2025-12-22T03:08:06.960225",
+      "exit_price": 16.56,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": 3.89999999999997,
+      "pnl_percent": 0.7912355447352344,
+      "high_price": 16.67,
+      "low_price": 16.43,
+      "max_gain_percent": 1.4607425441266098,
+      "max_drawdown_percent": 0.0,
+      "hold_time_seconds": 181,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "overnight",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T03:05:01.770254",
+        "spread_at_entry": 0.243,
+        "day_change_at_entry": 2.11,
+        "volume_at_entry": 15875,
+        "momentum_strength": 0,
+        "volume_spike_percent": 10.925671025464556,
+        "distance_from_hod": 0.0,
+        "distance_from_lod": 0.0,
+        "float_shares": 155093491,
+        "float_rotation": 0.01,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "flat",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.1732281583355639,
+      "atr_stop_price": 16.170157762496654,
+      "atr_target_price": 16.776456316671126,
+      "atr_trail_distance": 0.1732281583355639,
+      "volatility_regime": "NORMAL"
+    },
+    {
+      "trade_id": "DJT_20251222_030812",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:08:12.330992",
+      "entry_price": 16.6,
+      "entry_signal": "volume_surge",
+      "shares": 30,
+      "exit_time": "2025-12-22T03:11:15.007105",
+      "exit_price": 16.58,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -0.6000000000000938,
+      "pnl_percent": -0.1204819277108622,
+      "high_price": 16.64,
+      "low_price": 16.57,
+      "max_gain_percent": 0.2409638554216816,
+      "max_drawdown_percent": -0.1807228915662719,
+      "hold_time_seconds": 182,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "overnight",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T03:08:10.824366",
+        "spread_at_entry": 0.361,
+        "day_change_at_entry": 3.17,
+        "volume_at_entry": 44082,
+        "momentum_strength": 0,
+        "volume_spike_percent": 23.27455121436114,
+        "distance_from_hod": 0.0,
+        "distance_from_lod": 0.0,
+        "float_shares": 155093491,
+        "float_rotation": 0.03,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "flat",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.1732281583355639,
+      "atr_stop_price": 16.340157762496656,
+      "atr_target_price": 16.946456316671128,
+      "atr_trail_distance": 0.1732281583355639,
+      "volatility_regime": "NORMAL"
+    },
+    {
+      "trade_id": "DJT_20251222_031219",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:12:19.231133",
+      "entry_price": 16.59,
+      "entry_signal": "volume_surge",
+      "shares": 30,
+      "exit_time": "2025-12-22T03:15:21.679793",
+      "exit_price": 16.65,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": 1.7999999999999616,
+      "pnl_percent": 0.3616636528028856,
+      "high_price": 16.65,
+      "low_price": 16.59,
+      "max_gain_percent": 0.3616636528028856,
+      "max_drawdown_percent": 0.0,
+      "hold_time_seconds": 182,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "overnight",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T03:12:16.619197",
+        "spread_at_entry": 0.301,
+        "day_change_at_entry": 3.11,
+        "volume_at_entry": 50719,
+        "momentum_strength": 0,
+        "volume_spike_percent": 26.778775079197466,
+        "distance_from_hod": 0.0,
+        "distance_from_lod": 0.0,
+        "float_shares": 155093491,
+        "float_rotation": 0.03,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.1732281583355639,
+      "atr_stop_price": 16.330157762496654,
+      "atr_target_price": 16.936456316671126,
+      "atr_trail_distance": 0.1732281583355639,
+      "volatility_regime": "NORMAL"
+    },
+    {
+      "trade_id": "DJT_20251222_031527",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:15:27.769159",
+      "entry_price": 16.65,
+      "entry_signal": "volume_surge",
+      "shares": 30,
+      "exit_time": "2025-12-22T03:18:28.919362",
+      "exit_price": 16.61,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -1.1999999999999744,
+      "pnl_percent": -0.24024024024023516,
+      "high_price": 16.65,
+      "low_price": 16.58,
+      "max_gain_percent": 0.0,
+      "max_drawdown_percent": -0.42042042042042216,
+      "hold_time_seconds": 181,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "overnight",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T03:15:25.966054",
+        "spread_at_entry": 0.06,
+        "day_change_at_entry": 3.48,
+        "volume_at_entry": 51745,
+        "momentum_strength": 0,
+        "volume_spike_percent": 6.490842950326141,
+        "distance_from_hod": 0.0,
+        "distance_from_lod": 0.0,
+        "float_shares": 155093491,
+        "float_rotation": 0.03,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.1732399355877395,
+      "atr_stop_price": 16.39014009661839,
+      "atr_target_price": 16.996479871175477,
+      "atr_trail_distance": 0.1732399355877395,
+      "volatility_regime": "NORMAL"
+    },
+    {
+      "trade_id": "CLSK_20251222_124211",
+      "symbol": "CLSK",
+      "entry_time": "2025-12-22T12:42:11.567896",
+      "entry_price": 12.3198,
+      "entry_signal": "volume_surge",
+      "shares": 54,
+      "exit_time": "2025-12-22T12:45:15.711255",
+      "exit_price": 12.315,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -0.2592000000000674,
+      "pnl_percent": -0.03896167145571557,
+      "high_price": 12.345,
+      "low_price": 12.3,
+      "max_gain_percent": 0.2045487751424527,
+      "max_drawdown_percent": -0.1607168947547853,
+      "hold_time_seconds": 184,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "midday",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T12:42:09.790627",
+        "spread_at_entry": 0.081,
+        "day_change_at_entry": 2.41,
+        "volume_at_entry": 19354948,
+        "momentum_strength": 0,
+        "volume_spike_percent": 34.9880745570666,
+        "distance_from_hod": 5.67,
+        "distance_from_lod": 1.15,
+        "float_shares": 246755593,
+        "float_rotation": 7.84,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.07540460127378189,
+      "atr_stop_price": 12.196602,
+      "atr_target_price": 12.432906901910673,
+      "atr_trail_distance": 0.05655345095533641,
+      "volatility_regime": "LOW"
+    },
+    {
+      "trade_id": "SMR_20251222_124303",
+      "symbol": "SMR",
+      "entry_time": "2025-12-22T12:43:03.080991",
+      "entry_price": 16.45,
+      "entry_signal": "volume_surge",
+      "shares": 40,
+      "exit_time": "2025-12-22T12:46:05.047178",
+      "exit_price": 16.45,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": 0.0,
+      "pnl_percent": 0.0,
+      "high_price": 16.465,
+      "low_price": 16.415,
+      "max_gain_percent": 0.09118541033434997,
+      "max_drawdown_percent": -0.21276595744680937,
+      "hold_time_seconds": 181,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "midday",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T12:43:01.374908",
+        "spread_at_entry": 0.061,
+        "day_change_at_entry": 2.36,
+        "volume_at_entry": 16679248,
+        "momentum_strength": 0,
+        "volume_spike_percent": 26.902229856692394,
+        "distance_from_hod": 4.67,
+        "distance_from_lod": 1.83,
+        "float_shares": 95634544,
+        "float_rotation": 17.44,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.08885128384026497,
+      "atr_stop_price": 16.2855,
+      "atr_target_price": 16.583276925760398,
+      "atr_trail_distance": 0.06663846288019873,
+      "volatility_regime": "LOW"
+    },
+    {
+      "trade_id": "CLSK_20251222_124718",
+      "symbol": "CLSK",
+      "entry_time": "2025-12-22T12:47:18.856872",
+      "entry_price": 12.33,
+      "entry_signal": "volume_surge",
+      "shares": 54,
+      "exit_time": "2025-12-22T12:50:24.507069",
+      "exit_price": 12.33,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": 0.0,
+      "pnl_percent": 0.0,
+      "high_price": 12.345,
+      "low_price": 12.315,
+      "max_gain_percent": 0.12165450121654961,
+      "max_drawdown_percent": -0.12165450121654961,
+      "hold_time_seconds": 185,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "midday",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T12:47:17.115614",
+        "spread_at_entry": 0.081,
+        "day_change_at_entry": 2.49,
+        "volume_at_entry": 19463967,
+        "momentum_strength": 0,
+        "volume_spike_percent": 35.185148964093514,
+        "distance_from_hod": 5.59,
+        "distance_from_lod": 1.23,
+        "float_shares": 246755593,
+        "float_rotation": 7.89,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.07175067376507711,
+      "atr_stop_price": 12.2067,
+      "atr_target_price": 12.437626010647616,
+      "atr_trail_distance": 0.05381300532380784,
+      "volatility_regime": "LOW"
+    },
+    {
+      "trade_id": "SMR_20251222_124723",
+      "symbol": "SMR",
+      "entry_time": "2025-12-22T12:47:23.699565",
+      "entry_price": 16.445,
+      "entry_signal": "volume_surge",
+      "shares": 40,
+      "exit_time": "2025-12-22T12:50:25.825520",
+      "exit_price": 16.495,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": 2.0000000000000284,
+      "pnl_percent": 0.3040437823046562,
+      "high_price": 16.5,
+      "low_price": 16.43,
+      "max_gain_percent": 0.33444816053511534,
+      "max_drawdown_percent": -0.09121313469139902,
+      "hold_time_seconds": 182,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "midday",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T12:47:20.183077",
+        "spread_at_entry": 0.061,
+        "day_change_at_entry": 2.33,
+        "volume_at_entry": 16782325,
+        "momentum_strength": 0,
+        "volume_spike_percent": 27.068484423261477,
+        "distance_from_hod": 4.69,
+        "distance_from_lod": 1.8,
+        "float_shares": 95634544,
+        "float_rotation": 17.55,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.08885128384026497,
+      "atr_stop_price": 16.28055,
+      "atr_target_price": 16.5782769257604,
+      "atr_trail_distance": 0.06663846288019873,
+      "volatility_regime": "LOW"
+    },
+    {
+      "trade_id": "CLSK_20251222_125030",
+      "symbol": "CLSK",
+      "entry_time": "2025-12-22T12:50:30.216239",
+      "entry_price": 12.33,
+      "entry_signal": "volume_surge",
+      "shares": 54,
+      "exit_time": "2025-12-22T12:53:32.185757",
+      "exit_price": 12.285,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -2.429999999999996,
+      "pnl_percent": -0.3649635036496345,
+      "high_price": 12.33,
+      "low_price": 12.285,
+      "max_gain_percent": 0.0,
+      "max_drawdown_percent": -0.3649635036496345,
+      "hold_time_seconds": 181,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "midday",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T12:50:28.884570",
+        "spread_at_entry": 0.081,
+        "day_change_at_entry": 2.49,
+        "volume_at_entry": 19534644,
+        "momentum_strength": 0,
+        "volume_spike_percent": 35.31291227017265,
+        "distance_from_hod": 5.59,
+        "distance_from_lod": 1.23,
+        "float_shares": 246755593,
+        "float_rotation": 7.92,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.07175067376507711,
+      "atr_stop_price": 12.2067,
+      "atr_target_price": 12.437626010647616,
+      "atr_trail_distance": 0.05381300532380784,
+      "volatility_regime": "LOW"
+    },
+    {
+      "trade_id": "SMR_20251222_125124",
+      "symbol": "SMR",
+      "entry_time": "2025-12-22T12:51:24.125060",
+      "entry_price": 16.4875,
+      "entry_signal": "volume_surge",
+      "shares": 40,
+      "exit_time": "2025-12-22T12:54:25.235287",
+      "exit_price": 16.46,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -1.0999999999999943,
+      "pnl_percent": -0.16679302501895288,
+      "high_price": 16.49,
+      "low_price": 16.435,
+      "max_gain_percent": 0.015163002274436552,
+      "max_drawdown_percent": -0.31842304776346925,
+      "hold_time_seconds": 181,
+      "status": "closed",
+      "secondary_triggers": {
+        "time_of_day": "midday",
+        "day_of_week": "Monday",
+        "entry_timestamp": "2025-12-22T12:51:20.564747",
+        "spread_at_entry": 0.061,
+        "day_change_at_entry": 2.6,
+        "volume_at_entry": 16886996,
+        "momentum_strength": 0,
+        "volume_spike_percent": 27.23730997830628,
+        "distance_from_hod": 4.45,
+        "distance_from_lod": 2.06,
+        "float_shares": 95634544,
+        "float_rotation": 17.66,
+        "relative_volume": 0.0,
+        "vwap_position": "unknown",
+        "rsi_at_entry": 0.0,
+        "macd_signal": "unknown",
+        "spy_direction": "up",
+        "has_news_catalyst": false,
+        "borrow_status": "unknown"
+      },
+      "atr": 0.08203337690032539,
+      "atr_stop_price": 16.322625000000002,
+      "atr_target_price": 16.610550065350488,
+      "atr_trail_distance": 0.06152503267524404,
+      "volatility_regime": "LOW"
     }
   ],
-  "last_updated": "2025-12-19T07:10:28.898732"
+  "last_updated": "2025-12-22T12:54:25.238715"
 }

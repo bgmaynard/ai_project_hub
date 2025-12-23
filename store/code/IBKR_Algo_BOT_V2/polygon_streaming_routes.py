@@ -158,6 +158,21 @@ async def get_quote(symbol: str):
         }
 
 
+@router.get("/depth/{symbol}")
+async def get_depth(symbol: str, levels: int = 10):
+    """Get synthetic depth (volume by price level from recent trades)"""
+    if not HAS_POLYGON_STREAM:
+        raise HTTPException(status_code=503, detail="Polygon streaming not available")
+
+    stream = get_polygon_stream()
+    depth = stream.get_synthetic_depth(symbol.upper(), levels)
+
+    return {
+        "symbol": symbol.upper(),
+        **depth
+    }
+
+
 @router.get("/tape")
 async def get_tape(limit: int = 100):
     """Get combined tape (all symbols)"""

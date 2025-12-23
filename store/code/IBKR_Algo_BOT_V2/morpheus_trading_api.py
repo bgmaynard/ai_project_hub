@@ -331,6 +331,15 @@ except ImportError as e:
     logger.warning(f"Stock Scanner not available: {e}")
     HAS_SCANNER = False
 
+# Momentum Scorer API
+try:
+    from ai.momentum_scorer import get_momentum_scorer
+    HAS_MOMENTUM_SCORER = True
+    logger.info("Momentum Scorer loaded")
+except ImportError as e:
+    logger.warning(f"Momentum Scorer not available: {e}")
+    HAS_MOMENTUM_SCORER = False
+
 # Claude AI Watchlist Manager
 try:
     from ai.watchlist_api_routes import router as watchlist_ai_router
@@ -390,6 +399,16 @@ try:
 except ImportError as e:
     logger.warning(f"Polygon Streaming routes not available: {e}")
     HAS_POLYGON_STREAMING = False
+
+# EDGAR SEC Filing Monitor Routes
+try:
+    from ai.edgar_routes import router as edgar_router
+    app.include_router(edgar_router, tags=["SEC EDGAR"])
+    HAS_EDGAR_MONITOR = True
+    logger.info("SEC EDGAR routes included")
+except ImportError as e:
+    logger.warning(f"EDGAR routes not available: {e}")
+    HAS_EDGAR_MONITOR = False
 
 
 # ============================================================================

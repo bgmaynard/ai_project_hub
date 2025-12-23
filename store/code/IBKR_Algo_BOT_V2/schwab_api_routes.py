@@ -229,6 +229,25 @@ async def get_positions():
     }
 
 
+@router.get("/positions/all")
+async def get_all_positions():
+    """Get positions from ALL linked accounts"""
+    if not HAS_SCHWAB_TRADING:
+        raise HTTPException(status_code=503, detail="Schwab trading not available")
+
+    trading = get_schwab_trading()
+    if not trading:
+        raise HTTPException(status_code=401, detail="Schwab not authenticated")
+
+    positions = trading.get_all_positions()
+    return {
+        "positions": positions,
+        "count": len(positions),
+        "source": "schwab",
+        "multi_account": True
+    }
+
+
 # ============================================================================
 # ORDER ENDPOINTS
 # ============================================================================

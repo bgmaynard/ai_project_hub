@@ -1,0 +1,27 @@
+{
+  "config": {
+    "stop_loss_pct": 3.0,
+    "profit_target_pct": 3.0,
+    "trailing_stop_pct": 1.5,
+    "max_hold_seconds": 180,
+    "reversal_red_candles": 3,
+    "velocity_death_pct": 0.5,
+    "min_gain_for_reversal_exit": 0.5,
+    "max_spread_pct": 1.0,
+    "enabled": true,
+    "paper_mode": true,
+    "check_interval_ms": 500
+  },
+  "stats": {
+    "total_exits": 4,
+    "stop_loss_exits": 2,
+    "trailing_stop_exits": 0,
+    "reversal_exits": 2,
+    "timeout_exits": 0,
+    "manual_exits": 0,
+    "total_pnl": -13.826800000000036,
+    "winning_exits": 0,
+    "losing_exits": 4
+  },
+  "saved_at": "2025-12-22T08:08:26.541782"
+}
