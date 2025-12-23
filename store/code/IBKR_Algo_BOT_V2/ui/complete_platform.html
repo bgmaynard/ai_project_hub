@@ -1249,10 +1249,6 @@
                 <hr>
                 <strong style="font-size: 10px;">🔧 TOOLS</strong>
                 <a href="#" onclick="event.preventDefault(); openScannerPanel()">🔍 Stock Scanner</a>
-                <a href="#" onclick="event.preventDefault(); openClaudeChatWindow()">💬 Claude Chat</a>
-                <hr>
-                <strong style="font-size: 10px;">📈 BACKTESTING</strong>
-                <a href="/ui/ensemble_backtest.html" target="_blank">🔬 Ensemble Comparison</a>
             </div>
         </div>
 
@@ -2896,35 +2892,11 @@
                         <button id="aiTabBacktest" class="ai-tab" onclick="switchAITab('backtest')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
                             📊 BACKTEST
                         </button>
-                        <button id="aiTabModels" class="ai-tab" onclick="switchAITab('models')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🎯 MODELS
-                        </button>
                         <button id="aiTabBot" class="ai-tab" onclick="switchAITab('bot')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
                             🤖 BOT
                         </button>
-                        <button id="aiTabMorphic" class="ai-tab" onclick="switchAITab('morphic')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🧬 MORPHIC
-                        </button>
-                        <button id="aiTabStrategies" class="ai-tab" onclick="switchAITab('strategies')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            📋 STRATEGIES
-                        </button>
                         <button id="aiTabNews" class="ai-tab" onclick="switchAITab('news')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
                             📰 NEWS
-                        </button>
-                        <button id="aiTabBrain" class="ai-tab" onclick="switchAITab('brain')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🧠 BRAIN
-                        </button>
-                        <button id="aiTabSafety" class="ai-tab" onclick="switchAITab('safety')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🛡️ SAFETY
-                        </button>
-                        <button id="aiTabRisk" class="ai-tab" onclick="switchAITab('risk')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            📈 RISK
-                        </button>
-                        <button id="aiTabEnsemble" class="ai-tab" onclick="switchAITab('ensemble')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🎯 ENSEMBLE
-                        </button>
-                        <button id="aiTabRL" class="ai-tab" onclick="switchAITab('rl')" style="flex: 1; padding: 8px; background: #1a1a1a; border: none; color: #888; cursor: pointer; font-size: 13px; font-weight: 600;">
-                            🤖 RL AGENT
                         </button>
                     </div>
 
@@ -7376,28 +7348,13 @@ Confirm order?`;
 
         // Tab switching
         function switchAITab(tab) {
-            // Hide all tabs
+            // Hide all active tabs
             document.getElementById('aiTrainingTab').style.display = 'none';
             document.getElementById('aiPredictionsTab').style.display = 'none';
             document.getElementById('aiBacktestTab').style.display = 'none';
-            document.getElementById('aiModelsTab').style.display = 'none';
             document.getElementById('aiBotTab').style.display = 'none';
-            const morphicTab = document.getElementById('aiMorphicTab');
-            if (morphicTab) morphicTab.style.display = 'none';
-            const strategiesTab = document.getElementById('aiStrategiesTab');
-            if (strategiesTab) strategiesTab.style.display = 'none';
             const newsTab = document.getElementById('aiNewsTab');
             if (newsTab) newsTab.style.display = 'none';
-            const brainTab = document.getElementById('aiBrainTab');
-            if (brainTab) brainTab.style.display = 'none';
-            const safetyTab = document.getElementById('aiSafetyTab');
-            if (safetyTab) safetyTab.style.display = 'none';
-            const riskTab = document.getElementById('aiRiskTab');
-            if (riskTab) riskTab.style.display = 'none';
-            const ensembleTab = document.getElementById('aiEnsembleTab');
-            if (ensembleTab) ensembleTab.style.display = 'none';
-            const rlTab = document.getElementById('aiRLTab');
-            if (rlTab) rlTab.style.display = 'none';
 
             // Reset all tab buttons
             document.querySelectorAll('.ai-tab').forEach(btn => {
@@ -7418,61 +7375,18 @@ Confirm order?`;
                 document.getElementById('aiBacktestTab').style.display = 'block';
                 document.getElementById('aiTabBacktest').style.background = '#2d2d2d';
                 document.getElementById('aiTabBacktest').style.color = '#fff';
-            } else if (tab === 'models') {
-                document.getElementById('aiModelsTab').style.display = 'block';
-                document.getElementById('aiTabModels').style.background = '#2d2d2d';
-                document.getElementById('aiTabModels').style.color = '#fff';
-                loadModelsPerformance();
             } else if (tab === 'bot') {
                 document.getElementById('aiBotTab').style.display = 'block';
                 document.getElementById('aiTabBot').style.background = '#2d2d2d';
                 document.getElementById('aiTabBot').style.color = '#fff';
                 updateBotStatus();
                 startBotStatusRefresh();
-            } else if (tab === 'morphic') {
-                document.getElementById('aiMorphicTab').style.display = 'block';
-                document.getElementById('aiTabMorphic').style.background = '#2d2d2d';
-                document.getElementById('aiTabMorphic').style.color = '#fff';
-                loadMorphicStatus();
-            } else if (tab === 'strategies') {
-                document.getElementById('aiStrategiesTab').style.display = 'block';
-                document.getElementById('aiTabStrategies').style.background = '#2d2d2d';
-                document.getElementById('aiTabStrategies').style.color = '#fff';
-                loadStrategyTemplates();
-                loadActiveStrategy();
-                loadStrategyMonitorStatus();
-                loadSwitchHistory();
             } else if (tab === 'news') {
                 document.getElementById('aiNewsTab').style.display = 'block';
                 document.getElementById('aiTabNews').style.background = '#2d2d2d';
                 document.getElementById('aiTabNews').style.color = '#fff';
                 loadNewsSentiment();
                 loadNewsTriggers();
-            } else if (tab === 'brain') {
-                document.getElementById('aiBrainTab').style.display = 'block';
-                document.getElementById('aiTabBrain').style.background = '#2d2d2d';
-                document.getElementById('aiTabBrain').style.color = '#fff';
-                loadBrainStatus();
-            } else if (tab === 'safety') {
-                document.getElementById('aiSafetyTab').style.display = 'block';
-                document.getElementById('aiTabSafety').style.background = '#2d2d2d';
-                document.getElementById('aiTabSafety').style.color = '#fff';
-                loadCircuitBreakerStatus();
-            } else if (tab === 'risk') {
-                document.getElementById('aiRiskTab').style.display = 'block';
-                document.getElementById('aiTabRisk').style.background = '#2d2d2d';
-                document.getElementById('aiTabRisk').style.color = '#fff';
-                loadRiskDashboard();
-            } else if (tab === 'ensemble') {
-                document.getElementById('aiEnsembleTab').style.display = 'block';
-                document.getElementById('aiTabEnsemble').style.background = '#2d2d2d';
-                document.getElementById('aiTabEnsemble').style.color = '#fff';
-                loadEnsemblePerformance();
-            } else if (tab === 'rl') {
-                document.getElementById('aiRLTab').style.display = 'block';
-                document.getElementById('aiTabRL').style.background = '#2d2d2d';
-                document.getElementById('aiTabRL').style.color = '#fff';
-                loadRLStatus();
             }
         }
 
