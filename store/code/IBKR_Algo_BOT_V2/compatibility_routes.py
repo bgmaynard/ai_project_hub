@@ -20,8 +20,12 @@ _float_cache = {}  # symbol -> {"float": value, "timestamp": time}
 _FLOAT_CACHE_TTL = 3600  # Cache float for 1 hour
 
 # News indicator cache
-_news_cache = {}  # symbol -> {"has_news": bool, "timestamp": time}
+_news_cache = {}  # symbol -> {"has_news": bool, "news_age_hours": float, "catalyst_type": str, "timestamp": time}
 _NEWS_CACHE_TTL = 300  # Cache news for 5 minutes
+
+# FinViz news cache - populated from scanner top plays
+_finviz_news_cache = {}  # symbol -> {"catalyst_type": str, "change_pct": float, "scan_time": datetime}
+_FINVIZ_CACHE_TTL = 600  # Cache FinViz data for 10 minutes
 
 # AI Prediction cache
 _prediction_cache = {}  # symbol -> {"signal": str, "confidence": float, "prob_up": float, "timestamp": time}
@@ -100,6 +104,14 @@ except ImportError:
     HAS_POLYGON = False
     logger.warning("Polygon.io integration not available")
 
+# FinViz Momentum Scanner for news data
+try:
+    from ai.finviz_momentum_scanner import get_finviz_scanner
+    HAS_FINVIZ = True
+except ImportError:
+    HAS_FINVIZ = False
+    logger.warning("FinViz scanner not available")
+
 router = APIRouter(tags=["Compatibility"])
 
 
@@ -146,10 +158,77 @@ def _get_float_for_symbol(symbol: str) -> dict:
 
 def _get_news_status(symbol: str) -> bool:
     """Get cached news status for symbol (non-blocking)"""
-    global _news_cache
+    global _news_cache, _finviz_news_cache
+    # Check FinViz cache first (more reliable for movers)
+    if symbol in _finviz_news_cache:
+        return True
     if symbol in _news_cache:
         return _news_cache[symbol].get("has_news", False)
     return False
+
+
+def _get_news_detail(symbol: str) -> dict:
+    """Get full news detail for symbol (has_news, age, catalyst)"""
+    global _news_cache, _finviz_news_cache
+    from datetime import datetime
+
+    # Use news_catalyst_type to avoid conflict with technical catalyst_type
+    result = {"has_news": False, "news_age_hours": 0, "news_catalyst_type": "NONE"}
+
+    # Check FinViz cache first (has catalyst info)
+    if symbol in _finviz_news_cache:
+        finviz_data = _finviz_news_cache[symbol]
+        scan_time = finviz_data.get("scan_time")
+        if scan_time:
+            # Calculate age in hours
+            try:
+                if isinstance(scan_time, datetime):
+                    age_hours = (datetime.now() - scan_time).total_seconds() / 3600
+                else:
+                    age_hours = 0.5  # Default to 30 mins if no valid timestamp
+                result["has_news"] = True
+                result["news_age_hours"] = round(age_hours, 1)
+                result["news_catalyst_type"] = finviz_data.get("catalyst_type", "NEWS")
+            except:
+                result["has_news"] = True
+                result["news_age_hours"] = 0.5
+                result["news_catalyst_type"] = finviz_data.get("catalyst_type", "NEWS")
+        return result
+
+    # Fallback to regular news cache
+    if symbol in _news_cache:
+        cached = _news_cache[symbol]
+        if cached.get("has_news"):
+            result["has_news"] = True
+            result["news_age_hours"] = cached.get("news_age_hours", 2)
+            result["news_catalyst_type"] = cached.get("catalyst_type", "NEWS")
+
+    return result
+
+
+async def _update_finviz_news_cache():
+    """Update FinViz news cache from scanner (background task)"""
+    global _finviz_news_cache
+    from datetime import datetime
+
+    if not HAS_FINVIZ:
+        return
+
+    try:
+        scanner = get_finviz_scanner()
+        # Get cached candidates from scanner (doesn't trigger new API call)
+        if scanner.candidates:
+            for candidate in scanner.candidates:
+                if candidate.has_news or candidate.combined_score > 15:
+                    _finviz_news_cache[candidate.symbol] = {
+                        "catalyst_type": candidate.catalyst_type or "NEWS",
+                        "change_pct": candidate.change_pct,
+                        "scan_time": scanner.last_scan or datetime.now(),
+                        "score": candidate.combined_score
+                    }
+            logger.info(f"[FINVIZ] Updated news cache with {len(_finviz_news_cache)} movers")
+    except Exception as e:
+        logger.debug(f"FinViz cache update error: {e}")
 
 
 async def _check_recent_news(symbol: str) -> bool:
@@ -165,6 +244,8 @@ async def _check_recent_news(symbol: str) -> bool:
 
     # Check news API
     has_news = False
+    news_age_hours = 0
+    catalyst_type = "NONE"
     try:
         import aiohttp
         async with aiohttp.ClientSession() as session:
@@ -179,16 +260,34 @@ async def _check_recent_news(symbol: str) -> bool:
                     for item in news_list:
                         if symbol in item.get("symbols", []):
                             has_news = True
+                            # Try to get news age
+                            created = item.get("created_at") or item.get("timestamp")
+                            if created:
+                                try:
+                                    from datetime import datetime
+                                    if isinstance(created, str):
+                                        news_time = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                                        news_age_hours = (datetime.now(news_time.tzinfo) - news_time).total_seconds() / 3600
+                                except:
+                                    news_age_hours = 2
                             break
     except Exception:
         pass
 
-    _news_cache[symbol] = {"has_news": has_news, "timestamp": now}
+    _news_cache[symbol] = {
+        "has_news": has_news,
+        "news_age_hours": news_age_hours,
+        "catalyst_type": catalyst_type,
+        "timestamp": now
+    }
     return has_news
 
 
 async def _update_news_cache_for_symbols(symbols: list):
     """Background task to update news cache for symbols"""
+    # Also update FinViz cache
+    await _update_finviz_news_cache()
+
     for symbol in symbols[:20]:  # Limit to first 20 to avoid rate limiting
         try:
             await _check_recent_news(symbol)
@@ -486,7 +585,9 @@ def _get_empty_worklist_item(symbol: str) -> dict:
         "low": 0.0,
         "float": None,
         "float_formatted": "N/A",
+        # News fields
         "has_news": False,
+        "news_age_hours": 0,
         "ai_signal": "N/A",
         "ai_confidence": 0,
         "ai_prob_up": 50,
@@ -901,7 +1002,8 @@ async def get_worklist_compat():
                             "low": quote.get("low", 0),   # Low of Day
                             "float": float_data.get("float"),
                             "float_formatted": float_data.get("float_formatted", "N/A"),
-                            "has_news": _get_news_status(symbol),  # From cache
+                            # News data from cache (FinViz + Benzinga)
+                            **{k: v for k, v in _get_news_detail(symbol).items()},
                             "ai_signal": ai_pred.get("signal", "N/A"),
                             "ai_confidence": ai_pred.get("confidence", 0),
                             "ai_prob_up": ai_pred.get("prob_up", 50),
@@ -959,7 +1061,8 @@ async def get_worklist_compat():
                                     "low": quote.get("low", 0),
                                     "float": float_data.get("float"),
                                     "float_formatted": float_data.get("float_formatted", "N/A"),
-                                    "has_news": _get_news_status(symbol),
+                                    # News data from cache
+                                    **{k: v for k, v in _get_news_detail(symbol).items()},
                                     "ai_signal": ai_pred.get("signal", "N/A"),
                                     "ai_confidence": ai_pred.get("confidence", 0),
                                     "ai_prob_up": ai_pred.get("prob_up", 50),

@@ -13,22 +13,46 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0a0a0a;
-            color: #e0e0e0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #000000;
+            color: #c0c0c0;
             font-size: 12px;
             overflow: hidden;
         }
 
-        /* Top Bar - Compact */
+        /* ═══════════════════════════════════════════════════════════════════
+           STERLING TRADER PRO THEME
+           Professional trading platform styling
+           ═══════════════════════════════════════════════════════════════════ */
+
+        /* Sterling Color Palette */
+        :root {
+            --sterling-bg: #000000;
+            --sterling-panel: #0a0a0a;
+            --sterling-header: #1a1a1a;
+            --sterling-border: #2a2a2a;
+            --sterling-text: #c0c0c0;
+            --sterling-text-dim: #666666;
+            --sterling-buy: #0066cc;        /* Sterling Blue for Buy */
+            --sterling-sell: #cc0000;       /* Sterling Red for Sell */
+            --sterling-short: #9900cc;      /* Sterling Purple for Short */
+            --sterling-up: #00cc00;         /* Green for up */
+            --sterling-down: #ff3333;       /* Red for down */
+            --sterling-bid: #00aa00;        /* Bid green */
+            --sterling-ask: #cc3333;        /* Ask red */
+            --sterling-highlight: #003366;
+            --sterling-warning: #ff6600;
+        }
+
+        /* Top Bar - Sterling Style */
         .top-bar {
-            background: #1e1e1e;
-            border-bottom: 2px solid #007acc;
-            padding: 4px 10px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            border-bottom: 1px solid #333;
+            padding: 2px 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 32px;
+            height: 26px;
             position: fixed;
             top: 0;
             left: 0;
@@ -37,10 +61,12 @@
         }
 
         .top-bar-left h1 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #007acc;
+            font-size: 13px;
+            font-weight: 700;
+            color: #00aaff;
             letter-spacing: 1px;
+            font-family: 'Consolas', monospace;
+            text-shadow: 0 0 10px rgba(0, 170, 255, 0.3);
         }
 
         .top-bar-right {
@@ -212,37 +238,38 @@
             opacity: 0.8;
         }
 
-        /* Menu Bar - Compact */
+        /* Menu Bar - Sterling Style */
         .menu-bar {
-            background: #252525;
-            border-bottom: 1px solid #404040;
-            padding: 0 8px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            border-bottom: 1px solid #333;
+            padding: 0 4px;
             display: flex;
             gap: 0;
-            height: 22px;
+            height: 20px;
             position: fixed;
-            top: 32px;
+            top: 26px;
             left: 0;
             right: 0;
             z-index: 9999;
         }
 
         .menu-item {
-            padding: 4px 10px;
+            padding: 3px 10px;
             cursor: pointer;
             font-size: 11px;
             font-weight: 600;
-            color: #b0b0b0;
-            border-right: 1px solid #404040;
-            transition: all 0.2s;
+            color: #888;
+            border-right: 1px solid #222;
+            transition: all 0.15s;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             position: relative;
+            font-family: 'Consolas', monospace;
         }
 
         .menu-item:hover {
-            background: #007acc;
-            color: #ffffff;
+            background: linear-gradient(180deg, #003366 0%, #001a33 100%);
+            color: #00aaff;
         }
 
         /* Dropdown Menu */
@@ -295,41 +322,41 @@
             margin: 0;
         }
 
-        /* Workspace - Adjusted for compact header */
+        /* Workspace - Sterling Style */
         .workspace {
             position: fixed;
-            top: 54px;
+            top: 46px;
             left: 0;
             right: 0;
             bottom: 0;
-            background: #0a0a0a;
+            background: #000;
             overflow: hidden;
         }
 
-        /* Draggable Window */
+        /* Draggable Window - Sterling Style */
         .window {
             position: absolute;
-            background: #1a1a1a;
+            background: #000;
             border: 1px solid #333;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
-            min-width: 200px;
-            min-height: 150px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.9);
+            min-width: 180px;
+            min-height: 120px;
         }
 
         .window.active {
-            border-color: #007acc;
-            box-shadow: 0 8px 32px rgba(0, 122, 204, 0.4);
+            border-color: #00aaff;
+            box-shadow: 0 4px 20px rgba(0, 170, 255, 0.3);
         }
 
         .window-header {
-            background: #2d2d2d;
-            padding: 3px 8px;
-            border-bottom: 1px solid #404040;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            padding: 3px 6px;
+            border-bottom: 1px solid #333;
             font-size: 10px;
             font-weight: 700;
-            color: #ffffff;
+            color: #888;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             display: flex;
@@ -337,10 +364,13 @@
             align-items: center;
             cursor: move;
             user-select: none;
+            font-family: 'Consolas', monospace;
         }
 
         .window.active .window-header {
-            background: #007acc;
+            background: linear-gradient(180deg, #003366 0%, #001a33 100%);
+            color: #00aaff;
+            border-bottom-color: #004488;
         }
 
         .window-controls {
@@ -419,38 +449,39 @@
             background: #007acc;
         }
 
-        /* Data Table Styles - Compact */
+        /* Data Table Styles - Sterling Style */
         .data-table {
             width: 100%;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            border-collapse: collapse;
         }
 
         .data-table thead {
-            background: #2d2d2d;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
             position: sticky;
             top: 0;
             z-index: 10;
         }
 
         .data-table th {
-            padding: 4px 6px;
+            padding: 4px 5px;
             text-align: left;
             font-weight: 700;
-            color: #888;
-            border-bottom: 1px solid #404040;
+            color: #666;
+            border-bottom: 1px solid #333;
             text-transform: uppercase;
-            font-size: 11px;
+            font-size: 10px;
             letter-spacing: 0.3px;
         }
 
         .data-table td {
-            padding: 4px 6px;
-            border-bottom: 1px solid #252525;
+            padding: 2px 4px;
+            border-bottom: 1px solid #0a0a0a;
         }
 
         .data-table tr:hover {
-            background: #252525;
+            background: #1a2a3a;
         }
 
         .data-table .clickable {
@@ -458,7 +489,21 @@
         }
 
         .data-table .clickable:hover {
-            background: #007acc;
+            background: linear-gradient(180deg, #003366 0%, #001a33 100%);
+        }
+
+        /* Position row colors */
+        .data-table tr.position-long {
+            background: rgba(0, 170, 0, 0.1);
+        }
+        .data-table tr.position-short {
+            background: rgba(204, 51, 51, 0.1);
+        }
+        .data-table tr.position-profit {
+            border-left: 2px solid #00cc00;
+        }
+        .data-table tr.position-loss {
+            border-left: 2px solid #ff3333;
         }
 
         /* Module Specific Styles - Compact */
@@ -499,63 +544,108 @@
         .negative { color: #ef4444 !important; }
         .neutral { color: #888 !important; }
 
-        /* Level 2 */
+        /* Level 2 - Sterling Trader Pro Style */
         .level2-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1px;
-            background: #404040;
-            font-family: 'Courier New', monospace;
+            gap: 0;
+            background: #000;
+            font-family: 'Consolas', 'Monaco', monospace;
             height: 100%;
         }
 
         .level2-column {
-            background: #1a1a1a;
+            background: #000;
             overflow-y: auto;
+            border-right: 1px solid #1a1a1a;
+        }
+
+        .level2-column:last-child {
+            border-right: none;
+            border-left: 1px solid #1a1a1a;
         }
 
         .level2-header {
             display: grid;
-            grid-template-columns: 50px 70px 70px 50px;
-            padding: 5px 4px;
-            font-size: 11px;
+            grid-template-columns: 46px 60px 68px 46px;
+            padding: 2px 2px;
+            font-size: 10px;
             font-weight: 700;
-            background: #2d2d2d;
-            border-bottom: 1px solid #404040;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            border-bottom: 1px solid #333;
             position: sticky;
             top: 0;
             z-index: 5;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .level2-header div {
             text-align: center;
             color: #888;
+            padding: 2px 0;
         }
 
         .level2-row {
             display: grid;
-            grid-template-columns: 50px 70px 70px 50px;
-            padding: 3px 4px;
-            font-size: 13px;
-            border-bottom: 1px solid #222;
+            grid-template-columns: 46px 60px 68px 46px;
+            padding: 1px 2px;
+            font-size: 12px;
+            border-bottom: 1px solid #0a0a0a;
             position: relative;
+            transition: background 0.1s;
         }
 
         .level2-row:hover {
-            background: #252525;
+            background: #1a2a3a !important;
         }
 
         .level2-row div {
             text-align: center;
-            padding: 3px;
+            padding: 2px 1px;
         }
 
         .level2-row.clickable {
             cursor: pointer;
         }
 
+        /* Sterling-style price level coloring - bids (green tones) */
+        .level2-row.bid-level-0 { background: rgba(0, 170, 0, 0.25); }
+        .level2-row.bid-level-1 { background: rgba(0, 170, 0, 0.18); }
+        .level2-row.bid-level-2 { background: rgba(0, 170, 0, 0.12); }
+        .level2-row.bid-level-3 { background: rgba(0, 170, 0, 0.08); }
+        .level2-row.bid-level-4 { background: rgba(0, 170, 0, 0.04); }
+
+        /* Sterling-style price level coloring - asks (red tones) */
+        .level2-row.ask-level-0 { background: rgba(204, 51, 51, 0.25); }
+        .level2-row.ask-level-1 { background: rgba(204, 51, 51, 0.18); }
+        .level2-row.ask-level-2 { background: rgba(204, 51, 51, 0.12); }
+        .level2-row.ask-level-3 { background: rgba(204, 51, 51, 0.08); }
+        .level2-row.ask-level-4 { background: rgba(204, 51, 51, 0.04); }
+
         .level2-price {
             font-weight: 700;
+        }
+
+        .level2-mmid {
+            color: #00aaff;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .level2-size {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .level2-size.large {
+            color: #ffff00;
+            font-weight: 700;
+        }
+
+        .level2-time {
+            color: #666;
+            font-size: 10px;
         }
 
         /* Order Entry - Compact */
@@ -663,26 +753,140 @@
             letter-spacing: 0.3px;
         }
 
+        /* Sterling-style order buttons */
         .btn-buy {
-            background: #22c55e;
-            color: #000;
+            background: linear-gradient(180deg, #0077cc 0%, #004488 100%);
+            color: #fff;
+            border: 1px solid #0088dd;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.5);
         }
 
         .btn-buy:hover {
-            background: #16a34a;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3);
+            background: linear-gradient(180deg, #0088dd 0%, #0055aa 100%);
+            box-shadow: 0 0 8px rgba(0, 136, 221, 0.5);
         }
 
         .btn-sell {
-            background: #ef4444;
+            background: linear-gradient(180deg, #cc0000 0%, #880000 100%);
             color: #fff;
+            border: 1px solid #dd0000;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.5);
         }
 
         .btn-sell:hover {
-            background: #dc2626;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+            background: linear-gradient(180deg, #dd0000 0%, #aa0000 100%);
+            box-shadow: 0 0 8px rgba(221, 0, 0, 0.5);
+        }
+
+        .btn-short {
+            background: linear-gradient(180deg, #9900cc 0%, #660088 100%);
+            color: #fff;
+            border: 1px solid #aa00dd;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+        }
+
+        .btn-short:hover {
+            background: linear-gradient(180deg, #aa00dd 0%, #7700aa 100%);
+            box-shadow: 0 0 8px rgba(153, 0, 204, 0.5);
+        }
+
+        /* Sterling Hot Button Bar */
+        .hot-button-bar {
+            display: flex;
+            gap: 2px;
+            padding: 3px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            border-bottom: 1px solid #333;
+        }
+
+        .hot-btn {
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            border: 1px solid #333;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-transform: uppercase;
+        }
+
+        .hot-btn.buy-hot {
+            background: linear-gradient(180deg, #003366 0%, #001a33 100%);
+            color: #00aaff;
+            border-color: #004488;
+        }
+
+        .hot-btn.buy-hot:hover {
+            background: linear-gradient(180deg, #004488 0%, #002244 100%);
+            box-shadow: 0 0 5px rgba(0, 170, 255, 0.3);
+        }
+
+        .hot-btn.sell-hot {
+            background: linear-gradient(180deg, #330000 0%, #1a0000 100%);
+            color: #ff6666;
+            border-color: #440000;
+        }
+
+        .hot-btn.sell-hot:hover {
+            background: linear-gradient(180deg, #440000 0%, #220000 100%);
+            box-shadow: 0 0 5px rgba(255, 102, 102, 0.3);
+        }
+
+        .hot-btn.qty-hot {
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            color: #aaa;
+            border-color: #333;
+        }
+
+        .hot-btn.qty-hot:hover, .hot-btn.qty-hot.active {
+            background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+            color: #fff;
+            border-color: #555;
+        }
+
+        /* Hotkey Panel Styles */
+        .hk-row {
+            display: grid;
+            grid-template-columns: 100px 50px 1fr;
+            gap: 10px;
+            padding: 6px 8px;
+            border-bottom: 1px solid #1a1a1a;
+            align-items: center;
+        }
+
+        .hk-row:hover {
+            background: #0a0a0a;
+        }
+
+        .hk-label {
+            color: #c0c0c0;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .hk-input {
+            width: 40px;
+            text-align: center;
+            padding: 4px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #00aaff;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            text-transform: uppercase;
+        }
+
+        .hk-input:focus {
+            border-color: #00aaff;
+            box-shadow: 0 0 5px rgba(0, 170, 255, 0.3);
+            background: #0a1a2a;
+        }
+
+        .hk-desc {
+            color: #666;
+            font-size: 10px;
         }
 
         .btn-secondary {
@@ -765,23 +969,51 @@
             font-family: 'Courier New', monospace;
         }
 
-        /* Time & Sales */
+        /* Time & Sales - Sterling Style Tape */
         .timesales-row {
             display: grid;
-            grid-template-columns: 80px 90px 70px;
-            padding: 4px 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            border-bottom: 1px solid #222;
+            grid-template-columns: 72px 82px 60px;
+            padding: 2px 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            border-bottom: 1px solid #0a0a0a;
+            transition: background 0.1s;
         }
 
         .timesales-row:hover {
-            background: #252525;
+            background: #1a2a3a;
         }
 
-        .timesales-time { color: inherit; }
-        .timesales-price { text-align: right; font-weight: 700; }
-        .timesales-size { text-align: right; }
+        .timesales-row.uptick {
+            background: rgba(0, 170, 0, 0.15);
+        }
+
+        .timesales-row.downtick {
+            background: rgba(204, 51, 51, 0.15);
+        }
+
+        .timesales-row.large-print {
+            background: rgba(255, 255, 0, 0.15) !important;
+        }
+
+        .timesales-time {
+            color: #666;
+            font-size: 11px;
+        }
+        .timesales-price {
+            text-align: right;
+            font-weight: 700;
+        }
+        .timesales-price.up { color: #00cc00; }
+        .timesales-price.down { color: #ff3333; }
+        .timesales-size {
+            text-align: right;
+            color: #aaa;
+        }
+        .timesales-size.large {
+            color: #ffff00;
+            font-weight: 700;
+        }
 
         .empty-state {
             padding: 30px 20px;
@@ -865,31 +1097,51 @@
             border-color: #007acc;
         }
 
-        /* Scrollbar */
+        /* Scrollbar - Sterling Style (thin, subtle) */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #1a1a1a;
+            background: #0a0a0a;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #404040;
-            border-radius: 4px;
+            background: #2a2a2a;
+            border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+            background: #3a3a3a;
+        }
+
+        /* Sterling-style input fields */
+        input, select, textarea {
+            font-family: 'Consolas', monospace;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #c0c0c0;
+            padding: 3px 6px;
+            border-radius: 2px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #00aaff;
+            box-shadow: 0 0 3px rgba(0, 170, 255, 0.3);
+        }
+
+        input::placeholder {
+            color: #444;
         }
     </style>
 </head>
 <body>
-    <!-- Top Bar -->
+    <!-- Top Bar - Sterling Style -->
     <div class="top-bar">
         <div class="top-bar-left">
-            <h1>⚡ MORPHEUS TRADING BOT</h1>
+            <h1>MORPHEUS TRADER PRO</h1>
         </div>
         <div class="top-bar-right">
             <div class="status-item">
@@ -1246,7 +1498,7 @@
                 <strong style="font-size: 10px;">📌 EMBEDDED PANELS (in this window)</strong>
                 <a href="#" onclick="event.preventDefault(); openAIControlPanel()">🎛️ AI Control Panel</a>
                 <a href="#" onclick="event.preventDefault(); openAIMonitor()">📡 AI Monitor</a>
-                <a href="#" onclick="event.preventDefault(); openNewsTraderPanel()">📰 News Auto-Trader</a>
+                <a href="#" onclick="event.preventDefault(); openNewsTraderPanel()">📰 Breaking News</a>
                 <a href="#" onclick="event.preventDefault(); openAISignalsPanel()">📊 AI Signals (Watchlist)</a>
                 <hr>
                 <strong style="font-size: 10px;">🔧 TOOLS</strong>
@@ -1258,6 +1510,8 @@
         <div class="menu-item" onclick="toggleDropdown('tools-dropdown')">
             🛠️ TOOLS
             <div class="dropdown" id="tools-dropdown" style="width: 200px;">
+                <a href="#" onclick="event.preventDefault(); openHotkeyPanel()">⌨️ Hotkey Settings</a>
+                <hr style="border-color: #333; margin: 4px 0;">
                 <a href="#" onclick="event.preventDefault(); openScalpMonitor()">⚡ Scalp Assistant</a>
                 <a href="#" onclick="event.preventDefault(); openPDTMonitor()">⚖️ PDT Monitor</a>
                 <a href="#" onclick="event.preventDefault(); exportWatchlist()">⬇️ Export Watchlist</a>
@@ -4510,9 +4764,10 @@
                     </div>
 
                     <!-- Column Headers -->
-                    <div style="display: grid; grid-template-columns: 75px 60px 1fr; gap: 10px; padding: 6px 10px; background: #1a1a1a; border-bottom: 1px solid #333; font-size: 11px; color: #888; font-weight: 600;">
+                    <div style="display: grid; grid-template-columns: 50px 55px 50px 1fr; gap: 8px; padding: 6px 10px; background: #1a1a1a; border-bottom: 1px solid #333; font-size: 10px; color: #888; font-weight: 600;">
                         <div>TIME</div>
-                        <div>SYMBOL</div>
+                        <div style="text-align: center;">MOVE</div>
+                        <div>SYM</div>
                         <div>HEADLINE</div>
                     </div>
 
@@ -4555,6 +4810,276 @@
             chart: (id) => `
                 <div id="chart-${id}" class="chart-container">
                     <div class="empty-state">Chart will load here</div>
+                </div>
+            `,
+
+            hotkeys: `
+                <div style="display: flex; flex-direction: column; height: 100%; font-family: 'Consolas', monospace;">
+                    <!-- Header with Enable/Disable -->
+                    <div style="padding: 8px 12px; background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%); border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: #888; font-size: 11px;">HOTKEYS:</span>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="hotkeysEnabled" checked onchange="toggleHotkeysEnabled(this.checked)" style="width: 14px; height: 14px;">
+                                <span id="hotkeysStatusText" style="color: #00cc00; font-size: 11px; font-weight: 600;">ENABLED</span>
+                            </label>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="resetHotkeysToDefault()" class="hot-btn qty-hot" style="font-size: 9px;">RESET</button>
+                            <button onclick="saveHotkeyConfig()" class="hot-btn buy-hot" style="font-size: 9px;">SAVE</button>
+                        </div>
+                    </div>
+
+                    <!-- Hotkey Categories Tabs -->
+                    <div style="display: flex; background: #0a0a0a; border-bottom: 1px solid #333;">
+                        <button id="hkTabOrders" class="hot-btn qty-hot active" onclick="switchHotkeyTab('orders')" style="flex: 1; border-radius: 0; border: none; border-right: 1px solid #333;">ORDERS</button>
+                        <button id="hkTabQty" class="hot-btn qty-hot" onclick="switchHotkeyTab('qty')" style="flex: 1; border-radius: 0; border: none; border-right: 1px solid #333;">QTY</button>
+                        <button id="hkTabPrice" class="hot-btn qty-hot" onclick="switchHotkeyTab('price')" style="flex: 1; border-radius: 0; border: none; border-right: 1px solid #333;">PRICE</button>
+                        <button id="hkTabMgmt" class="hot-btn qty-hot" onclick="switchHotkeyTab('mgmt')" style="flex: 1; border-radius: 0; border: none;">MGMT</button>
+                    </div>
+
+                    <!-- Hotkey Configuration Content -->
+                    <div id="hotkeyTabContent" style="flex: 1; overflow-y: auto; padding: 8px;">
+                        <!-- Orders Tab (default) - with modifier+key combos -->
+                        <div id="hkPanelOrders">
+                            <div style="padding: 4px 8px; background: #0a0a0a; border-bottom: 1px solid #222; margin-bottom: 4px;">
+                                <div style="display: grid; grid-template-columns: 90px 70px 40px 1fr; gap: 4px; font-size: 9px; color: #666; text-transform: uppercase;">
+                                    <span>ACTION</span>
+                                    <span>MODIFIER</span>
+                                    <span>KEY</span>
+                                    <span>DESCRIPTION</span>
+                                </div>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Buy @ Ask</span>
+                                <select id="hk_buyAsk_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('buyAsk')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_buyAsk_key" class="hk-input" style="width: 35px;" value="B" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('buyAsk')">
+                                <span class="hk-desc">Aggressive buy</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Buy @ Bid</span>
+                                <select id="hk_buyBid_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('buyBid')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_buyBid_key" class="hk-input" style="width: 35px;" value="" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('buyBid')">
+                                <span class="hk-desc">Passive buy</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Buy Market</span>
+                                <select id="hk_buyMarket_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('buyMarket')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_buyMarket_key" class="hk-input" style="width: 35px;" value="M" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('buyMarket')">
+                                <span class="hk-desc">Market buy</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Sell @ Bid</span>
+                                <select id="hk_sellBid_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('sellBid')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_sellBid_key" class="hk-input" style="width: 35px;" value="S" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('sellBid')">
+                                <span class="hk-desc">Aggressive sell</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Sell @ Ask</span>
+                                <select id="hk_sellAsk_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('sellAsk')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_sellAsk_key" class="hk-input" style="width: 35px;" value="" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('sellAsk')">
+                                <span class="hk-desc">Passive sell</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Sell Market</span>
+                                <select id="hk_sellMarket_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('sellMarket')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_sellMarket_key" class="hk-input" style="width: 35px;" value="N" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('sellMarket')">
+                                <span class="hk-desc">Market sell</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Sell Short</span>
+                                <select id="hk_sellShort_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('sellShort')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_sellShort_key" class="hk-input" style="width: 35px;" value="" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('sellShort')">
+                                <span class="hk-desc">Short sell</span>
+                            </div>
+                            <div style="margin: 8px 0 4px 0; padding-top: 8px; border-top: 1px solid #333; color: #888; font-size: 10px;">POSITION SELLS</div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Sell All @ Ask</span>
+                                <select id="hk_sellAllAsk_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('sellAllAsk')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_sellAllAsk_key" class="hk-input" style="width: 35px;" value="A" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('sellAllAsk')">
+                                <span class="hk-desc">Sell all @ ask</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Sell All @ Bid</span>
+                                <select id="hk_sellAllBid_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('sellAllBid')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_sellAllBid_key" class="hk-input" style="width: 35px;" value="B" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('sellAllBid')">
+                                <span class="hk-desc">Sell all @ bid</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Sell 1/2 @ Ask</span>
+                                <select id="hk_sellHalfAsk_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('sellHalfAsk')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_sellHalfAsk_key" class="hk-input" style="width: 35px;" value="H" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('sellHalfAsk')">
+                                <span class="hk-desc">Sell half @ ask</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Sell 1/4 @ Ask</span>
+                                <select id="hk_sellQuarterAsk_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('sellQuarterAsk')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_sellQuarterAsk_key" class="hk-input" style="width: 35px;" value="Q" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('sellQuarterAsk')">
+                                <span class="hk-desc">Sell 1/4 @ ask</span>
+                            </div>
+                        </div>
+
+                        <!-- Quantity Tab - Editable Keys AND Share Amounts -->
+                        <div id="hkPanelQty" style="display: none;">
+                            <div style="padding: 4px 8px; background: #0a0a0a; border-bottom: 1px solid #222; margin-bottom: 4px;">
+                                <div style="display: grid; grid-template-columns: 70px 50px 80px 1fr; gap: 8px; font-size: 9px; color: #666; text-transform: uppercase;">
+                                    <span>SLOT</span>
+                                    <span>KEY</span>
+                                    <span>SHARES</span>
+                                    <span>DESCRIPTION</span>
+                                </div>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 70px 50px 80px 1fr;">
+                                <span class="hk-label">Qty 1</span>
+                                <input type="text" id="hk_qty1Key" class="hk-input" value="1" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('qty1Key', this.value)">
+                                <input type="number" id="hk_qty1Shares" class="hk-input" value="100" min="1" max="99999" style="width: 70px;" onchange="updateHotkeyBinding('qty1Shares', parseInt(this.value))">
+                                <span class="hk-desc">shares</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 70px 50px 80px 1fr;">
+                                <span class="hk-label">Qty 2</span>
+                                <input type="text" id="hk_qty2Key" class="hk-input" value="2" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('qty2Key', this.value)">
+                                <input type="number" id="hk_qty2Shares" class="hk-input" value="200" min="1" max="99999" style="width: 70px;" onchange="updateHotkeyBinding('qty2Shares', parseInt(this.value))">
+                                <span class="hk-desc">shares</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 70px 50px 80px 1fr;">
+                                <span class="hk-label">Qty 3</span>
+                                <input type="text" id="hk_qty3Key" class="hk-input" value="3" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('qty3Key', this.value)">
+                                <input type="number" id="hk_qty3Shares" class="hk-input" value="500" min="1" max="99999" style="width: 70px;" onchange="updateHotkeyBinding('qty3Shares', parseInt(this.value))">
+                                <span class="hk-desc">shares</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 70px 50px 80px 1fr;">
+                                <span class="hk-label">Qty 4</span>
+                                <input type="text" id="hk_qty4Key" class="hk-input" value="4" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('qty4Key', this.value)">
+                                <input type="number" id="hk_qty4Shares" class="hk-input" value="1000" min="1" max="99999" style="width: 70px;" onchange="updateHotkeyBinding('qty4Shares', parseInt(this.value))">
+                                <span class="hk-desc">shares</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 70px 50px 80px 1fr;">
+                                <span class="hk-label">Qty 5</span>
+                                <input type="text" id="hk_qty5Key" class="hk-input" value="5" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('qty5Key', this.value)">
+                                <input type="number" id="hk_qty5Shares" class="hk-input" value="2000" min="1" max="99999" style="width: 70px;" onchange="updateHotkeyBinding('qty5Shares', parseInt(this.value))">
+                                <span class="hk-desc">shares</span>
+                            </div>
+                            <div style="padding: 8px; margin-top: 8px; background: #0a1a0a; border: 1px solid #1a3a1a; border-radius: 4px; font-size: 10px; color: #4a4;">
+                                TIP: Set shares to match your typical position sizes for quick entry
+                            </div>
+                        </div>
+
+                        <!-- Price Tab -->
+                        <div id="hkPanelPrice" style="display: none;">
+                            <div class="hk-row">
+                                <span class="hk-label">Price +0.01</span>
+                                <input type="text" id="hk_priceUp1" class="hk-input" value="+" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('priceUp1', this.value)">
+                                <span class="hk-desc">Increase price by $0.01</span>
+                            </div>
+                            <div class="hk-row">
+                                <span class="hk-label">Price -0.01</span>
+                                <input type="text" id="hk_priceDown1" class="hk-input" value="-" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('priceDown1', this.value)">
+                                <span class="hk-desc">Decrease price by $0.01</span>
+                            </div>
+                            <div class="hk-row">
+                                <span class="hk-label">Price +0.05</span>
+                                <input type="text" id="hk_priceUp5" class="hk-input" value="" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('priceUp5', this.value)">
+                                <span class="hk-desc">Increase price by $0.05</span>
+                            </div>
+                            <div class="hk-row">
+                                <span class="hk-label">Price -0.05</span>
+                                <input type="text" id="hk_priceDown5" class="hk-input" value="" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('priceDown5', this.value)">
+                                <span class="hk-desc">Decrease price by $0.05</span>
+                            </div>
+                            <div class="hk-row">
+                                <span class="hk-label">Set Bid Price</span>
+                                <input type="text" id="hk_setBid" class="hk-input" value="" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('setBid', this.value)">
+                                <span class="hk-desc">Set order price to bid</span>
+                            </div>
+                            <div class="hk-row">
+                                <span class="hk-label">Set Ask Price</span>
+                                <input type="text" id="hk_setAsk" class="hk-input" value="" maxlength="1" onclick="this.select()" onchange="updateHotkeyBinding('setAsk', this.value)">
+                                <span class="hk-desc">Set order price to ask</span>
+                            </div>
+                        </div>
+
+                        <!-- Management Tab - with modifier+key combos -->
+                        <div id="hkPanelMgmt" style="display: none;">
+                            <div style="padding: 4px 8px; background: #0a0a0a; border-bottom: 1px solid #222; margin-bottom: 4px;">
+                                <div style="display: grid; grid-template-columns: 90px 70px 40px 1fr; gap: 4px; font-size: 9px; color: #666; text-transform: uppercase;">
+                                    <span>ACTION</span>
+                                    <span>MODIFIER</span>
+                                    <span>KEY</span>
+                                    <span>DESCRIPTION</span>
+                                </div>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Cancel All</span>
+                                <select id="hk_cancelAll_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('cancelAll')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_cancelAll_key" class="hk-input" style="width: 35px;" value="X" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('cancelAll')">
+                                <span class="hk-desc">Cancel orders</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Flatten</span>
+                                <select id="hk_flatten_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('flatten')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_flatten_key" class="hk-input" style="width: 35px;" value="F" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('flatten')">
+                                <span class="hk-desc">Close position</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Flatten All</span>
+                                <select id="hk_flattenAll_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('flattenAll')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_flattenAll_key" class="hk-input" style="width: 35px;" value="F" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('flattenAll')">
+                                <span class="hk-desc">Close all</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Reverse</span>
+                                <select id="hk_reverse_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('reverse')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_reverse_key" class="hk-input" style="width: 35px;" value="R" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('reverse')">
+                                <span class="hk-desc">Reverse pos</span>
+                            </div>
+                            <div class="hk-row" style="grid-template-columns: 90px 70px 40px 1fr;">
+                                <span class="hk-label">Show Help</span>
+                                <select id="hk_help_mod" class="hk-input" style="width: 65px;" onchange="updateHotkeyCombo('help')">
+                                    <option value="">None</option><option value="SHIFT">Shift</option><option value="CTRL">Ctrl</option><option value="ALT">Alt</option><option value="CTRL+SHIFT">Ctrl+Shift</option>
+                                </select>
+                                <input type="text" id="hk_help_key" class="hk-input" style="width: 35px;" value="?" maxlength="1" onclick="this.select()" onchange="updateHotkeyCombo('help')">
+                                <span class="hk-desc">Show help</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Reference -->
+                    <div style="padding: 8px 12px; background: #0a0a0a; border-top: 1px solid #333; font-size: 10px; color: #666;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>TIP: Press key outside input fields to trigger</span>
+                            <span>ESC always cancels all</span>
+                        </div>
+                    </div>
                 </div>
             `
         };
@@ -5007,44 +5532,60 @@
                     return;
                 }
 
-                // Source indicator
+                // Source indicator - Sterling style
                 let sourceLabel = '';
                 if (source.includes('schwab_book') || source.includes('nyse') || source.includes('nasdaq')) {
-                    sourceLabel = '<div style="font-size: 9px; color: #22c55e; text-align: center; padding: 2px;">L2 ORDER BOOK</div>';
+                    sourceLabel = '<div style="font-size: 8px; color: #00cc00; text-align: center; padding: 1px; background: #001a00; letter-spacing: 1px;">ORDER BOOK</div>';
                 } else if (source === 'polygon_synthetic') {
-                    sourceLabel = '<div style="font-size: 9px; color: #f59e0b; text-align: center; padding: 2px;">TRADE DEPTH</div>';
+                    sourceLabel = '<div style="font-size: 8px; color: #ff9900; text-align: center; padding: 1px; background: #1a0d00; letter-spacing: 1px;">DEPTH</div>';
                 }
+
+                // Sterling-style Market Maker IDs
+                const mmidList = ['ARCA', 'BATS', 'NSDQ', 'EDGX', 'IEX', 'MEMX', 'LTSE', 'PHLX', 'NYSE', 'AMEX', 'BYX', 'EDGA', 'XCHI', 'XBOS'];
+                const getMMID = (mm, idx) => mm || mmidList[idx % mmidList.length];
+
+                // Find max size for highlighting large orders
+                const maxBidSize = data.bids ? Math.max(...data.bids.map(b => b.size)) : 0;
+                const maxAskSize = data.asks ? Math.max(...data.asks.map(a => a.size)) : 0;
 
                 let bidsHtml = sourceLabel;
                 if (data.bids && data.bids.length > 0) {
                     data.bids.slice(0, 15).forEach((bid, i) => {
+                        const level = Math.min(i, 4); // 0-4 for gradient levels
+                        const isLarge = bid.size > maxBidSize * 0.5;
+                        const sizeClass = isLarge ? 'level2-size large' : 'level2-size';
+                        const mmid = getMMID(bid.market_maker, i);
                         bidsHtml += `
-                            <div class="level2-row clickable" onclick="setOrderPrice(${bid.price}, 'BUY')">
-                                <div>${bid.market_maker || ''}</div>
-                                <div style="color: #22c55e;">${bid.size.toLocaleString()}</div>
-                                <div class="level2-price" style="color: #22c55e; font-weight: 700;">${bid.price.toFixed(2)}</div>
-                                <div style="color: #666;">${bid.orders || 1}</div>
+                            <div class="level2-row bid-level-${level} clickable" onclick="setOrderPrice(${bid.price}, 'BUY')">
+                                <div class="level2-mmid">${mmid}</div>
+                                <div class="${sizeClass}" style="color: #00cc00;">${bid.size >= 1000 ? (bid.size/1000).toFixed(1)+'K' : bid.size}</div>
+                                <div class="level2-price" style="color: #00ff00;">${bid.price.toFixed(2)}</div>
+                                <div class="level2-time">${bid.orders || ''}</div>
                             </div>
                         `;
                     });
                 } else {
-                    bidsHtml += '<div class="empty-state">No bid data</div>';
+                    bidsHtml += '<div class="empty-state" style="font-size: 10px; padding: 15px;">No bids</div>';
                 }
 
                 let asksHtml = sourceLabel;
                 if (data.asks && data.asks.length > 0) {
                     data.asks.slice(0, 15).forEach((ask, i) => {
+                        const level = Math.min(i, 4); // 0-4 for gradient levels
+                        const isLarge = ask.size > maxAskSize * 0.5;
+                        const sizeClass = isLarge ? 'level2-size large' : 'level2-size';
+                        const mmid = getMMID(ask.market_maker, i);
                         asksHtml += `
-                            <div class="level2-row clickable" onclick="setOrderPrice(${ask.price}, 'SELL')">
-                                <div style="color: #666;">${ask.orders || 1}</div>
-                                <div class="level2-price" style="color: #ef4444; font-weight: 700;">${ask.price.toFixed(2)}</div>
-                                <div style="color: #ef4444;">${ask.size.toLocaleString()}</div>
-                                <div>${ask.market_maker || ''}</div>
+                            <div class="level2-row ask-level-${level} clickable" onclick="setOrderPrice(${ask.price}, 'SELL')">
+                                <div class="level2-time">${ask.orders || ''}</div>
+                                <div class="level2-price" style="color: #ff3333;">${ask.price.toFixed(2)}</div>
+                                <div class="${sizeClass}" style="color: #cc3333;">${ask.size >= 1000 ? (ask.size/1000).toFixed(1)+'K' : ask.size}</div>
+                                <div class="level2-mmid">${mmid}</div>
                             </div>
                         `;
                     });
                 } else {
-                    asksHtml += '<div class="empty-state">No ask data</div>';
+                    asksHtml += '<div class="empty-state" style="font-size: 10px; padding: 15px;">No asks</div>';
                 }
 
                 bidsEl.innerHTML = bidsHtml;
@@ -5177,24 +5718,47 @@
                 }
 
                 let html = '';
+                // Sterling-style source indicator
                 const sourceIndicator = source === 'polygon' ?
-                    '<div style="font-size: 10px; color: #22c55e; text-align: center; padding: 2px;">LIVE - Polygon</div>' :
-                    '<div style="font-size: 10px; color: #f59e0b; text-align: center; padding: 2px;">Delayed</div>';
+                    '<div style="font-size: 8px; color: #00cc00; text-align: center; padding: 1px; background: #001a00; letter-spacing: 1px;">LIVE TAPE</div>' :
+                    '<div style="font-size: 8px; color: #ff9900; text-align: center; padding: 1px; background: #1a0d00; letter-spacing: 1px;">DELAYED</div>';
 
                 html += sourceIndicator;
+
+                // Find max size for large print detection
+                const maxSize = Math.max(...trades.map(t => t.size || 0));
+                let lastPrice = null;
 
                 // Reverse so newest trades appear at top
                 trades.reverse().forEach(trade => {
                     const time = trade.time || '--:--:--';
-                    // Determine color: green for buys, red for sells, or by price movement
-                    const isBuy = trade.side === 'BUY' || trade.side === 'B' || (trade.conditions && trade.conditions.includes(0));
-                    const rowColor = isBuy ? '#22c55e' : '#ef4444';
+                    const price = parseFloat(trade.price);
+                    const size = trade.size || 0;
+
+                    // Determine uptick/downtick based on price movement
+                    let tickClass = '';
+                    let priceClass = '';
+                    if (lastPrice !== null) {
+                        if (price > lastPrice) {
+                            tickClass = 'uptick';
+                            priceClass = 'up';
+                        } else if (price < lastPrice) {
+                            tickClass = 'downtick';
+                            priceClass = 'down';
+                        }
+                    }
+                    lastPrice = price;
+
+                    // Large print detection (>50% of max or >1000 shares)
+                    const isLarge = size > maxSize * 0.5 || size >= 1000;
+                    if (isLarge) tickClass += ' large-print';
+                    const sizeClass = isLarge ? 'timesales-size large' : 'timesales-size';
 
                     html += `
-                        <div class="timesales-row" style="color: ${rowColor};">
+                        <div class="timesales-row ${tickClass}">
                             <div class="timesales-time">${time}</div>
-                            <div class="timesales-price">${parseFloat(trade.price).toFixed(2)}</div>
-                            <div class="timesales-size">${trade.size}</div>
+                            <div class="timesales-price ${priceClass}">${price.toFixed(2)}</div>
+                            <div class="${sizeClass}">${size >= 1000 ? (size/1000).toFixed(1)+'K' : size}</div>
                         </div>
                     `;
                 });
@@ -5528,15 +6092,24 @@
             if (orders.length > 0) {
                 let html = '';
                 orders.forEach(order => {
-                    const priceDisplay = order.limit_price ? `$${parseFloat(order.limit_price).toFixed(2)}` :
-                                       order.stop_price ? `STOP $${parseFloat(order.stop_price).toFixed(2)}` : 'MKT';
-                    const filledQty = order.filled_qty || 0;
-                    const qtyDisplay = filledQty > 0 ? `${filledQty}/${order.quantity}` : order.quantity;
+                    // Handle price - Schwab uses 'price', Alpaca uses 'limit_price'
+                    const limitPrice = order.limit_price || order.price;
+                    const stopPrice = order.stop_price || order.stopPrice;
+                    let priceDisplay = 'MKT';
+                    if (limitPrice && parseFloat(limitPrice) > 0) {
+                        priceDisplay = `$${parseFloat(limitPrice).toFixed(2)}`;
+                    } else if (stopPrice && parseFloat(stopPrice) > 0) {
+                        priceDisplay = `STOP $${parseFloat(stopPrice).toFixed(2)}`;
+                    }
+
+                    const filledQty = order.filled_qty || order.filledQuantity || 0;
+                    const orderQty = order.quantity || order.qty;
+                    const qtyDisplay = filledQty > 0 ? `${filledQty}/${orderQty}` : orderQty;
                     const statusClass = order.status?.toLowerCase() === 'filled' ? 'positive' :
                                       order.status?.toLowerCase() === 'canceled' ? 'negative' : '';
 
-                    // Get timestamp - use submitted_at (Alpaca) or created_at as fallback
-                    const orderTime = order.submitted_at || order.created_at;
+                    // Get timestamp - Schwab uses 'entered_time', Alpaca uses 'submitted_at'
+                    const orderTime = order.entered_time || order.enteredTime || order.submitted_at || order.created_at;
                     const timeDisplay = orderTime ? new Date(orderTime).toLocaleTimeString() : '--:--';
 
                     html += `
@@ -6324,6 +6897,20 @@ Confirm order?`;
                         });
                     });
 
+                    // Preserve current sort order after refresh
+                    if (worklistSortField) {
+                        worklistData.sort((a, b) => {
+                            let valA = a[worklistSortField];
+                            let valB = b[worklistSortField];
+                            if (valA === null || valA === undefined) valA = worklistSortField === 'symbol' ? '' : -Infinity;
+                            if (valB === null || valB === undefined) valB = worklistSortField === 'symbol' ? '' : -Infinity;
+                            if (typeof valA === 'string' && typeof valB === 'string') {
+                                return worklistSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                            }
+                            return worklistSortAsc ? valA - valB : valB - valA;
+                        });
+                    }
+
                     updateWorklistDisplay();
                     updateWorklistStats();
                 }
@@ -6487,6 +7074,10 @@ Confirm order?`;
                     const changePct = item.change_percent !== undefined ? item.change_percent.toFixed(1) : '0.0';
                     const changeColor = (parseFloat(changePct) >= 0) ? '#22c55e' : '#ef4444';
 
+                    // Direction arrow based on change
+                    const dirArrow = parseFloat(changePct) > 0 ? '▲' : parseFloat(changePct) < 0 ? '▼' : '◆';
+                    const arrowColor = parseFloat(changePct) > 0 ? '#22c55e' : parseFloat(changePct) < 0 ? '#ef4444' : '#666';
+
                     // HALT indicator with time
                     const isHalted = item.is_halted || false;
                     const haltColor = item.halt_color || '#666';
@@ -6497,9 +7088,33 @@ Confirm order?`;
                         haltDisplay = `<span style="background: #ff00ff; color: #000; padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: 700; animation: pulse 1s infinite;">${haltType} ${haltTime}</span>`;
                     }
 
+                    // News flame indicator with freshness colors
+                    // Red 🔥 = hot/fresh (< 1 hour), Orange 🔥 = medium (1-4 hours), Green 🔥 = older today
+                    let newsFlame = '-';
+                    if (item.has_news) {
+                        // Check news age and catalyst type
+                        const newsAge = item.news_age_hours || 0;  // Hours since news
+                        // Check news catalyst (FDA/M&A/EARNINGS are always hot)
+                        const newsCatalyst = item.news_catalyst_type || item.catalyst_type || 'NEWS';
+                        const isHotCatalyst = ['FDA', 'M&A', 'EARNINGS', 'CLINICAL'].includes(newsCatalyst);
+
+                        let flameColor = '#22c55e';  // Default green (older)
+                        let flameTitle = `${newsCatalyst} - older news`;
+
+                        if (newsAge < 1 || isHotCatalyst) {
+                            flameColor = '#ef4444';  // Red - hot/breaking
+                            flameTitle = `🔥 ${newsCatalyst} - Breaking! (<1 hour)`;
+                        } else if (newsAge < 4) {
+                            flameColor = '#f59e0b';  // Orange - medium
+                            flameTitle = `${newsCatalyst} - Recent (1-4 hours)`;
+                        }
+
+                        newsFlame = `<span style="color: ${flameColor}; font-size: 16px; text-shadow: 0 0 4px ${flameColor};" title="${flameTitle}">🔥</span>`;
+                    }
+
                     // Technical metrics with colors
                     const catalystColor = item.catalyst_color || '#666';
-                    const catalystText = item.has_news ? 'NEWS' : '-';
+                    const catalystText = item.catalyst_type || (item.has_news ? 'NEWS' : '-');
 
                     const macdColor = item.macd_color || '#666';
                     const macdText = item.macd_signal || '-';
@@ -6524,11 +7139,11 @@ Confirm order?`;
 
                     html += `
                         <tr class="clickable" onclick="setCurrentSymbol('${item.symbol}')" style="cursor: pointer; border-bottom: 1px solid #252525; ${rowBg}">
-                            <td style="padding: 8px 6px;"><strong style="color: #fff; font-size: 15px;">${item.symbol}</strong></td>
+                            <td style="padding: 8px 6px;"><span style="color: ${arrowColor}; font-size: 12px; margin-right: 4px;">${dirArrow}</span><strong style="color: #fff; font-size: 15px;">${item.symbol}</strong></td>
                             <td style="padding: 8px 6px; text-align: right; font-family: monospace; font-size: 14px; color: #ccc;">${price}</td>
                             <td style="padding: 8px 6px; text-align: center; font-family: monospace; font-size: 14px; color: ${changeColor}; font-weight: 600;">${changePct}%</td>
                             <td style="padding: 8px 6px; text-align: center;">${haltDisplay}</td>
-                            <td style="padding: 8px 6px; text-align: center;"><span style="color: ${catalystColor}; font-size: 13px; font-weight: 700;">${catalystText}</span></td>
+                            <td style="padding: 8px 6px; text-align: center;">${newsFlame}<span style="color: ${catalystColor}; font-size: 11px; font-weight: 600; margin-left: 2px;">${catalystText !== '-' && catalystText !== 'NEWS' ? catalystText : ''}</span></td>
                             <td style="padding: 8px 6px; text-align: center;"><span style="color: ${macdColor}; font-size: 13px; font-weight: 600;">${macdText}</span></td>
                             <td style="padding: 8px 6px; text-align: center;"><span style="color: ${rvolColor}; font-size: 13px;">${rvolText}</span></td>
                             <td style="padding: 8px 6px; text-align: center;"><span style="color: ${vwapColor}; font-size: 13px;">${vwapExt}</span></td>
@@ -10014,14 +10629,15 @@ Confirm order?`;
                 existing.activate();
                 return;
             }
-            createWindow('newstrader', '📰 NEWS FEED', windowTemplates.newsTrader, 100, 100, 420, 400);
+            createWindow('newstrader', '📰 BREAKING NEWS', windowTemplates.newsTrader, 100, 100, 420, 400);
             setTimeout(loadNewsFeedPanel, 100);
         }
 
         // Load news feed into the panel
         async function loadNewsFeedPanel() {
             try {
-                const response = await fetch('/api/news-log?limit=100');
+                // Use FinViz Elite for small cap momentum news with catalysts
+                const response = await fetch('/api/news/finviz/elite/top-plays?limit=20');
                 const data = await response.json();
 
                 const feedEl = document.getElementById('newsFeedList');
@@ -10029,32 +10645,55 @@ Confirm order?`;
 
                 if (!feedEl) return;
 
-                if (data.news && data.news.length > 0) {
-                    if (countEl) countEl.textContent = '(' + data.count + ')';
+                if (data.plays && data.plays.length > 0) {
+                    // Calculate how long ago the scan was
+                    const scanTime = data.scan_time ? new Date(data.scan_time) : new Date();
+                    const now = new Date();
+                    const minsAgo = Math.round((now - scanTime) / 60000);
+                    const timeAgoStr = minsAgo < 1 ? 'just now' : minsAgo < 60 ? `${minsAgo}m ago` : `${Math.round(minsAgo/60)}h ago`;
 
-                    const items = data.news.map(item => {
+                    if (countEl) countEl.textContent = `(${data.count}) · ${timeAgoStr}`;
+
+                    const items = data.plays.map(item => {
                         const symbol = item.symbol || '???';
-                        const headline = item.headline || 'No headline';
-                        const timeStr = item.time_str || '';
-                        const dateStr = item.date || '';
+                        const company = item.company || '';
+                        const changePct = (item.change_pct || 0).toFixed(1);
+                        const catalyst = item.catalyst_type || 'NEWS';
+                        const score = (item.combined_score || 0).toFixed(0);
+                        const headlines = item.news_headlines || [];
+                        const headline = headlines[0] || company;
                         const secUrl = `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${symbol}&type=8-K&dateb=&owner=include&count=10`;
 
-                        return `<div style="display: grid; grid-template-columns: 75px 60px 1fr; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #1a1a1a; align-items: start;" onmouseover="this.style.background='#151515'" onmouseout="this.style.background='transparent'">
-                            <div style="color: #888; font-size: 11px; line-height: 1.4;">${dateStr}<br>${timeStr}</div>
-                            <a href="${secUrl}" target="_blank" onclick="event.stopPropagation(); setSymbol('${symbol}');" style="color: #00d4ff; font-weight: 700; text-decoration: none; font-size: 13px;" title="Click to load ${symbol} + view SEC filings">$${symbol}</a>
-                            <div style="color: #ccc; line-height: 1.4; font-size: 13px;">${headline}</div>
+                        // Catalyst color
+                        const catalystColor = catalyst === 'FDA' ? '#22c55e' :
+                                              catalyst === 'EARNINGS' ? '#60a5fa' :
+                                              catalyst === 'M&A' ? '#f59e0b' :
+                                              catalyst === 'UPGRADE' ? '#22c55e' : '#888';
+                        const changeColor = parseFloat(changePct) >= 0 ? '#22c55e' : '#ef4444';
+
+                        // Format scan time as HH:MM
+                        const timeStr = scanTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                        return `<div style="display: grid; grid-template-columns: 50px 55px 50px 1fr; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #1a1a1a; align-items: center;" onmouseover="this.style.background='#151515'" onmouseout="this.style.background='transparent'">
+                            <div style="color: #666; font-size: 11px;">${timeStr}</div>
+                            <div style="text-align: center;">
+                                <span style="color: ${changeColor}; font-weight: 700; font-size: 11px;">${changePct}%</span><br>
+                                <span style="color: ${catalystColor}; font-size: 9px; font-weight: 600;">${catalyst}</span>
+                            </div>
+                            <a href="${secUrl}" target="_blank" onclick="event.stopPropagation(); setSymbol('${symbol}');" style="color: #00d4ff; font-weight: 700; text-decoration: none; font-size: 12px;" title="Click to load ${symbol} + view SEC filings">$${symbol}</a>
+                            <div style="color: #ccc; line-height: 1.3; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${headline}</div>
                         </div>`;
                     });
 
                     feedEl.innerHTML = items.join('');
                 } else {
                     if (countEl) countEl.textContent = '(0)';
-                    feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">No news available. Start news monitor to capture live updates.</div>';
+                    feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">No small cap movers with news. Market may be closed or FinViz API unavailable.</div>';
                 }
             } catch (e) {
                 console.error('Error loading news feed:', e);
                 const feedEl = document.getElementById('newsFeedList');
-                if (feedEl) feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">Error loading news feed</div>';
+                if (feedEl) feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">Error loading FinViz news feed</div>';
             }
         }
 
@@ -13928,7 +14567,603 @@ Confirm order?`;
 
             console.log('%c✓ Platform Ready', 'color: #22c55e; font-weight: bold;');
             console.log('%c💡 Click symbols in watchlist • Click Level 2 prices to fill orders • Drag & resize windows', 'color: #888; font-size: 15px;');
+
+            // Initialize Sterling-style keyboard shortcuts
+            initSterlingHotkeys();
         });
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     CONFIGURABLE HOTKEY SYSTEM (STERLING-STYLE)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let sterlingHotkeysEnabled = true;
+
+        // Default hotkey configuration
+        // Format: 'KEY' or 'SHIFT+KEY' or 'CTRL+KEY' or 'ALT+KEY' or 'CTRL+SHIFT+KEY'
+        const defaultHotkeyConfig = {
+            // Orders (recommend using modifiers for safety)
+            buyAsk: 'SHIFT+B',
+            buyBid: '',
+            buyMarket: 'SHIFT+M',
+            sellBid: 'SHIFT+S',
+            sellAsk: '',
+            sellMarket: 'SHIFT+N',
+            sellShort: '',
+            // Position Sells (sell current position)
+            sellAllAsk: 'CTRL+A',
+            sellAllBid: 'CTRL+B',
+            sellHalfAsk: 'CTRL+H',
+            sellQuarterAsk: 'CTRL+Q',
+            // Quantities - key bindings (no modifier needed - safe)
+            qty1Key: '1',
+            qty2Key: '2',
+            qty3Key: '3',
+            qty4Key: '4',
+            qty5Key: '5',
+            // Quantities - share amounts (editable)
+            qty1Shares: 100,
+            qty2Shares: 200,
+            qty3Shares: 500,
+            qty4Shares: 1000,
+            qty5Shares: 2000,
+            // Price adjustments
+            priceUp1: '+',
+            priceDown1: '-',
+            priceUp5: '',
+            priceDown5: '',
+            setBid: '',
+            setAsk: '',
+            // Management
+            cancelAll: 'SHIFT+X',
+            flatten: 'SHIFT+F',
+            flattenAll: 'CTRL+SHIFT+F',
+            reverse: 'SHIFT+R',
+            help: '?'
+        };
+
+        // Current hotkey configuration (loaded from localStorage or defaults)
+        let hotkeyConfig = { ...defaultHotkeyConfig };
+
+        // Parse hotkey combo string like "SHIFT+B" or "CTRL+SHIFT+1" into parts
+        function parseHotkeyCombo(combo) {
+            if (!combo || typeof combo !== 'string') return { key: '', shift: false, ctrl: false, alt: false };
+            const parts = combo.toUpperCase().split('+');
+            const key = parts[parts.length - 1]; // Last part is always the key
+            return {
+                key: key,
+                shift: parts.includes('SHIFT'),
+                ctrl: parts.includes('CTRL'),
+                alt: parts.includes('ALT')
+            };
+        }
+
+        // Check if keyboard event matches a hotkey combo
+        function matchesHotkey(event, combo) {
+            if (!combo) return false;
+            const parsed = parseHotkeyCombo(combo);
+            if (!parsed.key) return false;
+
+            const pressedKey = event.key.toUpperCase();
+            // Handle special keys
+            const keyMatches = pressedKey === parsed.key ||
+                              (parsed.key === '!' && event.key === '!' && event.shiftKey) ||
+                              (parsed.key === '+' && (event.key === '+' || event.key === '=')) ||
+                              (parsed.key === '-' && event.key === '-');
+
+            return keyMatches &&
+                   event.shiftKey === parsed.shift &&
+                   event.ctrlKey === parsed.ctrl &&
+                   event.altKey === parsed.alt;
+        }
+
+        // Format hotkey combo for display
+        function formatHotkeyCombo(combo) {
+            if (!combo) return '';
+            return combo.toUpperCase();
+        }
+
+        // Build hotkey combo string from parts
+        function buildHotkeyCombo(key, shift, ctrl, alt) {
+            if (!key) return '';
+            let parts = [];
+            if (ctrl) parts.push('CTRL');
+            if (shift) parts.push('SHIFT');
+            if (alt) parts.push('ALT');
+            parts.push(key.toUpperCase());
+            return parts.join('+');
+        }
+
+        function initSterlingHotkeys() {
+            // Load saved hotkey config
+            loadHotkeyConfig();
+            // Add keyboard event listener
+            document.addEventListener('keydown', handleSterlingHotkey);
+            console.log('[STERLING] Hotkeys initialized. Press ? for help or Tools > Hotkey Settings to configure.');
+        }
+
+        function loadHotkeyConfig() {
+            const saved = localStorage.getItem('sterlingHotkeyConfig');
+            if (saved) {
+                try {
+                    hotkeyConfig = { ...defaultHotkeyConfig, ...JSON.parse(saved) };
+                    console.log('[HOTKEYS] Loaded custom configuration');
+                } catch (e) {
+                    console.error('[HOTKEYS] Error loading config, using defaults');
+                    hotkeyConfig = { ...defaultHotkeyConfig };
+                }
+            }
+        }
+
+        function saveHotkeyConfig() {
+            localStorage.setItem('sterlingHotkeyConfig', JSON.stringify(hotkeyConfig));
+            showNotification('Hotkey configuration saved', 'success');
+            console.log('[HOTKEYS] Configuration saved');
+        }
+
+        function resetHotkeysToDefault() {
+            if (confirm('Reset all hotkeys to default settings?')) {
+                hotkeyConfig = { ...defaultHotkeyConfig };
+                localStorage.removeItem('sterlingHotkeyConfig');
+                updateHotkeyPanelUI();
+                showNotification('Hotkeys reset to defaults', 'info');
+            }
+        }
+
+        function updateHotkeyBinding(action, key) {
+            hotkeyConfig[action] = key.toUpperCase();
+            console.log(`[HOTKEYS] ${action} = ${key.toUpperCase()}`);
+        }
+
+        // Update hotkey combo from modifier dropdown + key input
+        function updateHotkeyCombo(action) {
+            const modSelect = document.getElementById(`hk_${action}_mod`);
+            const keyInput = document.getElementById(`hk_${action}_key`);
+            if (!modSelect || !keyInput) return;
+
+            const modifier = modSelect.value;
+            const key = keyInput.value.toUpperCase();
+
+            if (!key) {
+                hotkeyConfig[action] = '';
+            } else if (modifier) {
+                hotkeyConfig[action] = `${modifier}+${key}`;
+            } else {
+                hotkeyConfig[action] = key;
+            }
+            console.log(`[HOTKEYS] ${action} = ${hotkeyConfig[action]}`);
+        }
+
+        function toggleHotkeysEnabled(enabled) {
+            sterlingHotkeysEnabled = enabled;
+            const statusText = document.getElementById('hotkeysStatusText');
+            if (statusText) {
+                statusText.textContent = enabled ? 'ENABLED' : 'DISABLED';
+                statusText.style.color = enabled ? '#00cc00' : '#cc0000';
+            }
+            showNotification(enabled ? 'Hotkeys enabled' : 'Hotkeys disabled', 'info');
+        }
+
+        function handleSterlingHotkey(e) {
+            if (!sterlingHotkeysEnabled) return;
+
+            // Don't trigger if typing in an input field
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+                return;
+            }
+
+            // ESC always cancels (hardcoded - no modifier needed)
+            if (e.key === 'Escape') {
+                cancelAllOrders();
+                showHotkeyFeedback('CANCEL ALL');
+                e.preventDefault();
+                return;
+            }
+
+            // Check against configured hotkeys using matchesHotkey (supports modifiers)
+            // Quantity presets (with configurable share amounts)
+            if (matchesHotkey(e, hotkeyConfig.qty1Key)) {
+                const shares = hotkeyConfig.qty1Shares || 100;
+                setQuantity(shares); showHotkeyFeedback('QTY: ' + shares); e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.qty2Key)) {
+                const shares = hotkeyConfig.qty2Shares || 200;
+                setQuantity(shares); showHotkeyFeedback('QTY: ' + shares); e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.qty3Key)) {
+                const shares = hotkeyConfig.qty3Shares || 500;
+                setQuantity(shares); showHotkeyFeedback('QTY: ' + shares); e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.qty4Key)) {
+                const shares = hotkeyConfig.qty4Shares || 1000;
+                setQuantity(shares); showHotkeyFeedback('QTY: ' + shares); e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.qty5Key)) {
+                const shares = hotkeyConfig.qty5Shares || 2000;
+                setQuantity(shares); showHotkeyFeedback('QTY: ' + shares); e.preventDefault();
+            }
+            // Order actions
+            else if (matchesHotkey(e, hotkeyConfig.buyAsk)) {
+                submitOrderAtPrice('BUY', 'ASK', e);
+                showHotkeyFeedback('BUY @ ASK');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.buyBid)) {
+                submitOrderAtPrice('BUY', 'BID', e);
+                showHotkeyFeedback('BUY @ BID');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.buyMarket)) {
+                submitOrder('BUY_MARKET');
+                showHotkeyFeedback('BUY MARKET');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.sellBid)) {
+                submitOrderAtPrice('SELL', 'BID', e);
+                showHotkeyFeedback('SELL @ BID');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.sellAsk)) {
+                submitOrderAtPrice('SELL', 'ASK', e);
+                showHotkeyFeedback('SELL @ ASK');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.sellMarket)) {
+                submitOrder('SELL_MARKET');
+                showHotkeyFeedback('SELL MARKET');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.sellShort)) {
+                submitOrder('SELL_SHORT');
+                showHotkeyFeedback('SELL SHORT');
+                e.preventDefault();
+            }
+            // Position Sells (sell all or partial position)
+            else if (matchesHotkey(e, hotkeyConfig.sellAllAsk)) {
+                sellPositionAtPrice(1.0, 'ASK');
+                showHotkeyFeedback('SELL ALL @ ASK');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.sellAllBid)) {
+                sellPositionAtPrice(1.0, 'BID');
+                showHotkeyFeedback('SELL ALL @ BID');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.sellHalfAsk)) {
+                sellPositionAtPrice(0.5, 'ASK');
+                showHotkeyFeedback('SELL 1/2 @ ASK');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.sellQuarterAsk)) {
+                sellPositionAtPrice(0.25, 'ASK');
+                showHotkeyFeedback('SELL 1/4 @ ASK');
+                e.preventDefault();
+            }
+            // Price adjustments
+            else if (matchesHotkey(e, hotkeyConfig.priceUp1)) {
+                adjustPrice(0.01);
+                showHotkeyFeedback('PRICE +0.01');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.priceDown1)) {
+                adjustPrice(-0.01);
+                showHotkeyFeedback('PRICE -0.01');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.priceUp5)) {
+                adjustPrice(0.05);
+                showHotkeyFeedback('PRICE +0.05');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.priceDown5)) {
+                adjustPrice(-0.05);
+                showHotkeyFeedback('PRICE -0.05');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.setBid)) {
+                setOrderPrice('bid');
+                showHotkeyFeedback('SET BID PRICE');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.setAsk)) {
+                setOrderPrice('ask');
+                showHotkeyFeedback('SET ASK PRICE');
+                e.preventDefault();
+            }
+            // Management
+            else if (matchesHotkey(e, hotkeyConfig.cancelAll)) {
+                cancelAllOrders();
+                showHotkeyFeedback('CANCEL ALL');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.flatten)) {
+                flattenPosition();
+                showHotkeyFeedback('FLATTEN');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.flattenAll)) {
+                flattenAllPositions();
+                showHotkeyFeedback('FLATTEN ALL');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.reverse)) {
+                reversePosition();
+                showHotkeyFeedback('REVERSE');
+                e.preventDefault();
+            }
+            else if (matchesHotkey(e, hotkeyConfig.help)) {
+                showHotkeyHelp();
+                e.preventDefault();
+            }
+        }
+
+        function showHotkeyFeedback(message) {
+            // Remove existing feedback
+            const existing = document.getElementById('hotkeyFeedback');
+            if (existing) existing.remove();
+
+            // Create feedback element
+            const feedback = document.createElement('div');
+            feedback.id = 'hotkeyFeedback';
+            feedback.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(180deg, #003366 0%, #001a33 100%);
+                border: 2px solid #00aaff;
+                color: #00aaff;
+                padding: 20px 40px;
+                font-size: 24px;
+                font-weight: 700;
+                font-family: 'Consolas', monospace;
+                border-radius: 4px;
+                z-index: 999999;
+                box-shadow: 0 0 30px rgba(0, 170, 255, 0.5);
+                text-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
+                animation: hotkeyPulse 0.3s ease-out;
+            `;
+            feedback.textContent = message;
+            document.body.appendChild(feedback);
+
+            // Remove after 500ms
+            setTimeout(() => feedback.remove(), 500);
+        }
+
+        function showHotkeyHelp() {
+            // Build dynamic help based on current config
+            let help = 'CUSTOM HOTKEYS\n==============\n';
+            const bindings = [
+                ['Buy @ Ask', hotkeyConfig.buyAsk],
+                ['Buy @ Bid', hotkeyConfig.buyBid],
+                ['Buy Market', hotkeyConfig.buyMarket],
+                ['Sell @ Bid', hotkeyConfig.sellBid],
+                ['Sell @ Ask', hotkeyConfig.sellAsk],
+                ['Sell Market', hotkeyConfig.sellMarket],
+                ['Qty 100', hotkeyConfig.qty100],
+                ['Qty 200', hotkeyConfig.qty200],
+                ['Qty 500', hotkeyConfig.qty500],
+                ['Qty 1K', hotkeyConfig.qty1000],
+                ['Qty 2K', hotkeyConfig.qty2000],
+                ['Flatten', hotkeyConfig.flatten],
+                ['Cancel All', hotkeyConfig.cancelAll],
+                ['ESC', 'Cancel All (fixed)']
+            ];
+            bindings.forEach(([action, key]) => {
+                if (key) help += `${key.padEnd(8)} ${action}\n`;
+            });
+            help += '\nTools > Hotkey Settings to customize.';
+            alert(help);
+        }
+
+        function flattenPosition() {
+            fetch(`${API_BASE_URL}/api/positions`)
+                .then(r => r.json())
+                .then(data => {
+                    const positions = data.positions || [];
+                    const pos = positions.find(p => p.symbol === currentSymbol);
+                    if (pos && pos.quantity > 0) {
+                        setQuantity(Math.abs(pos.quantity));
+                        setTimeout(() => submitOrder('SELL_MARKET'), 100);
+                    } else if (pos && pos.quantity < 0) {
+                        setQuantity(Math.abs(pos.quantity));
+                        setTimeout(() => submitOrder('BUY_MARKET'), 100);
+                    } else {
+                        showNotification('No position in ' + currentSymbol, 'warning');
+                    }
+                });
+        }
+
+        function flattenAllPositions() {
+            if (confirm('Flatten ALL positions? This will close every open position.')) {
+                fetch(`${API_BASE_URL}/api/positions`)
+                    .then(r => r.json())
+                    .then(data => {
+                        const positions = data.positions || [];
+                        positions.forEach(pos => {
+                            if (pos.quantity !== 0) {
+                                const side = pos.quantity > 0 ? 'SELL' : 'BUY';
+                                const qty = Math.abs(pos.quantity);
+                                // Submit market order to close
+                                fetch(`${API_BASE_URL}/api/order`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        symbol: pos.symbol,
+                                        side: side,
+                                        quantity: qty,
+                                        order_type: 'MARKET'
+                                    })
+                                });
+                            }
+                        });
+                        showNotification('Flattening all positions...', 'warning');
+                    });
+            }
+        }
+
+        // Sell a fraction of position at specified price type (ASK or BID)
+        function sellPositionAtPrice(fraction, priceType) {
+            fetch(`${API_BASE_URL}/api/positions`)
+                .then(r => r.json())
+                .then(data => {
+                    const positions = data.positions || [];
+                    const pos = positions.find(p => p.symbol === currentSymbol);
+                    if (!pos || pos.quantity <= 0) {
+                        showNotification('No long position in ' + currentSymbol, 'warning');
+                        return;
+                    }
+
+                    // Calculate shares to sell (round down to whole shares)
+                    const sharesToSell = Math.floor(Math.abs(pos.quantity) * fraction);
+                    if (sharesToSell <= 0) {
+                        showNotification('Position too small to sell ' + (fraction * 100) + '%', 'warning');
+                        return;
+                    }
+
+                    // Get current market data for price
+                    const marketData = marketDataCache[currentSymbol];
+                    if (!marketData) {
+                        showNotification('No market data for ' + currentSymbol, 'error');
+                        return;
+                    }
+
+                    const price = priceType === 'ASK' ? marketData.ask : marketData.bid;
+                    if (!price || price <= 0) {
+                        showNotification('Invalid ' + priceType + ' price', 'error');
+                        return;
+                    }
+
+                    // Submit limit order at bid/ask
+                    fetch(`${API_BASE_URL}/api/order`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            symbol: currentSymbol,
+                            side: 'SELL',
+                            quantity: sharesToSell,
+                            order_type: 'LIMIT',
+                            price: price
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(result => {
+                        if (result.success || result.order_id) {
+                            const pctLabel = fraction === 1 ? 'ALL' : (fraction * 100) + '%';
+                            showNotification(`SELL ${pctLabel} (${sharesToSell} shares) @ ${priceType} $${price.toFixed(2)}`, 'success');
+                        } else {
+                            showNotification('Order failed: ' + (result.error || 'Unknown error'), 'error');
+                        }
+                    })
+                    .catch(err => {
+                        showNotification('Order error: ' + err.message, 'error');
+                    });
+                })
+                .catch(err => {
+                    showNotification('Failed to get positions: ' + err.message, 'error');
+                });
+        }
+
+        function reversePosition() {
+            fetch(`${API_BASE_URL}/api/positions`)
+                .then(r => r.json())
+                .then(data => {
+                    const positions = data.positions || [];
+                    const pos = positions.find(p => p.symbol === currentSymbol);
+                    if (pos && pos.quantity !== 0) {
+                        // Double the quantity to reverse
+                        const reverseSide = pos.quantity > 0 ? 'SELL' : 'BUY';
+                        const reverseQty = Math.abs(pos.quantity) * 2;
+                        setQuantity(reverseQty);
+                        if (reverseSide === 'SELL') {
+                            setTimeout(() => submitOrder('SELL_MARKET'), 100);
+                        } else {
+                            setTimeout(() => submitOrder('BUY_MARKET'), 100);
+                        }
+                    } else {
+                        showNotification('No position to reverse in ' + currentSymbol, 'warning');
+                    }
+                });
+        }
+
+        // Hotkey Panel Functions
+        function openHotkeyPanel() {
+            const existing = windows.find(w => w.id === 'hotkeys');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                updateHotkeyPanelUI();
+                return;
+            }
+            createWindow('hotkeys', '⌨️ HOTKEY SETTINGS', windowTemplates.hotkeys, 200, 100, 380, 450);
+            setTimeout(updateHotkeyPanelUI, 100);
+        }
+
+        function updateHotkeyPanelUI() {
+            // List of hotkeys that use modifier+key combo UI
+            const comboKeys = ['buyAsk', 'buyBid', 'buyMarket', 'sellBid', 'sellAsk', 'sellMarket', 'sellShort',
+                              'sellAllAsk', 'sellAllBid', 'sellHalfAsk', 'sellQuarterAsk',
+                              'cancelAll', 'flatten', 'flattenAll', 'reverse', 'help'];
+
+            Object.keys(hotkeyConfig).forEach(key => {
+                // Check if this is a combo key (has _mod and _key inputs)
+                const modSelect = document.getElementById('hk_' + key + '_mod');
+                const keyInput = document.getElementById('hk_' + key + '_key');
+
+                if (modSelect && keyInput) {
+                    // Parse the combo string (e.g., "SHIFT+B" -> mod="SHIFT", key="B")
+                    const parsed = parseHotkeyCombo(hotkeyConfig[key]);
+                    let modValue = '';
+                    if (parsed.ctrl && parsed.shift) modValue = 'CTRL+SHIFT';
+                    else if (parsed.ctrl) modValue = 'CTRL';
+                    else if (parsed.shift) modValue = 'SHIFT';
+                    else if (parsed.alt) modValue = 'ALT';
+
+                    modSelect.value = modValue;
+                    keyInput.value = parsed.key || '';
+                } else {
+                    // Simple input (qty keys, price keys, etc.)
+                    const input = document.getElementById('hk_' + key);
+                    if (input) {
+                        input.value = hotkeyConfig[key];
+                    }
+                }
+            });
+
+            // Update enabled checkbox
+            const enabledCb = document.getElementById('hotkeysEnabled');
+            if (enabledCb) enabledCb.checked = sterlingHotkeysEnabled;
+            const statusText = document.getElementById('hotkeysStatusText');
+            if (statusText) {
+                statusText.textContent = sterlingHotkeysEnabled ? 'ENABLED' : 'DISABLED';
+                statusText.style.color = sterlingHotkeysEnabled ? '#00cc00' : '#cc0000';
+            }
+        }
+
+        function switchHotkeyTab(tab) {
+            // Hide all panels
+            ['orders', 'qty', 'price', 'mgmt'].forEach(t => {
+                const panel = document.getElementById('hkPanel' + t.charAt(0).toUpperCase() + t.slice(1));
+                const tabBtn = document.getElementById('hkTab' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (panel) panel.style.display = 'none';
+                if (tabBtn) tabBtn.classList.remove('active');
+            });
+            // Show selected panel
+            const selectedPanel = document.getElementById('hkPanel' + tab.charAt(0).toUpperCase() + tab.slice(1));
+            const selectedTab = document.getElementById('hkTab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+            if (selectedPanel) selectedPanel.style.display = 'block';
+            if (selectedTab) selectedTab.classList.add('active');
+        }
+
+        // Add hotkey animation style
+        const hotkeyStyle = document.createElement('style');
+        hotkeyStyle.textContent = `
+            @keyframes hotkeyPulse {
+                0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+                50% { transform: translate(-50%, -50%) scale(1.1); }
+                100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(hotkeyStyle);
 
         // ═══════════════════════════════════════════════════════════════════════
         //                     BOT TRADING CONTROL FUNCTIONS

@@ -146,12 +146,20 @@ class BenzingaFastNews:
         # Watchlist - symbols to monitor for news
         self.watchlist: List[str] = []
 
+        # Small Cap Filter - only show news for penny/small cap stocks
+        self.small_cap_only: bool = True  # Filter to small caps only
+        self.min_price: float = 0.50      # Min price for alerts
+        self.max_price: float = 20.0      # Max price for alerts (excludes large caps)
+        self.price_cache: Dict[str, tuple] = {}  # symbol -> (price, timestamp)
+        self.price_cache_ttl: int = 60    # Cache prices for 60 seconds
+
         # Stats
         self.news_detected = 0
         self.signals_generated = 0
         self.avg_latency_ms = 0
+        self.filtered_count = 0  # How many filtered out by small cap filter
 
-        logger.info(f"BenzingaFastNews initialized - {'REAL API' if self.use_api else 'RSS'} mode")
+        logger.info(f"BenzingaFastNews initialized - {'REAL API' if self.use_api else 'RSS'} mode, small_cap_only={self.small_cap_only}")
 
     def start(self, watchlist: List[str] = None):
         """Start the news scanner"""

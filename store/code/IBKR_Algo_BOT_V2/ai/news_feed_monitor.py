@@ -9,6 +9,7 @@ import asyncio
 import logging
 import json
 import re
+import html
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field, asdict
@@ -276,6 +277,42 @@ class NewsFeedMonitor:
         for trigger in default_triggers:
             self.triggers[trigger.id] = trigger
 
+    def _extract_summary(self, article: dict) -> str:
+        """Extract clean summary from article, stripping HTML tags and entities"""
+        def clean_text(text: str) -> str:
+            """Clean HTML and fix encoding issues"""
+            # Strip HTML tags
+            text = re.sub(r'<[^>]+>', ' ', text)
+            # Decode HTML entities
+            text = html.unescape(text)
+            # Fix double-encoded UTF-8 (common Benzinga issue)
+            # \u00c2\u00a0 -> space, \u00c2\u00ad -> nothing
+            text = text.replace('\u00c2\u00a0', ' ')
+            text = text.replace('\u00c2\u00ad', '')
+            text = text.replace('\u00c2', '')
+            # Normalize whitespace
+            text = re.sub(r'\s+', ' ', text).strip()
+            return text
+
+        # Try teaser first
+        teaser = article.get("teaser", "").strip()
+        if teaser and len(teaser) > 10:
+            return clean_text(teaser)[:300]
+
+        # Fall back to body - extract first paragraph
+        body = article.get("body", "")
+        if body:
+            text = clean_text(body)
+            # Get first 300 chars, break at sentence if possible
+            if len(text) > 300:
+                cut_point = text[:300].rfind('.')
+                if cut_point > 100:
+                    return text[:cut_point + 1]
+                return text[:300] + "..."
+            return text
+
+        return ""
+
     def _detect_category(self, text: str) -> NewsCategory:
         """Detect news category from text"""
         text_lower = text.lower()
@@ -411,7 +448,7 @@ class NewsFeedMonitor:
         for article in articles:
             try:
                 headline = article.get("title", article.get("headline", ""))
-                summary = article.get("teaser", article.get("body", ""))[:500]
+                summary = self._extract_summary(article)
                 full_text = f"{headline} {summary}"
 
                 category = self._detect_category(full_text)

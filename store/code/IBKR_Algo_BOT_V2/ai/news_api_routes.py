@@ -74,39 +74,7 @@ async def get_news_info():
     }
 
 
-@router.get("/feed")
-async def get_news_feed(
-    limit: int = 20,
-    category: Optional[str] = None,
-    impact: Optional[str] = None,
-    symbols: Optional[str] = None
-):
-    """Get recent news feed"""
-    monitor = get_news_monitor()
-
-    # Parse filters
-    category_filter = NewsCategory(category) if category else None
-    impact_filter = NewsImpact(impact) if impact else None
-    symbol_list = symbols.split(",") if symbols else None
-
-    # If cache is empty, fetch fresh news
-    if not monitor.news_cache:
-        fresh_news = await monitor.fetch_news(symbol_list, limit)
-        for item in fresh_news:
-            if not any(cached.id == item.id for cached in monitor.news_cache):
-                monitor.news_cache.insert(0, item)
-
-    news = monitor.get_recent_news(
-        limit=limit,
-        category=category_filter,
-        impact=impact_filter,
-        symbols=symbol_list
-    )
-
-    return {
-        "count": len(news),
-        "news": [item.to_dict() for item in news]
-    }
+# Removed duplicate /feed route - use the one below with small_cap_only filter
 
 
 @router.get("/fetch")
@@ -134,19 +102,87 @@ async def fetch_fresh_news(
 @router.get("/feed")
 async def get_news_feed(
     limit: int = 30,
-    symbols: Optional[str] = None
+    symbols: Optional[str] = None,
+    small_cap_only: bool = True,
+    max_price: float = 20.0,
+    actionable_only: bool = True
 ):
     """
     Get a clean news feed with time, symbol, headline, and URL.
     Perfect for dashboard display.
+
+    small_cap_only: Filter to only small cap / penny stocks (default True - excludes AAPL, MSFT, etc.)
+    max_price: Max price to include (default $20, filters out large caps)
+    actionable_only: Filter out commentary/opinions, keep only material news (default True)
+
+    Note: For small cap news, pass specific symbols or use SEC filings API.
+    Benzinga's general feed is dominated by large caps.
     """
     monitor = get_news_monitor()
     symbol_list = symbols.split(",") if symbols else None
 
-    # Fetch fresh news if cache is empty
-    if not monitor.news_cache:
+    # Known large cap symbols to always filter out
+    LARGE_CAP_EXCLUSIONS = {
+        'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'META', 'TSLA', 'NVDA',
+        'BRK.A', 'BRK.B', 'JPM', 'JNJ', 'V', 'PG', 'XOM', 'HD', 'CVX',
+        'MA', 'ABBV', 'MRK', 'PFE', 'KO', 'PEP', 'COST', 'WMT', 'NKE',
+        'DIS', 'NFLX', 'ADBE', 'CRM', 'TMO', 'ABT', 'DHR', 'LLY', 'UNH',
+        'AVGO', 'CSCO', 'ACN', 'ORCL', 'TXN', 'QCOM', 'IBM', 'AMD', 'INTC',
+        'BA', 'CAT', 'GE', 'MMM', 'HON', 'UPS', 'RTX', 'LMT', 'GS', 'MS',
+        'BAC', 'WFC', 'C', 'AXP', 'BLK', 'SCHW', 'SPY', 'QQQ', 'IWM', 'DIA'
+    }
+
+    # Commentary/opinion keywords to filter out (not actionable news)
+    COMMENTARY_KEYWORDS = [
+        'says', 'believes', 'thinks', 'predicts', 'expects', 'sees',
+        'according to', 'analyst says', 'jim cramer', 'ed yardeni',
+        'morning brief', 'market wrap', 'daily roundup', 'top stories',
+        'what to watch', 'stocks to watch', 'movers and shakers',
+        'options activity', 'options trading', 'whale', 'unusual options', 'dark pool',
+        'most active', 'trending', 'buzzing', 'social sentiment',
+        'reddit', 'wallstreetbets', 'meme stock', 'retail traders',
+        'check out what', 'here\'s why', 'here is why', '5 things',
+        '3 things', 'top picks', 'best stocks', 'worst stocks',
+        'market outlook', 'weekly preview', 'monthly outlook',
+        'kevin o\'leary', 'warren buffett', 'elon musk', 'cathie wood',
+        'magnificent 7', 'magnificent seven', 'retail investor',
+        'you should know', 'need to know', 'everything you need',
+        'quick look', 'in focus', 'spotlight', 'deep dive',
+        'complete guide', 'essential guide', 'beginners guide'
+    ]
+
+    # Keywords that indicate momentum-worthy news (prioritize these)
+    MOMENTUM_KEYWORDS = [
+        'fda approval', 'fda clears', 'fda grants', 'breakthrough',
+        'earnings beat', 'revenue beat', 'guidance raise', 'upgrades',
+        'contract win', 'partnership', 'acquisition', 'merger',
+        'insider buy', 'insider purchase', 'buyback', 'share repurchase',
+        'patent', 'clinical trial', 'phase 3', 'phase 2', 'positive results',
+        'sec filing', 'form 4', '8-k', 's-1', 'ipo prices',
+        'halted', 'resumes trading', 'short squeeze', 'gamma squeeze'
+    ]
+
+    # For small cap mode, fetch news for scalper watchlist symbols
+    query_symbols = symbol_list
+    if small_cap_only and not symbol_list:
+        # Get scalper watchlist for targeted small cap news
         try:
-            fresh_news = await monitor.fetch_news(symbol_list, limit=limit)
+            import json
+            config_path = "ai/scalper_config.json"
+            with open(config_path, 'r') as f:
+                scalper_config = json.load(f)
+            watchlist = scalper_config.get("watchlist", [])
+            if watchlist:
+                # Use first 10 symbols for API query
+                query_symbols = watchlist[:10]
+                logger.info(f"Fetching news for small cap watchlist: {query_symbols}")
+        except Exception as e:
+            logger.warning(f"Could not load scalper watchlist: {e}")
+
+    # Fetch fresh news if cache is empty or stale
+    if not monitor.news_cache or len(monitor.news_cache) < 10:
+        try:
+            fresh_news = await monitor.fetch_news(query_symbols, limit=limit * 2)
             for item in fresh_news:
                 if not any(cached.id == item.id for cached in monitor.news_cache):
                     monitor.news_cache.insert(0, item)
@@ -154,28 +190,67 @@ async def get_news_feed(
             logger.warning(f"Could not fetch news: {e}")
 
     # Filter by symbols if specified
-    news_items = monitor.news_cache[:limit]
+    news_items = monitor.news_cache[:limit * 5]  # Get more to filter from
     if symbol_list:
         news_items = [n for n in news_items if any(s in n.symbols for s in symbol_list)]
 
-    # Format cleanly
+    # Format cleanly and apply filters
     feed = []
-    for item in news_items[:limit]:
+    for item in news_items:
+        if len(feed) >= limit:
+            break
+
+        # Skip if any symbol is a known large cap
+        if small_cap_only:
+            symbols_in_news = set(item.symbols)
+            if symbols_in_news & LARGE_CAP_EXCLUSIONS:
+                continue
+
+        # Skip commentary/opinion pieces (not actionable)
+        if actionable_only:
+            headline_lower = item.headline.lower()
+
+            # Skip if headline contains commentary keywords
+            if any(kw in headline_lower for kw in COMMENTARY_KEYWORDS):
+                continue
+
+            # Skip articles tagged to too many symbols (general market commentary)
+            if len(item.symbols) > 3:
+                continue
+
+            # Skip articles with no symbols (general market news)
+            if not item.symbols:
+                continue
+
+        # Format time based on type (string or datetime)
+        if item.published_at:
+            if isinstance(item.published_at, str):
+                time_str = item.published_at[:19].replace("T", " ")
+            else:
+                time_str = item.published_at.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            time_str = ""
+
         feed.append({
-            "time": item.published_at[:19].replace("T", " ") if item.published_at else "",
+            "time": time_str,
             "symbol": item.symbols[0] if item.symbols else "",
             "symbols": item.symbols,
             "headline": item.headline,
+            "summary": item.summary,
             "url": item.url,
-            "sentiment": item.sentiment,
-            "impact": item.impact,
+            "sentiment": item.sentiment.value if hasattr(item.sentiment, 'value') else str(item.sentiment),
+            "impact": item.impact.value if hasattr(item.impact, 'value') else str(item.impact),
             "id": item.id
         })
 
     return {
         "success": True,
         "feed": feed,
-        "count": len(feed)
+        "count": len(feed),
+        "filters": {
+            "small_cap_only": small_cap_only,
+            "actionable_only": actionable_only
+        }
     }
 
 
@@ -526,6 +601,311 @@ async def get_alert_history(limit: int = 50):
         "count": len(triggered_news),
         "alerts": triggered_news
     }
+
+
+# ============ FinViz News Endpoints ============
+
+import os
+import aiohttp
+
+# Import finvizfinance for news
+try:
+    from finvizfinance.quote import finvizfinance
+    from finvizfinance.news import News as FinvizNews
+    FINVIZ_AVAILABLE = True
+except ImportError:
+    FINVIZ_AVAILABLE = False
+    logger.warning("finvizfinance not installed - FinViz news unavailable")
+
+# FinViz Elite token from environment
+FINVIZ_ELITE_TOKEN = os.getenv("FINVIZ_ELITE_TOKEN", "")
+
+
+@router.get("/finviz/news")
+async def get_finviz_news():
+    """
+    Get general news from FinViz - good for small cap coverage.
+    Returns latest news headlines across all stocks.
+    """
+    if not FINVIZ_AVAILABLE:
+        raise HTTPException(status_code=503, detail="finvizfinance not installed")
+
+    try:
+        fnews = FinvizNews()
+        news_data = fnews.get_news()
+
+        # FinViz returns dict with 'news' and 'blogs' keys, each containing DataFrames
+        news_list = []
+
+        # Handle different return formats
+        if isinstance(news_data, dict):
+            # Get news DataFrame
+            news_df = news_data.get('news')
+            if news_df is not None and hasattr(news_df, 'iterrows'):
+                for idx, row in news_df.head(50).iterrows():
+                    news_list.append({
+                        "time": str(row.get("Date", "")),
+                        "headline": row.get("Title", ""),
+                        "url": row.get("Link", ""),
+                        "source": "FinViz"
+                    })
+        elif hasattr(news_data, 'iterrows'):
+            # Direct DataFrame
+            for idx, row in news_data.head(50).iterrows():
+                news_list.append({
+                    "time": str(row.get("Date", "")),
+                    "headline": row.get("Title", ""),
+                    "url": row.get("Link", ""),
+                    "source": "FinViz"
+                })
+
+        return {
+            "success": True,
+            "count": len(news_list),
+            "news": news_list
+        }
+    except Exception as e:
+        logger.error(f"FinViz news error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/finviz/stock/{symbol}")
+async def get_finviz_stock_news(symbol: str):
+    """
+    Get news for a specific stock from FinViz.
+    Better coverage for small caps than Benzinga.
+    """
+    if not FINVIZ_AVAILABLE:
+        raise HTTPException(status_code=503, detail="finvizfinance not installed")
+
+    try:
+        stock = finvizfinance(symbol.upper())
+        news_df = stock.ticker_news()
+
+        news_list = []
+        if news_df is not None and not news_df.empty:
+            for idx, row in news_df.head(20).iterrows():
+                news_list.append({
+                    "time": str(row.get("Date", "")),
+                    "headline": row.get("Title", ""),
+                    "url": row.get("Link", ""),
+                    "symbol": symbol.upper(),
+                    "source": "FinViz"
+                })
+
+        return {
+            "success": True,
+            "symbol": symbol.upper(),
+            "count": len(news_list),
+            "news": news_list
+        }
+    except Exception as e:
+        logger.error(f"FinViz stock news error for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/finviz/batch")
+async def get_finviz_batch_news(symbols: str):
+    """
+    Get news for multiple symbols from FinViz.
+    Pass comma-separated symbols: symbols=CETX,QUBT,SMR
+    """
+    if not FINVIZ_AVAILABLE:
+        raise HTTPException(status_code=503, detail="finvizfinance not installed")
+
+    symbol_list = [s.strip().upper() for s in symbols.split(",")]
+    all_news = []
+
+    for sym in symbol_list[:10]:  # Limit to 10 symbols
+        try:
+            stock = finvizfinance(sym)
+            news_df = stock.ticker_news()
+
+            if news_df is not None and not news_df.empty:
+                for idx, row in news_df.head(5).iterrows():
+                    all_news.append({
+                        "time": str(row.get("Date", "")),
+                        "symbol": sym,
+                        "headline": row.get("Title", ""),
+                        "url": row.get("Link", ""),
+                        "source": "FinViz"
+                    })
+        except Exception as e:
+            logger.warning(f"FinViz news error for {sym}: {e}")
+            continue
+
+    # Sort by time (most recent first)
+    all_news.sort(key=lambda x: x.get("time", ""), reverse=True)
+
+    return {
+        "success": True,
+        "symbols": symbol_list,
+        "count": len(all_news),
+        "news": all_news
+    }
+
+
+@router.get("/finviz/elite/movers")
+async def get_finviz_elite_movers():
+    """
+    Get top penny stock movers from FinViz Elite.
+    Uses Elite API for better coverage of small caps.
+
+    Filters: Price $1-$20, Change > 5%, Volume > 500k
+    """
+    if not FINVIZ_ELITE_TOKEN:
+        raise HTTPException(status_code=503, detail="FinViz Elite token not configured")
+
+    try:
+        # FinViz Elite export URL with penny stock filters
+        # cap_small = Small Cap, sh_avgvol_o500 = Avg Vol > 500k
+        # sh_price_u20 = Price under $20, ta_change_u = Up today
+        filters = "cap_small,sh_avgvol_o500,sh_price_u20,ta_change_u5"
+        url = f"https://elite.finviz.com/export.ashx?v=111&f={filters}&auth={FINVIZ_ELITE_TOKEN}"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status == 200:
+                    import csv
+                    import io
+                    text = await response.text()
+                    reader = csv.DictReader(io.StringIO(text))
+                    movers = []
+                    for row in reader:
+                        movers.append({
+                            "symbol": row.get("Ticker", ""),
+                            "company": row.get("Company", ""),
+                            "sector": row.get("Sector", ""),
+                            "industry": row.get("Industry", ""),
+                            "price": row.get("Price", ""),
+                            "change": row.get("Change", ""),
+                            "volume": row.get("Volume", ""),
+                            "market_cap": row.get("Market Cap", ""),
+                            "float": row.get("Float", ""),
+                            "short_float": row.get("Short Float", "")
+                        })
+                    return {
+                        "success": True,
+                        "count": len(movers),
+                        "movers": movers[:50]  # Limit to top 50
+                    }
+                else:
+                    error = await response.text()
+                    raise HTTPException(status_code=response.status, detail=f"FinViz Elite error: {error}")
+
+    except aiohttp.ClientError as e:
+        logger.error(f"FinViz Elite network error: {e}")
+        raise HTTPException(status_code=503, detail=f"Network error: {e}")
+    except Exception as e:
+        logger.error(f"FinViz Elite error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Import momentum scanner
+try:
+    from .finviz_momentum_scanner import get_finviz_scanner, FinVizMomentumScanner
+    SCANNER_AVAILABLE = True
+except ImportError:
+    SCANNER_AVAILABLE = False
+
+
+@router.get("/finviz/elite/top-plays")
+async def get_finviz_top_plays(limit: int = 10, min_score: float = 15.0):
+    """
+    Get top momentum plays with news catalysts.
+    Full pipeline: scan movers -> fetch news -> score -> rank.
+
+    This is the main endpoint for finding tradeable setups!
+    """
+    if not SCANNER_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Scanner not available")
+
+    try:
+        scanner = get_finviz_scanner()
+        candidates = await scanner.get_top_plays(limit=limit * 2)
+
+        # Filter by minimum score
+        qualified = [c for c in candidates if c.combined_score >= min_score][:limit]
+
+        return {
+            "success": True,
+            "count": len(qualified),
+            "scan_time": scanner.last_scan.isoformat() if scanner.last_scan else None,
+            "plays": [c.to_dict() for c in qualified]
+        }
+    except Exception as e:
+        logger.error(f"Top plays error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/finviz/elite/sync-watchlist")
+async def sync_finviz_to_watchlist(min_score: float = 20.0, max_add: int = 5):
+    """
+    Auto-add top FinViz momentum plays to scalper watchlist.
+    Only adds stocks that score above min_score threshold.
+    """
+    if not SCANNER_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Scanner not available")
+
+    try:
+        scanner = get_finviz_scanner()
+        result = await scanner.sync_to_scalper_watchlist(min_score=min_score, max_add=max_add)
+        return {
+            "success": True,
+            **result
+        }
+    except Exception as e:
+        logger.error(f"Watchlist sync error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/finviz/elite/gappers")
+async def get_finviz_elite_gappers():
+    """
+    Get gapping stocks from FinViz Elite.
+    Perfect for pre-market momentum plays.
+
+    Filters: Gap > 5%, Price $1-$20, Volume > 100k
+    """
+    if not FINVIZ_ELITE_TOKEN:
+        raise HTTPException(status_code=503, detail="FinViz Elite token not configured")
+
+    try:
+        # Gap up filter with penny stock criteria
+        filters = "sh_price_u20,sh_price_o1,ta_gap_u5,sh_curvol_o100"
+        url = f"https://elite.finviz.com/export.ashx?v=111&f={filters}&auth={FINVIZ_ELITE_TOKEN}"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status == 200:
+                    import csv
+                    import io
+                    text = await response.text()
+                    reader = csv.DictReader(io.StringIO(text))
+                    gappers = []
+                    for row in reader:
+                        gappers.append({
+                            "symbol": row.get("Ticker", ""),
+                            "company": row.get("Company", ""),
+                            "price": row.get("Price", ""),
+                            "change": row.get("Change", ""),
+                            "gap": row.get("Gap", ""),
+                            "volume": row.get("Volume", ""),
+                            "float": row.get("Float", ""),
+                            "sector": row.get("Sector", "")
+                        })
+                    return {
+                        "success": True,
+                        "count": len(gappers),
+                        "gappers": gappers[:30]
+                    }
+                else:
+                    error = await response.text()
+                    raise HTTPException(status_code=response.status, detail=f"FinViz Elite error: {error}")
+
+    except Exception as e:
+        logger.error(f"FinViz Elite gappers error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 logger.info("News & Fundamentals API routes initialized")

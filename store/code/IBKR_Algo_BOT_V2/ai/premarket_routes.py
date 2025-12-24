@@ -95,16 +95,54 @@ async def stop_news_monitor():
 # ============================================================================
 
 @router.get("/api/news-log")
-async def get_news_log(limit: int = 50):
-    """Get timestamped news log"""
+async def get_news_log(limit: int = 50, small_cap_only: bool = True):
+    """Get timestamped news log with optional large cap filtering"""
     try:
         from .premarket_scanner import get_premarket_scanner
         scanner = get_premarket_scanner()
-        news = scanner.get_news_log(limit)
+        news = scanner.get_news_log(limit * 2)  # Fetch more to filter
+
+        # Large cap exclusions
+        LARGE_CAP_EXCLUSIONS = {
+            'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'META', 'TSLA', 'NVDA',
+            'BRK.A', 'BRK.B', 'JPM', 'JNJ', 'V', 'PG', 'XOM', 'HD', 'CVX',
+            'MA', 'ABBV', 'MRK', 'PFE', 'KO', 'PEP', 'COST', 'WMT', 'NKE',
+            'DIS', 'NFLX', 'ADBE', 'CRM', 'TMO', 'ABT', 'DHR', 'LLY', 'UNH',
+            'AVGO', 'CSCO', 'ACN', 'ORCL', 'TXN', 'QCOM', 'IBM', 'AMD', 'INTC',
+            'BA', 'CAT', 'GE', 'MMM', 'HON', 'UPS', 'RTX', 'LMT', 'GS', 'MS',
+            'BAC', 'WFC', 'C', 'AXP', 'BLK', 'SCHW', 'SPY', 'QQQ', 'IWM', 'DIA',
+            'MAGS', 'BRK'
+        }
+
+        # Commentary keywords to filter out
+        COMMENTARY_KEYWORDS = [
+            'ed yardeni', 'jim cramer', 'magnificent 7', 'magnificent seven',
+            'warren buffett', 'cathie wood', 'impressive 493'
+        ]
+
+        if small_cap_only:
+            filtered = []
+            for item in news:
+                symbol = item.get('symbol', '').upper()
+                headline = item.get('headline', '').lower()
+
+                # Skip large caps
+                if symbol in LARGE_CAP_EXCLUSIONS:
+                    continue
+
+                # Skip commentary
+                if any(kw in headline for kw in COMMENTARY_KEYWORDS):
+                    continue
+
+                filtered.append(item)
+                if len(filtered) >= limit:
+                    break
+            news = filtered
+
         return {
             "success": True,
             "count": len(news),
-            "news": news
+            "news": news[:limit]
         }
     except Exception as e:
         logger.error(f"News log error: {e}")

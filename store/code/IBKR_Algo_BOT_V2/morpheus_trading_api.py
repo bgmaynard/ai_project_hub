@@ -1721,6 +1721,117 @@ async def get_model_info():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/brain/status")
+async def get_brain_status():
+    """Get BackgroundBrain status for AI Monitor"""
+    try:
+        from ai.background_brain import get_background_brain
+        brain = get_background_brain()
+
+        return {
+            "success": True,
+            "data": {
+                "running": brain.is_running if hasattr(brain, 'is_running') else False,
+                "regime": brain.current_regime if hasattr(brain, 'current_regime') else "UNKNOWN",
+                "regime_confidence": brain.regime_confidence if hasattr(brain, 'regime_confidence') else 0.0,
+                "last_update": brain.last_update.isoformat() if hasattr(brain, 'last_update') and brain.last_update else None,
+                "symbols_tracked": len(brain.tracked_symbols) if hasattr(brain, 'tracked_symbols') else 0
+            }
+        }
+    except ImportError:
+        return {"success": True, "data": {"running": False, "regime": "N/A"}}
+    except Exception as e:
+        logger.error(f"Brain status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/stock/ai-prediction/{symbol}")
+async def get_stock_ai_prediction(symbol: str):
+    """
+    Get comprehensive AI prediction for a symbol.
+    Returns Chronos, Qlib, and Order Flow scores for AI Signals panel.
+    """
+    import pandas as pd
+
+    symbol = symbol.upper()
+    result = {
+        "symbol": symbol,
+        "prob_up": 50.0,  # Default neutral
+        "confidence": 50.0,
+        "market_regime": "UNKNOWN",
+        "signals": []
+    }
+
+    try:
+        # Fetch price data for prediction
+        df = None
+        try:
+            from polygon_data import get_polygon_data
+            polygon = get_polygon_data()
+            bars = await polygon.get_minute_bars(symbol, limit=200)
+            if bars and len(bars) > 50:
+                df = pd.DataFrame(bars)
+                df.columns = [c.lower() for c in df.columns]
+                if 'c' in df.columns:
+                    df = df.rename(columns={'o': 'open', 'h': 'high', 'l': 'low', 'c': 'close', 'v': 'volume'})
+        except Exception as e:
+            logger.debug(f"Polygon data unavailable: {e}")
+
+        # Fallback to yfinance if polygon unavailable
+        if df is None or len(df) < 50:
+            try:
+                import yfinance as yf
+                ticker = yf.Ticker(symbol)
+                df = ticker.history(period="5d", interval="5m")
+                if not df.empty:
+                    df = df.reset_index()
+                    df.columns = [c.lower() for c in df.columns]
+            except Exception as e:
+                logger.debug(f"yfinance data unavailable: {e}")
+
+        # Try ensemble predictor for Chronos/Qlib
+        if df is not None and len(df) >= 50:
+            try:
+                from ai.ensemble_predictor import get_ensemble_predictor
+                predictor = get_ensemble_predictor()
+                prediction = predictor.predict(symbol, df)
+                if prediction:
+                    result["prob_up"] = prediction.chronos_score * 100
+                    result["confidence"] = prediction.qlib_score * 100
+                    result["market_regime"] = prediction.market_regime
+                    result["signals"] = prediction.signals
+                    result["lgb_score"] = prediction.lgb_score * 100
+                    result["chronos_score"] = prediction.chronos_score * 100
+                    result["qlib_score"] = prediction.qlib_score * 100
+                    result["scalp_score"] = prediction.scalp_score * 100
+                    result["scalp_verdict"] = prediction.scalp_verdict
+            except Exception as e:
+                logger.debug(f"Ensemble prediction failed: {e}")
+
+        # Fallback to basic predictor
+        if result["prob_up"] == 50.0:
+            try:
+                predictor = get_ai_scanner() if HAS_AI_SCANNER else None
+                if predictor and predictor.model:
+                    pred = predictor.predict(symbol)
+                    if pred:
+                        result["prob_up"] = pred.get("probability", 0.5) * 100
+                        result["confidence"] = pred.get("confidence", 0.5) * 100
+            except Exception as e2:
+                logger.debug(f"Basic predictor unavailable: {e2}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"AI prediction error for {symbol}: {e}")
+        return {
+            "symbol": symbol,
+            "prob_up": 50.0,
+            "confidence": 50.0,
+            "error": str(e)
+        }
+
+
 @app.get("/api/ai/batch-predict")
 async def batch_predict(symbols: str = Query(..., description="Comma-separated symbols")):
     """Get AI predictions for multiple symbols"""

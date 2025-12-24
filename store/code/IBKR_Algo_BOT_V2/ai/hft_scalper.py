@@ -115,10 +115,26 @@ class ScalperConfig:
     atr_target_multiplier: float = 2.0  # Target at 2.0x ATR
     atr_trail_multiplier: float = 1.0  # Trail at 1.0x ATR
 
+    # Failed momentum early exit (cut losers fast)
+    failed_momentum_seconds: int = 45  # Check for failed momentum after X seconds
+    failed_momentum_threshold: float = 0.5  # Exit if gain < X% after failed_momentum_seconds
+
+    # Momentum velocity filter (ensure still moving up at entry)
+    use_velocity_filter: bool = True  # Check if price still rising at entry
+    min_entry_velocity: float = 0.1  # Min % gain in last 2 ticks to enter
+
     # Risk management
     max_daily_loss: float = 50.0  # Max daily loss before stopping
     max_daily_trades: int = 20  # Max trades per day
     cooldown_after_loss: int = 60  # Seconds to wait after a loss
+
+    # Time of day filter (block bad hours)
+    blocked_hours: List[int] = field(default_factory=list)  # Legacy - use time range instead
+    blocked_time_start: int = 925  # Block from 9:25 AM ET (HHMM format)
+    blocked_time_end: int = 959    # Block until 9:59 AM ET (HHMM format)
+
+    # Volume surge entry filter
+    volume_surge_max_hod_distance: float = 2.0  # Max % distance from HOD for volume surge entries
 
     # Symbols
     watchlist: List[str] = field(default_factory=list)
@@ -551,6 +567,26 @@ class HFTScalper:
         if self.daily_pnl <= -self.config.max_daily_loss:
             return None
 
+        # TIME OF DAY FILTER - Block market open chaos (9:25-9:59 AM ET)
+        # Pre-market 9:00-9:25 is good for news momentum, but open is chaotic
+        # Server is CT (1 hour behind ET), so convert: ET time - 1 hour = CT time
+        try:
+            from zoneinfo import ZoneInfo
+            et_now = datetime.now(ZoneInfo('America/New_York'))
+            et_time = et_now.hour * 100 + et_now.minute  # HHMM format
+        except:
+            # Fallback: assume server is CT (1 hour behind ET)
+            ct_now = datetime.now()
+            et_time = (ct_now.hour + 1) * 100 + ct_now.minute  # Add 1 hour for ET
+
+        # Configurable blocked time range (default 9:25-9:59 AM ET = 925-959)
+        blocked_start = getattr(self.config, 'blocked_time_start', 925)  # 9:25 AM ET
+        blocked_end = getattr(self.config, 'blocked_time_end', 959)      # 9:59 AM ET
+
+        if blocked_start <= et_time <= blocked_end and not priority:
+            logger.debug(f"TIME BLOCK: {symbol} - {et_time} ET in blocked range {blocked_start}-{blocked_end}")
+            return None
+
         # Track price history
         if symbol not in self.price_history:
             self.price_history[symbol] = []
@@ -615,15 +651,60 @@ class HFTScalper:
                 if vol_5_ago > 0 and volume > 0:
                     vol_change = volume / vol_5_ago
                     if vol_change >= self.config.min_volume_surge and change_pct > 1:
-                        signal = {
-                            "type": SignalType.VOLUME_SURGE.value,
-                            "symbol": symbol,
-                            "price": price,
-                            "volume_surge": vol_change,
-                            "change_percent": change_pct,
-                            "timestamp": datetime.now().isoformat()
-                        }
-                        logger.info(f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f}")
+                        # ===== NEAR HOD FILTER FOR VOLUME SURGE =====
+                        # Only enter on volume surge if stock is near high-of-day
+                        # Prevents entering fading stocks that had volume spike
+                        max_distance_from_hod = getattr(self.config, 'volume_surge_max_hod_distance', 2.0)  # 2% default
+
+                        # Get high of day from quote if available
+                        hod = getattr(quote, 'high', None) or getattr(quote, 'hod', None) or 0
+                        if hod > 0:
+                            distance_from_hod = ((hod - price) / hod * 100)
+                            if distance_from_hod > max_distance_from_hod:
+                                logger.info(f"VOLUME SURGE REJECTED: {symbol} - {distance_from_hod:.1f}% off HOD (max {max_distance_from_hod}%)")
+                                signal = None
+                            else:
+                                signal = {
+                                    "type": SignalType.VOLUME_SURGE.value,
+                                    "symbol": symbol,
+                                    "price": price,
+                                    "volume_surge": vol_change,
+                                    "change_percent": change_pct,
+                                    "distance_from_hod": distance_from_hod,
+                                    "timestamp": datetime.now().isoformat()
+                                }
+                                logger.info(f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f} ({distance_from_hod:.1f}% from HOD)")
+                        else:
+                            # No HOD data, fall back to momentum check
+                            if momentum >= 1.0:  # At least 1% recent momentum
+                                signal = {
+                                    "type": SignalType.VOLUME_SURGE.value,
+                                    "symbol": symbol,
+                                    "price": price,
+                                    "volume_surge": vol_change,
+                                    "change_percent": change_pct,
+                                    "timestamp": datetime.now().isoformat()
+                                }
+                                logger.info(f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f} (momentum +{momentum:.1f}%)")
+                            else:
+                                logger.debug(f"VOLUME SURGE SKIPPED: {symbol} - No HOD data and weak momentum")
+
+        # ===== MOMENTUM VELOCITY FILTER =====
+        # Check if price is STILL moving up right now (not just moved up in past)
+        # This prevents entering after momentum has already stalled
+        if signal and getattr(self.config, 'use_velocity_filter', True):
+            if len(prices) >= 3:
+                # Compare current price to price 2 ticks ago
+                price_2_ago = prices[-3].price
+                current_velocity = ((price - price_2_ago) / price_2_ago * 100) if price_2_ago > 0 else 0
+                min_velocity = getattr(self.config, 'min_entry_velocity', 0.1)  # 0.1% min upward movement
+
+                if current_velocity < min_velocity:
+                    logger.info(f"VELOCITY REJECT: {symbol} - Momentum stalled ({current_velocity:+.2f}% < {min_velocity}%)")
+                    signal = None
+                else:
+                    logger.debug(f"VELOCITY OK: {symbol} - Still moving +{current_velocity:.2f}%")
+                    signal['entry_velocity'] = current_velocity
 
         # Apply Chronos AI filter if enabled
         if signal and self.config.use_chronos_filter:
@@ -820,6 +901,25 @@ class HFTScalper:
                         "price": price,
                         "stop_type": "FIXED"
                     }
+
+        # ===== FAILED MOMENTUM EARLY EXIT =====
+        # If trade hasn't worked after 45 seconds and is flat/down, exit early
+        # Don't wait for MAX_HOLD_TIME - cut losers fast
+        failed_momentum_seconds = getattr(self.config, 'failed_momentum_seconds', 45)
+        failed_momentum_threshold = getattr(self.config, 'failed_momentum_threshold', 0.5)
+
+        if exit_signal is None and hold_seconds >= failed_momentum_seconds:
+            # Exit if: (1) currently flat or down, (2) never reached +1% gain
+            if pnl_pct < failed_momentum_threshold and max_gain < 1.0:
+                exit_signal = {
+                    "reason": "FAILED_MOMENTUM",
+                    "hold_seconds": hold_seconds,
+                    "pnl_percent": pnl_pct,
+                    "max_gain": max_gain,
+                    "price": price,
+                    "details": f"Flat/down after {hold_seconds:.0f}s, never hit +1%"
+                }
+                logger.info(f"FAILED_MOMENTUM: {symbol} @ {pnl_pct:+.1f}% after {hold_seconds:.0f}s (max was {max_gain:+.1f}%)")
 
         # Check max hold time - but only exit if in profit or small loss
         if exit_signal is None and hold_seconds >= self.config.max_hold_seconds:
