@@ -900,3 +900,62 @@ curl -X POST "http://localhost:9100/api/scanner/premarket/news-monitor/start"
 # Check news log
 curl http://localhost:9100/api/news-log/formatted
 ```
+
+### Chronos Exit Manager (Smart Stop Loss Prevention)
+
+**Problem Solved:** Historical data showed 28 stop losses = -$460 (0% win rate), while trailing stops = 85% WR, +$96. Fixed stop losses don't work for momentum plays.
+
+**Solution:** `ai/chronos_exit_manager.py` - Uses Chronos regime detection + Ross Cameron's "failed momentum" rule to exit BEFORE hitting stop losses.
+
+**Key Exit Triggers:**
+1. **FAILED_MOMENTUM** (Ross Cameron Rule): If stock doesn't gain 0.5% within 30s, exit
+2. **MOMENTUM_STALLED**: Price not moving up for 5 consecutive checks
+3. **MOMENTUM_FADING**: Price dropping 0.5% from high while flat/losing
+4. **REGIME_SHIFT**: Market regime changed from TRENDING_UP to VOLATILE/TRENDING_DOWN
+5. **CONFIDENCE_LOW**: Chronos confidence dropped below 40%
+6. **TREND_WEAK**: ADX trend strength below 30%
+7. **VOLATILITY_SPIKE**: Annualized volatility > 50%
+
+**Configuration:**
+```python
+{
+    # Ross Cameron Rule - Most Important
+    "use_failed_momentum_exit": True,
+    "momentum_check_seconds": 30,      # Check after 30s
+    "expected_gain_30s": 0.5,          # Expect 0.5% gain
+    "momentum_stall_threshold": 0.2,   # < 0.2% = stalled
+    "fade_from_high_percent": 0.5,     # Exit if down 0.5% from high
+    "consecutive_stall_checks": 3,     # 3 stalls = exit
+
+    # Regime-based exits
+    "exit_on_regime_change": True,
+    "favorable_regimes": ["TRENDING_UP", "RANGING"],
+    "danger_regimes": ["TRENDING_DOWN", "VOLATILE"],
+
+    # Technical thresholds
+    "min_confidence": 0.4,
+    "min_trend_strength": 0.3,
+    "max_volatility": 0.5,
+    "min_prob_up": 0.45
+}
+```
+
+**API Endpoints:**
+```
+GET  /api/scanner/chronos-exit/status           - Status & monitored positions
+GET  /api/scanner/chronos-exit/config           - Get configuration
+POST /api/scanner/chronos-exit/config           - Update configuration
+GET  /api/scanner/chronos-exit/check/{symbol}?current_price=X&entry_price=Y - Test exit signal
+POST /api/scanner/chronos-exit/register/{symbol}?entry_price=X - Register position
+DELETE /api/scanner/chronos-exit/{symbol}       - Unregister position
+```
+
+**Integration with Scalper:**
+- Automatically integrated via `check_exit_signal()` in HFT Scalper
+- Config option: `use_chronos_exit: true` (enabled by default)
+- Exit signals prefixed with `CHRONOS_` in trade history
+
+**Research Sources:**
+- [IEEE Breakout & Reversal Strategies](https://ieeexplore.ieee.org/document/10488993/) - RSI divergences signal momentum changes
+- [Wiley Trend Reversal Paper](https://onlinelibrary.wiley.com/doi/10.1002/int.22601) - Directional changes predict reversals
+- [TradingView Ross Cameron Strategy](https://www.tradingview.com/script/TcCkGnoS-Ross-Cameron-Inspired-Day-Trading-Strategy/) - Warrior Trading methodology

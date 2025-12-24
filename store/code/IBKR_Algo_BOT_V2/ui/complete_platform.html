@@ -918,6 +918,8 @@
         </div>
     </div>
 
+    <!-- News Feed is now in the NEWS FEED window panel -->
+
     <!-- Channel Status Modal -->
     <div id="channelStatusModal" class="config-dialog-overlay">
         <div class="config-dialog" style="min-width: 500px;">
@@ -4494,74 +4496,29 @@
                 </div>
             `,
 
-            // AI News Auto-Trader Panel
+            // News Feed Panel - Scrollable list of breaking news
             newsTrader: `
-                <div class="module-content" style="display: flex; flex-direction: column; height: 100%; padding: 0; font-size: 10px;">
-                    <!-- Status Bar -->
-                    <div style="background: #0d1117; padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333;">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <div style="display: flex; align-items: center; gap: 4px;">
-                                <span id="newsTraderStatus" style="width: 8px; height: 8px; border-radius: 50%; background: #666;"></span>
-                                <span style="color: #888;">News Trader</span>
-                            </div>
-                            <div id="newsTraderMode" style="padding: 2px 6px; background: #065f46; color: #10b981; border-radius: 3px; font-size: 9px; font-weight: 600;">PAPER</div>
+                <div class="module-content" style="display: flex; flex-direction: column; height: 100%; padding: 0; font-size: 13px;">
+                    <!-- Header -->
+                    <div style="background: #0d1117; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: #f59e0b; animation: pulse 2s infinite; font-size: 14px;">&#9679;</span>
+                            <span style="color: #f59e0b; font-weight: 600; font-size: 14px;">BREAKING NEWS</span>
+                            <span id="newsFeedCount" style="color: #666; font-size: 12px;">(0)</span>
                         </div>
-                        <div style="display: flex; gap: 6px;">
-                            <button onclick="toggleNewsTrader()" id="newsTraderToggle" style="padding: 3px 8px; background: #22c55e; border: none; color: #fff; font-size: 9px; border-radius: 3px; cursor: pointer;">START</button>
-                        </div>
+                        <button onclick="loadNewsFeedPanel()" style="padding: 4px 10px; background: #333; border: none; color: #888; font-size: 12px; border-radius: 3px; cursor: pointer;">↻ REFRESH</button>
                     </div>
 
-                    <!-- Stats Row -->
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #333; border-bottom: 1px solid #333;">
-                        <div style="background: #1a1a1a; padding: 4px 6px; text-align: center;">
-                            <div style="color: #666; font-size: 9px;">NEWS</div>
-                            <div id="newsCount" style="color: #60a5fa; font-weight: 600; font-size: 14px;">0</div>
-                        </div>
-                        <div style="background: #1a1a1a; padding: 4px 6px; text-align: center;">
-                            <div style="color: #666; font-size: 9px;">CANDIDATES</div>
-                            <div id="candidateCount" style="color: #fbbf24; font-weight: 600; font-size: 14px;">0</div>
-                        </div>
-                        <div style="background: #1a1a1a; padding: 4px 6px; text-align: center;">
-                            <div style="color: #666; font-size: 9px;">TRADES</div>
-                            <div id="newsTradeCount" style="color: #22c55e; font-weight: 600; font-size: 14px;">0</div>
-                        </div>
-                        <div style="background: #1a1a1a; padding: 4px 6px; text-align: center;">
-                            <div style="color: #666; font-size: 9px;">FILTERED</div>
-                            <div id="filteredCount" style="color: #ef4444; font-weight: 600; font-size: 14px;">0</div>
-                        </div>
+                    <!-- Column Headers -->
+                    <div style="display: grid; grid-template-columns: 75px 60px 1fr; gap: 10px; padding: 6px 10px; background: #1a1a1a; border-bottom: 1px solid #333; font-size: 11px; color: #888; font-weight: 600;">
+                        <div>TIME</div>
+                        <div>SYMBOL</div>
+                        <div>HEADLINE</div>
                     </div>
 
-                    <!-- AI Filter Thresholds -->
-                    <div style="padding: 6px 8px; background: #111; border-bottom: 1px solid #333;">
-                        <div style="color: #888; font-size: 9px; margin-bottom: 4px;">AI FILTER THRESHOLDS</div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <div style="display: flex; align-items: center; gap: 3px;">
-                                <span id="chronosFilter" style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
-                                <span style="color: #aaa;">Chronos 55%</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 3px;">
-                                <span id="qlibFilter" style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
-                                <span style="color: #aaa;">Qlib 52%</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 3px;">
-                                <span id="orderFlowFilter" style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
-                                <span style="color: #aaa;">OrderFlow 55%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Live Candidates Feed -->
-                    <div style="flex: 1; overflow-y: auto; background: #0a0a0a;" id="newsCandidateFeed">
-                        <div style="padding: 8px; color: #666; text-align: center;">
-                            Waiting for news signals...
-                        </div>
-                    </div>
-
-                    <!-- Recent Signals Log -->
-                    <div style="height: 100px; overflow-y: auto; background: #111; border-top: 1px solid #333;" id="newsSignalLog">
-                        <div style="padding: 4px 6px; color: #444; font-size: 9px; border-bottom: 1px solid #1a1a1a;">
-                            Signal log will appear here...
-                        </div>
+                    <!-- Scrollable News List -->
+                    <div style="flex: 1; overflow-y: auto; background: #0a0a0a;" id="newsFeedList">
+                        <div style="padding: 20px; color: #666; text-align: center; font-size: 13px;">Loading news...</div>
                     </div>
                 </div>
             `,
@@ -8031,6 +7988,88 @@ Confirm order?`;
         // Auto-refresh news log every 30 seconds
         setInterval(loadTimestampedNewsLog, 30000);
         // Load immediately on page load
+
+        // Breaking News Feed (scrollable list)
+        async function refreshNewsTicker() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/news-log?limit=50');
+                if (!response.ok) throw new Error('Failed to load news');
+                const data = await response.json();
+
+                const feedEl = document.getElementById('newsTickerScroll');
+                const countEl = document.getElementById('newsTickerCount');
+
+                if (data.news && data.news.length > 0) {
+                    countEl.textContent = '(' + data.count + ')';
+
+                    // Build scrollable list items
+                    const items = data.news.map(item => {
+                        const symbol = item.symbol || '???';
+                        const headline = item.headline || 'No headline';
+                        const timeStr = item.time_str || '';
+                        const dateStr = item.date || '';
+
+                        // SEC EDGAR search URL for the symbol
+                        const secUrl = `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${symbol}&type=8-K&dateb=&owner=include&count=10`;
+
+                        return `<div style="padding: 6px 8px; border-bottom: 1px solid #222; display: flex; gap: 8px; align-items: flex-start;">
+                            <div style="min-width: 75px; color: #555; font-size: 10px; white-space: nowrap;">${dateStr}<br>${timeStr}</div>
+                            <a href="${secUrl}" target="_blank" style="min-width: 50px; color: #00d4ff; font-weight: 600; text-decoration: none;" title="SEC filings for ${symbol}" onclick="event.stopPropagation(); setSymbol('${symbol}');">$${symbol}</a>
+                            <div style="color: #aaa; flex: 1; line-height: 1.3;">${headline}</div>
+                        </div>`;
+                    });
+
+                    feedEl.innerHTML = items.join('');
+                } else {
+                    countEl.textContent = '(0)';
+                    feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">No news yet - Start news monitor to capture live updates</div>';
+                }
+            } catch (error) {
+                console.error('Error loading news feed:', error);
+                document.getElementById('newsTickerScroll').innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">News feed unavailable</div>';
+            }
+        }
+
+        // Toggle news feed panel
+        function toggleNewsFeed() {
+            const content = document.getElementById('newsFeedContent');
+            const panel = document.getElementById('newsFeedPanel');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                panel.style.maxHeight = '300px';
+            } else {
+                content.style.display = 'none';
+                panel.style.maxHeight = '32px';
+            }
+        }
+
+        // Drag news panel
+        let isDraggingNews = false;
+        let newsOffsetX, newsOffsetY;
+        function startDragNewsPanel(e) {
+            isDraggingNews = true;
+            const panel = document.getElementById('newsFeedPanel');
+            newsOffsetX = e.clientX - panel.offsetLeft;
+            newsOffsetY = e.clientY - panel.offsetTop;
+            document.addEventListener('mousemove', dragNewsPanel);
+            document.addEventListener('mouseup', stopDragNewsPanel);
+        }
+        function dragNewsPanel(e) {
+            if (!isDraggingNews) return;
+            const panel = document.getElementById('newsFeedPanel');
+            panel.style.left = (e.clientX - newsOffsetX) + 'px';
+            panel.style.top = (e.clientY - newsOffsetY) + 'px';
+        }
+        function stopDragNewsPanel() {
+            isDraggingNews = false;
+            document.removeEventListener('mousemove', dragNewsPanel);
+            document.removeEventListener('mouseup', stopDragNewsPanel);
+        }
+
+        // Refresh news feed every 15 seconds
+        setInterval(refreshNewsTicker, 15000);
+        // Load immediately
+        refreshNewsTicker();
         loadTimestampedNewsLog();
 
         function filterNewsFeed() {
@@ -9975,9 +10014,56 @@ Confirm order?`;
                 existing.activate();
                 return;
             }
-            createWindow('newstrader', '📰 NEWS AUTO-TRADER', windowTemplates.newsTrader, 100, 100, 380, 450);
-            setTimeout(initNewsTraderPanel, 100);
+            createWindow('newstrader', '📰 NEWS FEED', windowTemplates.newsTrader, 100, 100, 420, 400);
+            setTimeout(loadNewsFeedPanel, 100);
         }
+
+        // Load news feed into the panel
+        async function loadNewsFeedPanel() {
+            try {
+                const response = await fetch('/api/news-log?limit=100');
+                const data = await response.json();
+
+                const feedEl = document.getElementById('newsFeedList');
+                const countEl = document.getElementById('newsFeedCount');
+
+                if (!feedEl) return;
+
+                if (data.news && data.news.length > 0) {
+                    if (countEl) countEl.textContent = '(' + data.count + ')';
+
+                    const items = data.news.map(item => {
+                        const symbol = item.symbol || '???';
+                        const headline = item.headline || 'No headline';
+                        const timeStr = item.time_str || '';
+                        const dateStr = item.date || '';
+                        const secUrl = `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${symbol}&type=8-K&dateb=&owner=include&count=10`;
+
+                        return `<div style="display: grid; grid-template-columns: 75px 60px 1fr; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #1a1a1a; align-items: start;" onmouseover="this.style.background='#151515'" onmouseout="this.style.background='transparent'">
+                            <div style="color: #888; font-size: 11px; line-height: 1.4;">${dateStr}<br>${timeStr}</div>
+                            <a href="${secUrl}" target="_blank" onclick="event.stopPropagation(); setSymbol('${symbol}');" style="color: #00d4ff; font-weight: 700; text-decoration: none; font-size: 13px;" title="Click to load ${symbol} + view SEC filings">$${symbol}</a>
+                            <div style="color: #ccc; line-height: 1.4; font-size: 13px;">${headline}</div>
+                        </div>`;
+                    });
+
+                    feedEl.innerHTML = items.join('');
+                } else {
+                    if (countEl) countEl.textContent = '(0)';
+                    feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">No news available. Start news monitor to capture live updates.</div>';
+                }
+            } catch (e) {
+                console.error('Error loading news feed:', e);
+                const feedEl = document.getElementById('newsFeedList');
+                if (feedEl) feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">Error loading news feed</div>';
+            }
+        }
+
+        // Auto-refresh news feed panel every 15 seconds
+        setInterval(() => {
+            if (document.getElementById('newsFeedList')) {
+                loadNewsFeedPanel();
+            }
+        }, 15000);
 
         function initNewsTraderPanel() {
             updateNewsTraderStatus();

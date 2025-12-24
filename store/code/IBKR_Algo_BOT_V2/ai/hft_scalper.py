@@ -81,6 +81,10 @@ class ScalperConfig:
     reversal_candle_percent: float = 2.0  # Red candle size to trigger exit
     macd_reversal_exit: bool = True
 
+    # Chronos Smart Exit (prevents stop loss deaths)
+    use_chronos_exit: bool = True  # Use Chronos to detect momentum fading
+    chronos_exit_min_hold: int = 10  # Min seconds before Chronos can exit
+
     # Chronos AI filter
     use_chronos_filter: bool = True  # Filter entries with Chronos AI
     chronos_min_prob_up: float = 0.5  # Min probability to enter (0.5 = 50%)
@@ -735,6 +739,38 @@ class HFTScalper:
 
         exit_signal = None
 
+        # ===== CHRONOS SMART EXIT (Check BEFORE stop loss) =====
+        # This prevents stop loss deaths by detecting momentum fading early
+        if getattr(self.config, 'use_chronos_exit', True):
+            try:
+                from ai.chronos_exit_manager import get_chronos_exit_manager
+                exit_mgr = get_chronos_exit_manager()
+
+                # Register position if not already tracked
+                if symbol not in exit_mgr.positions:
+                    exit_mgr.register_position(symbol, trade.entry_price)
+
+                # Check for Chronos exit signal
+                chronos_signal = exit_mgr.check_exit(symbol, price, trade.entry_price)
+
+                if chronos_signal.should_exit:
+                    exit_signal = {
+                        "reason": f"CHRONOS_{chronos_signal.reason}",
+                        "pnl_percent": pnl_pct,
+                        "price": price,
+                        "chronos_urgency": chronos_signal.urgency,
+                        "chronos_regime": chronos_signal.regime_after or exit_mgr.positions[symbol].current_regime,
+                        "chronos_details": chronos_signal.details
+                    }
+                    logger.info(
+                        f"CHRONOS EXIT: {symbol} - {chronos_signal.reason} "
+                        f"({chronos_signal.urgency}) @ {pnl_pct:+.1f}%"
+                    )
+                    return exit_signal
+
+            except Exception as e:
+                logger.debug(f"Chronos exit check failed for {symbol}: {e}")
+
         # Use ATR-based stops if available, otherwise fall back to fixed %
         if self.config.use_atr_stops and trade.atr_stop_price > 0:
             # ATR-based stop loss
@@ -985,6 +1021,14 @@ class HFTScalper:
         del self.open_positions[symbol]
         self._save_trades()
 
+        # Unregister from Chronos exit manager
+        try:
+            from ai.chronos_exit_manager import get_chronos_exit_manager
+            exit_mgr = get_chronos_exit_manager()
+            exit_mgr.unregister_position(symbol)
+        except Exception:
+            pass
+
         pnl_emoji = "WIN" if trade.pnl > 0 else "LOSS"
         logger.info(
             f"EXIT [{pnl_emoji}]: {symbol} @ ${price:.2f} | "
@@ -992,6 +1036,16 @@ class HFTScalper:
             f"Reason: {trade.exit_reason} | "
             f"Hold: {trade.hold_time_seconds}s"
         )
+
+        # Register profitable exits for Phase 2 continuation monitoring
+        if trade.pnl_percent >= 2.0:  # Only if +2% or more
+            try:
+                from .phase2_manager import register_phase1_exit
+                phase2_result = register_phase1_exit(symbol, price, trade.pnl_percent)
+                if phase2_result.get("action") == "WATCHING":
+                    logger.info(f"[PHASE2] {symbol} registered for continuation monitoring")
+            except Exception as e:
+                logger.debug(f"Phase 2 registration skipped: {e}")
 
         if self.on_exit:
             self.on_exit(trade)

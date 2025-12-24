@@ -1756,4 +1756,409 @@ async def get_news_trader_trades(limit: int = 20):
         return {"success": False, "error": str(e)}
 
 
-logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader)")
+# ============ MACD Analyzer Endpoints ============
+
+@router.get("/macd/{symbol}")
+async def get_macd_analysis(symbol: str):
+    """Get MACD analysis for a symbol"""
+    try:
+        from .macd_analyzer import analyze_macd
+        result = analyze_macd(symbol.upper())
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"MACD analysis error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/macd/phase2/{symbol}")
+async def check_macd_phase2_entry(symbol: str):
+    """Check if MACD conditions favor Phase 2 entry"""
+    try:
+        from .macd_analyzer import check_phase2_conditions
+        result = check_phase2_conditions(symbol.upper())
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"MACD Phase 2 check error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/macd/batch/{symbols}")
+async def get_macd_batch(symbols: str):
+    """Get MACD analysis for multiple symbols (comma-separated)"""
+    try:
+        from .macd_analyzer import get_macd_analyzer
+        analyzer = get_macd_analyzer()
+
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
+        results = {}
+
+        for sym in symbol_list[:10]:  # Limit to 10 symbols
+            signal = analyzer.analyze(sym)
+            if signal:
+                results[sym] = signal.to_dict()
+            else:
+                results[sym] = {"error": "Could not analyze"}
+
+        return {"success": True, "results": results}
+    except Exception as e:
+        logger.error(f"MACD batch error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ Two-Phase Strategy Endpoints ============
+
+@router.get("/two-phase/status")
+async def get_two_phase_status():
+    """Get status of all two-phase strategy positions"""
+    try:
+        from .two_phase_strategy import get_two_phase_strategy
+        strategy = get_two_phase_strategy()
+
+        positions = {}
+        for symbol, pos in strategy.positions.items():
+            positions[symbol] = {
+                "phase": pos.phase.value,
+                "entry_price": pos.entry_price,
+                "stop_price": pos.stop_price,
+                "target1": pos.target1_price,
+                "high_since_entry": pos.high_since_entry,
+                "phase2_entry": pos.phase2_entry,
+                "macd_signal": pos.macd_signal,
+                "momentum_score": pos.momentum_score
+            }
+
+        return {
+            "success": True,
+            "active_positions": len(positions),
+            "positions": positions
+        }
+    except Exception as e:
+        logger.error(f"Two-phase status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/two-phase/evaluate/{symbol}")
+async def evaluate_phase2_opportunity(symbol: str, current_price: float = 0.0, volume_ratio: float = 1.0):
+    """Evaluate Phase 2 entry opportunity for a symbol"""
+    try:
+        from .two_phase_strategy import get_two_phase_strategy
+        strategy = get_two_phase_strategy()
+
+        # If no price provided, try to get it
+        if current_price <= 0:
+            try:
+                import yfinance as yf
+                ticker = yf.Ticker(symbol.upper())
+                current_price = ticker.fast_info.get('lastPrice', 0) or ticker.history(period='1d')['Close'].iloc[-1]
+            except:
+                pass
+
+        result = strategy.evaluate_phase2_opportunity(symbol.upper(), current_price, volume_ratio)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Two-phase evaluate error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/two-phase/spike/{symbol}")
+async def register_spike(symbol: str, spike_high: float, volume_surge: float = 3.0):
+    """Register a volume spike to start tracking for Phase 1"""
+    try:
+        from .two_phase_strategy import get_two_phase_strategy
+        strategy = get_two_phase_strategy()
+
+        result = strategy.on_spike_detected(symbol.upper(), spike_high, volume_surge)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Two-phase spike registration error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/two-phase/pullback/{symbol}")
+async def register_pullback(symbol: str, pullback_low: float):
+    """Register a pullback to prepare for entry"""
+    try:
+        from .two_phase_strategy import get_two_phase_strategy
+        strategy = get_two_phase_strategy()
+
+        result = strategy.on_pullback(symbol.upper(), pullback_low)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Two-phase pullback error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/two-phase/check-entry/{symbol}")
+async def check_phase1_entry(symbol: str, current_high: float, last_candle_low: float):
+    """Check if Phase 1 entry conditions are met"""
+    try:
+        from .two_phase_strategy import get_two_phase_strategy
+        strategy = get_two_phase_strategy()
+
+        result = strategy.check_entry(symbol.upper(), current_high, last_candle_low)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Two-phase entry check error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/two-phase/check-exit/{symbol}")
+async def check_phase_exit(symbol: str, current_price: float, current_high: float):
+    """Check exit conditions for active position"""
+    try:
+        from .two_phase_strategy import get_two_phase_strategy
+        strategy = get_two_phase_strategy()
+
+        # Check regular exit
+        result = strategy.check_exit(symbol.upper(), current_price, current_high)
+
+        # Also check MACD exit for Phase 2
+        if result.get("action") == "HOLD":
+            macd_result = strategy.check_phase2_exit_macd(symbol.upper(), current_price)
+            if macd_result.get("action") == "SELL":
+                result = macd_result
+
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Two-phase exit check error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.delete("/two-phase/{symbol}")
+async def remove_two_phase_position(symbol: str):
+    """Remove a symbol from two-phase tracking"""
+    try:
+        from .two_phase_strategy import get_two_phase_strategy
+        strategy = get_two_phase_strategy()
+
+        if symbol.upper() in strategy.positions:
+            del strategy.positions[symbol.upper()]
+            return {"success": True, "message": f"Removed {symbol} from tracking"}
+        else:
+            return {"success": False, "message": f"{symbol} not being tracked"}
+    except Exception as e:
+        logger.error(f"Two-phase remove error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ Phase 2 Manager Endpoints ============
+
+@router.get("/phase2/status")
+async def get_phase2_status():
+    """Get Phase 2 continuation manager status"""
+    try:
+        from .phase2_manager import get_phase2_manager
+        manager = get_phase2_manager()
+        return {"success": True, "data": manager.get_status()}
+    except Exception as e:
+        logger.error(f"Phase 2 status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/phase2/start")
+async def start_phase2_monitoring():
+    """Start Phase 2 monitoring loop"""
+    try:
+        from .phase2_manager import get_phase2_manager
+        manager = get_phase2_manager()
+        result = manager.start_monitoring()
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Phase 2 start error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/phase2/stop")
+async def stop_phase2_monitoring():
+    """Stop Phase 2 monitoring loop"""
+    try:
+        from .phase2_manager import get_phase2_manager
+        manager = get_phase2_manager()
+        result = manager.stop_monitoring()
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Phase 2 stop error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/phase2/config")
+async def get_phase2_config():
+    """Get Phase 2 manager configuration"""
+    try:
+        from .phase2_manager import get_phase2_manager
+        manager = get_phase2_manager()
+        return {"success": True, "config": manager.get_config()}
+    except Exception as e:
+        logger.error(f"Phase 2 config error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/phase2/config")
+async def update_phase2_config(config: Dict):
+    """Update Phase 2 manager configuration"""
+    try:
+        from .phase2_manager import get_phase2_manager
+        manager = get_phase2_manager()
+        result = manager.update_config(config)
+        return {"success": True, "config": result}
+    except Exception as e:
+        logger.error(f"Phase 2 config update error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/phase2/register/{symbol}")
+async def register_for_phase2(symbol: str, exit_price: float, pnl_pct: float):
+    """Manually register a symbol for Phase 2 monitoring"""
+    try:
+        from .phase2_manager import get_phase2_manager
+        manager = get_phase2_manager()
+        result = manager.register_phase1_exit(symbol.upper(), exit_price, pnl_pct)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Phase 2 register error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/phase2/check/{symbol}")
+async def check_phase2_conditions(symbol: str):
+    """Check Phase 2 entry conditions for a symbol"""
+    try:
+        from .phase2_manager import get_phase2_manager
+        manager = get_phase2_manager()
+        result = await manager.check_conditions(symbol.upper())
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Phase 2 check error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/phase2/trades")
+async def get_phase2_trades():
+    """Get executed Phase 2 trades"""
+    try:
+        from .phase2_manager import get_phase2_manager
+        manager = get_phase2_manager()
+        return {"success": True, "trades": manager.executed_trades}
+    except Exception as e:
+        logger.error(f"Phase 2 trades error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ Chronos Exit Manager Endpoints ============
+
+@router.get("/chronos-exit/status")
+async def get_chronos_exit_status():
+    """
+    Get Chronos Exit Manager status.
+
+    Shows all monitored positions with their current regime,
+    confidence, and momentum status.
+    """
+    try:
+        from .chronos_exit_manager import get_chronos_exit_manager
+        manager = get_chronos_exit_manager()
+
+        return {
+            "success": True,
+            "positions": manager.get_position_contexts(),
+            "config": manager.get_config()
+        }
+    except Exception as e:
+        logger.error(f"Chronos exit status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/chronos-exit/config")
+async def get_chronos_exit_config():
+    """Get Chronos Exit Manager configuration"""
+    try:
+        from .chronos_exit_manager import get_chronos_exit_manager
+        manager = get_chronos_exit_manager()
+        return {"success": True, "config": manager.get_config()}
+    except Exception as e:
+        logger.error(f"Chronos exit config error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/chronos-exit/config")
+async def update_chronos_exit_config(config: Dict):
+    """
+    Update Chronos Exit Manager configuration.
+
+    Key settings:
+    - use_failed_momentum_exit: Enable Ross Cameron rule
+    - momentum_check_seconds: Time before checking momentum (default 30s)
+    - expected_gain_30s: Expected gain in that time (default 0.5%)
+    - fade_from_high_percent: Exit if price fades this much from high
+    """
+    try:
+        from .chronos_exit_manager import get_chronos_exit_manager
+        manager = get_chronos_exit_manager()
+        manager.update_config(**config)
+        return {"success": True, "config": manager.get_config()}
+    except Exception as e:
+        logger.error(f"Chronos exit config update error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/chronos-exit/check/{symbol}")
+async def check_chronos_exit(symbol: str, current_price: float, entry_price: float):
+    """
+    Manually check Chronos exit signal for a position.
+
+    This is useful for testing before live trading.
+    """
+    try:
+        from .chronos_exit_manager import get_chronos_exit_manager
+        manager = get_chronos_exit_manager()
+
+        signal = manager.check_exit(symbol.upper(), current_price, entry_price)
+
+        return {
+            "success": True,
+            "should_exit": signal.should_exit,
+            "reason": signal.reason,
+            "urgency": signal.urgency,
+            "details": signal.details,
+            "position_context": manager.get_position_contexts().get(symbol.upper(), {})
+        }
+    except Exception as e:
+        logger.error(f"Chronos exit check error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/chronos-exit/register/{symbol}")
+async def register_chronos_position(symbol: str, entry_price: float):
+    """Manually register a position for Chronos monitoring"""
+    try:
+        from .chronos_exit_manager import get_chronos_exit_manager
+        manager = get_chronos_exit_manager()
+
+        ctx = manager.register_position(symbol.upper(), entry_price)
+
+        return {
+            "success": True,
+            "symbol": symbol.upper(),
+            "entry_regime": ctx.entry_regime,
+            "entry_confidence": ctx.entry_confidence,
+            "entry_trend_strength": ctx.entry_trend_strength
+        }
+    except Exception as e:
+        logger.error(f"Chronos exit register error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.delete("/chronos-exit/{symbol}")
+async def unregister_chronos_position(symbol: str):
+    """Remove a position from Chronos monitoring"""
+    try:
+        from .chronos_exit_manager import get_chronos_exit_manager
+        manager = get_chronos_exit_manager()
+        manager.unregister_position(symbol.upper())
+        return {"success": True, "message": f"Unregistered {symbol}"}
+    except Exception as e:
+        logger.error(f"Chronos exit unregister error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader, MACD Analyzer, Two-Phase Strategy, Phase 2 Manager, Chronos Exit Manager)")
