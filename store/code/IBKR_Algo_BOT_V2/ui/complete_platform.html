@@ -3761,6 +3761,22 @@
                             </div>
                         </div>
 
+                        <!-- Timestamped News Log (4AM Scanner) -->
+                        <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="font-size: 13px; color: #888; font-weight: 700;">📋 NEWS LOG (Live)</div>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <span id="newsLogCount" style="font-size: 10px; color: #666;">0 items</span>
+                                    <button onclick="loadTimestampedNewsLog()" style="padding: 4px 8px; background: #252525; border: 1px solid #404040; color: #888; font-size: 10px; border-radius: 3px; cursor: pointer;">
+                                        🔄 Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="timestampedNewsLog" style="max-height: 250px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 11px; background: #0d0d0d; padding: 8px; border-radius: 4px;">
+                                <div style="color: #666;">Loading news log...</div>
+                            </div>
+                        </div>
+
                         <!-- News Feed -->
                         <div style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -7982,6 +7998,41 @@ Confirm order?`;
             }
         }
 
+        // Timestamped News Log (4AM Scanner format)
+        async function loadTimestampedNewsLog() {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/news-log?limit=50');
+                if (!response.ok) throw new Error('Failed to load news log');
+                const data = await response.json();
+
+                const container = document.getElementById('timestampedNewsLog');
+                const countEl = document.getElementById('newsLogCount');
+
+                if (data.news && data.news.length > 0) {
+                    countEl.textContent = data.count + ' items';
+                    container.innerHTML = data.news.map(item => {
+                        const headline = item.headline ? item.headline.substring(0, 80) : '';
+                        return `<div style="padding: 3px 0; border-bottom: 1px solid #222;">
+                            <span style="color: #00d4ff; font-weight: 600;">$${item.symbol}</span>
+                            <span style="color: #aaa;"> - ${headline}${headline.length >= 80 ? '...' : ''}</span>
+                            <span style="color: #666; float: right;">${item.time_str}</span>
+                        </div>`;
+                    }).join('');
+                } else {
+                    countEl.textContent = '0 items';
+                    container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">No news logged yet. Start news monitor to capture breaking news.</div>';
+                }
+            } catch (error) {
+                console.error('Error loading news log:', error);
+                document.getElementById('timestampedNewsLog').innerHTML = '<div style="color: #ef4444;">Error loading news log</div>';
+            }
+        }
+
+        // Auto-refresh news log every 30 seconds
+        setInterval(loadTimestampedNewsLog, 30000);
+        // Load immediately on page load
+        loadTimestampedNewsLog();
+
         function filterNewsFeed() {
             loadNewsFeed();
         }
@@ -10058,12 +10109,14 @@ Confirm order?`;
                 const wlResponse = await fetch('/api/worklist');
                 const wlData = await wlResponse.json();
 
-                if (!wlData.symbols || wlData.symbols.length === 0) {
+                // Extract symbols from data array
+                const allSymbols = wlData.data ? wlData.data.map(s => s.symbol) : (wlData.symbols || []);
+                if (!allSymbols || allSymbols.length === 0) {
                     table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">No symbols in watchlist</td></tr>';
                     return;
                 }
 
-                const symbols = wlData.symbols.slice(0, 10); // Limit to 10
+                const symbols = allSymbols.slice(0, 10); // Limit to 10
                 const rows = [];
 
                 for (const sym of symbols) {
@@ -10076,9 +10129,10 @@ Confirm order?`;
                         const flowResponse = await fetch(`/api/scanner/order-flow/${sym}`);
                         const flowData = await flowResponse.json();
 
-                        const chronosScore = predData.chronos?.prob_up ? (predData.chronos.prob_up * 100).toFixed(0) : '--';
-                        const qlibScore = predData.qlib?.score ? (predData.qlib.score * 100).toFixed(0) : '--';
-                        const flowScore = flowData.buy_pressure ? (flowData.buy_pressure * 100).toFixed(0) : '--';
+                        // prob_up is already 0-100, buy_pressure is already 0-100
+                        const chronosScore = predData.prob_up ? predData.prob_up.toFixed(0) : '--';
+                        const qlibScore = predData.confidence ? predData.confidence.toFixed(0) : '--';
+                        const flowScore = flowData.buy_pressure ? flowData.buy_pressure.toFixed(0) : '--';
 
                         // Determine overall signal
                         let signal = 'NEUTRAL';

@@ -1053,6 +1053,19 @@ class HFTScalper:
         while self.is_running:
             try:
                 async with httpx.AsyncClient() as client:
+                    # Sync with common worklist (data bus pattern)
+                    try:
+                        wl_resp = await client.get("http://localhost:9100/api/worklist", timeout=3.0)
+                        if wl_resp.status_code == 200:
+                            wl_data = wl_resp.json()
+                            common_symbols = [s.get('symbol') for s in wl_data.get('data', []) if s.get('symbol')]
+                            if common_symbols:
+                                # Merge with config watchlist (union)
+                                all_symbols = list(set(self.config.watchlist + common_symbols))
+                                self.config.watchlist = all_symbols
+                    except Exception as e:
+                        logger.debug(f"Worklist sync: {e}")
+
                     # Process priority symbols FIRST (news-triggered)
                     while self.priority_symbols and self.config.enabled:
                         symbol = self.priority_symbols.pop(0)

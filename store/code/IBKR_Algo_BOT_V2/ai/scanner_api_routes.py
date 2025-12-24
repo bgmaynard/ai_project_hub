@@ -1109,6 +1109,15 @@ class ScalperConfigUpdate(BaseModel):
     max_daily_loss: Optional[float] = None
     max_daily_trades: Optional[int] = None
     cooldown_after_loss: Optional[int] = None
+    # AI filter settings
+    use_chronos_filter: Optional[bool] = None
+    chronos_min_prob_up: Optional[float] = None
+    use_order_flow_filter: Optional[bool] = None
+    min_buy_pressure: Optional[float] = None
+    use_regime_gating: Optional[bool] = None
+    valid_regimes: Optional[list] = None
+    use_scalp_fade_filter: Optional[bool] = None
+    use_pullback_confirmation: Optional[bool] = None
 
 
 @router.get("/scalper/status")

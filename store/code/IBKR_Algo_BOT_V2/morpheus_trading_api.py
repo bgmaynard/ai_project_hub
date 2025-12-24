@@ -410,6 +410,16 @@ except ImportError as e:
     logger.warning(f"EDGAR routes not available: {e}")
     HAS_EDGAR_MONITOR = False
 
+# Pre-Market Scanner & News Log Routes
+try:
+    from ai.premarket_routes import router as premarket_router
+    app.include_router(premarket_router, tags=["Pre-Market Scanner"])
+    HAS_PREMARKET_SCANNER = True
+    logger.info("Pre-Market Scanner routes included")
+except ImportError as e:
+    logger.warning(f"Pre-Market Scanner routes not available: {e}")
+    HAS_PREMARKET_SCANNER = False
+
 
 # ============================================================================
 # PYDANTIC MODELS
