@@ -820,3 +820,83 @@ start http://localhost:9100/dashboard
 ### Win Rate Status
 - Backtest: 28.9% win rate, -$304.45 total PnL
 - Target: Improve to 40%+ through better entry filtering
+
+## Dec 23, 2024 Session
+
+### 4AM Pre-Market Scanner System
+
+New pre-market scanner that builds fresh watchlist each morning at 4 AM.
+
+| File | Purpose |
+|------|---------|
+| `ai/premarket_scanner.py` | PreMarketScanner + NewsLogger classes |
+| `ai/premarket_routes.py` | API endpoints for scanner & news log |
+
+**Features:**
+- Scans for pre-market movers (gaps, volume, news catalysts)
+- Checks after-hours continuations from previous day
+- Logs ALL breaking news with timestamps
+- Builds fresh daily watchlist filtered $1-$20 price range
+- Syncs to common worklist (data bus pattern)
+
+**API Endpoints:**
+```
+GET  /api/scanner/premarket/status           - Scanner status
+POST /api/scanner/premarket/scan             - Run scan manually
+GET  /api/scanner/premarket/watchlist        - Current watchlist
+POST /api/scanner/premarket/news-monitor/start - Start news monitor
+POST /api/scanner/premarket/news-monitor/stop  - Stop news monitor
+GET  /api/news-log                           - Timestamped news log (JSON)
+GET  /api/news-log/today                     - Today's news only
+GET  /api/news-log/formatted                 - Text format (like screenshot)
+GET  /api/news-log/symbol/{symbol}           - News for specific symbol
+POST /api/news-log/add                       - Manually add news entry
+```
+
+**News Log Format:**
+```
+$AXP - Truist Securities Maintains Buy on American Express...  12:26 PM
+$JNJ - Johnson & Johnson Hit With Record $1.5 Billion...       12:26 PM
+```
+
+### Dashboard Updates
+
+- Added **NEWS LOG (Live)** panel in News & Fundamentals tab
+- Auto-refreshes every 30 seconds
+- Shows timestamped breaking news in real-time
+
+### Common Data Bus
+
+HFT Scalper now syncs with common worklist on each monitor loop:
+- All modules share same watchlist via `/api/worklist`
+- Prevents conflicting processes and disconnected data
+
+### Trading Analysis
+
+**Webull Manual Trading Analysis:**
+- Win Rate: 66.7% (10/15 trades)
+- Total P&L: -$43.63
+- Problem: Letting losers run (avg loss 2.5x avg win)
+
+**Bot Paper Trading:**
+- Win Rate: 29.1% (37/127 trades)
+- Total P&L: -$361.02
+- Problem: Entry quality, too many small losses
+
+**Key Insight:** User's entry instincts are strong (66% win rate), bot has better exit discipline. Hybrid approach (manual entry + AI exit) is the winning formula.
+
+### Holiday Schedule
+- Dec 24: Market closes 1 PM ET (half day)
+- Dec 25: Market closed
+
+### Quick Commands
+```bash
+# Start all systems
+python morpheus_trading_api.py
+curl -X POST "http://localhost:9100/api/scanner/scalper/start"
+curl -X POST "http://localhost:9100/api/scanner/news-trader/start?paper_mode=true"
+curl -X POST "http://localhost:9100/api/scanner/premarket/news-monitor/start"
+
+# Check news log
+curl http://localhost:9100/api/news-log/formatted
+```
