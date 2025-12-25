@@ -420,6 +420,16 @@ except ImportError as e:
     logger.warning(f"Pre-Market Scanner routes not available: {e}")
     HAS_PREMARKET_SCANNER = False
 
+# Lightweight Charts API Routes
+try:
+    from charts_routes import router as charts_router
+    app.include_router(charts_router, tags=["Charts"])
+    HAS_CHARTS_API = True
+    logger.info("Lightweight Charts API routes included")
+except ImportError as e:
+    logger.warning(f"Charts routes not available: {e}")
+    HAS_CHARTS_API = False
+
 
 # ============================================================================
 # PYDANTIC MODELS

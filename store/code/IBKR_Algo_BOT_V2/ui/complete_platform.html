@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Morpheus Trading Bot - Professional Platform</title>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@5.0.9/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * {
             margin: 0;
@@ -1135,6 +1136,27 @@
         input::placeholder {
             color: #444;
         }
+
+        /* Lightweight Charts Styles */
+        .lw-tf-btn {
+            padding: 4px 8px;
+            background: #252525;
+            border: 1px solid #404040;
+            color: #888;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+        .lw-tf-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+        .lw-tf-btn.active {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -1464,6 +1486,11 @@
                 <a href="#" onclick="event.preventDefault(); addChartWithDefault('15')">15 Min</a>
                 <a href="#" onclick="event.preventDefault(); addChartWithDefault('60')">1 Hour</a>
                 <a href="#" onclick="event.preventDefault(); addChartWithDefault('D')">Daily</a>
+                <hr>
+                <strong style="font-size: 10px;">AI Charts (Lightweight)</strong>
+                <a href="#" onclick="event.preventDefault(); openLWChart()">📈 AI Trade Chart</a>
+                <a href="#" onclick="event.preventDefault(); openEquityCurve()">💰 Equity Curve</a>
+                <a href="#" onclick="event.preventDefault(); openBacktestView()">🔬 Backtest View</a>
                 <hr>
                 <a href="#" onclick="event.preventDefault(); showAddChartDialog()">📋 Templates...</a>
             </div>
@@ -5081,6 +5108,184 @@
                         </div>
                     </div>
                 </div>
+            `,
+
+            // AI Trade Chart - Lightweight Charts
+            lwchart: `
+                <div class="module-content" style="height: 100%; display: flex; flex-direction: column; background: #0a0a0a;">
+                    <!-- Chart Controls -->
+                    <div style="padding: 6px 8px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="lwchartSymbol" value="AAPL" placeholder="Symbol"
+                               style="width: 70px; padding: 4px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 12px; border-radius: 3px;">
+                        <div style="display: flex; gap: 2px;">
+                            <button class="lw-tf-btn" data-tf="1m" onclick="changeLWTimeframe('1m', this)">1m</button>
+                            <button class="lw-tf-btn active" data-tf="5m" onclick="changeLWTimeframe('5m', this)">5m</button>
+                            <button class="lw-tf-btn" data-tf="15m" onclick="changeLWTimeframe('15m', this)">15m</button>
+                            <button class="lw-tf-btn" data-tf="1h" onclick="changeLWTimeframe('1h', this)">1h</button>
+                            <button class="lw-tf-btn" data-tf="1d" onclick="changeLWTimeframe('1d', this)">D</button>
+                        </div>
+                        <select id="lwchartDays" style="padding: 3px 6px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 11px; border-radius: 3px;">
+                            <option value="1">1 Day</option>
+                            <option value="3">3 Days</option>
+                            <option value="5" selected>5 Days</option>
+                            <option value="7">1 Week</option>
+                            <option value="14">2 Weeks</option>
+                            <option value="30">1 Month</option>
+                        </select>
+                        <button onclick="loadLWChart()" style="padding: 4px 12px; background: #2563eb; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">Load</button>
+                        <button onclick="jumpToTrades()" style="padding: 4px 8px; background: #22c55e; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 10px;" title="Jump to trade markers">Trades</button>
+                        <span id="lwchartStatus" style="font-size: 10px; color: #666; margin-left: auto;">Ready</span>
+                    </div>
+
+                    <!-- Indicator Toggles -->
+                    <div style="padding: 4px 8px; background: #151515; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center; font-size: 10px; flex-wrap: wrap;">
+                        <label style="color: #888; cursor: pointer;"><input type="checkbox" id="lwShowTrades" checked onchange="toggleLWTrades()"> Trades</label>
+                        <label style="color: #eab308; cursor: pointer;"><input type="checkbox" id="lwShowSignals" onchange="toggleLWSignals()"> Signals</label>
+                        <label style="color: #f97316; cursor: pointer;"><input type="checkbox" id="lwShowEMA9" onchange="toggleLWIndicator('ema9')"> EMA(9)</label>
+                        <label style="color: #3b82f6; cursor: pointer;"><input type="checkbox" id="lwShowEMA20" onchange="toggleLWIndicator('ema20')"> EMA(20)</label>
+                        <label style="color: #a855f7; cursor: pointer;"><input type="checkbox" id="lwShowVWAP" onchange="toggleLWIndicator('vwap')"> VWAP</label>
+                        <label style="color: #26a69a; cursor: pointer;"><input type="checkbox" id="lwShowVolume" checked onchange="toggleLWVolume()"> Volume</label>
+                        <label style="color: #22c55e; cursor: pointer;"><input type="checkbox" id="lwShowMACD" onchange="toggleLWMACD()"> MACD</label>
+                    </div>
+
+                    <!-- Signal Status Bar -->
+                    <div id="lwSignalBar" style="padding: 4px 8px; background: #0d0d0d; border-bottom: 1px solid #333; font-size: 10px; display: none;">
+                        <span style="color: #888;">Confluence: </span>
+                        <span id="lwConfluenceScore" style="font-weight: bold;">--</span>
+                        <span style="color: #888; margin-left: 12px;">Bias: </span>
+                        <span id="lwSignalBias" style="font-weight: bold;">--</span>
+                        <span style="color: #888; margin-left: 12px;">EMA: </span>
+                        <span id="lwEmaState">--</span>
+                        <span style="color: #888; margin-left: 12px;">MACD: </span>
+                        <span id="lwMacdState">--</span>
+                        <span style="color: #888; margin-left: 12px;">VWAP: </span>
+                        <span id="lwVwapState">--</span>
+                    </div>
+
+                    <!-- Chart Container (includes MACD as overlay) -->
+                    <div id="lwchartContainer" style="flex: 1; min-height: 350px;"></div>
+
+                    <!-- Trade Summary -->
+                    <div id="lwchartSummary" style="padding: 6px 10px; background: #1a1a1a; border-top: 1px solid #333; font-size: 11px; display: flex; gap: 16px;">
+                        <span>Trades: <b id="lwTradeCount">0</b></span>
+                        <span>Win Rate: <b id="lwWinRate" style="color: #22c55e;">0%</b></span>
+                        <span>P&L: <b id="lwTotalPnl" style="color: #888;">$0.00</b></span>
+                    </div>
+                </div>
+            `,
+
+            // Equity Curve - Lightweight Charts
+            equitycurve: `
+                <div class="module-content" style="height: 100%; display: flex; flex-direction: column; background: #0a0a0a;">
+                    <!-- Controls -->
+                    <div style="padding: 8px 10px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; gap: 12px; align-items: center;">
+                        <span style="font-size: 11px; color: #888;">Period:</span>
+                        <select id="equityCurvePeriod" onchange="loadEquityCurve()" style="padding: 4px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 11px; border-radius: 3px;">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30" selected>Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                            <option value="all">All Time</option>
+                        </select>
+                        <button onclick="loadEquityCurve()" style="padding: 4px 12px; background: #2563eb; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">Refresh</button>
+                    </div>
+
+                    <!-- Chart Container -->
+                    <div id="equityCurveContainer" style="flex: 1; min-height: 250px;"></div>
+
+                    <!-- Stats Summary -->
+                    <div style="padding: 8px 12px; background: #1a1a1a; border-top: 1px solid #333; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; font-size: 10px;">
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Initial</div>
+                            <div id="eqInitial" style="color: #fff; font-weight: 600;">$1,000</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Current</div>
+                            <div id="eqCurrent" style="color: #22c55e; font-weight: 600;">$0</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Total P&L</div>
+                            <div id="eqTotalPnl" style="color: #888; font-weight: 600;">$0</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Max DD</div>
+                            <div id="eqMaxDD" style="color: #ef4444; font-weight: 600;">0%</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Win Rate</div>
+                            <div id="eqWinRate" style="color: #888; font-weight: 600;">0%</div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            // Backtest View - Lightweight Charts
+            backtestview: `
+                <div class="module-content" style="height: 100%; display: flex; flex-direction: column; background: #0a0a0a;">
+                    <!-- Controls -->
+                    <div style="padding: 8px 10px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="backtestSymbol" placeholder="Symbol (or ALL)" value="ALL"
+                               style="width: 80px; padding: 4px 8px; background: #252525; border: 1px solid #404040; color: #fff; font-size: 11px; border-radius: 3px;">
+                        <button onclick="loadBacktestView()" style="padding: 4px 12px; background: #2563eb; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">Load</button>
+                        <span id="backtestStatus" style="font-size: 10px; color: #666; margin-left: auto;">Ready</span>
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div style="padding: 8px 12px; background: #151515; border-bottom: 1px solid #333; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font-size: 10px;">
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Trades</div>
+                            <div id="btTotalTrades" style="color: #fff; font-weight: 600;">0</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Winners</div>
+                            <div id="btWinners" style="color: #22c55e; font-weight: 600;">0</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Losers</div>
+                            <div id="btLosers" style="color: #ef4444; font-weight: 600;">0</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Win Rate</div>
+                            <div id="btWinRate" style="color: #888; font-weight: 600;">0%</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Avg Win</div>
+                            <div id="btAvgWin" style="color: #22c55e; font-weight: 600;">$0</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: #666;">Avg Loss</div>
+                            <div id="btAvgLoss" style="color: #ef4444; font-weight: 600;">$0</div>
+                        </div>
+                    </div>
+
+                    <!-- Exit Reason Breakdown -->
+                    <div style="padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333;">
+                        <div style="font-size: 10px; color: #888; margin-bottom: 6px;">Exit Reason Breakdown</div>
+                        <div id="btExitReasons" style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 10px;"></div>
+                    </div>
+
+                    <!-- Trades Table -->
+                    <div style="flex: 1; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                            <thead style="position: sticky; top: 0; background: #1a1a1a;">
+                                <tr style="color: #888; border-bottom: 1px solid #333;">
+                                    <th style="padding: 6px 8px; text-align: left;">Symbol</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Entry</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Exit</th>
+                                    <th style="padding: 6px 8px; text-align: left;">Reason</th>
+                                    <th style="padding: 6px 8px; text-align: right;">P&L</th>
+                                    <th style="padding: 6px 8px; text-align: right;">%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="btTradesBody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Total P&L -->
+                    <div style="padding: 8px 12px; background: #1a1a1a; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; color: #888;">Total P&L:</span>
+                        <span id="btTotalPnl" style="font-size: 14px; font-weight: 700; color: #888;">$0.00</span>
+                    </div>
+                </div>
             `
         };
 
@@ -8606,16 +8811,17 @@ Confirm order?`;
 
         // Breaking News Feed (scrollable list)
         async function refreshNewsTicker() {
+            const feedEl = document.getElementById('newsTickerScroll');
+            const countEl = document.getElementById('newsTickerCount');
+            if (!feedEl) return;  // Elements don't exist yet, skip
+
             try {
                 const response = await fetch(API_BASE_URL + '/api/news-log?limit=50');
                 if (!response.ok) throw new Error('Failed to load news');
                 const data = await response.json();
 
-                const feedEl = document.getElementById('newsTickerScroll');
-                const countEl = document.getElementById('newsTickerCount');
-
                 if (data.news && data.news.length > 0) {
-                    countEl.textContent = '(' + data.count + ')';
+                    if (countEl) countEl.textContent = '(' + data.count + ')';
 
                     // Build scrollable list items
                     const items = data.news.map(item => {
@@ -8636,12 +8842,12 @@ Confirm order?`;
 
                     feedEl.innerHTML = items.join('');
                 } else {
-                    countEl.textContent = '(0)';
+                    if (countEl) countEl.textContent = '(0)';
                     feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">No news yet - Start news monitor to capture live updates</div>';
                 }
             } catch (error) {
-                console.error('Error loading news feed:', error);
-                document.getElementById('newsTickerScroll').innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">News feed unavailable</div>';
+                // Silent fail - news feed is optional
+                if (feedEl) feedEl.innerHTML = '<div style="padding: 20px; color: #666; text-align: center;">News feed unavailable</div>';
             }
         }
 
@@ -10897,6 +11103,752 @@ Confirm order?`;
                 table.innerHTML = rows.join('');
             } catch (e) {
                 table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #ef4444;">Error loading signals</td></tr>';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     LIGHTWEIGHT CHARTS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // Global chart state
+        let lwChart = null;
+        let lwCandleSeries = null;
+        let lwVolumeSeries = null;
+        let lwIndicatorSeries = {};
+        let lwCurrentSymbol = 'AAPL';
+        let lwCurrentTimeframe = '5m';
+        let lwTradeMarkers = [];
+        let lwMarkersPrimitive = null;  // v5 markers primitive
+
+        // MACD series on main chart (not separate chart)
+        let lwMacdLineSeries = null;
+        let lwMacdSignalSeries = null;
+        let lwMacdHistogramSeries = null;
+
+        // Signal markers (EMA/MACD/VWAP crossovers)
+        let lwSignalMarkersPrimitive = null;
+        let lwSignalEvents = [];
+
+        // Open AI Trade Chart window
+        function openLWChart() {
+            const existing = windows.find(w => w.id === 'lwchart');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                return;
+            }
+            createWindow('lwchart', '📈 AI TRADE CHART', windowTemplates.lwchart, 100, 80, 800, 500);
+            setTimeout(() => {
+                initLWChart();
+                loadLWChart();
+            }, 100);
+        }
+
+        // Initialize Lightweight Chart
+        function initLWChart() {
+            const container = document.getElementById('lwchartContainer');
+            if (!container || lwChart) return;
+
+            // Check if LightweightCharts is available
+            if (typeof LightweightCharts === 'undefined') {
+                console.error('LightweightCharts library not loaded');
+                container.innerHTML = '<div style="padding: 20px; color: #ef4444;">Error: Lightweight Charts library not loaded</div>';
+                return;
+            }
+
+            lwChart = LightweightCharts.createChart(container, {
+                layout: {
+                    background: { color: '#0a0a0a' },
+                    textColor: '#d1d4dc'
+                },
+                grid: {
+                    vertLines: { color: '#1a1a1a' },
+                    horzLines: { color: '#1a1a1a' }
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal
+                },
+                rightPriceScale: {
+                    borderColor: '#333'
+                },
+                timeScale: {
+                    borderColor: '#333',
+                    timeVisible: true,
+                    secondsVisible: false
+                }
+            });
+
+            lwCandleSeries = lwChart.addSeries(LightweightCharts.CandlestickSeries, {
+                upColor: '#22c55e',
+                downColor: '#ef4444',
+                borderUpColor: '#22c55e',
+                borderDownColor: '#ef4444',
+                wickUpColor: '#22c55e',
+                wickDownColor: '#ef4444'
+            });
+
+            // Volume as overlay - positioned above MACD area
+            lwVolumeSeries = lwChart.addSeries(LightweightCharts.HistogramSeries, {
+                priceFormat: { type: 'volume' },
+                priceScaleId: 'volume'
+            });
+            lwChart.priceScale('volume').applyOptions({
+                scaleMargins: { top: 0.70, bottom: 0.22 },  // Above MACD (70-78% area)
+                visible: false
+            });
+
+            // Resize handler for main chart
+            new ResizeObserver(() => {
+                if (lwChart) lwChart.resize(container.offsetWidth, container.offsetHeight);
+            }).observe(container);
+        }
+
+        // Volume as overlay on main chart (not separate)
+        function toggleLWVolume() {
+            const show = document.getElementById('lwShowVolume')?.checked;
+            if (lwVolumeSeries) {
+                lwVolumeSeries.applyOptions({ visible: show });
+            }
+        }
+
+        // Jump to first trade marker
+        async function jumpToTrades() {
+            const status = document.getElementById('lwchartStatus');
+            if (status) status.textContent = 'Loading trades...';
+
+            // Force load trade markers
+            await loadLWTradeMarkers();
+
+            // If we have markers, scroll to the first one
+            if (lwTradeMarkers && lwTradeMarkers.length > 0) {
+                const firstTradeTime = lwTradeMarkers[0].time;
+                if (lwChart) {
+                    // Scroll to show first trade
+                    lwChart.timeScale().scrollToRealTime();
+                    setTimeout(() => {
+                        lwChart.timeScale().scrollToPosition(-50, false);
+                    }, 100);
+                    status.textContent = `${lwTradeMarkers.length} markers loaded`;
+                    status.style.color = '#22c55e';
+                }
+            } else {
+                status.textContent = 'No trades for ' + lwCurrentSymbol;
+                status.style.color = '#f59e0b';
+            }
+        }
+
+        // Load chart data
+        async function loadLWChart() {
+            const symbolInput = document.getElementById('lwchartSymbol');
+            const daysSelect = document.getElementById('lwchartDays');
+            const status = document.getElementById('lwchartStatus');
+            if (!symbolInput) return;
+
+            lwCurrentSymbol = symbolInput.value.toUpperCase() || 'AAPL';
+            const days = daysSelect ? parseInt(daysSelect.value) : 5;
+            status.textContent = `Loading ${days} days...`;
+            status.style.color = '#f59e0b';
+
+            try {
+                // Initialize chart if needed
+                if (!lwChart) initLWChart();
+
+                // Fetch OHLC data with days parameter
+                const ohlcResp = await fetch(`/api/charts/ohlc/${lwCurrentSymbol}?timeframe=${lwCurrentTimeframe}&days=${days}`);
+                const ohlcData = await ohlcResp.json();
+
+                if (!ohlcData.success) {
+                    throw new Error(ohlcData.error || 'Failed to load data');
+                }
+
+                // Reset markers primitive for new data
+                lwMarkersPrimitive = null;
+
+                // Set candlestick and volume data
+                lwCandleSeries.setData(ohlcData.data);
+                if (lwVolumeSeries) lwVolumeSeries.setData(ohlcData.volume);
+
+                // Store the OHLC timestamps for marker alignment
+                window.lwOhlcTimes = new Set(ohlcData.data.map(d => d.time));
+                console.log('[AI Chart] OHLC loaded:', ohlcData.data.length, 'bars, time range:',
+                    ohlcData.data[0]?.time, 'to', ohlcData.data[ohlcData.data.length-1]?.time);
+
+                // Always try to load trade markers
+                await loadLWTradeMarkers();
+
+                // Refresh MACD if enabled - remove old series first
+                if (document.getElementById('lwShowMACD')?.checked) {
+                    // Remove existing MACD series to force reload
+                    if (lwMacdHistogramSeries) {
+                        lwChart.removeSeries(lwMacdHistogramSeries);
+                        lwMacdHistogramSeries = null;
+                    }
+                    if (lwMacdLineSeries) {
+                        lwChart.removeSeries(lwMacdLineSeries);
+                        lwMacdLineSeries = null;
+                    }
+                    if (lwMacdSignalSeries) {
+                        lwChart.removeSeries(lwMacdSignalSeries);
+                        lwMacdSignalSeries = null;
+                    }
+                    await toggleLWMACD();
+                }
+
+                // Update window title
+                const win = windows.find(w => w.id === 'lwchart');
+                if (win && win.container) {
+                    const header = win.container.querySelector('.window-header span');
+                    if (header) header.textContent = `📈 AI CHART - ${lwCurrentSymbol}`;
+                }
+
+                status.textContent = `${ohlcData.count} bars`;
+                status.style.color = '#22c55e';
+
+            } catch (e) {
+                console.error('Error loading LW chart:', e);
+                status.textContent = 'Error: ' + e.message;
+                status.style.color = '#ef4444';
+            }
+        }
+
+        // Load trade markers
+        async function loadLWTradeMarkers() {
+            console.log('[AI Chart] loadLWTradeMarkers called for', lwCurrentSymbol, 'timeframe:', lwCurrentTimeframe);
+            try {
+                const resp = await fetch(`/api/charts/trades/${lwCurrentSymbol}?timeframe=${lwCurrentTimeframe}`);
+                const data = await resp.json();
+                console.log('[AI Chart] Trade API response:', data.success, 'markers:', data.markers?.length);
+
+                if (data.success && data.markers && data.markers.length > 0) {
+                    lwTradeMarkers = data.markers;
+
+                    // Find the earliest trade timestamp to ensure OHLC covers it
+                    const minTradeTime = Math.min(...data.markers.map(m => m.time));
+                    const now = Math.floor(Date.now() / 1000);
+                    const daysBack = Math.ceil((now - minTradeTime) / (60 * 60 * 24)) + 2;
+
+                    // Use selected days or calculated days (whichever is greater)
+                    const daysSelect = document.getElementById('lwchartDays');
+                    const selectedDays = daysSelect ? parseInt(daysSelect.value) : 5;
+                    const daysToFetch = Math.max(selectedDays, daysBack);
+                    console.log(`[AI Chart] Trade data spans ${daysBack} days, user selected ${selectedDays}, fetching ${daysToFetch} days`);
+
+                    // Show loading status
+                    const status = document.getElementById('lwchartStatus');
+                    if (status) {
+                        status.textContent = `Loading ${data.summary.total_trades} trades (${daysToFetch} days)...`;
+                        status.style.color = '#f59e0b';
+                    }
+
+                    // Re-fetch OHLC with enough history to cover trades (use days param)
+                    const ohlcResp = await fetch(`/api/charts/ohlc/${lwCurrentSymbol}?timeframe=${lwCurrentTimeframe}&days=${daysToFetch}`);
+                    const ohlcData = await ohlcResp.json();
+
+                    if (ohlcData.success) {
+                        // Reset markers primitive before setting new data
+                        lwMarkersPrimitive = null;
+                        lwCandleSeries.setData(ohlcData.data);
+                        if (lwVolumeSeries) lwVolumeSeries.setData(ohlcData.volume);
+                        // Update OHLC times after re-fetch
+                        window.lwOhlcTimes = new Set(ohlcData.data.map(d => d.time));
+                        document.getElementById('lwchartStatus').textContent = `${ohlcData.count} bars loaded`;
+                        console.log('[AI Chart] Extended OHLC range:', ohlcData.data[0]?.time, 'to', ohlcData.data[ohlcData.data.length-1]?.time);
+                    }
+
+                    // Filter markers to only include timestamps that exist in OHLC data
+                    const ohlcTimes = window.lwOhlcTimes || new Set();
+                    const cleanMarkers = data.markers
+                        .filter(m => ohlcTimes.has(m.time))  // Only markers with matching OHLC bars
+                        .map(m => ({
+                            time: m.time,
+                            position: m.position,
+                            color: m.color,
+                            shape: m.shape,
+                            text: m.text
+                        }));
+
+                    const skipped = data.markers.length - cleanMarkers.length;
+                    console.log(`[AI Chart] ${cleanMarkers.length} markers match OHLC, ${skipped} skipped`);
+
+                    if (cleanMarkers.length > 0) {
+                        console.log('[AI Chart] Setting', cleanMarkers.length, 'markers');
+                        console.log('[AI Chart] LightweightCharts exports:', Object.keys(LightweightCharts).filter(k => k.includes('arker')));
+
+                        // v5 API: use createSeriesMarkers primitive
+                        try {
+                            if (lwMarkersPrimitive) {
+                                lwMarkersPrimitive.setMarkers(cleanMarkers);
+                                console.log('[AI Chart] Updated existing markers primitive');
+                            } else if (typeof LightweightCharts.createSeriesMarkers === 'function') {
+                                lwMarkersPrimitive = LightweightCharts.createSeriesMarkers(lwCandleSeries, cleanMarkers);
+                                console.log('[AI Chart] Created new markers primitive');
+                            } else {
+                                console.error('[AI Chart] createSeriesMarkers not found!');
+                            }
+                        } catch (markerErr) {
+                            console.error('[AI Chart] Marker error:', markerErr);
+                        }
+                    } else {
+                        console.warn('[AI Chart] No markers match OHLC timestamps! Marker times:',
+                            data.markers.slice(0,3).map(m => m.time));
+                        // Clear markers
+                        if (lwMarkersPrimitive) {
+                            lwMarkersPrimitive.setMarkers([]);
+                        } else if (lwCandleSeries?.setMarkers) {
+                            lwCandleSeries.setMarkers([]);
+                        }
+                    }
+
+                    // Scroll to first trade area
+                    if (lwChart && cleanMarkers.length > 0) {
+                        // Scroll to show trade markers (scroll back to start, then forward a bit)
+                        lwChart.timeScale().scrollToRealTime();
+                        setTimeout(() => lwChart.timeScale().scrollToPosition(-50, false), 100);
+                    }
+
+                    // Update summary with matched marker count
+                    document.getElementById('lwTradeCount').textContent = `${data.summary.total_trades} (${cleanMarkers.length} visible)`;
+                    document.getElementById('lwWinRate').textContent = data.summary.win_rate + '%';
+                    document.getElementById('lwWinRate').style.color = data.summary.win_rate >= 50 ? '#22c55e' : '#ef4444';
+
+                    const pnlEl = document.getElementById('lwTotalPnl');
+                    pnlEl.textContent = (data.summary.total_pnl >= 0 ? '+' : '') + '$' + data.summary.total_pnl.toFixed(2);
+                    pnlEl.style.color = data.summary.total_pnl >= 0 ? '#22c55e' : '#ef4444';
+                } else {
+                    // Clear markers using v5 API
+                    if (lwMarkersPrimitive) lwMarkersPrimitive.setMarkers([]);
+                    document.getElementById('lwTradeCount').textContent = '0';
+                    document.getElementById('lwWinRate').textContent = '0%';
+                    document.getElementById('lwTotalPnl').textContent = '$0.00';
+                    // Show message that no trades found
+                    const status = document.getElementById('lwchartStatus');
+                    if (status) {
+                        status.textContent = 'No trades for ' + lwCurrentSymbol;
+                        status.style.color = '#888';
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading trade markers:', e);
+                const status = document.getElementById('lwchartStatus');
+                if (status) {
+                    status.textContent = 'Error loading trades: ' + e.message;
+                    status.style.color = '#ef4444';
+                }
+            }
+        }
+
+        // Toggle trade markers
+        function toggleLWTrades() {
+            const show = document.getElementById('lwShowTrades')?.checked;
+            if (show) {
+                loadLWTradeMarkers();
+            } else {
+                // Clear markers using v5 API
+                if (lwMarkersPrimitive) lwMarkersPrimitive.setMarkers([]);
+            }
+        }
+
+        // Change timeframe
+        function changeLWTimeframe(tf, btn) {
+            lwCurrentTimeframe = tf;
+            document.querySelectorAll('.lw-tf-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            loadLWChart();
+        }
+
+        // Toggle indicator
+        async function toggleLWIndicator(indicator) {
+            // Map indicator to checkbox ID
+            const checkboxIds = {
+                'ema9': 'lwShowEMA9',
+                'ema20': 'lwShowEMA20',
+                'vwap': 'lwShowVWAP',
+                'sma20': 'lwShowSMA20'
+            };
+            const checkbox = document.getElementById(checkboxIds[indicator] || 'lwShow' + indicator.toUpperCase());
+            const show = checkbox?.checked;
+
+            if (!show) {
+                // Remove indicator
+                if (lwIndicatorSeries[indicator]) {
+                    lwChart.removeSeries(lwIndicatorSeries[indicator]);
+                    delete lwIndicatorSeries[indicator];
+                }
+                return;
+            }
+
+            // Fetch indicator data with days
+            const daysSelect = document.getElementById('lwchartDays');
+            const days = daysSelect ? parseInt(daysSelect.value) : 5;
+
+            try {
+                const resp = await fetch(`/api/charts/indicators/${lwCurrentSymbol}?indicators=${indicator}&timeframe=${lwCurrentTimeframe}&days=${days}`);
+                const data = await resp.json();
+
+                if (data.success && data[indicator]) {
+                    const colors = {
+                        'sma20': '#3b82f6',
+                        'ema9': '#f97316',
+                        'ema20': '#3b82f6',
+                        'vwap': '#a855f7'
+                    };
+
+                    if (indicator === 'rsi14') {
+                        // RSI goes in separate pane
+                        // For now just skip - requires more complex pane management
+                        console.log('RSI pane not implemented yet');
+                    } else {
+                        // Add line series (v5 API)
+                        lwIndicatorSeries[indicator] = lwChart.addSeries(LightweightCharts.LineSeries, {
+                            color: colors[indicator] || '#888',
+                            lineWidth: 1,
+                            priceLineVisible: false,
+                            lastValueVisible: false
+                        });
+                        lwIndicatorSeries[indicator].setData(data[indicator]);
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading indicator:', e);
+            }
+        }
+
+        // Toggle MACD - embedded in main chart below volume
+        async function toggleLWMACD() {
+            const checkbox = document.getElementById('lwShowMACD');
+            const show = checkbox?.checked;
+
+            if (!show) {
+                // Remove MACD series from main chart
+                if (lwMacdHistogramSeries) {
+                    lwChart.removeSeries(lwMacdHistogramSeries);
+                    lwMacdHistogramSeries = null;
+                }
+                if (lwMacdLineSeries) {
+                    lwChart.removeSeries(lwMacdLineSeries);
+                    lwMacdLineSeries = null;
+                }
+                if (lwMacdSignalSeries) {
+                    lwChart.removeSeries(lwMacdSignalSeries);
+                    lwMacdSignalSeries = null;
+                }
+                return;
+            }
+
+            if (!lwChart) {
+                console.error('Main chart not initialized');
+                return;
+            }
+
+            // Use same days as main chart
+            const daysSelect = document.getElementById('lwchartDays');
+            const days = daysSelect ? parseInt(daysSelect.value) : 5;
+
+            try {
+                // Fetch MACD data
+                const resp = await fetch(`/api/charts/indicators/${lwCurrentSymbol}?indicators=macd&timeframe=${lwCurrentTimeframe}&days=${days}`);
+                const data = await resp.json();
+
+                if (!data.success || !data.macd) {
+                    console.error('Failed to load MACD data');
+                    return;
+                }
+
+                // Create MACD series on main chart with dedicated price scale
+                if (!lwMacdHistogramSeries) {
+                    // MACD Histogram - at bottom of chart
+                    lwMacdHistogramSeries = lwChart.addSeries(LightweightCharts.HistogramSeries, {
+                        priceScaleId: 'macd',
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+
+                    // MACD Line (blue)
+                    lwMacdLineSeries = lwChart.addSeries(LightweightCharts.LineSeries, {
+                        priceScaleId: 'macd',
+                        color: '#2563eb',
+                        lineWidth: 1,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+
+                    // Signal Line (orange)
+                    lwMacdSignalSeries = lwChart.addSeries(LightweightCharts.LineSeries, {
+                        priceScaleId: 'macd',
+                        color: '#f97316',
+                        lineWidth: 1,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+
+                    // Configure MACD price scale - position at bottom below volume
+                    lwChart.priceScale('macd').applyOptions({
+                        scaleMargins: { top: 0.8, bottom: 0 },  // Bottom 20% of chart
+                        borderVisible: false
+                    });
+                }
+
+                // Prepare MACD data
+                const macdLineData = data.macd.map(d => ({ time: d.time, value: d.macd }));
+                const signalData = data.macd.map(d => ({ time: d.time, value: d.signal }));
+                const histogramData = data.macd.map(d => ({
+                    time: d.time,
+                    value: d.histogram,
+                    color: d.histogram >= 0 ? '#26a69a80' : '#ef535080'  // Semi-transparent
+                }));
+
+                // Set data
+                lwMacdHistogramSeries.setData(histogramData);
+                lwMacdLineSeries.setData(macdLineData);
+                lwMacdSignalSeries.setData(signalData);
+
+                console.log('[AI Chart] MACD embedded in main chart');
+
+            } catch (e) {
+                console.error('Error loading MACD:', e);
+            }
+        }
+
+        // Toggle Signal markers (EMA/MACD/VWAP crossovers)
+        async function toggleLWSignals() {
+            const checkbox = document.getElementById('lwShowSignals');
+            const show = checkbox?.checked;
+            const signalBar = document.getElementById('lwSignalBar');
+
+            if (!show) {
+                // Hide signal bar and clear markers
+                if (signalBar) signalBar.style.display = 'none';
+                if (lwSignalMarkersPrimitive) {
+                    lwSignalMarkersPrimitive.setMarkers([]);
+                }
+                return;
+            }
+
+            // Show signal bar
+            if (signalBar) signalBar.style.display = 'block';
+
+            if (!lwChart || !lwCandleSeries) {
+                console.error('Chart not initialized');
+                return;
+            }
+
+            // Use same days as main chart
+            const daysSelect = document.getElementById('lwchartDays');
+            const days = daysSelect ? parseInt(daysSelect.value) : 5;
+
+            try {
+                // Fetch signal events
+                const eventsResp = await fetch(`/api/charts/signals/${lwCurrentSymbol}/events?timeframe=${lwCurrentTimeframe}&days=${days}`);
+                const eventsData = await eventsResp.json();
+
+                // Fetch current signal state
+                const stateResp = await fetch(`/api/charts/signals/${lwCurrentSymbol}?timeframe=${lwCurrentTimeframe}&days=${days}`);
+                const stateData = await stateResp.json();
+
+                // Update signal status bar
+                if (stateData.success && stateData.signals) {
+                    const s = stateData.signals;
+
+                    // Confluence score with color
+                    const confEl = document.getElementById('lwConfluenceScore');
+                    confEl.textContent = s.confluence_score + '%';
+                    confEl.style.color = s.confluence_score >= 60 ? '#22c55e' : s.confluence_score >= 40 ? '#eab308' : '#ef4444';
+
+                    // Signal bias
+                    const biasEl = document.getElementById('lwSignalBias');
+                    biasEl.textContent = s.signal_bias;
+                    biasEl.style.color = s.signal_bias.includes('BUY') ? '#22c55e' : s.signal_bias.includes('SELL') ? '#ef4444' : '#888';
+
+                    // EMA state
+                    const emaEl = document.getElementById('lwEmaState');
+                    emaEl.textContent = s.ema_bullish ? '9>20' : '9<20';
+                    emaEl.style.color = s.ema_bullish ? '#22c55e' : '#ef4444';
+
+                    // MACD state
+                    const macdEl = document.getElementById('lwMacdState');
+                    macdEl.textContent = s.macd_bullish ? 'Bull' : 'Bear';
+                    macdEl.style.color = s.macd_bullish ? '#22c55e' : '#ef4444';
+
+                    // VWAP state
+                    const vwapEl = document.getElementById('lwVwapState');
+                    vwapEl.textContent = s.price_above_vwap ? 'Above' : 'Below';
+                    vwapEl.style.color = s.price_above_vwap ? '#22c55e' : '#ef4444';
+                }
+
+                // Add signal markers
+                if (eventsData.success && eventsData.markers && eventsData.markers.length > 0) {
+                    lwSignalEvents = eventsData.events;
+
+                    // Filter markers to match OHLC timestamps
+                    const ohlcTimes = window.lwOhlcTimes || new Set();
+                    const cleanMarkers = eventsData.markers
+                        .filter(m => ohlcTimes.has(m.time))
+                        .map(m => ({
+                            time: m.time,
+                            position: m.position,
+                            color: m.color,
+                            shape: m.shape,
+                            text: m.text,
+                            size: m.size || 1
+                        }));
+
+                    console.log(`[AI Chart] ${cleanMarkers.length} signal markers loaded`);
+
+                    // Create signal markers primitive
+                    if (cleanMarkers.length > 0) {
+                        if (lwSignalMarkersPrimitive) {
+                            lwSignalMarkersPrimitive.setMarkers(cleanMarkers);
+                        } else if (typeof LightweightCharts.createSeriesMarkers === 'function') {
+                            lwSignalMarkersPrimitive = LightweightCharts.createSeriesMarkers(lwCandleSeries, cleanMarkers);
+                        }
+                    }
+                }
+
+            } catch (e) {
+                console.error('Error loading signals:', e);
+            }
+        }
+
+        // Open Equity Curve window
+        function openEquityCurve() {
+            const existing = windows.find(w => w.id === 'equitycurve');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                return;
+            }
+            createWindow('equitycurve', '💰 EQUITY CURVE', windowTemplates.equitycurve, 150, 100, 600, 400);
+            setTimeout(loadEquityCurve, 100);
+        }
+
+        // Load equity curve
+        let eqChart = null;
+        let eqAreaSeries = null;
+
+        async function loadEquityCurve() {
+            const container = document.getElementById('equityCurveContainer');
+            if (!container) return;
+
+            try {
+                // Initialize chart if needed
+                if (!eqChart) {
+                    eqChart = LightweightCharts.createChart(container, {
+                        layout: { background: { color: '#0a0a0a' }, textColor: '#d1d4dc' },
+                        grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+                        rightPriceScale: { borderColor: '#333' },
+                        timeScale: { borderColor: '#333', timeVisible: true }
+                    });
+
+                    eqAreaSeries = eqChart.addSeries(LightweightCharts.AreaSeries, {
+                        lineColor: '#2563eb',
+                        topColor: 'rgba(37, 99, 235, 0.4)',
+                        bottomColor: 'rgba(37, 99, 235, 0.0)',
+                        lineWidth: 2
+                    });
+
+                    new ResizeObserver(() => {
+                        if (eqChart) eqChart.resize(container.offsetWidth, container.offsetHeight);
+                    }).observe(container);
+                }
+
+                // Fetch equity curve data
+                const resp = await fetch('/api/charts/equity-curve');
+                const data = await resp.json();
+
+                if (data.success) {
+                    eqAreaSeries.setData(data.curve);
+
+                    // Update stats
+                    document.getElementById('eqInitial').textContent = '$' + data.initial_capital.toFixed(0);
+                    document.getElementById('eqCurrent').textContent = '$' + data.final_equity.toFixed(2);
+                    document.getElementById('eqCurrent').style.color = data.total_pnl >= 0 ? '#22c55e' : '#ef4444';
+
+                    const pnlEl = document.getElementById('eqTotalPnl');
+                    pnlEl.textContent = (data.total_pnl >= 0 ? '+' : '') + '$' + data.total_pnl.toFixed(2);
+                    pnlEl.style.color = data.total_pnl >= 0 ? '#22c55e' : '#ef4444';
+
+                    document.getElementById('eqMaxDD').textContent = '-' + data.max_drawdown_pct.toFixed(1) + '%';
+                    document.getElementById('eqWinRate').textContent = data.win_rate.toFixed(1) + '%';
+                }
+            } catch (e) {
+                console.error('Error loading equity curve:', e);
+            }
+        }
+
+        // Open Backtest View window
+        function openBacktestView() {
+            const existing = windows.find(w => w.id === 'backtestview');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                return;
+            }
+            createWindow('backtestview', '🔬 BACKTEST VIEW', windowTemplates.backtestview, 200, 120, 700, 500);
+            setTimeout(loadBacktestView, 100);
+        }
+
+        // Load backtest view
+        async function loadBacktestView() {
+            const status = document.getElementById('backtestStatus');
+            const symbolInput = document.getElementById('backtestSymbol');
+            const symbol = symbolInput?.value?.toUpperCase() || 'ALL';
+
+            status.textContent = 'Loading...';
+            status.style.color = '#f59e0b';
+
+            try {
+                const url = symbol === 'ALL' ? '/api/charts/backtest' : `/api/charts/backtest?symbol=${symbol}`;
+                const resp = await fetch(url);
+                const data = await resp.json();
+
+                if (data.success) {
+                    const r = data.report;
+
+                    // Update summary stats
+                    document.getElementById('btTotalTrades').textContent = r.total_trades;
+                    document.getElementById('btWinners').textContent = r.winners;
+                    document.getElementById('btLosers').textContent = r.losers;
+                    document.getElementById('btWinRate').textContent = r.win_rate + '%';
+                    document.getElementById('btWinRate').style.color = r.win_rate >= 50 ? '#22c55e' : '#ef4444';
+                    document.getElementById('btAvgWin').textContent = '+$' + r.avg_win.toFixed(2);
+                    document.getElementById('btAvgLoss').textContent = '$' + r.avg_loss.toFixed(2);
+
+                    // Total P&L
+                    const pnlEl = document.getElementById('btTotalPnl');
+                    pnlEl.textContent = (r.total_pnl >= 0 ? '+' : '') + '$' + r.total_pnl.toFixed(2);
+                    pnlEl.style.color = r.total_pnl >= 0 ? '#22c55e' : '#ef4444';
+
+                    // Exit reason breakdown
+                    const reasonsEl = document.getElementById('btExitReasons');
+                    reasonsEl.innerHTML = Object.entries(r.by_exit_reason || {}).map(([reason, stats]) => {
+                        const color = stats.pnl >= 0 ? '#22c55e' : '#ef4444';
+                        return `<span style="padding: 2px 6px; background: #252525; border-radius: 3px;">
+                            ${reason}: <b>${stats.count}</b> (<span style="color: ${color}">${stats.pnl >= 0 ? '+' : ''}$${stats.pnl.toFixed(2)}</span>)
+                        </span>`;
+                    }).join('');
+
+                    // Trades table
+                    const tbody = document.getElementById('btTradesBody');
+                    tbody.innerHTML = data.trades.map(t => {
+                        const pnlColor = (t.pnl || 0) >= 0 ? '#22c55e' : '#ef4444';
+                        const entryTime = t.entry_time ? new Date(t.entry_time * 1000).toLocaleString() : '--';
+                        return `<tr style="border-bottom: 1px solid #222;">
+                            <td style="padding: 4px 8px; color: #60a5fa;">${t.symbol}</td>
+                            <td style="padding: 4px 8px; text-align: right;">$${(t.entry_price || 0).toFixed(2)}</td>
+                            <td style="padding: 4px 8px; text-align: right;">$${(t.exit_price || 0).toFixed(2)}</td>
+                            <td style="padding: 4px 8px; color: #888;">${t.exit_reason || '--'}</td>
+                            <td style="padding: 4px 8px; text-align: right; color: ${pnlColor};">${(t.pnl || 0) >= 0 ? '+' : ''}$${(t.pnl || 0).toFixed(2)}</td>
+                            <td style="padding: 4px 8px; text-align: right; color: ${pnlColor};">${(t.pnl_percent || 0) >= 0 ? '+' : ''}${(t.pnl_percent || 0).toFixed(1)}%</td>
+                        </tr>`;
+                    }).join('');
+
+                    status.textContent = `${data.trades.length} trades`;
+                    status.style.color = '#22c55e';
+                }
+            } catch (e) {
+                console.error('Error loading backtest:', e);
+                status.textContent = 'Error';
+                status.style.color = '#ef4444';
             }
         }
 

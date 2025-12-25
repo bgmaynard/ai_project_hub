@@ -97,6 +97,13 @@ class ScalperConfig:
     use_regime_gating: bool = True  # Filter entries by market regime
     valid_regimes: List[str] = field(default_factory=lambda: ['TRENDING_UP', 'RANGING'])
 
+    # Technical Signal Filter (EMA/MACD/VWAP confluence)
+    use_signal_filter: bool = True  # Filter entries with technical signals
+    signal_min_confluence: float = 70.0  # Minimum confluence score (0-100)
+    signal_require_ema_bullish: bool = True  # Require EMA 9 > EMA 20
+    signal_require_macd_bullish: bool = True  # Require MACD > Signal
+    signal_require_above_vwap: bool = False  # Require price > VWAP (optional)
+
     # Scalp Fade Filter (uses Polygon real-time data)
     use_scalp_fade_filter: bool = True  # Filter fading spikes
     scalp_fade_threshold: float = 0.45  # Below this = FADE
@@ -210,6 +217,17 @@ class ScalpTrade:
     atr_target_price: float = 0.0  # Dynamic target price
     atr_trail_distance: float = 0.0  # Trailing stop distance
     volatility_regime: str = ""  # LOW, NORMAL, HIGH, EXTREME
+
+    # Technical signal state at entry (for correlation analysis)
+    signal_confluence: float = 0.0  # Confluence score 0-100
+    signal_bias: str = ""  # STRONG_BUY, BUY, NEUTRAL, SELL, STRONG_SELL
+    signal_ema_bullish: bool = False  # EMA 9 > EMA 20
+    signal_macd_bullish: bool = False  # MACD > Signal
+    signal_above_vwap: bool = False  # Price > VWAP
+    signal_ema_crossover: str = ""  # BULLISH, BEARISH, NONE
+    signal_macd_crossover: str = ""  # BULLISH, BEARISH, NONE
+    signal_vwap_crossover: str = ""  # BULLISH, BEARISH, NONE
+    signal_candle_momentum: str = ""  # BUILDING, FADING, NEUTRAL
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -390,6 +408,52 @@ class HFTScalper:
         except Exception as e:
             logger.warning(f"Scalp fade check failed for {symbol}: {e}")
             return True, 0.5, "ERROR"
+
+    def _check_technical_signals(self, symbol: str) -> Optional[Dict]:
+        """
+        Check technical signals (EMA/MACD/VWAP confluence) for a symbol.
+        Fetches OHLC data from API and calculates signal state.
+
+        Returns dict with signal state or None if unavailable.
+        """
+        try:
+            import httpx
+
+            # Fetch OHLC data from our API
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.get(
+                    f"http://localhost:9100/api/charts/signals/{symbol}",
+                    params={"timeframe": "5m", "days": 2}
+                )
+
+                if resp.status_code != 200:
+                    return None
+
+                data = resp.json()
+
+                if not data.get("success"):
+                    return None
+
+                signals = data.get("signals", {})
+
+                return {
+                    'confluence_score': signals.get('confluence_score', 0),
+                    'signal_bias': signals.get('signal_bias', 'NEUTRAL'),
+                    'ema_bullish': signals.get('ema_bullish', False),
+                    'macd_bullish': signals.get('macd_bullish', False),
+                    'price_above_vwap': signals.get('price_above_vwap', False),
+                    'ema_crossover': signals.get('ema_crossover', 'NONE'),
+                    'macd_crossover': signals.get('macd_crossover', 'NONE'),
+                    'vwap_crossover': signals.get('vwap_crossover', 'NONE'),
+                    'candle_momentum': signals.get('candle_momentum', 'NEUTRAL'),
+                    'ema9': signals.get('ema9', 0),
+                    'ema20': signals.get('ema20', 0),
+                    'vwap': signals.get('vwap', 0)
+                }
+
+        except Exception as e:
+            logger.warning(f"Technical signal check failed for {symbol}: {e}")
+            return None
 
     def update_config(self, **kwargs):
         """Update configuration"""
@@ -763,6 +827,55 @@ class HFTScalper:
             except Exception as e:
                 logger.warning(f"Regime gating check failed for {symbol}: {e}")
 
+        # Apply Technical Signal Filter if enabled (EMA/MACD/VWAP confluence)
+        if signal and getattr(self.config, 'use_signal_filter', True):
+            signal_result = self._check_technical_signals(symbol)
+            if signal_result:
+                confluence = signal_result.get('confluence_score', 0)
+                min_conf = getattr(self.config, 'signal_min_confluence', 70.0)
+
+                ema_bullish = signal_result.get('ema_bullish', False)
+                macd_bullish = signal_result.get('macd_bullish', False)
+                above_vwap = signal_result.get('price_above_vwap', False)
+
+                # Check required conditions
+                approved = True
+                reject_reasons = []
+
+                if confluence < min_conf:
+                    approved = False
+                    reject_reasons.append(f"confluence {confluence:.0f}% < {min_conf:.0f}%")
+
+                if getattr(self.config, 'signal_require_ema_bullish', True) and not ema_bullish:
+                    approved = False
+                    reject_reasons.append("EMA bearish")
+
+                if getattr(self.config, 'signal_require_macd_bullish', True) and not macd_bullish:
+                    approved = False
+                    reject_reasons.append("MACD bearish")
+
+                if getattr(self.config, 'signal_require_above_vwap', False) and not above_vwap:
+                    approved = False
+                    reject_reasons.append("below VWAP")
+
+                if not approved:
+                    logger.info(f"SIGNAL REJECT: {symbol} - {', '.join(reject_reasons)}")
+                    signal = None
+                else:
+                    logger.info(f"SIGNAL APPROVE: {symbol} - Confluence {confluence:.0f}%, EMA={'Bull' if ema_bullish else 'Bear'}, MACD={'Bull' if macd_bullish else 'Bear'}, VWAP={'Above' if above_vwap else 'Below'}")
+                    # Store signal state for correlation analysis
+                    signal['signal_confluence'] = confluence
+                    signal['signal_bias'] = signal_result.get('signal_bias', 'NEUTRAL')
+                    signal['signal_ema_bullish'] = ema_bullish
+                    signal['signal_macd_bullish'] = macd_bullish
+                    signal['signal_above_vwap'] = above_vwap
+                    signal['signal_ema_crossover'] = signal_result.get('ema_crossover', 'NONE')
+                    signal['signal_macd_crossover'] = signal_result.get('macd_crossover', 'NONE')
+                    signal['signal_vwap_crossover'] = signal_result.get('vwap_crossover', 'NONE')
+                    signal['signal_candle_momentum'] = signal_result.get('candle_momentum', 'NEUTRAL')
+            else:
+                logger.debug(f"SIGNAL CHECK: {symbol} - No signal data available (insufficient history)")
+
         # Apply Scalp Fade Filter if enabled
         if signal and getattr(self.config, 'use_scalp_fade_filter', False):
             should_trade, prob, verdict = self._check_scalp_fade_signal(symbol)
@@ -1030,7 +1143,17 @@ class HFTScalper:
             atr_stop_price=atr_stop_price,
             atr_target_price=atr_target_price,
             atr_trail_distance=atr_trail_distance,
-            volatility_regime=volatility_regime
+            volatility_regime=volatility_regime,
+            # Technical signal state at entry (for correlation analysis)
+            signal_confluence=signal.get('signal_confluence', 0.0),
+            signal_bias=signal.get('signal_bias', ''),
+            signal_ema_bullish=signal.get('signal_ema_bullish', False),
+            signal_macd_bullish=signal.get('signal_macd_bullish', False),
+            signal_above_vwap=signal.get('signal_above_vwap', False),
+            signal_ema_crossover=signal.get('signal_ema_crossover', ''),
+            signal_macd_crossover=signal.get('signal_macd_crossover', ''),
+            signal_vwap_crossover=signal.get('signal_vwap_crossover', ''),
+            signal_candle_momentum=signal.get('signal_candle_momentum', '')
         )
 
         # Execute order (paper or real)
