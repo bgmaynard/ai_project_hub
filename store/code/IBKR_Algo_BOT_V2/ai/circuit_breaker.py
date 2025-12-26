@@ -20,32 +20,37 @@ TRIGGERS:
 - Win rate drops below minimum
 """
 
-import logging
 import json
+import logging
 import os
-from datetime import datetime, date, timedelta
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
+from datetime import date, datetime, timedelta
 from enum import Enum
+from typing import Dict, List, Optional, Tuple
+
 import pytz
 
 logger = logging.getLogger(__name__)
 
 # Storage path
-BREAKER_FILE = os.path.join(os.path.dirname(__file__), "..", "store", "circuit_breaker.json")
+BREAKER_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "store", "circuit_breaker.json"
+)
 
 
 class BreakerLevel(Enum):
     """Circuit breaker levels"""
-    NORMAL = "NORMAL"      # All systems go
-    WARNING = "WARNING"    # Slow down
-    CAUTION = "CAUTION"    # Reduce size, careful
-    HALT = "HALT"          # Stop trading!
+
+    NORMAL = "NORMAL"  # All systems go
+    WARNING = "WARNING"  # Slow down
+    CAUTION = "CAUTION"  # Reduce size, careful
+    HALT = "HALT"  # Stop trading!
 
 
 @dataclass
 class BreakerState:
     """Current circuit breaker state"""
+
     level: str
     reason: str
     triggered_at: str
@@ -67,6 +72,7 @@ class BreakerState:
 @dataclass
 class DailyStats:
     """Daily trading statistics"""
+
     date: str
     starting_equity: float
     current_equity: float
@@ -94,34 +100,34 @@ class CircuitBreaker:
     """
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # ═══════════════════════════════════════════════════════════
         # CONFIGURABLE THRESHOLDS - Adjust based on account size/risk
         # ═══════════════════════════════════════════════════════════
 
         # Daily loss limits (as % of account)
-        self.daily_loss_warning = -1.0     # -1% = warning
-        self.daily_loss_caution = -2.0     # -2% = caution
-        self.daily_loss_halt = -3.0        # -3% = halt trading
+        self.daily_loss_warning = -1.0  # -1% = warning
+        self.daily_loss_caution = -2.0  # -2% = caution
+        self.daily_loss_halt = -3.0  # -3% = halt trading
 
         # Consecutive loss limits
-        self.consecutive_loss_warning = 2   # 2 losses = warning
-        self.consecutive_loss_caution = 3   # 3 losses = caution
-        self.consecutive_loss_halt = 5      # 5 losses = halt
+        self.consecutive_loss_warning = 2  # 2 losses = warning
+        self.consecutive_loss_caution = 3  # 3 losses = caution
+        self.consecutive_loss_halt = 5  # 5 losses = halt
 
         # Drawdown from peak (intraday)
-        self.drawdown_warning = -2.0       # -2% from peak = warning
-        self.drawdown_caution = -3.0       # -3% = caution
-        self.drawdown_halt = -5.0          # -5% = halt
+        self.drawdown_warning = -2.0  # -2% from peak = warning
+        self.drawdown_caution = -3.0  # -3% = caution
+        self.drawdown_halt = -5.0  # -5% = halt
 
         # Win rate minimum (after N trades)
-        self.min_win_rate = 30.0           # Below 30% = caution
-        self.min_trades_for_winrate = 5    # Need at least 5 trades
+        self.min_win_rate = 30.0  # Below 30% = caution
+        self.min_trades_for_winrate = 5  # Need at least 5 trades
 
         # Max trades per day
-        self.max_trades_warning = 15       # Warning at 15 trades
-        self.max_trades_halt = 25          # Halt at 25 trades
+        self.max_trades_warning = 15  # Warning at 15 trades
+        self.max_trades_halt = 25  # Halt at 25 trades
 
         # ═══════════════════════════════════════════════════════════
 
@@ -149,22 +155,24 @@ class CircuitBreaker:
         """Load state from disk"""
         try:
             if os.path.exists(BREAKER_FILE):
-                with open(BREAKER_FILE, 'r') as f:
+                with open(BREAKER_FILE, "r") as f:
                     data = json.load(f)
 
-                self.history = [DailyStats(**d) for d in data.get('history', [])]
+                self.history = [DailyStats(**d) for d in data.get("history", [])]
 
                 # Load today's stats if exists
                 today = date.today().isoformat()
-                today_data = data.get('today')
-                if today_data and today_data.get('date') == today:
+                today_data = data.get("today")
+                if today_data and today_data.get("date") == today:
                     self.daily_stats = DailyStats(**today_data)
                     self.starting_equity = self.daily_stats.starting_equity
                     self.current_equity = self.daily_stats.current_equity
                     self.peak_equity = self.daily_stats.peak_equity
                     self.consecutive_losses = self.daily_stats.consecutive_losses
 
-                logger.info(f"Loaded circuit breaker state: {len(self.history)} days history")
+                logger.info(
+                    f"Loaded circuit breaker state: {len(self.history)} days history"
+                )
         except Exception as e:
             logger.error(f"Error loading circuit breaker state: {e}")
 
@@ -174,12 +182,12 @@ class CircuitBreaker:
             os.makedirs(os.path.dirname(BREAKER_FILE), exist_ok=True)
 
             data = {
-                'history': [d.to_dict() for d in self.history[-30:]],  # Keep 30 days
-                'today': self.daily_stats.to_dict() if self.daily_stats else None,
-                'last_updated': datetime.now(self.et_tz).isoformat()
+                "history": [d.to_dict() for d in self.history[-30:]],  # Keep 30 days
+                "today": self.daily_stats.to_dict() if self.daily_stats else None,
+                "last_updated": datetime.now(self.et_tz).isoformat(),
             }
 
-            with open(BREAKER_FILE, 'w') as f:
+            with open(BREAKER_FILE, "w") as f:
                 json.dump(data, f, indent=2)
 
         except Exception as e:
@@ -225,11 +233,13 @@ class CircuitBreaker:
             consecutive_wins=0,
             max_drawdown_pct=0.0,
             breaker_triggered=False,
-            breaker_level="NORMAL"
+            breaker_level="NORMAL",
         )
 
         self._save()
-        logger.info(f"Circuit breaker initialized for {today} with equity ${account_equity:,.2f}")
+        logger.info(
+            f"Circuit breaker initialized for {today} with equity ${account_equity:,.2f}"
+        )
 
     def update_equity(self, current_equity: float):
         """Update current equity (call periodically)"""
@@ -247,10 +257,18 @@ class CircuitBreaker:
         self.daily_stats.current_equity = current_equity
         self.daily_stats.peak_equity = self.peak_equity
         self.daily_stats.pnl = current_equity - self.starting_equity
-        self.daily_stats.pnl_pct = (self.daily_stats.pnl / self.starting_equity * 100) if self.starting_equity > 0 else 0
+        self.daily_stats.pnl_pct = (
+            (self.daily_stats.pnl / self.starting_equity * 100)
+            if self.starting_equity > 0
+            else 0
+        )
 
         # Calculate drawdown
-        drawdown_pct = ((current_equity - self.peak_equity) / self.peak_equity * 100) if self.peak_equity > 0 else 0
+        drawdown_pct = (
+            ((current_equity - self.peak_equity) / self.peak_equity * 100)
+            if self.peak_equity > 0
+            else 0
+        )
         if drawdown_pct < self.daily_stats.max_drawdown_pct:
             self.daily_stats.max_drawdown_pct = drawdown_pct
 
@@ -282,11 +300,9 @@ class CircuitBreaker:
             self.daily_stats.consecutive_losses = self.consecutive_losses
 
         # Track trade
-        self.trades_today.append({
-            "time": datetime.now(self.et_tz).isoformat(),
-            "symbol": symbol,
-            "pnl": pnl
-        })
+        self.trades_today.append(
+            {"time": datetime.now(self.et_tz).isoformat(), "symbol": symbol, "pnl": pnl}
+        )
 
         self._save()
 
@@ -313,7 +329,7 @@ class CircuitBreaker:
                 losses_today=0,
                 can_trade=True,
                 size_multiplier=1.0,
-                recommendations=["Initialize circuit breaker with account equity"]
+                recommendations=["Initialize circuit breaker with account equity"],
             )
 
         level = BreakerLevel.NORMAL
@@ -321,7 +337,11 @@ class CircuitBreaker:
         recommendations = []
 
         pnl_pct = self.daily_stats.pnl_pct
-        drawdown_pct = ((self.current_equity - self.peak_equity) / self.peak_equity * 100) if self.peak_equity > 0 else 0
+        drawdown_pct = (
+            ((self.current_equity - self.peak_equity) / self.peak_equity * 100)
+            if self.peak_equity > 0
+            else 0
+        )
 
         # ═══════════════════════════════════════════════════════════
         # CHECK HALT CONDITIONS (most severe)
@@ -329,17 +349,23 @@ class CircuitBreaker:
 
         if pnl_pct <= self.daily_loss_halt:
             level = BreakerLevel.HALT
-            reasons.append(f"Daily loss {pnl_pct:.1f}% exceeds halt threshold ({self.daily_loss_halt}%)")
+            reasons.append(
+                f"Daily loss {pnl_pct:.1f}% exceeds halt threshold ({self.daily_loss_halt}%)"
+            )
             recommendations.append("STOP TRADING - Daily loss limit hit")
 
         if self.consecutive_losses >= self.consecutive_loss_halt:
             level = BreakerLevel.HALT
-            reasons.append(f"{self.consecutive_losses} consecutive losses - halt threshold")
+            reasons.append(
+                f"{self.consecutive_losses} consecutive losses - halt threshold"
+            )
             recommendations.append("STOP TRADING - Too many consecutive losses")
 
         if drawdown_pct <= self.drawdown_halt:
             level = BreakerLevel.HALT
-            reasons.append(f"Drawdown {drawdown_pct:.1f}% exceeds halt threshold ({self.drawdown_halt}%)")
+            reasons.append(
+                f"Drawdown {drawdown_pct:.1f}% exceeds halt threshold ({self.drawdown_halt}%)"
+            )
             recommendations.append("STOP TRADING - Max drawdown hit")
 
         if self.daily_stats.trades >= self.max_trades_halt:
@@ -369,10 +395,16 @@ class CircuitBreaker:
 
             # Win rate check
             if self.daily_stats.trades >= self.min_trades_for_winrate:
-                win_rate = (self.daily_stats.wins / self.daily_stats.trades * 100) if self.daily_stats.trades > 0 else 0
+                win_rate = (
+                    (self.daily_stats.wins / self.daily_stats.trades * 100)
+                    if self.daily_stats.trades > 0
+                    else 0
+                )
                 if win_rate < self.min_win_rate:
                     level = BreakerLevel.CAUTION
-                    reasons.append(f"Win rate {win_rate:.0f}% below minimum ({self.min_win_rate}%)")
+                    reasons.append(
+                        f"Win rate {win_rate:.0f}% below minimum ({self.min_win_rate}%)"
+                    )
                     recommendations.append("Review strategy, something may be off")
 
         # ═══════════════════════════════════════════════════════════
@@ -397,7 +429,9 @@ class CircuitBreaker:
 
             if self.daily_stats.trades >= self.max_trades_warning:
                 level = BreakerLevel.WARNING
-                reasons.append(f"{self.daily_stats.trades} trades today - nearing limit")
+                reasons.append(
+                    f"{self.daily_stats.trades} trades today - nearing limit"
+                )
                 recommendations.append("Be very selective, limit remaining trades")
 
         # ═══════════════════════════════════════════════════════════
@@ -423,19 +457,28 @@ class CircuitBreaker:
 
         if level != BreakerLevel.NORMAL and not self.daily_stats.breaker_triggered:
             self.daily_stats.breaker_triggered = True
-            logger.warning(f"CIRCUIT BREAKER TRIGGERED: {level.value} - {', '.join(reasons)}")
+            logger.warning(
+                f"CIRCUIT BREAKER TRIGGERED: {level.value} - {', '.join(reasons)}"
+            )
 
         self._save()
 
         # Default recommendations
         if not recommendations:
             if level == BreakerLevel.NORMAL:
-                recommendations = ["Trading normally", "Continue following your strategy"]
+                recommendations = [
+                    "Trading normally",
+                    "Continue following your strategy",
+                ]
 
         return BreakerState(
             level=level.value,
             reason="; ".join(reasons) if reasons else "All systems normal",
-            triggered_at=datetime.now(self.et_tz).isoformat() if level != BreakerLevel.NORMAL else "",
+            triggered_at=(
+                datetime.now(self.et_tz).isoformat()
+                if level != BreakerLevel.NORMAL
+                else ""
+            ),
             daily_pnl=round(self.daily_stats.pnl, 2),
             daily_pnl_pct=round(pnl_pct, 2),
             consecutive_losses=self.consecutive_losses,
@@ -445,7 +488,7 @@ class CircuitBreaker:
             losses_today=self.daily_stats.losses,
             can_trade=can_trade,
             size_multiplier=size_multiplier,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def can_open_trade(self) -> Tuple[bool, str, float]:
@@ -487,11 +530,15 @@ class CircuitBreaker:
             "trades": self.daily_stats.trades,
             "wins": self.daily_stats.wins,
             "losses": self.daily_stats.losses,
-            "win_rate": round(self.daily_stats.wins / self.daily_stats.trades * 100, 1) if self.daily_stats.trades > 0 else 0,
+            "win_rate": (
+                round(self.daily_stats.wins / self.daily_stats.trades * 100, 1)
+                if self.daily_stats.trades > 0
+                else 0
+            ),
             "consecutive_losses": self.consecutive_losses,
             "consecutive_wins": self.consecutive_wins,
             "max_drawdown_pct": self.daily_stats.max_drawdown_pct,
-            "breaker_state": state.to_dict()
+            "breaker_state": state.to_dict(),
         }
 
     def get_history(self, days: int = 7) -> List[Dict]:

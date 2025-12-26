@@ -24,18 +24,13 @@ The gating engine ensures:
 """
 
 import logging
-from datetime import datetime
-from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from ai.signal_contract import (
-    SignalContract,
-    ChronosContext,
-    RiskState,
-    GateResult,
-    VetoReason,
-    get_contract_repository
-)
+from ai.signal_contract import (ChronosContext, GateResult, RiskState,
+                                SignalContract, VetoReason,
+                                get_contract_repository)
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +48,7 @@ class VetoLogger:
 
         # Setup dedicated file handler
         self.file_handler = logging.FileHandler(log_file)
-        self.file_handler.setFormatter(
-            logging.Formatter('%(asctime)s | %(message)s')
-        )
+        self.file_handler.setFormatter(logging.Formatter("%(asctime)s | %(message)s"))
         self.file_logger = logging.getLogger("gating.vetoes")
         self.file_logger.addHandler(self.file_handler)
         self.file_logger.setLevel(logging.INFO)
@@ -91,8 +84,10 @@ class VetoLogger:
             "total": len(self.veto_history),
             "approved": approved,
             "vetoed": vetoed,
-            "approval_rate": approved / len(self.veto_history) if self.veto_history else 0,
-            "veto_reasons": reasons
+            "approval_rate": (
+                approved / len(self.veto_history) if self.veto_history else 0
+            ),
+            "veto_reasons": reasons,
         }
 
 
@@ -109,8 +104,8 @@ class SignalGatingEngine:
 
         # Configuration
         self.min_chronos_confidence = 0.50  # Base minimum confidence
-        self.require_regime_match = True     # Enforce regime matching
-        self.log_all_decisions = True        # Log approvals too (not just vetoes)
+        self.require_regime_match = True  # Enforce regime matching
+        self.log_all_decisions = True  # Log approvals too (not just vetoes)
 
         logger.info("SignalGatingEngine initialized")
 
@@ -118,7 +113,7 @@ class SignalGatingEngine:
         self,
         contract: SignalContract,
         chronos_context: ChronosContext,
-        risk_state: RiskState
+        risk_state: RiskState,
     ) -> GateResult:
         """
         Gate a signal against its contract and current context.
@@ -141,7 +136,7 @@ class SignalGatingEngine:
             current_regime=chronos_context.market_regime,
             chronos_confidence=chronos_context.regime_confidence,
             required_confidence=contract.confidence_required,
-            required_regimes=contract.valid_regimes
+            required_regimes=contract.valid_regimes,
         )
 
         # Check 1: Contract not expired
@@ -168,16 +163,13 @@ class SignalGatingEngine:
         if chronos_context.market_regime in contract.invalid_regimes:
             result.approved = False
             result.veto_reason = VetoReason.INVALID_REGIME.value
-            result.veto_details = (
-                f"Regime '{chronos_context.market_regime}' explicitly invalid for this signal"
-            )
+            result.veto_details = f"Regime '{chronos_context.market_regime}' explicitly invalid for this signal"
             self._log_result(result)
             return result
 
         # Check 4: Chronos confidence meets contract threshold
         effective_conf_required = max(
-            contract.confidence_required,
-            self.min_chronos_confidence
+            contract.confidence_required, self.min_chronos_confidence
         )
 
         if chronos_context.regime_confidence < effective_conf_required:
@@ -220,7 +212,7 @@ class SignalGatingEngine:
         symbol: str,
         trigger_type: str,
         chronos_context: ChronosContext,
-        risk_state: RiskState
+        risk_state: RiskState,
     ) -> Optional[tuple[SignalContract, GateResult]]:
         """
         Gate a trigger by finding matching contract and validating.
@@ -286,6 +278,7 @@ class ExecutionRequest:
     IMPORTANT: This can ONLY be created after gating approval.
     Execution engine MUST verify gate_result.approved == True.
     """
+
     contract: SignalContract
     gate_result: GateResult
     chronos_context: ChronosContext
@@ -321,7 +314,7 @@ def create_execution_request(
     contract: SignalContract,
     gate_result: GateResult,
     chronos_context: ChronosContext,
-    position_size_pct: float = 0.01
+    position_size_pct: float = 0.01,
 ) -> Optional[ExecutionRequest]:
     """
     Create an execution request from approved gate result.
@@ -329,7 +322,9 @@ def create_execution_request(
     Returns None if gate_result is not approved.
     """
     if not gate_result.approved:
-        logger.error(f"Cannot create ExecutionRequest: signal {contract.signal_id} was vetoed")
+        logger.error(
+            f"Cannot create ExecutionRequest: signal {contract.signal_id} was vetoed"
+        )
         return None
 
     return ExecutionRequest(
@@ -340,7 +335,7 @@ def create_execution_request(
         direction=contract.direction,
         position_size_pct=min(position_size_pct, contract.max_position_pct),
         stop_loss_pct=contract.max_drawdown_allowed,
-        take_profit_pct=contract.expected_return
+        take_profit_pct=contract.expected_return,
     )
 
 
@@ -359,7 +354,7 @@ def get_gating_engine() -> SignalGatingEngine:
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s | %(name)s | %(levelname)s | %(message)s'
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     )
 
     print("=" * 60)
@@ -374,33 +369,26 @@ if __name__ == "__main__":
         confidence_required=0.55,
         valid_regimes=["TRENDING_UP", "RANGING"],
         invalid_regimes=["VOLATILE"],
-        expected_return=0.02
+        expected_return=0.02,
     )
 
     # Create contexts
     good_context = ChronosContext(
-        market_regime="TRENDING_UP",
-        regime_confidence=0.7,
-        prob_up=0.65
+        market_regime="TRENDING_UP", regime_confidence=0.7, prob_up=0.65
     )
 
     bad_regime_context = ChronosContext(
-        market_regime="VOLATILE",
-        regime_confidence=0.8,
-        prob_up=0.4
+        market_regime="VOLATILE", regime_confidence=0.8, prob_up=0.4
     )
 
     low_conf_context = ChronosContext(
         market_regime="TRENDING_UP",
         regime_confidence=0.3,  # Below threshold
-        prob_up=0.55
+        prob_up=0.55,
     )
 
     risk_state = RiskState(
-        current_drawdown=0.01,
-        daily_pnl=-50.0,
-        open_positions=1,
-        max_positions=3
+        current_drawdown=0.01, daily_pnl=-50.0, open_positions=1, max_positions=3
     )
 
     # Test gating

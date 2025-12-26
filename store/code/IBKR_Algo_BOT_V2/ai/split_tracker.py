@@ -11,12 +11,13 @@ Key metrics:
 - Split momentum index (SMI)
 """
 
-import logging
 import json
+import logging
 import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from dataclasses import dataclass, field, asdict
+
 import yfinance as yf
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ SPLIT_DATA_FILE = os.path.join(os.path.dirname(__file__), "split_history.json")
 @dataclass
 class SplitEvent:
     """Record of a stock split"""
+
     symbol: str
     split_date: str  # YYYY-MM-DD
     split_ratio: str  # e.g., "1:50" for reverse, "2:1" for forward
@@ -53,15 +55,13 @@ class SplitEvent:
             return -1
 
     def to_dict(self) -> Dict:
-        return {
-            **asdict(self),
-            "days_since_split": self.days_since_split()
-        }
+        return {**asdict(self), "days_since_split": self.days_since_split()}
 
 
 @dataclass
 class SplitMomentumStats:
     """Aggregate statistics for split momentum patterns"""
+
     total_splits_tracked: int = 0
     avg_day_1_momentum: float = 0.0
     avg_day_5_momentum: float = 0.0
@@ -95,16 +95,16 @@ class SplitTracker:
         """Load split history from file"""
         try:
             if os.path.exists(SPLIT_DATA_FILE):
-                with open(SPLIT_DATA_FILE, 'r') as f:
+                with open(SPLIT_DATA_FILE, "r") as f:
                     data = json.load(f)
-                    for symbol, splits in data.get('splits', {}).items():
-                        self.splits[symbol] = [
-                            SplitEvent(**s) for s in splits
-                        ]
-                    stats_data = data.get('stats', {})
+                    for symbol, splits in data.get("splits", {}).items():
+                        self.splits[symbol] = [SplitEvent(**s) for s in splits]
+                    stats_data = data.get("stats", {})
                     if stats_data:
                         self.stats = SplitMomentumStats(**stats_data)
-                logger.info(f"Loaded {sum(len(s) for s in self.splits.values())} splits")
+                logger.info(
+                    f"Loaded {sum(len(s) for s in self.splits.values())} splits"
+                )
         except Exception as e:
             logger.error(f"Error loading split data: {e}")
 
@@ -112,14 +112,14 @@ class SplitTracker:
         """Save split history to file"""
         try:
             data = {
-                'splits': {
+                "splits": {
                     symbol: [s.to_dict() for s in splits]
                     for symbol, splits in self.splits.items()
                 },
-                'stats': asdict(self.stats),
-                'last_updated': datetime.now().isoformat()
+                "stats": asdict(self.stats),
+                "last_updated": datetime.now().isoformat(),
             }
-            with open(SPLIT_DATA_FILE, 'w') as f:
+            with open(SPLIT_DATA_FILE, "w") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Error saving split data: {e}")
@@ -149,11 +149,12 @@ class SplitTracker:
 
                 # Get price around split date
                 try:
-                    hist = ticker.history(start=date - timedelta(days=5),
-                                         end=date + timedelta(days=35))
+                    hist = ticker.history(
+                        start=date - timedelta(days=5), end=date + timedelta(days=35)
+                    )
                     if len(hist) > 0:
-                        pre_price = hist['Close'].iloc[0] if len(hist) > 0 else 0
-                        post_price = hist['Close'].iloc[-1] if len(hist) > 1 else 0
+                        pre_price = hist["Close"].iloc[0] if len(hist) > 0 else 0
+                        post_price = hist["Close"].iloc[-1] if len(hist) > 1 else 0
 
                         # Calculate momentum at different intervals
                         momentum_1 = None
@@ -163,29 +164,49 @@ class SplitTracker:
                         momentum_30 = None
 
                         if len(hist) > 1:
-                            day_1_price = hist['Close'].iloc[1] if len(hist) > 1 else None
+                            day_1_price = (
+                                hist["Close"].iloc[1] if len(hist) > 1 else None
+                            )
                             if day_1_price and pre_price:
-                                momentum_1 = ((day_1_price - pre_price) / pre_price) * 100
+                                momentum_1 = (
+                                    (day_1_price - pre_price) / pre_price
+                                ) * 100
 
                         if len(hist) > 5:
-                            day_5_price = hist['Close'].iloc[5] if len(hist) > 5 else None
+                            day_5_price = (
+                                hist["Close"].iloc[5] if len(hist) > 5 else None
+                            )
                             if day_5_price and pre_price:
-                                momentum_5 = ((day_5_price - pre_price) / pre_price) * 100
+                                momentum_5 = (
+                                    (day_5_price - pre_price) / pre_price
+                                ) * 100
 
                         if len(hist) > 10:
-                            day_10_price = hist['Close'].iloc[10] if len(hist) > 10 else None
+                            day_10_price = (
+                                hist["Close"].iloc[10] if len(hist) > 10 else None
+                            )
                             if day_10_price and pre_price:
-                                momentum_10 = ((day_10_price - pre_price) / pre_price) * 100
+                                momentum_10 = (
+                                    (day_10_price - pre_price) / pre_price
+                                ) * 100
 
                         if len(hist) > 20:
-                            day_20_price = hist['Close'].iloc[20] if len(hist) > 20 else None
+                            day_20_price = (
+                                hist["Close"].iloc[20] if len(hist) > 20 else None
+                            )
                             if day_20_price and pre_price:
-                                momentum_20 = ((day_20_price - pre_price) / pre_price) * 100
+                                momentum_20 = (
+                                    (day_20_price - pre_price) / pre_price
+                                ) * 100
 
                         if len(hist) > 30:
-                            day_30_price = hist['Close'].iloc[30] if len(hist) > 30 else None
+                            day_30_price = (
+                                hist["Close"].iloc[30] if len(hist) > 30 else None
+                            )
                             if day_30_price and pre_price:
-                                momentum_30 = ((day_30_price - pre_price) / pre_price) * 100
+                                momentum_30 = (
+                                    (day_30_price - pre_price) / pre_price
+                                ) * 100
                     else:
                         pre_price = 0
                         post_price = 0
@@ -214,7 +235,7 @@ class SplitTracker:
                     momentum_day_5=momentum_5,
                     momentum_day_10=momentum_10,
                     momentum_day_20=momentum_20,
-                    momentum_day_30=momentum_30
+                    momentum_day_30=momentum_30,
                 )
                 events.append(event)
 
@@ -263,7 +284,7 @@ class SplitTracker:
                 "has_split": False,
                 "smi_score": 0,
                 "smi_signal": "NEUTRAL",
-                "message": "No split history found"
+                "message": "No split history found",
             }
 
         days = recent_split.days_since_split()
@@ -301,16 +322,24 @@ class SplitTracker:
         if recent_split.momentum_day_5 is not None:
             if recent_split.momentum_day_5 > 20:
                 momentum_factor = 20
-                factors.append(f"Strong 5-day momentum ({recent_split.momentum_day_5:.1f}%)")
+                factors.append(
+                    f"Strong 5-day momentum ({recent_split.momentum_day_5:.1f}%)"
+                )
             elif recent_split.momentum_day_5 > 0:
                 momentum_factor = 10
-                factors.append(f"Positive 5-day momentum ({recent_split.momentum_day_5:.1f}%)")
+                factors.append(
+                    f"Positive 5-day momentum ({recent_split.momentum_day_5:.1f}%)"
+                )
             elif recent_split.momentum_day_5 > -20:
                 momentum_factor = -10
-                factors.append(f"Weak 5-day momentum ({recent_split.momentum_day_5:.1f}%)")
+                factors.append(
+                    f"Weak 5-day momentum ({recent_split.momentum_day_5:.1f}%)"
+                )
             else:
                 momentum_factor = -20
-                factors.append(f"Negative 5-day momentum ({recent_split.momentum_day_5:.1f}%)")
+                factors.append(
+                    f"Negative 5-day momentum ({recent_split.momentum_day_5:.1f}%)"
+                )
 
         # Factor 4: Momentum decay pattern
         decay_factor = 0
@@ -363,7 +392,7 @@ class SplitTracker:
             "momentum_day_5": recent_split.momentum_day_5,
             "momentum_day_10": recent_split.momentum_day_10,
             "momentum_day_20": recent_split.momentum_day_20,
-            "momentum_day_30": recent_split.momentum_day_30
+            "momentum_day_30": recent_split.momentum_day_30,
         }
 
     def update_momentum_stats(self):
@@ -376,39 +405,83 @@ class SplitTracker:
             return
 
         # Calculate averages
-        day_1_values = [s.momentum_day_1 for s in all_splits if s.momentum_day_1 is not None]
-        day_5_values = [s.momentum_day_5 for s in all_splits if s.momentum_day_5 is not None]
-        day_10_values = [s.momentum_day_10 for s in all_splits if s.momentum_day_10 is not None]
-        day_20_values = [s.momentum_day_20 for s in all_splits if s.momentum_day_20 is not None]
-        day_30_values = [s.momentum_day_30 for s in all_splits if s.momentum_day_30 is not None]
+        day_1_values = [
+            s.momentum_day_1 for s in all_splits if s.momentum_day_1 is not None
+        ]
+        day_5_values = [
+            s.momentum_day_5 for s in all_splits if s.momentum_day_5 is not None
+        ]
+        day_10_values = [
+            s.momentum_day_10 for s in all_splits if s.momentum_day_10 is not None
+        ]
+        day_20_values = [
+            s.momentum_day_20 for s in all_splits if s.momentum_day_20 is not None
+        ]
+        day_30_values = [
+            s.momentum_day_30 for s in all_splits if s.momentum_day_30 is not None
+        ]
 
         self.stats.total_splits_tracked = len(all_splits)
-        self.stats.avg_day_1_momentum = sum(day_1_values) / len(day_1_values) if day_1_values else 0
-        self.stats.avg_day_5_momentum = sum(day_5_values) / len(day_5_values) if day_5_values else 0
-        self.stats.avg_day_10_momentum = sum(day_10_values) / len(day_10_values) if day_10_values else 0
-        self.stats.avg_day_20_momentum = sum(day_20_values) / len(day_20_values) if day_20_values else 0
-        self.stats.avg_day_30_momentum = sum(day_30_values) / len(day_30_values) if day_30_values else 0
+        self.stats.avg_day_1_momentum = (
+            sum(day_1_values) / len(day_1_values) if day_1_values else 0
+        )
+        self.stats.avg_day_5_momentum = (
+            sum(day_5_values) / len(day_5_values) if day_5_values else 0
+        )
+        self.stats.avg_day_10_momentum = (
+            sum(day_10_values) / len(day_10_values) if day_10_values else 0
+        )
+        self.stats.avg_day_20_momentum = (
+            sum(day_20_values) / len(day_20_values) if day_20_values else 0
+        )
+        self.stats.avg_day_30_momentum = (
+            sum(day_30_values) / len(day_30_values) if day_30_values else 0
+        )
 
         # Positive percentages
-        self.stats.pct_positive_day_1 = (sum(1 for v in day_1_values if v > 0) / len(day_1_values) * 100) if day_1_values else 0
-        self.stats.pct_positive_day_5 = (sum(1 for v in day_5_values if v > 0) / len(day_5_values) * 100) if day_5_values else 0
+        self.stats.pct_positive_day_1 = (
+            (sum(1 for v in day_1_values if v > 0) / len(day_1_values) * 100)
+            if day_1_values
+            else 0
+        )
+        self.stats.pct_positive_day_5 = (
+            (sum(1 for v in day_5_values if v > 0) / len(day_5_values) * 100)
+            if day_5_values
+            else 0
+        )
 
         # Fade percentage
-        fades = sum(1 for s in all_splits
-                   if s.momentum_day_1 and s.momentum_day_5
-                   and s.momentum_day_5 < s.momentum_day_1)
-        total_with_both = sum(1 for s in all_splits if s.momentum_day_1 and s.momentum_day_5)
-        self.stats.pct_fade_after_day_5 = (fades / total_with_both * 100) if total_with_both else 0
+        fades = sum(
+            1
+            for s in all_splits
+            if s.momentum_day_1
+            and s.momentum_day_5
+            and s.momentum_day_5 < s.momentum_day_1
+        )
+        total_with_both = sum(
+            1 for s in all_splits if s.momentum_day_1 and s.momentum_day_5
+        )
+        self.stats.pct_fade_after_day_5 = (
+            (fades / total_with_both * 100) if total_with_both else 0
+        )
 
         # By split type
         reverse_splits = [s for s in all_splits if s.split_type == "REVERSE"]
         forward_splits = [s for s in all_splits if s.split_type == "FORWARD"]
 
-        reverse_momentum = [s.momentum_day_5 for s in reverse_splits if s.momentum_day_5 is not None]
-        forward_momentum = [s.momentum_day_5 for s in forward_splits if s.momentum_day_5 is not None]
+        reverse_momentum = [
+            s.momentum_day_5 for s in reverse_splits if s.momentum_day_5 is not None
+        ]
+        forward_momentum = [
+            s.momentum_day_5 for s in forward_splits if s.momentum_day_5 is not None
+        ]
 
-        self.stats.reverse_split_avg_momentum = sum(reverse_momentum) / len(reverse_momentum) if reverse_momentum else 0
-        self.stats.forward_split_avg_momentum = sum(forward_momentum) / len(forward_momentum) if forward_momentum else 0
+        self.stats.reverse_split_avg_momentum = (
+            sum(reverse_momentum) / len(reverse_momentum) if reverse_momentum else 0
+        )
+        self.stats.forward_split_avg_momentum = (
+            sum(forward_momentum) / len(forward_momentum) if forward_momentum else 0
+        )
 
         self._save_data()
 

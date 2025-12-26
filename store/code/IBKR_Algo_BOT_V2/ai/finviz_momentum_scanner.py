@@ -11,15 +11,16 @@ Pipeline:
 4. Auto-add top picks to scalper watchlist
 """
 
-import os
 import asyncio
-import logging
 import csv
 import io
 import json
+import logging
+import os
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional, Any
+from typing import Any, Dict, List, Optional
+
 import aiohttp
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ FINVIZ_ELITE_TOKEN = os.getenv("FINVIZ_ELITE_TOKEN", "")
 @dataclass
 class MomentumCandidate:
     """Stock candidate with momentum and news data"""
+
     symbol: str
     company: str
     price: float
@@ -76,12 +78,12 @@ class FinVizMomentumScanner:
 
         # Scoring weights
         self.weights = {
-            "change_pct": 2.0,      # Change % contribution
-            "gap_pct": 1.5,         # Gap contribution
-            "volume_surge": 1.0,    # Above avg volume
-            "low_float": 1.5,       # Float < 20M bonus
-            "has_news": 3.0,        # News catalyst bonus
-            "news_keywords": 2.0,   # FDA/earnings/etc bonus
+            "change_pct": 2.0,  # Change % contribution
+            "gap_pct": 1.5,  # Gap contribution
+            "volume_surge": 1.0,  # Above avg volume
+            "low_float": 1.5,  # Float < 20M bonus
+            "has_news": 3.0,  # News catalyst bonus
+            "news_keywords": 2.0,  # FDA/earnings/etc bonus
         }
 
         # Catalyst keywords for scoring
@@ -104,7 +106,9 @@ class FinVizMomentumScanner:
             "revenue": 2.0,
         }
 
-    async def scan_movers(self, min_change: float = 5.0, max_price: float = 20.0) -> List[MomentumCandidate]:
+    async def scan_movers(
+        self, min_change: float = 5.0, max_price: float = 20.0
+    ) -> List[MomentumCandidate]:
         """
         Scan for small cap movers using FinViz Elite.
 
@@ -127,7 +131,9 @@ class FinVizMomentumScanner:
 
             candidates = []
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=15)
+                ) as response:
                     if response.status == 200:
                         text = await response.text()
                         reader = csv.DictReader(io.StringIO(text))
@@ -153,7 +159,9 @@ class FinVizMomentumScanner:
             logger.error(f"FinViz scan error: {e}")
             return []
 
-    async def scan_gappers(self, min_gap: float = 5.0, max_price: float = 20.0) -> List[MomentumCandidate]:
+    async def scan_gappers(
+        self, min_gap: float = 5.0, max_price: float = 20.0
+    ) -> List[MomentumCandidate]:
         """
         Scan for pre-market gap-up stocks.
         """
@@ -166,7 +174,9 @@ class FinVizMomentumScanner:
 
             candidates = []
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=15)
+                ) as response:
                     if response.status == 200:
                         text = await response.text()
                         reader = csv.DictReader(io.StringIO(text))
@@ -186,7 +196,9 @@ class FinVizMomentumScanner:
             logger.error(f"FinViz gapper scan error: {e}")
             return []
 
-    def _parse_row(self, row: Dict, is_gapper: bool = False) -> Optional[MomentumCandidate]:
+    def _parse_row(
+        self, row: Dict, is_gapper: bool = False
+    ) -> Optional[MomentumCandidate]:
         """Parse CSV row into MomentumCandidate"""
         try:
             symbol = row.get("Ticker", "").strip()
@@ -240,7 +252,7 @@ class FinVizMomentumScanner:
                 short_float=parse_num(row.get("Short Float")),
                 sector=row.get("Sector", ""),
                 industry=row.get("Industry", ""),
-                market_cap=parse_market_cap(row.get("Market Cap"))
+                market_cap=parse_market_cap(row.get("Market Cap")),
             )
 
             # Calculate initial momentum score
@@ -275,7 +287,9 @@ class FinVizMomentumScanner:
 
         return round(score, 2)
 
-    async def enrich_with_news(self, candidates: List[MomentumCandidate]) -> List[MomentumCandidate]:
+    async def enrich_with_news(
+        self, candidates: List[MomentumCandidate]
+    ) -> List[MomentumCandidate]:
         """
         Fetch news for each candidate and update scores.
         """
@@ -321,7 +335,9 @@ class FinVizMomentumScanner:
 
         if "fda" in text_lower or "approval" in text_lower:
             return "FDA"
-        elif "earnings" in text_lower or "beat" in text_lower or "revenue" in text_lower:
+        elif (
+            "earnings" in text_lower or "beat" in text_lower or "revenue" in text_lower
+        ):
             return "EARNINGS"
         elif "contract" in text_lower or "deal" in text_lower:
             return "CONTRACT"
@@ -365,7 +381,9 @@ class FinVizMomentumScanner:
         # Return top candidates
         return enriched[:limit]
 
-    async def sync_to_scalper_watchlist(self, min_score: float = 20.0, max_add: int = 5):
+    async def sync_to_scalper_watchlist(
+        self, min_score: float = 20.0, max_add: int = 5
+    ):
         """
         Auto-add top candidates to scalper watchlist.
         Only adds stocks with combined_score >= min_score.
@@ -379,7 +397,7 @@ class FinVizMomentumScanner:
 
             # Load current scalper config
             config_path = "ai/scalper_config.json"
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = json.load(f)
 
             current_watchlist = set(config.get("watchlist", []))
@@ -390,25 +408,26 @@ class FinVizMomentumScanner:
                 symbol = candidate.symbol
                 if symbol not in current_watchlist and symbol not in blacklist:
                     current_watchlist.add(symbol)
-                    added.append({
-                        "symbol": symbol,
-                        "score": candidate.combined_score,
-                        "catalyst": candidate.catalyst_type,
-                        "change": candidate.change_pct
-                    })
+                    added.append(
+                        {
+                            "symbol": symbol,
+                            "score": candidate.combined_score,
+                            "catalyst": candidate.catalyst_type,
+                            "change": candidate.change_pct,
+                        }
+                    )
 
             if added:
                 # Save updated config
                 config["watchlist"] = list(current_watchlist)
-                with open(config_path, 'w') as f:
+                with open(config_path, "w") as f:
                     json.dump(config, f, indent=2)
 
-                logger.info(f"Added {len(added)} stocks to scalper watchlist: {[a['symbol'] for a in added]}")
+                logger.info(
+                    f"Added {len(added)} stocks to scalper watchlist: {[a['symbol'] for a in added]}"
+                )
 
-            return {
-                "added": added,
-                "watchlist_size": len(current_watchlist)
-            }
+            return {"added": added, "watchlist_size": len(current_watchlist)}
 
         except Exception as e:
             logger.error(f"Error syncing to watchlist: {e}")

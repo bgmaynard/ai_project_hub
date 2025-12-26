@@ -10,14 +10,14 @@ Author: AI Trading Bot Team
 Version: 1.0
 """
 
-import os
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
-from enum import Enum
+import os
 import threading
 import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 
@@ -27,14 +27,16 @@ logger = logging.getLogger(__name__)
 
 class DataSource(str, Enum):
     """Data source priority"""
-    SCHWAB = "schwab"      # Primary - Real-time Schwab/TOS data
-    ALPACA = "alpaca"      # Fallback - Alpaca market data
-    CACHE = "cache"        # Cached data (stale)
+
+    SCHWAB = "schwab"  # Primary - Real-time Schwab/TOS data
+    ALPACA = "alpaca"  # Fallback - Alpaca market data
+    CACHE = "cache"  # Cached data (stale)
 
 
 @dataclass
 class QuoteData:
     """Standardized quote data structure"""
+
     symbol: str
     bid: float
     ask: float
@@ -84,7 +86,7 @@ class QuoteData:
             "change": self.change,
             "change_percent": self.change_percent,
             "timestamp": self.timestamp,
-            "source": self.source
+            "source": self.source,
         }
 
 
@@ -117,28 +119,21 @@ class UnifiedMarketData:
         self._lock = threading.Lock()
         self._source_stats = {
             DataSource.SCHWAB: {"requests": 0, "success": 0, "failures": 0},
-            DataSource.ALPACA: {"requests": 0, "success": 0, "failures": 0}
+            DataSource.ALPACA: {"requests": 0, "success": 0, "failures": 0},
         }
 
         # Health tracking
-        self._consecutive_failures = {
-            DataSource.SCHWAB: 0,
-            DataSource.ALPACA: 0
-        }
-        self._source_healthy = {
-            DataSource.SCHWAB: True,
-            DataSource.ALPACA: True
-        }
-        self._last_recovery_attempt = {
-            DataSource.SCHWAB: None,
-            DataSource.ALPACA: None
-        }
+        self._consecutive_failures = {DataSource.SCHWAB: 0, DataSource.ALPACA: 0}
+        self._source_healthy = {DataSource.SCHWAB: True, DataSource.ALPACA: True}
+        self._last_recovery_attempt = {DataSource.SCHWAB: None, DataSource.ALPACA: None}
 
         # Initialize data sources
         self._init_schwab()
         self._init_alpaca()
 
-        logger.info(f"[UNIFIED] Market data initialized - Schwab: {self._schwab_available}, Alpaca: {self._alpaca_available}")
+        logger.info(
+            f"[UNIFIED] Market data initialized - Schwab: {self._schwab_available}, Alpaca: {self._alpaca_available}"
+        )
 
     def _record_success(self, source: DataSource):
         """Record a successful request and reset failure counter"""
@@ -156,7 +151,9 @@ class UnifiedMarketData:
         if self._consecutive_failures[source] >= self.FAILURE_THRESHOLD:
             if self._source_healthy[source]:
                 self._source_healthy[source] = False
-                logger.warning(f"[UNIFIED] {source.value} marked UNHEALTHY after {self._consecutive_failures[source]} consecutive failures")
+                logger.warning(
+                    f"[UNIFIED] {source.value} marked UNHEALTHY after {self._consecutive_failures[source]} consecutive failures"
+                )
 
     def _should_try_source(self, source: DataSource) -> bool:
         """Check if we should try this source based on health status"""
@@ -166,7 +163,10 @@ class UnifiedMarketData:
 
         # Try recovery if enough time has passed
         last_attempt = self._last_recovery_attempt[source]
-        if last_attempt is None or (datetime.now() - last_attempt).total_seconds() >= self.RECOVERY_INTERVAL:
+        if (
+            last_attempt is None
+            or (datetime.now() - last_attempt).total_seconds() >= self.RECOVERY_INTERVAL
+        ):
             self._last_recovery_attempt[source] = datetime.now()
             logger.info(f"[UNIFIED] Attempting recovery of {source.value} data source")
             return True
@@ -185,7 +185,9 @@ class UnifiedMarketData:
         """Initialize Schwab client"""
         self._schwab_available = False
         try:
-            from schwab_market_data import get_schwab_market_data, is_schwab_available
+            from schwab_market_data import (get_schwab_market_data,
+                                            is_schwab_available)
+
             if is_schwab_available():
                 self._schwab_client = get_schwab_market_data()
                 if self._schwab_client:
@@ -201,10 +203,11 @@ class UnifiedMarketData:
         self._alpaca_available = False
         try:
             from alpaca.data.historical import StockHistoricalDataClient
-            from alpaca.data.requests import StockLatestQuoteRequest, StockSnapshotRequest
+            from alpaca.data.requests import (StockLatestQuoteRequest,
+                                              StockSnapshotRequest)
 
-            api_key = os.getenv('ALPACA_API_KEY')
-            secret_key = os.getenv('ALPACA_SECRET_KEY')
+            api_key = os.getenv("ALPACA_API_KEY")
+            secret_key = os.getenv("ALPACA_SECRET_KEY")
 
             if api_key and secret_key:
                 self._alpaca_client = StockHistoricalDataClient(api_key, secret_key)
@@ -241,7 +244,7 @@ class UnifiedMarketData:
                     change=float(quote.get("change", 0)),
                     change_percent=float(quote.get("change_percent", 0)),
                     timestamp=quote.get("timestamp", datetime.now().isoformat()),
-                    source=DataSource.SCHWAB.value
+                    source=DataSource.SCHWAB.value,
                 )
             else:
                 self._record_failure(DataSource.SCHWAB)
@@ -259,7 +262,8 @@ class UnifiedMarketData:
         self._source_stats[DataSource.ALPACA]["requests"] += 1
 
         try:
-            from alpaca.data.requests import StockLatestQuoteRequest, StockSnapshotRequest
+            from alpaca.data.requests import (StockLatestQuoteRequest,
+                                              StockSnapshotRequest)
 
             # Try snapshot first (more data)
             try:
@@ -304,7 +308,7 @@ class UnifiedMarketData:
                         change=change,
                         change_percent=change_pct,
                         timestamp=datetime.now().isoformat(),
-                        source=DataSource.ALPACA.value
+                        source=DataSource.ALPACA.value,
                     )
             except Exception:
                 pass
@@ -326,8 +330,12 @@ class UnifiedMarketData:
                     last=(bid + ask) / 2,
                     bid_size=int(q.bid_size),
                     ask_size=int(q.ask_size),
-                    timestamp=q.timestamp.isoformat() if q.timestamp else datetime.now().isoformat(),
-                    source=DataSource.ALPACA.value
+                    timestamp=(
+                        q.timestamp.isoformat()
+                        if q.timestamp
+                        else datetime.now().isoformat()
+                    ),
+                    source=DataSource.ALPACA.value,
                 )
 
         except Exception as e:
@@ -347,7 +355,10 @@ class UnifiedMarketData:
         with self._lock:
             if symbol.upper() in self._cache:
                 cached_time = self._cache_timestamps.get(symbol.upper())
-                if cached_time and (datetime.now() - cached_time).total_seconds() < self._cache_ttl:
+                if (
+                    cached_time
+                    and (datetime.now() - cached_time).total_seconds() < self._cache_ttl
+                ):
                     quote = self._cache[symbol.upper()]
                     quote.source = DataSource.CACHE.value
                     return quote
@@ -410,6 +421,7 @@ class UnifiedMarketData:
             Dictionary mapping symbols to quote data
         """
         import time as _time
+
         start = _time.time()
 
         results = {}
@@ -427,7 +439,9 @@ class UnifiedMarketData:
             symbols_to_fetch = symbols
 
         t1 = _time.time()
-        logger.info(f"[UNIFIED] get_quotes: {len(results)} cached, {len(symbols_to_fetch)} to fetch ({(t1-start)*1000:.0f}ms)")
+        logger.info(
+            f"[UNIFIED] get_quotes: {len(results)} cached, {len(symbols_to_fetch)} to fetch ({(t1-start)*1000:.0f}ms)"
+        )
 
         # Batch fetch from Schwab
         if symbols_to_fetch and self._schwab_available and self._schwab_client:
@@ -435,7 +449,9 @@ class UnifiedMarketData:
                 t2 = _time.time()
                 schwab_quotes = self._schwab_client.get_quotes(symbols_to_fetch)
                 t3 = _time.time()
-                logger.info(f"[UNIFIED] Schwab API batch call returned {len(schwab_quotes)} quotes in {(t3-t2)*1000:.0f}ms")
+                logger.info(
+                    f"[UNIFIED] Schwab API batch call returned {len(schwab_quotes)} quotes in {(t3-t2)*1000:.0f}ms"
+                )
 
                 for symbol, quote in schwab_quotes.items():
                     quote_data = QuoteData(
@@ -453,26 +469,36 @@ class UnifiedMarketData:
                         change=float(quote.get("change", 0)),
                         change_percent=float(quote.get("change_percent", 0)),
                         timestamp=quote.get("timestamp", datetime.now().isoformat()),
-                        source=DataSource.SCHWAB.value
+                        source=DataSource.SCHWAB.value,
                     )
                     self._update_cache(symbol, quote_data)
                     results[symbol] = quote_data.to_dict()
-                    symbols_to_fetch.remove(symbol) if symbol in symbols_to_fetch else None
+                    (
+                        symbols_to_fetch.remove(symbol)
+                        if symbol in symbols_to_fetch
+                        else None
+                    )
             except Exception as e:
                 logger.warning(f"[UNIFIED] Schwab batch quote failed: {e}")
 
         # Fallback remaining to Alpaca (sequential - SLOW!)
         if symbols_to_fetch:
             t4 = _time.time()
-            logger.warning(f"[UNIFIED] Falling back to Alpaca for {len(symbols_to_fetch)} symbols: {symbols_to_fetch}")
+            logger.warning(
+                f"[UNIFIED] Falling back to Alpaca for {len(symbols_to_fetch)} symbols: {symbols_to_fetch}"
+            )
             for symbol in symbols_to_fetch:
                 quote = self._get_from_alpaca(symbol)
                 if quote:
                     self._update_cache(symbol, quote)
                     results[symbol.upper()] = quote.to_dict()
-            logger.warning(f"[UNIFIED] Alpaca fallback took {(_time.time()-t4)*1000:.0f}ms for {len(symbols_to_fetch)} symbols")
+            logger.warning(
+                f"[UNIFIED] Alpaca fallback took {(_time.time()-t4)*1000:.0f}ms for {len(symbols_to_fetch)} symbols"
+            )
 
-        logger.info(f"[UNIFIED] get_quotes TOTAL: {(_time.time()-start)*1000:.0f}ms, returning {len(results)} quotes")
+        logger.info(
+            f"[UNIFIED] get_quotes TOTAL: {(_time.time()-start)*1000:.0f}ms, returning {len(results)} quotes"
+        )
         return results
 
     def get_snapshot(self, symbol: str) -> Optional[Dict]:
@@ -524,20 +550,28 @@ class UnifiedMarketData:
             "schwab": {
                 "available": self._schwab_available,
                 "healthy": schwab_healthy,
-                "consecutive_failures": self._consecutive_failures.get(DataSource.SCHWAB, 0),
-                "stats": self._source_stats[DataSource.SCHWAB]
+                "consecutive_failures": self._consecutive_failures.get(
+                    DataSource.SCHWAB, 0
+                ),
+                "stats": self._source_stats[DataSource.SCHWAB],
             },
             "alpaca": {
                 "available": self._alpaca_available,
                 "healthy": alpaca_healthy,
-                "consecutive_failures": self._consecutive_failures.get(DataSource.ALPACA, 0),
-                "stats": self._source_stats[DataSource.ALPACA]
+                "consecutive_failures": self._consecutive_failures.get(
+                    DataSource.ALPACA, 0
+                ),
+                "stats": self._source_stats[DataSource.ALPACA],
             },
             "cache_size": len(self._cache),
             "cache_ttl_seconds": self._cache_ttl,
             "primary_source": primary,
-            "failover_active": not schwab_healthy and alpaca_healthy if self._schwab_available else False,
-            "timestamp": datetime.now().isoformat()
+            "failover_active": (
+                not schwab_healthy and alpaca_healthy
+                if self._schwab_available
+                else False
+            ),
+            "timestamp": datetime.now().isoformat(),
         }
 
     def force_recovery(self, source: str = "all"):
@@ -591,6 +625,7 @@ def get_unified_market_data() -> UnifiedMarketData:
 # CONVENIENCE FUNCTIONS (Drop-in replacements for existing code)
 # ============================================================================
 
+
 def get_quote(symbol: str) -> Optional[Dict]:
     """Get quote using unified provider"""
     return get_unified_market_data().get_quote(symbol)
@@ -622,6 +657,7 @@ def get_bid_ask(symbol: str) -> Optional[tuple]:
 
 if __name__ == "__main__":
     import json
+
     logging.basicConfig(level=logging.INFO)
 
     print("Testing Unified Market Data Provider...")

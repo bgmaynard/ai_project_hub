@@ -24,17 +24,13 @@ incoming triggers against pre-approved SignalContracts.
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 import pandas as pd
-
-from ai.signal_contract import (
-    SignalContract,
-    SignalDirection,
-    SignalHorizon,
-    MarketRegime,
-    SignalContractRepository
-)
+from ai.signal_contract import (MarketRegime, SignalContract,
+                                SignalContractRepository, SignalDirection,
+                                SignalHorizon)
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +56,7 @@ class QlibResearchResult:
         expected_return: float,
         top_features: List[str],
         valid_regimes: List[str],
-        confidence_threshold: float
+        confidence_threshold: float,
     ):
         self.symbol = symbol
         self.strategy_type = strategy_type
@@ -93,18 +89,15 @@ class QlibExporter:
         self.contracts: List[SignalContract] = []
 
         # Minimum requirements for contract generation
-        self.min_trades = 20          # Minimum backtest trades
-        self.min_win_rate = 0.45      # Minimum win rate
+        self.min_trades = 20  # Minimum backtest trades
+        self.min_win_rate = 0.45  # Minimum win rate
         self.min_profit_factor = 1.0  # Minimum profit factor
-        self.min_sharpe = 0.5         # Minimum Sharpe ratio
+        self.min_sharpe = 0.5  # Minimum Sharpe ratio
 
         logger.info("QlibExporter initialized")
 
     def research_symbol(
-        self,
-        symbol: str,
-        strategy_type: str = "SCALP",
-        period: str = "1y"
+        self, symbol: str, strategy_type: str = "SCALP", period: str = "1y"
     ) -> Optional[QlibResearchResult]:
         """
         Run Qlib research on a single symbol.
@@ -121,8 +114,8 @@ class QlibExporter:
             QlibResearchResult if successful, None otherwise
         """
         try:
-            from ai.qlib_predictor import get_qlib_predictor
             import yfinance as yf
+            from ai.qlib_predictor import get_qlib_predictor
 
             predictor = get_qlib_predictor()
 
@@ -140,7 +133,7 @@ class QlibExporter:
                 return None
 
             # Simulate backtest: when would our features have predicted up moves?
-            returns = df['Close'].pct_change().shift(-1)
+            returns = df["Close"].pct_change().shift(-1)
 
             # Get predictions for each day
             predictions = []
@@ -148,14 +141,16 @@ class QlibExporter:
 
             for i in range(60, len(features) - 1):
                 try:
-                    score = predictor.compute_score(features.iloc[:i+1])
+                    score = predictor.compute_score(features.iloc[: i + 1])
                     predictions.append(score)
                     actuals.append(returns.iloc[i])
                 except:
                     continue
 
             if len(predictions) < self.min_trades:
-                logger.warning(f"Insufficient predictions for {symbol}: {len(predictions)}")
+                logger.warning(
+                    f"Insufficient predictions for {symbol}: {len(predictions)}"
+                )
                 return None
 
             predictions = np.array(predictions)
@@ -205,7 +200,9 @@ class QlibExporter:
             max_drawdown = self._calculate_max_drawdown(signal_returns)
 
             # Simplified Sharpe
-            sharpe = (signal_returns.mean() / (signal_returns.std() + 1e-8)) * np.sqrt(252)
+            sharpe = (signal_returns.mean() / (signal_returns.std() + 1e-8)) * np.sqrt(
+                252
+            )
 
             # Determine valid regimes from feature analysis
             valid_regimes = self._determine_valid_regimes(features, signals, df)
@@ -225,7 +222,7 @@ class QlibExporter:
                 expected_return=expected_return,
                 top_features=top_features,
                 valid_regimes=valid_regimes,
-                confidence_threshold=best_threshold
+                confidence_threshold=best_threshold,
             )
 
         except Exception as e:
@@ -240,10 +237,7 @@ class QlibExporter:
         return abs(drawdowns.min()) if len(drawdowns) > 0 else 0.0
 
     def _determine_valid_regimes(
-        self,
-        features: pd.DataFrame,
-        signals: np.ndarray,
-        df: pd.DataFrame
+        self, features: pd.DataFrame, signals: np.ndarray, df: pd.DataFrame
     ) -> List[str]:
         """
         Determine which market regimes had successful signals.
@@ -256,10 +250,10 @@ class QlibExporter:
         try:
             import ta
 
-            close = df['Close']
+            close = df["Close"]
 
             # Compute ADX for trend detection
-            adx = ta.trend.ADXIndicator(df['High'], df['Low'], df['Close'], window=14)
+            adx = ta.trend.ADXIndicator(df["High"], df["Low"], df["Close"], window=14)
             adx_values = adx.adx()
             adx_pos = adx.adx_pos()
             adx_neg = adx.adx_neg()
@@ -290,8 +284,8 @@ class QlibExporter:
                     regimes.append("RANGING")
 
             # Find which regimes had profitable signals
-            regimes = np.array(regimes[-len(signals):])
-            returns_arr = df['Close'].pct_change().shift(-1).values[-len(signals):]
+            regimes = np.array(regimes[-len(signals) :])
+            returns_arr = df["Close"].pct_change().shift(-1).values[-len(signals) :]
 
             regime_performance = {}
             for regime in ["TRENDING_UP", "TRENDING_DOWN", "RANGING", "VOLATILE"]:
@@ -321,23 +315,26 @@ class QlibExporter:
         """Get top contributing features."""
         if predictor.is_trained and predictor.feature_importance:
             sorted_features = sorted(
-                predictor.feature_importance.items(),
-                key=lambda x: x[1],
-                reverse=True
+                predictor.feature_importance.items(), key=lambda x: x[1], reverse=True
             )
             return [f[0] for f in sorted_features[:10]]
         else:
             # Default important features
             return [
-                "ROC_5", "ROC_10", "MA_5", "MA_10",
-                "RSV_20", "RANK_20", "VMA_5", "VWAP_RATIO",
-                "KMID", "CORR_5"
+                "ROC_5",
+                "ROC_10",
+                "MA_5",
+                "MA_10",
+                "RSV_20",
+                "RANK_20",
+                "VMA_5",
+                "VWAP_RATIO",
+                "KMID",
+                "CORR_5",
             ]
 
     def create_contract_from_research(
-        self,
-        result: QlibResearchResult,
-        expiry_days: int = 30
+        self, result: QlibResearchResult, expiry_days: int = 30
     ) -> Optional[SignalContract]:
         """
         Create a SignalContract from research results.
@@ -347,19 +344,27 @@ class QlibExporter:
         """
         # Apply quality filters
         if result.total_trades < self.min_trades:
-            logger.info(f"Skipping {result.symbol}: insufficient trades ({result.total_trades})")
+            logger.info(
+                f"Skipping {result.symbol}: insufficient trades ({result.total_trades})"
+            )
             return None
 
         if result.win_rate < self.min_win_rate:
-            logger.info(f"Skipping {result.symbol}: low win rate ({result.win_rate:.1%})")
+            logger.info(
+                f"Skipping {result.symbol}: low win rate ({result.win_rate:.1%})"
+            )
             return None
 
         if result.profit_factor < self.min_profit_factor:
-            logger.info(f"Skipping {result.symbol}: low profit factor ({result.profit_factor:.2f})")
+            logger.info(
+                f"Skipping {result.symbol}: low profit factor ({result.profit_factor:.2f})"
+            )
             return None
 
         if result.sharpe_ratio < self.min_sharpe:
-            logger.info(f"Skipping {result.symbol}: low Sharpe ({result.sharpe_ratio:.2f})")
+            logger.info(
+                f"Skipping {result.symbol}: low Sharpe ({result.sharpe_ratio:.2f})"
+            )
             return None
 
         # Determine invalid regimes (inverse of valid)
@@ -387,16 +392,13 @@ class QlibExporter:
             expires_at=(datetime.now() + timedelta(days=expiry_days)).isoformat(),
             backtest_period=result.backtest_period,
             sample_size=result.total_trades,
-            sharpe_ratio=result.sharpe_ratio
+            sharpe_ratio=result.sharpe_ratio,
         )
 
         return contract
 
     def export_symbols(
-        self,
-        symbols: List[str],
-        strategy_type: str = "SCALP",
-        period: str = "1y"
+        self, symbols: List[str], strategy_type: str = "SCALP", period: str = "1y"
     ) -> Dict[str, Any]:
         """
         Run research on multiple symbols and export valid contracts.
@@ -418,7 +420,7 @@ class QlibExporter:
             "symbols_analyzed": 0,
             "contracts_generated": 0,
             "skipped": [],
-            "exported": []
+            "exported": [],
         }
 
         for symbol in symbols:
@@ -428,30 +430,30 @@ class QlibExporter:
             research_result = self.research_symbol(symbol, strategy_type, period)
 
             if research_result is None:
-                results["skipped"].append({
-                    "symbol": symbol,
-                    "reason": "Research failed"
-                })
+                results["skipped"].append(
+                    {"symbol": symbol, "reason": "Research failed"}
+                )
                 continue
 
             contract = self.create_contract_from_research(research_result)
 
             if contract is None:
-                results["skipped"].append({
-                    "symbol": symbol,
-                    "reason": "Quality filters not met"
-                })
+                results["skipped"].append(
+                    {"symbol": symbol, "reason": "Quality filters not met"}
+                )
                 continue
 
             self.contracts.append(contract)
             results["contracts_generated"] += 1
-            results["exported"].append({
-                "symbol": symbol,
-                "win_rate": research_result.win_rate,
-                "profit_factor": research_result.profit_factor,
-                "sharpe": research_result.sharpe_ratio,
-                "trades": research_result.total_trades
-            })
+            results["exported"].append(
+                {
+                    "symbol": symbol,
+                    "win_rate": research_result.win_rate,
+                    "profit_factor": research_result.profit_factor,
+                    "sharpe": research_result.sharpe_ratio,
+                    "trades": research_result.total_trades,
+                }
+            )
 
             logger.info(
                 f"  {symbol}: WR={research_result.win_rate:.1%}, "
@@ -475,10 +477,10 @@ class QlibExporter:
             "contracts": [c.to_dict() for c in self.contracts],
             "exported_at": datetime.now().isoformat(),
             "count": len(self.contracts),
-            "source": "QLIB_EXPORTER"
+            "source": "QLIB_EXPORTER",
         }
 
-        with open(self.output_path, 'w') as f:
+        with open(self.output_path, "w") as f:
             json.dump(data, f, indent=2)
 
         logger.info(f"Saved {len(self.contracts)} contracts to {self.output_path}")
@@ -486,15 +488,16 @@ class QlibExporter:
     def load_contracts(self) -> List[SignalContract]:
         """Load existing contracts from file."""
         try:
-            with open(self.output_path, 'r') as f:
+            with open(self.output_path, "r") as f:
                 data = json.load(f)
 
             self.contracts = [
-                SignalContract.from_dict(c)
-                for c in data.get('contracts', [])
+                SignalContract.from_dict(c) for c in data.get("contracts", [])
             ]
 
-            logger.info(f"Loaded {len(self.contracts)} contracts from {self.output_path}")
+            logger.info(
+                f"Loaded {len(self.contracts)} contracts from {self.output_path}"
+            )
             return self.contracts
 
         except FileNotFoundError:
@@ -526,8 +529,16 @@ def run_research_export(symbols: List[str] = None) -> Dict[str, Any]:
     if symbols is None:
         # Default momentum watchlist
         symbols = [
-            "AAPL", "TSLA", "NVDA", "AMD", "MSFT",
-            "META", "GOOGL", "AMZN", "SPY", "QQQ"
+            "AAPL",
+            "TSLA",
+            "NVDA",
+            "AMD",
+            "MSFT",
+            "META",
+            "GOOGL",
+            "AMZN",
+            "SPY",
+            "QQQ",
         ]
 
     exporter = get_qlib_exporter()
@@ -537,7 +548,7 @@ def run_research_export(symbols: List[str] = None) -> Dict[str, Any]:
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s | %(name)s | %(levelname)s | %(message)s'
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     )
 
     print("=" * 60)
@@ -559,15 +570,15 @@ if __name__ == "__main__":
     print(f"Symbols analyzed: {results['symbols_analyzed']}")
     print(f"Contracts generated: {results['contracts_generated']}")
 
-    if results['exported']:
+    if results["exported"]:
         print("\nExported contracts:")
-        for item in results['exported']:
+        for item in results["exported"]:
             print(
                 f"  {item['symbol']}: WR={item['win_rate']:.1%}, "
                 f"PF={item['profit_factor']:.2f}, Sharpe={item['sharpe']:.2f}"
             )
 
-    if results['skipped']:
+    if results["skipped"]:
         print("\nSkipped symbols:")
-        for item in results['skipped']:
+        for item in results["skipped"]:
             print(f"  {item['symbol']}: {item['reason']}")

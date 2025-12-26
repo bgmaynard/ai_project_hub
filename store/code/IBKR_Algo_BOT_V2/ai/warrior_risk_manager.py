@@ -13,26 +13,28 @@ Core Rules:
 This is the safety layer that prevents emotional trading and protects capital.
 """
 
-import logging
-from dataclasses import dataclass, asdict
-from typing import List, Optional, Dict, Any, Tuple
-from datetime import datetime, date, time as datetime_time
-from enum import Enum
 import json
-from pathlib import Path
+import logging
 import sys
+from dataclasses import asdict, dataclass
+from datetime import date, datetime
+from datetime import time as datetime_time
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
+from ai.warrior_pattern_detector import SetupType, TradingSetup
 from config.config_loader import get_config
-from ai.warrior_pattern_detector import TradingSetup, SetupType
 
 logger = logging.getLogger(__name__)
 
 
 class ValidationResult(str, Enum):
     """Trade validation result"""
+
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     WARNING = "WARNING"
@@ -60,6 +62,7 @@ class TradeRecord:
         r_multiple: P&L in R units (risk multiples)
         side: "LONG" or "SHORT"
     """
+
     trade_id: str
     symbol: str
     setup_type: str
@@ -80,9 +83,9 @@ class TradeRecord:
         """Convert to dictionary"""
         data = asdict(self)
         # Convert datetime to ISO string
-        data['entry_time'] = self.entry_time.isoformat()
+        data["entry_time"] = self.entry_time.isoformat()
         if self.exit_time:
-            data['exit_time'] = self.exit_time.isoformat()
+            data["exit_time"] = self.exit_time.isoformat()
         return data
 
 
@@ -100,6 +103,7 @@ class ValidationResponse:
         reward_dollars: Total $ reward potential
         risk_reward_ratio: Actual R:R ratio
     """
+
     result: ValidationResult
     reason: str
     position_size: int = 0
@@ -115,13 +119,13 @@ class ValidationResponse:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'result': self.result.value,
-            'reason': self.reason,
-            'position_size': self.position_size,
-            'warnings': self.warnings,
-            'risk_dollars': self.risk_dollars,
-            'reward_dollars': self.reward_dollars,
-            'risk_reward_ratio': self.risk_reward_ratio
+            "result": self.result.value,
+            "reason": self.reason,
+            "position_size": self.position_size,
+            "warnings": self.warnings,
+            "risk_dollars": self.risk_dollars,
+            "reward_dollars": self.reward_dollars,
+            "risk_reward_ratio": self.risk_reward_ratio,
         }
 
 
@@ -169,7 +173,7 @@ class WarriorRiskManager:
         self,
         entry_price: float,
         stop_price: float,
-        risk_dollars: Optional[float] = None
+        risk_dollars: Optional[float] = None,
     ) -> int:
         """
         Calculate position size based on risk
@@ -216,9 +220,7 @@ class WarriorRiskManager:
         return position_size
 
     def validate_trade(
-        self,
-        setup: TradingSetup,
-        risk_dollars: Optional[float] = None
+        self, setup: TradingSetup, risk_dollars: Optional[float] = None
     ) -> ValidationResponse:
         """
         Validate if trade meets Warrior Trading criteria
@@ -245,7 +247,7 @@ class WarriorRiskManager:
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason=f"Trading halted: {self.halt_reason}",
-                warnings=warnings
+                warnings=warnings,
             )
 
         # Check market hours
@@ -253,7 +255,7 @@ class WarriorRiskManager:
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason="Outside trading hours",
-                warnings=warnings
+                warnings=warnings,
             )
 
         # Check if setup is valid
@@ -261,7 +263,7 @@ class WarriorRiskManager:
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason="Invalid setup (R:R < 2:1 or invalid prices)",
-                warnings=warnings
+                warnings=warnings,
             )
 
         # Check R:R ratio
@@ -272,7 +274,7 @@ class WarriorRiskManager:
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason=f"R:R {setup.risk_reward_ratio:.1f}:1 below minimum {min_rr}:1",
-                warnings=warnings
+                warnings=warnings,
             )
 
         if setup.risk_reward_ratio > max_rr:
@@ -283,16 +285,14 @@ class WarriorRiskManager:
 
         # Calculate position size
         position_size = self.calculate_position_size(
-            setup.entry_price,
-            setup.stop_price,
-            risk_dollars
+            setup.entry_price, setup.stop_price, risk_dollars
         )
 
         if position_size == 0:
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason="Position size calculated as 0 (risk too small or stop too wide)",
-                warnings=warnings
+                warnings=warnings,
             )
 
         # Check max loss per trade
@@ -303,26 +303,33 @@ class WarriorRiskManager:
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason=f"Risk ${actual_risk:.2f} exceeds max per trade ${max_loss_per_trade:.2f}",
-                warnings=warnings
+                warnings=warnings,
             )
 
         # Check daily loss limit
-        remaining_daily_loss = self.risk_config.max_loss_per_day - abs(min(self.current_pnl, 0))
+        remaining_daily_loss = self.risk_config.max_loss_per_day - abs(
+            min(self.current_pnl, 0)
+        )
 
         if actual_risk > remaining_daily_loss:
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason=f"Risk ${actual_risk:.2f} exceeds remaining daily loss allowance ${remaining_daily_loss:.2f}",
-                warnings=warnings
+                warnings=warnings,
             )
 
         # Check if daily loss limit already hit
-        if abs(self.current_pnl) >= self.risk_config.max_loss_per_day and self.current_pnl < 0:
-            self.halt_trading(f"Max daily loss ${self.risk_config.max_loss_per_day:.2f} reached")
+        if (
+            abs(self.current_pnl) >= self.risk_config.max_loss_per_day
+            and self.current_pnl < 0
+        ):
+            self.halt_trading(
+                f"Max daily loss ${self.risk_config.max_loss_per_day:.2f} reached"
+            )
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason=f"Max daily loss ${self.risk_config.max_loss_per_day:.2f} reached",
-                warnings=warnings
+                warnings=warnings,
             )
 
         # Check consecutive losses
@@ -352,14 +359,14 @@ class WarriorRiskManager:
             return ValidationResponse(
                 result=ValidationResult.REJECTED,
                 reason=f"Max concurrent positions ({max_positions}) reached",
-                warnings=warnings
+                warnings=warnings,
             )
 
         # Check pattern-specific position size adjustments
         if setup.setup_type == SetupType.HAMMER_REVERSAL:
             # Reversals are higher risk - reduce size
             reversal_multiplier = self.config.patterns.hammer_reversal.get(
-                'position_size_multiplier', 0.5
+                "position_size_multiplier", 0.5
             )
             original_size = position_size
             position_size = int(position_size * reversal_multiplier)
@@ -380,12 +387,16 @@ class WarriorRiskManager:
 
         return ValidationResponse(
             result=result,
-            reason="Trade approved" if result == ValidationResult.APPROVED else "Trade approved with warnings",
+            reason=(
+                "Trade approved"
+                if result == ValidationResult.APPROVED
+                else "Trade approved with warnings"
+            ),
             position_size=position_size,
             warnings=warnings,
             risk_dollars=final_risk,
             reward_dollars=final_reward,
-            risk_reward_ratio=setup.risk_reward_ratio
+            risk_reward_ratio=setup.risk_reward_ratio,
         )
 
     def record_trade_entry(
@@ -395,7 +406,7 @@ class WarriorRiskManager:
         entry_price: float,
         shares: int,
         stop_price: float,
-        target_price: float
+        target_price: float,
     ) -> str:
         """
         Record a new trade entry
@@ -423,7 +434,7 @@ class WarriorRiskManager:
             shares=shares,
             stop_price=stop_price,
             target_price=target_price,
-            side="LONG"
+            side="LONG",
         )
 
         # Add to open positions
@@ -437,10 +448,7 @@ class WarriorRiskManager:
         return trade_id
 
     def record_trade_exit(
-        self,
-        trade_id: str,
-        exit_price: float,
-        exit_reason: str = "MANUAL"
+        self, trade_id: str, exit_price: float, exit_reason: str = "MANUAL"
     ) -> Optional[TradeRecord]:
         """
         Record a trade exit
@@ -491,8 +499,13 @@ class WarriorRiskManager:
             self.consecutive_wins = 0
 
         # Check if daily loss limit hit
-        if abs(self.current_pnl) >= self.risk_config.max_loss_per_day and self.current_pnl < 0:
-            self.halt_trading(f"Daily loss limit ${self.risk_config.max_loss_per_day:.2f} reached")
+        if (
+            abs(self.current_pnl) >= self.risk_config.max_loss_per_day
+            and self.current_pnl < 0
+        ):
+            self.halt_trading(
+                f"Daily loss limit ${self.risk_config.max_loss_per_day:.2f} reached"
+            )
 
         logger.info(
             f"Trade exited: {trade.symbol} @ ${exit_price:.2f}, "
@@ -540,44 +553,62 @@ class WarriorRiskManager:
         avg_loss = sum(losses) / len(losses) if losses else 0
 
         # Calculate average R multiple
-        r_multiples = [t.r_multiple for t in self.trades_today if t.r_multiple is not None]
+        r_multiples = [
+            t.r_multiple for t in self.trades_today if t.r_multiple is not None
+        ]
         avg_r = sum(r_multiples) / len(r_multiples) if r_multiples else 0
 
         # Best and worst trades
-        best_trade = max(self.trades_today, key=lambda t: t.pnl or 0) if self.trades_today else None
-        worst_trade = min(self.trades_today, key=lambda t: t.pnl or 0) if self.trades_today else None
+        best_trade = (
+            max(self.trades_today, key=lambda t: t.pnl or 0)
+            if self.trades_today
+            else None
+        )
+        worst_trade = (
+            min(self.trades_today, key=lambda t: t.pnl or 0)
+            if self.trades_today
+            else None
+        )
 
         # Distance to goal
         distance_to_goal = self.risk_config.daily_profit_goal - self.current_pnl
 
         return {
-            'date': self.current_date.isoformat(),
-            'total_trades': total_trades,
-            'winning_trades': winning_trades,
-            'losing_trades': losing_trades,
-            'win_rate': win_rate,
-            'current_pnl': self.current_pnl,
-            'avg_win': avg_win,
-            'avg_loss': avg_loss,
-            'avg_r_multiple': avg_r,
-            'consecutive_wins': self.consecutive_wins,
-            'consecutive_losses': self.consecutive_losses,
-            'is_halted': self.is_trading_halted,
-            'halt_reason': self.halt_reason,
-            'distance_to_goal': distance_to_goal,
-            'daily_goal': self.risk_config.daily_profit_goal,
-            'max_loss_per_day': self.risk_config.max_loss_per_day,
-            'open_positions': len(self.open_positions),
-            'best_trade': {
-                'symbol': best_trade.symbol,
-                'pnl': best_trade.pnl,
-                'r_multiple': best_trade.r_multiple
-            } if best_trade else None,
-            'worst_trade': {
-                'symbol': worst_trade.symbol,
-                'pnl': worst_trade.pnl,
-                'r_multiple': worst_trade.r_multiple
-            } if worst_trade else None
+            "date": self.current_date.isoformat(),
+            "total_trades": total_trades,
+            "winning_trades": winning_trades,
+            "losing_trades": losing_trades,
+            "win_rate": win_rate,
+            "current_pnl": self.current_pnl,
+            "avg_win": avg_win,
+            "avg_loss": avg_loss,
+            "avg_r_multiple": avg_r,
+            "consecutive_wins": self.consecutive_wins,
+            "consecutive_losses": self.consecutive_losses,
+            "is_halted": self.is_trading_halted,
+            "halt_reason": self.halt_reason,
+            "distance_to_goal": distance_to_goal,
+            "daily_goal": self.risk_config.daily_profit_goal,
+            "max_loss_per_day": self.risk_config.max_loss_per_day,
+            "open_positions": len(self.open_positions),
+            "best_trade": (
+                {
+                    "symbol": best_trade.symbol,
+                    "pnl": best_trade.pnl,
+                    "r_multiple": best_trade.r_multiple,
+                }
+                if best_trade
+                else None
+            ),
+            "worst_trade": (
+                {
+                    "symbol": worst_trade.symbol,
+                    "pnl": worst_trade.pnl,
+                    "r_multiple": worst_trade.r_multiple,
+                }
+                if worst_trade
+                else None
+            ),
         }
 
     def reset_daily(self):
@@ -608,12 +639,12 @@ class WarriorRiskManager:
         now = datetime.now().time()
 
         # Get trading hours from config
-        market_open_str = self.config.trading_hours.get('market_open', '09:30')
-        market_close_str = self.config.trading_hours.get('market_close', '16:00')
+        market_open_str = self.config.trading_hours.get("market_open", "09:30")
+        market_close_str = self.config.trading_hours.get("market_close", "16:00")
 
         # Parse times
-        market_open = datetime.strptime(market_open_str, '%H:%M').time()
-        market_close = datetime.strptime(market_close_str, '%H:%M').time()
+        market_open = datetime.strptime(market_open_str, "%H:%M").time()
+        market_close = datetime.strptime(market_close_str, "%H:%M").time()
 
         return market_open <= now <= market_close
 
@@ -625,12 +656,12 @@ class WarriorRiskManager:
             filepath: Where to save trades
         """
         data = {
-            'date': self.current_date.isoformat(),
-            'stats': self.get_daily_stats(),
-            'trades': [t.to_dict() for t in self.trades_today]
+            "date": self.current_date.isoformat(),
+            "stats": self.get_daily_stats(),
+            "trades": [t.to_dict() for t in self.trades_today],
         }
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(data, f, indent=2)
 
         logger.info(f"Exported {len(self.trades_today)} trades to {filepath}")
@@ -638,12 +669,12 @@ class WarriorRiskManager:
 
 # Example usage / testing
 if __name__ == "__main__":
-    from ai.warrior_pattern_detector import WarriorPatternDetector, SetupType
+    from ai.warrior_pattern_detector import SetupType, WarriorPatternDetector
 
     # Set up logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     print("=" * 80)
@@ -705,7 +736,7 @@ if __name__ == "__main__":
             confidence=75.0,
             strength_factors=["Test"],
             risk_factors=[],
-            current_price=4.95
+            current_price=4.95,
         )
 
         validation = risk_mgr.validate_trade(setup)

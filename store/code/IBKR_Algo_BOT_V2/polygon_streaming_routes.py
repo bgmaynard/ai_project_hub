@@ -15,9 +15,10 @@ Endpoints:
 """
 
 import logging
+from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,9 @@ router = APIRouter(prefix="/api/polygon/stream", tags=["Polygon Streaming"])
 
 # Import polygon streaming
 try:
-    from polygon_streaming import get_polygon_stream, is_polygon_streaming_available
+    from polygon_streaming import (get_polygon_stream,
+                                   is_polygon_streaming_available)
+
     HAS_POLYGON_STREAM = True
 except ImportError as e:
     logger.warning(f"Polygon streaming not available: {e}")
@@ -35,6 +38,7 @@ except ImportError as e:
 
 class SubscribeRequest(BaseModel):
     """Subscribe request"""
+
     symbol: str
     trades: bool = True
     quotes: bool = True
@@ -67,7 +71,7 @@ async def start_stream():
     return {
         "success": True,
         "message": "Polygon stream started",
-        "status": stream.get_status()
+        "status": stream.get_status(),
     }
 
 
@@ -79,10 +83,7 @@ async def stop_stream():
 
     stream = get_polygon_stream()
     stream.stop()
-    return {
-        "success": True,
-        "message": "Polygon stream stopped"
-    }
+    return {"success": True, "message": "Polygon stream stopped"}
 
 
 @router.post("/subscribe")
@@ -104,7 +105,7 @@ async def subscribe_symbol(request: SubscribeRequest):
         "symbol": symbol,
         "trades": request.trades,
         "quotes": request.quotes,
-        "status": stream.get_status()
+        "status": stream.get_status(),
     }
 
 
@@ -120,7 +121,7 @@ async def unsubscribe_symbol(symbol: str):
     return {
         "success": True,
         "symbol": symbol.upper(),
-        "message": f"Unsubscribed from {symbol.upper()}"
+        "message": f"Unsubscribed from {symbol.upper()}",
     }
 
 
@@ -133,11 +134,7 @@ async def get_trades(symbol: str, limit: int = 50):
     stream = get_polygon_stream()
     trades = stream.get_trades(symbol.upper(), limit)
 
-    return {
-        "symbol": symbol.upper(),
-        "count": len(trades),
-        "trades": trades
-    }
+    return {"symbol": symbol.upper(), "count": len(trades), "trades": trades}
 
 
 @router.get("/quote/{symbol}")
@@ -154,7 +151,7 @@ async def get_quote(symbol: str):
     else:
         return {
             "symbol": symbol.upper(),
-            "message": "No quote available - symbol may not be subscribed"
+            "message": "No quote available - symbol may not be subscribed",
         }
 
 
@@ -167,10 +164,7 @@ async def get_depth(symbol: str, levels: int = 10):
     stream = get_polygon_stream()
     depth = stream.get_synthetic_depth(symbol.upper(), levels)
 
-    return {
-        "symbol": symbol.upper(),
-        **depth
-    }
+    return {"symbol": symbol.upper(), **depth}
 
 
 @router.get("/tape")
@@ -182,10 +176,7 @@ async def get_tape(limit: int = 100):
     stream = get_polygon_stream()
     tape = stream.get_tape(limit)
 
-    return {
-        "count": len(tape),
-        "trades": tape
-    }
+    return {"count": len(tape), "trades": tape}
 
 
 @router.post("/subscribe-watchlist")
@@ -208,5 +199,5 @@ async def subscribe_watchlist(symbols: List[str]):
         "success": True,
         "subscribed": subscribed,
         "count": len(subscribed),
-        "status": stream.get_status()
+        "status": stream.get_status(),
     }

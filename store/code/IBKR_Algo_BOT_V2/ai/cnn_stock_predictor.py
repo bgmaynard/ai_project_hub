@@ -17,19 +17,20 @@ Architecture:
 - Multi-head output for price direction, magnitude, and confidence
 """
 
+import json
+import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import ta  # Technical analysis library
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
-import logging
-import json
-from pathlib import Path
-import ta  # Technical analysis library
+from torch.utils.data import DataLoader, Dataset
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,11 @@ logger = logging.getLogger(__name__)
 # DATA STRUCTURES
 # ============================================================================
 
+
 @dataclass
 class StockProfile:
     """Profile of a stock's trading characteristics"""
+
     symbol: str
     volatility_regime: str  # low, medium, high
     trend_strength: float  # 0-1
@@ -56,6 +59,7 @@ class StockProfile:
 @dataclass
 class PredictionMetrics:
     """Metrics for evaluating prediction quality"""
+
     accuracy: float
     precision: float
     recall: float
@@ -70,6 +74,7 @@ class PredictionMetrics:
 # ============================================================================
 # TEMPORAL WEIGHT DECAY
 # ============================================================================
+
 
 class TemporalWeightDecay:
     """
@@ -109,6 +114,7 @@ class TemporalWeightDecay:
 # CNN MODEL ARCHITECTURE
 # ============================================================================
 
+
 class StockPatternCNN(nn.Module):
     """
     1D Convolutional Neural Network for stock pattern recognition.
@@ -127,7 +133,7 @@ class StockPatternCNN(nn.Module):
         hidden_channels: List[int] = [64, 128, 256],
         kernel_sizes: List[int] = [3, 5, 7],
         dropout_rate: float = 0.3,
-        num_classes: int = 3  # BUY, HOLD, SELL
+        num_classes: int = 3,  # BUY, HOLD, SELL
     ):
         super(StockPatternCNN, self).__init__()
 
@@ -142,7 +148,9 @@ class StockPatternCNN(nn.Module):
 
         self.conv_blocks = nn.ModuleList()
 
-        for i, (out_channels, kernel_size) in enumerate(zip(hidden_channels, kernel_sizes)):
+        for i, (out_channels, kernel_size) in enumerate(
+            zip(hidden_channels, kernel_sizes)
+        ):
             in_channels = input_features if i == 0 else hidden_channels[i - 1]
 
             block = nn.Sequential(
@@ -151,7 +159,7 @@ class StockPatternCNN(nn.Module):
                     out_channels=out_channels,
                     kernel_size=kernel_size,
                     padding=kernel_size // 2,
-                    bias=False  # No bias when using BatchNorm
+                    bias=False,  # No bias when using BatchNorm
                 ),
                 nn.BatchNorm1d(out_channels),
                 nn.GELU(),  # GELU often works better than ReLU for financial data
@@ -162,7 +170,7 @@ class StockPatternCNN(nn.Module):
                     out_channels=out_channels,
                     kernel_size=kernel_size,
                     padding=kernel_size // 2,
-                    bias=False
+                    bias=False,
                 ),
                 nn.BatchNorm1d(out_channels),
                 nn.GELU(),
@@ -178,7 +186,7 @@ class StockPatternCNN(nn.Module):
             nn.Linear(hidden_channels[-1], hidden_channels[-1] // 2),
             nn.Tanh(),
             nn.Linear(hidden_channels[-1] // 2, 1),
-            nn.Softmax(dim=1)
+            nn.Softmax(dim=1),
         )
 
         # =====================================================================
@@ -193,7 +201,7 @@ class StockPatternCNN(nn.Module):
             nn.Dropout(dropout_rate),
             nn.Linear(128, 64),
             nn.LayerNorm(64),
-            nn.GELU()
+            nn.GELU(),
         )
 
         # =====================================================================
@@ -203,24 +211,17 @@ class StockPatternCNN(nn.Module):
 
         # Direction prediction (BUY/HOLD/SELL)
         self.direction_head = nn.Sequential(
-            nn.Linear(64, 32),
-            nn.GELU(),
-            nn.Linear(32, num_classes)
+            nn.Linear(64, 32), nn.GELU(), nn.Linear(32, num_classes)
         )
 
         # Magnitude prediction (expected move %)
         self.magnitude_head = nn.Sequential(
-            nn.Linear(64, 32),
-            nn.GELU(),
-            nn.Linear(32, 1)
+            nn.Linear(64, 32), nn.GELU(), nn.Linear(32, 1)
         )
 
         # Confidence estimation
         self.confidence_head = nn.Sequential(
-            nn.Linear(64, 32),
-            nn.GELU(),
-            nn.Linear(32, 1),
-            nn.Sigmoid()
+            nn.Linear(64, 32), nn.GELU(), nn.Linear(32, 1), nn.Sigmoid()
         )
 
         # Volatility regime prediction
@@ -228,7 +229,7 @@ class StockPatternCNN(nn.Module):
             nn.Linear(64, 32),
             nn.GELU(),
             nn.Linear(32, 3),  # low, medium, high
-            nn.Softmax(dim=-1)
+            nn.Softmax(dim=-1),
         )
 
         # Initialize weights
@@ -243,9 +244,7 @@ class StockPatternCNN(nn.Module):
                     nn.init.zeros_(module.bias)
 
     def forward(
-        self,
-        x: torch.Tensor,
-        return_profile: bool = False
+        self, x: torch.Tensor, return_profile: bool = False
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass through the CNN.
@@ -292,7 +291,7 @@ class StockPatternCNN(nn.Module):
             "direction_probs": direction_probs,
             "magnitude": magnitude,
             "confidence": confidence,
-            "volatility": volatility
+            "volatility": volatility,
         }
 
         if return_profile:
@@ -305,6 +304,7 @@ class StockPatternCNN(nn.Module):
 # STOCK PROFILE DATASET
 # ============================================================================
 
+
 class StockProfileDataset(Dataset):
     """Dataset for training the CNN stock predictor"""
 
@@ -313,7 +313,7 @@ class StockProfileDataset(Dataset):
         data: pd.DataFrame,
         sequence_length: int = 60,
         prediction_horizon: int = 5,
-        temporal_decay: Optional[TemporalWeightDecay] = None
+        temporal_decay: Optional[TemporalWeightDecay] = None,
     ):
         """
         Args:
@@ -332,12 +332,14 @@ class StockProfileDataset(Dataset):
     def _prepare_data(self, data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
         """Prepare feature sequences and labels"""
         # Feature columns (exclude target-related columns)
-        exclude_cols = ['target', 'target_return', 'future_return', 'Date', 'date']
+        exclude_cols = ["target", "target_return", "future_return", "Date", "date"]
         feature_cols = [c for c in data.columns if c not in exclude_cols]
 
         # Normalize features
         features = data[feature_cols].values
-        features = (features - np.nanmean(features, axis=0)) / (np.nanstd(features, axis=0) + 1e-8)
+        features = (features - np.nanmean(features, axis=0)) / (
+            np.nanstd(features, axis=0) + 1e-8
+        )
         features = np.nan_to_num(features, nan=0.0)
 
         # Create sequences
@@ -345,13 +347,17 @@ class StockProfileDataset(Dataset):
 
         for i in range(len(features) - self.sequence_length - self.prediction_horizon):
             # Input sequence
-            seq = features[i:i + self.sequence_length]
+            seq = features[i : i + self.sequence_length]
             X.append(seq)
 
             # Target: future return direction
-            current_close_idx = feature_cols.index('Close') if 'Close' in feature_cols else 0
-            current_price = data.iloc[i + self.sequence_length - 1]['Close']
-            future_price = data.iloc[i + self.sequence_length + self.prediction_horizon - 1]['Close']
+            current_close_idx = (
+                feature_cols.index("Close") if "Close" in feature_cols else 0
+            )
+            current_price = data.iloc[i + self.sequence_length - 1]["Close"]
+            future_price = data.iloc[
+                i + self.sequence_length + self.prediction_horizon - 1
+            ]["Close"]
             future_return = (future_price - current_price) / current_price
 
             # Classify into BUY (0), HOLD (1), SELL (2)
@@ -384,6 +390,7 @@ class StockProfileDataset(Dataset):
 # TRAINING PIPELINE
 # ============================================================================
 
+
 class CNNTrainer:
     """Training pipeline for the CNN stock predictor"""
 
@@ -393,7 +400,7 @@ class CNNTrainer:
         learning_rate: float = 0.001,
         weight_decay: float = 0.01,  # L2 regularization
         temporal_decay_rate: float = 0.995,
-        device: str = "auto"
+        device: str = "auto",
     ):
         """
         Args:
@@ -419,15 +426,12 @@ class CNNTrainer:
             model.parameters(),
             lr=learning_rate,
             weight_decay=weight_decay,  # This is the key for weight decay
-            betas=(0.9, 0.999)
+            betas=(0.9, 0.999),
         )
 
         # Learning rate scheduler (verbose removed in PyTorch 2.x)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer,
-            mode='min',
-            factor=0.5,
-            patience=5
+            self.optimizer, mode="min", factor=0.5, patience=5
         )
 
         # Loss functions
@@ -444,7 +448,7 @@ class CNNTrainer:
             "val_loss": [],
             "train_acc": [],
             "val_acc": [],
-            "learning_rates": []
+            "learning_rates": [],
         }
 
         # Metrics tracking
@@ -524,7 +528,7 @@ class CNNTrainer:
         val_loader: DataLoader,
         epochs: int = 100,
         early_stopping_patience: int = 10,
-        save_path: Optional[str] = None
+        save_path: Optional[str] = None,
     ) -> Dict:
         """
         Full training loop with early stopping
@@ -532,7 +536,7 @@ class CNNTrainer:
         Returns:
             Training history and final metrics
         """
-        best_val_loss = float('inf')
+        best_val_loss = float("inf")
         patience_counter = 0
 
         logger.info(f"Starting training for {epochs} epochs...")
@@ -546,7 +550,7 @@ class CNNTrainer:
 
             # Update scheduler
             self.scheduler.step(val_loss)
-            current_lr = self.optimizer.param_groups[0]['lr']
+            current_lr = self.optimizer.param_groups[0]["lr"]
 
             # Record history
             self.history["train_loss"].append(train_loss)
@@ -587,7 +591,7 @@ class CNNTrainer:
             "history": self.history,
             "metrics": asdict(self.metrics) if self.metrics else None,
             "best_val_loss": best_val_loss,
-            "epochs_trained": epoch + 1
+            "epochs_trained": epoch + 1,
         }
 
     def _compute_final_metrics(self, val_loader: DataLoader) -> PredictionMetrics:
@@ -623,18 +627,22 @@ class CNNTrainer:
         accuracy = np.mean(all_predictions == all_labels)
 
         # Precision, Recall, F1 for each class
-        from sklearn.metrics import precision_score, recall_score, f1_score
+        from sklearn.metrics import f1_score, precision_score, recall_score
 
-        precision = precision_score(all_labels, all_predictions, average='weighted', zero_division=0)
-        recall = recall_score(all_labels, all_predictions, average='weighted', zero_division=0)
-        f1 = f1_score(all_labels, all_predictions, average='weighted', zero_division=0)
+        precision = precision_score(
+            all_labels, all_predictions, average="weighted", zero_division=0
+        )
+        recall = recall_score(
+            all_labels, all_predictions, average="weighted", zero_division=0
+        )
+        f1 = f1_score(all_labels, all_predictions, average="weighted", zero_division=0)
 
         # Directional accuracy (did we get the sign right for non-HOLD predictions)
         buy_sell_mask = (all_labels != 1) | (all_predictions != 1)
         if buy_sell_mask.sum() > 0:
             directional_acc = np.mean(
-                ((all_predictions == 0) & (all_labels == 0)) |  # Both say BUY
-                ((all_predictions == 2) & (all_labels == 2))     # Both say SELL
+                ((all_predictions == 0) & (all_labels == 0))  # Both say BUY
+                | ((all_predictions == 2) & (all_labels == 2))  # Both say SELL
             )
         else:
             directional_acc = 0.5
@@ -656,34 +664,38 @@ class CNNTrainer:
             profit_factor=0.0,  # Computed in backtesting
             max_drawdown=0.0,  # Computed in backtesting
             brier_score=brier_score,
-            directional_accuracy=directional_acc
+            directional_accuracy=directional_acc,
         )
 
     def save_model(self, path: str):
         """Save model state"""
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'history': self.history,
-            'metrics': asdict(self.metrics) if self.metrics else None
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "history": self.history,
+                "metrics": asdict(self.metrics) if self.metrics else None,
+            },
+            path,
+        )
 
     def load_model(self, path: str):
         """Load model state"""
         # Use weights_only=False for compatibility with PyTorch 2.6+
         # The model was saved by this system so it's trusted
         checkpoint = torch.load(path, map_location=self.device, weights_only=False)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.history = checkpoint.get('history', self.history)
-        if checkpoint.get('metrics'):
-            self.metrics = PredictionMetrics(**checkpoint['metrics'])
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        self.history = checkpoint.get("history", self.history)
+        if checkpoint.get("metrics"):
+            self.metrics = PredictionMetrics(**checkpoint["metrics"])
 
 
 # ============================================================================
 # STOCK PROFILE BUILDER
 # ============================================================================
+
 
 class StockProfileBuilder:
     """Build and maintain stock profiles using CNN predictions"""
@@ -713,9 +725,11 @@ class StockProfileBuilder:
             StockProfile with trading characteristics
         """
         # Prepare data
-        feature_cols = [c for c in data.columns if c not in ['Date', 'date']]
+        feature_cols = [c for c in data.columns if c not in ["Date", "date"]]
         features = data[feature_cols].values
-        features = (features - np.nanmean(features, axis=0)) / (np.nanstd(features, axis=0) + 1e-8)
+        features = (features - np.nanmean(features, axis=0)) / (
+            np.nanstd(features, axis=0) + 1e-8
+        )
         features = np.nan_to_num(features, nan=0.0)
 
         # Use last 60 bars for profile
@@ -757,9 +771,9 @@ class StockProfileBuilder:
         pattern_signatures = self._detect_patterns(outputs.get("profile"))
 
         # Volume profile from recent data
-        if 'Volume' in data.columns:
-            recent_vol = data['Volume'].iloc[-20:].mean()
-            avg_vol = data['Volume'].mean()
+        if "Volume" in data.columns:
+            recent_vol = data["Volume"].iloc[-20:].mean()
+            avg_vol = data["Volume"].mean()
             vol_ratio = recent_vol / avg_vol if avg_vol > 0 else 1.0
 
             if vol_ratio > 1.5:
@@ -785,7 +799,7 @@ class StockProfileBuilder:
             optimal_holding_period=optimal_holding,
             pattern_signatures=pattern_signatures,
             confidence=float(confidence),
-            last_updated=datetime.now().isoformat()
+            last_updated=datetime.now().isoformat(),
         )
 
         self.profiles[symbol] = profile
@@ -856,13 +870,14 @@ class StockProfileBuilder:
             "volatility_regime": profile.volatility_regime,
             "patterns": profile.pattern_signatures,
             "optimal_holding_period": profile.optimal_holding_period,
-            "profile": asdict(profile)
+            "profile": asdict(profile),
         }
 
 
 # ============================================================================
 # BACKTESTING INTEGRATION
 # ============================================================================
+
 
 class CNNBacktester:
     """Backtest the CNN predictor on historical data"""
@@ -880,7 +895,7 @@ class CNNBacktester:
         stop_loss_pct: float = 0.03,
         take_profit_pct: float = 0.06,
         lookback: int = 60,
-        prediction_interval: int = 1
+        prediction_interval: int = 1,
     ) -> Dict:
         """
         Run backtest on historical data.
@@ -908,81 +923,105 @@ class CNNBacktester:
 
         for i in range(lookback, len(data), prediction_interval):
             current_bar = data.iloc[i]
-            current_price = current_bar['Close']
+            current_price = current_bar["Close"]
 
             # Check existing position
             if position:
                 # Check stop loss / take profit
-                pnl_pct = (current_price - position['entry_price']) / position['entry_price']
+                pnl_pct = (current_price - position["entry_price"]) / position[
+                    "entry_price"
+                ]
 
-                if position['side'] == 'SELL':
+                if position["side"] == "SELL":
                     pnl_pct = -pnl_pct
 
                 # Stop loss hit
                 if pnl_pct <= -stop_loss_pct:
-                    exit_pnl = position['quantity'] * position['entry_price'] * (-stop_loss_pct)
-                    capital += position['value'] + exit_pnl
+                    exit_pnl = (
+                        position["quantity"]
+                        * position["entry_price"]
+                        * (-stop_loss_pct)
+                    )
+                    capital += position["value"] + exit_pnl
 
-                    self.trades.append({
-                        'symbol': symbol,
-                        'entry_date': position['entry_date'],
-                        'entry_price': position['entry_price'],
-                        'exit_date': current_bar.name.isoformat() if hasattr(current_bar.name, 'isoformat') else str(current_bar.name),
-                        'exit_price': current_price,
-                        'side': position['side'],
-                        'quantity': position['quantity'],
-                        'pnl': exit_pnl,
-                        'pnl_pct': -stop_loss_pct * 100,
-                        'exit_reason': 'stop_loss'
-                    })
+                    self.trades.append(
+                        {
+                            "symbol": symbol,
+                            "entry_date": position["entry_date"],
+                            "entry_price": position["entry_price"],
+                            "exit_date": (
+                                current_bar.name.isoformat()
+                                if hasattr(current_bar.name, "isoformat")
+                                else str(current_bar.name)
+                            ),
+                            "exit_price": current_price,
+                            "side": position["side"],
+                            "quantity": position["quantity"],
+                            "pnl": exit_pnl,
+                            "pnl_pct": -stop_loss_pct * 100,
+                            "exit_reason": "stop_loss",
+                        }
+                    )
                     position = None
                     continue
 
                 # Take profit hit
                 if pnl_pct >= take_profit_pct:
-                    exit_pnl = position['quantity'] * position['entry_price'] * take_profit_pct
-                    capital += position['value'] + exit_pnl
+                    exit_pnl = (
+                        position["quantity"] * position["entry_price"] * take_profit_pct
+                    )
+                    capital += position["value"] + exit_pnl
 
-                    self.trades.append({
-                        'symbol': symbol,
-                        'entry_date': position['entry_date'],
-                        'entry_price': position['entry_price'],
-                        'exit_date': current_bar.name.isoformat() if hasattr(current_bar.name, 'isoformat') else str(current_bar.name),
-                        'exit_price': current_price,
-                        'side': position['side'],
-                        'quantity': position['quantity'],
-                        'pnl': exit_pnl,
-                        'pnl_pct': take_profit_pct * 100,
-                        'exit_reason': 'take_profit'
-                    })
+                    self.trades.append(
+                        {
+                            "symbol": symbol,
+                            "entry_date": position["entry_date"],
+                            "entry_price": position["entry_price"],
+                            "exit_date": (
+                                current_bar.name.isoformat()
+                                if hasattr(current_bar.name, "isoformat")
+                                else str(current_bar.name)
+                            ),
+                            "exit_price": current_price,
+                            "side": position["side"],
+                            "quantity": position["quantity"],
+                            "pnl": exit_pnl,
+                            "pnl_pct": take_profit_pct * 100,
+                            "exit_reason": "take_profit",
+                        }
+                    )
                     position = None
                     continue
 
             # Get prediction
-            historical_slice = data.iloc[i - lookback:i]
+            historical_slice = data.iloc[i - lookback : i]
             prediction = self.profile_builder.predict(symbol, historical_slice)
 
             # Enter new position if no current position
-            if position is None and prediction['action'] != 'HOLD':
-                if prediction['confidence'] > 0.6:  # Only trade with high confidence
+            if position is None and prediction["action"] != "HOLD":
+                if prediction["confidence"] > 0.6:  # Only trade with high confidence
                     position_value = capital * position_size_pct
                     quantity = int(position_value / current_price)
 
                     if quantity > 0:
                         position = {
-                            'entry_date': current_bar.name.isoformat() if hasattr(current_bar.name, 'isoformat') else str(current_bar.name),
-                            'entry_price': current_price,
-                            'side': prediction['action'],
-                            'quantity': quantity,
-                            'value': position_value,
-                            'confidence': prediction['confidence']
+                            "entry_date": (
+                                current_bar.name.isoformat()
+                                if hasattr(current_bar.name, "isoformat")
+                                else str(current_bar.name)
+                            ),
+                            "entry_price": current_price,
+                            "side": prediction["action"],
+                            "quantity": quantity,
+                            "value": position_value,
+                            "confidence": prediction["confidence"],
                         }
                         capital -= position_value
 
             # Track drawdown
             total_value = capital
             if position:
-                current_value = position['quantity'] * current_price
+                current_value = position["quantity"] * current_price
                 total_value += current_value
 
             if total_value > peak_capital:
@@ -1000,40 +1039,46 @@ class CNNBacktester:
 
         # Close any remaining position at end
         if position:
-            final_price = data.iloc[-1]['Close']
-            pnl_pct = (final_price - position['entry_price']) / position['entry_price']
-            if position['side'] == 'SELL':
+            final_price = data.iloc[-1]["Close"]
+            pnl_pct = (final_price - position["entry_price"]) / position["entry_price"]
+            if position["side"] == "SELL":
                 pnl_pct = -pnl_pct
-            exit_pnl = position['quantity'] * position['entry_price'] * pnl_pct
-            capital += position['value'] + exit_pnl
+            exit_pnl = position["quantity"] * position["entry_price"] * pnl_pct
+            capital += position["value"] + exit_pnl
 
-            self.trades.append({
-                'symbol': symbol,
-                'entry_date': position['entry_date'],
-                'entry_price': position['entry_price'],
-                'exit_date': data.index[-1].isoformat() if hasattr(data.index[-1], 'isoformat') else str(data.index[-1]),
-                'exit_price': final_price,
-                'side': position['side'],
-                'quantity': position['quantity'],
-                'pnl': exit_pnl,
-                'pnl_pct': pnl_pct * 100,
-                'exit_reason': 'end_of_backtest'
-            })
+            self.trades.append(
+                {
+                    "symbol": symbol,
+                    "entry_date": position["entry_date"],
+                    "entry_price": position["entry_price"],
+                    "exit_date": (
+                        data.index[-1].isoformat()
+                        if hasattr(data.index[-1], "isoformat")
+                        else str(data.index[-1])
+                    ),
+                    "exit_price": final_price,
+                    "side": position["side"],
+                    "quantity": position["quantity"],
+                    "pnl": exit_pnl,
+                    "pnl_pct": pnl_pct * 100,
+                    "exit_reason": "end_of_backtest",
+                }
+            )
 
         # Calculate metrics
         final_capital = capital
         total_return = final_capital - initial_capital
         total_return_pct = (total_return / initial_capital) * 100
 
-        wins = [t for t in self.trades if t['pnl'] > 0]
-        losses = [t for t in self.trades if t['pnl'] <= 0]
+        wins = [t for t in self.trades if t["pnl"] > 0]
+        losses = [t for t in self.trades if t["pnl"] <= 0]
 
         win_rate = len(wins) / len(self.trades) if self.trades else 0
-        avg_win = np.mean([t['pnl'] for t in wins]) if wins else 0
-        avg_loss = np.mean([abs(t['pnl']) for t in losses]) if losses else 0
+        avg_win = np.mean([t["pnl"] for t in wins]) if wins else 0
+        avg_loss = np.mean([abs(t["pnl"]) for t in losses]) if losses else 0
 
-        gross_profit = sum(t['pnl'] for t in wins) if wins else 0
-        gross_loss = sum(abs(t['pnl']) for t in losses) if losses else 1
+        gross_profit = sum(t["pnl"] for t in wins) if wins else 0
+        gross_loss = sum(abs(t["pnl"]) for t in losses) if losses else 1
         profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
 
         # Sharpe ratio (annualized)
@@ -1047,27 +1092,28 @@ class CNNBacktester:
             sharpe = 0
 
         return {
-            'symbol': symbol,
-            'initial_capital': initial_capital,
-            'final_capital': final_capital,
-            'total_return': total_return,
-            'total_return_pct': total_return_pct,
-            'total_trades': len(self.trades),
-            'winning_trades': len(wins),
-            'losing_trades': len(losses),
-            'win_rate': win_rate,
-            'profit_factor': profit_factor,
-            'max_drawdown': max_drawdown * 100,
-            'sharpe_ratio': sharpe,
-            'avg_win': avg_win,
-            'avg_loss': avg_loss,
-            'trades': self.trades
+            "symbol": symbol,
+            "initial_capital": initial_capital,
+            "final_capital": final_capital,
+            "total_return": total_return,
+            "total_return_pct": total_return_pct,
+            "total_trades": len(self.trades),
+            "winning_trades": len(wins),
+            "losing_trades": len(losses),
+            "win_rate": win_rate,
+            "profit_factor": profit_factor,
+            "max_drawdown": max_drawdown * 100,
+            "sharpe_ratio": sharpe,
+            "avg_win": avg_win,
+            "avg_loss": avg_loss,
+            "trades": self.trades,
         }
 
 
 # ============================================================================
 # MAIN PREDICTOR CLASS (Integration with existing system)
 # ============================================================================
+
 
 class CNNStockPredictor:
     """
@@ -1079,7 +1125,7 @@ class CNNStockPredictor:
         self,
         model_path: str = "store/models/cnn_predictor.pt",
         input_features: int = 30,
-        sequence_length: int = 60
+        sequence_length: int = 60,
     ):
         self.model_path = model_path
         self.input_features = input_features
@@ -1087,8 +1133,7 @@ class CNNStockPredictor:
 
         # Initialize model
         self.model = StockPatternCNN(
-            input_features=input_features,
-            sequence_length=sequence_length
+            input_features=input_features, sequence_length=sequence_length
         )
 
         # Device
@@ -1113,11 +1158,13 @@ class CNNStockPredictor:
         if Path(self.model_path).exists():
             try:
                 # Use weights_only=False for compatibility with PyTorch 2.6+
-                checkpoint = torch.load(self.model_path, map_location=self.device, weights_only=False)
-                self.model.load_state_dict(checkpoint['model_state_dict'])
-                self.last_trained = checkpoint.get('last_trained')
-                if checkpoint.get('metrics'):
-                    self.training_metrics = PredictionMetrics(**checkpoint['metrics'])
+                checkpoint = torch.load(
+                    self.model_path, map_location=self.device, weights_only=False
+                )
+                self.model.load_state_dict(checkpoint["model_state_dict"])
+                self.last_trained = checkpoint.get("last_trained")
+                if checkpoint.get("metrics"):
+                    self.training_metrics = PredictionMetrics(**checkpoint["metrics"])
                 logger.info(f"Loaded CNN model from {self.model_path}")
             except Exception as e:
                 logger.warning(f"Could not load model: {e}")
@@ -1128,7 +1175,7 @@ class CNNStockPredictor:
         days: int = 365,
         epochs: int = 50,
         batch_size: int = 32,
-        validation_split: float = 0.2
+        validation_split: float = 0.2,
     ) -> Dict:
         """
         Train the CNN model on historical data.
@@ -1143,10 +1190,12 @@ class CNNStockPredictor:
         Returns:
             Training results
         """
-        import yfinance as yf
         import ta
+        import yfinance as yf
 
-        logger.info(f"Training CNN on {len(symbols)} symbols with {days} days of data...")
+        logger.info(
+            f"Training CNN on {len(symbols)} symbols with {days} days of data..."
+        )
 
         # Collect data from all symbols
         all_data = []
@@ -1158,9 +1207,9 @@ class CNNStockPredictor:
 
                 df = yf.download(
                     symbol,
-                    start=start_date.strftime('%Y-%m-%d'),
-                    end=end_date.strftime('%Y-%m-%d'),
-                    progress=False
+                    start=start_date.strftime("%Y-%m-%d"),
+                    end=end_date.strftime("%Y-%m-%d"),
+                    progress=False,
                 )
 
                 if len(df) < self.sequence_length + 10:
@@ -1191,7 +1240,7 @@ class CNNStockPredictor:
         dataset = StockProfileDataset(
             combined_data,
             sequence_length=self.sequence_length,
-            temporal_decay=temporal_decay
+            temporal_decay=temporal_decay,
         )
 
         # Split into train/val
@@ -1210,7 +1259,7 @@ class CNNStockPredictor:
             self.model,
             learning_rate=0.001,
             weight_decay=0.01,  # L2 regularization
-            device=str(self.device)
+            device=str(self.device),
         )
 
         results = trainer.train(
@@ -1218,22 +1267,29 @@ class CNNStockPredictor:
             val_loader,
             epochs=epochs,
             early_stopping_patience=10,
-            save_path=self.model_path
+            save_path=self.model_path,
         )
 
         self.training_metrics = trainer.metrics
         self.last_trained = datetime.now().isoformat()
 
         # Save final model with metadata
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'last_trained': self.last_trained,
-            'metrics': asdict(self.training_metrics) if self.training_metrics else None,
-            'symbols_trained': symbols,
-            'training_days': days
-        }, self.model_path)
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "last_trained": self.last_trained,
+                "metrics": (
+                    asdict(self.training_metrics) if self.training_metrics else None
+                ),
+                "symbols_trained": symbols,
+                "training_days": days,
+            },
+            self.model_path,
+        )
 
-        logger.info(f"Training complete. Final accuracy: {results['metrics']['accuracy']:.4f}")
+        logger.info(
+            f"Training complete. Final accuracy: {results['metrics']['accuracy']:.4f}"
+        )
 
         return results
 
@@ -1247,55 +1303,63 @@ class CNNStockPredictor:
             data.columns = data.columns.get_level_values(0)
 
         # Ensure we have proper 1D Series for each column
-        for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+        for col in ["Open", "High", "Low", "Close", "Volume"]:
             if col in data.columns:
-                if hasattr(data[col], 'values') and len(data[col].values.shape) > 1:
+                if hasattr(data[col], "values") and len(data[col].values.shape) > 1:
                     data[col] = data[col].values.flatten()
 
         # Price features
-        close = data['Close'].squeeze() if hasattr(data['Close'], 'squeeze') else data['Close']
-        data['returns'] = close.pct_change()
-        data['log_returns'] = np.log(close / close.shift(1))
+        close = (
+            data["Close"].squeeze()
+            if hasattr(data["Close"], "squeeze")
+            else data["Close"]
+        )
+        data["returns"] = close.pct_change()
+        data["log_returns"] = np.log(close / close.shift(1))
 
         # Moving averages
         for window in [5, 10, 20, 50]:
-            data[f'sma_{window}'] = ta.trend.sma_indicator(data['Close'], window=window)
-            data[f'ema_{window}'] = ta.trend.ema_indicator(data['Close'], window=window)
+            data[f"sma_{window}"] = ta.trend.sma_indicator(data["Close"], window=window)
+            data[f"ema_{window}"] = ta.trend.ema_indicator(data["Close"], window=window)
 
         # MACD
-        macd = ta.trend.MACD(data['Close'])
-        data['macd'] = macd.macd()
-        data['macd_signal'] = macd.macd_signal()
-        data['macd_diff'] = macd.macd_diff()
+        macd = ta.trend.MACD(data["Close"])
+        data["macd"] = macd.macd()
+        data["macd_signal"] = macd.macd_signal()
+        data["macd_diff"] = macd.macd_diff()
 
         # RSI
-        data['rsi'] = ta.momentum.rsi(data['Close'], window=14)
-        data['rsi_7'] = ta.momentum.rsi(data['Close'], window=7)
+        data["rsi"] = ta.momentum.rsi(data["Close"], window=14)
+        data["rsi_7"] = ta.momentum.rsi(data["Close"], window=7)
 
         # Bollinger Bands
-        bb = ta.volatility.BollingerBands(data['Close'])
-        data['bb_high'] = bb.bollinger_hband()
-        data['bb_low'] = bb.bollinger_lband()
-        data['bb_mid'] = bb.bollinger_mavg()
-        data['bb_width'] = (data['bb_high'] - data['bb_low']) / data['bb_mid']
+        bb = ta.volatility.BollingerBands(data["Close"])
+        data["bb_high"] = bb.bollinger_hband()
+        data["bb_low"] = bb.bollinger_lband()
+        data["bb_mid"] = bb.bollinger_mavg()
+        data["bb_width"] = (data["bb_high"] - data["bb_low"]) / data["bb_mid"]
 
         # ATR
-        data['atr'] = ta.volatility.average_true_range(data['High'], data['Low'], data['Close'])
+        data["atr"] = ta.volatility.average_true_range(
+            data["High"], data["Low"], data["Close"]
+        )
 
         # Volume features
-        data['volume_sma'] = ta.volume.volume_weighted_average_price(
-            data['High'], data['Low'], data['Close'], data['Volume']
+        data["volume_sma"] = ta.volume.volume_weighted_average_price(
+            data["High"], data["Low"], data["Close"], data["Volume"]
         )
-        data['volume_ratio'] = data['Volume'] / data['Volume'].rolling(20).mean()
+        data["volume_ratio"] = data["Volume"] / data["Volume"].rolling(20).mean()
 
         # ADX
-        adx = ta.trend.ADXIndicator(data['High'], data['Low'], data['Close'])
-        data['adx'] = adx.adx()
+        adx = ta.trend.ADXIndicator(data["High"], data["Low"], data["Close"])
+        data["adx"] = adx.adx()
 
         # Stochastic
-        stoch = ta.momentum.StochasticOscillator(data['High'], data['Low'], data['Close'])
-        data['stoch_k'] = stoch.stoch()
-        data['stoch_d'] = stoch.stoch_signal()
+        stoch = ta.momentum.StochasticOscillator(
+            data["High"], data["Low"], data["Close"]
+        )
+        data["stoch_k"] = stoch.stoch()
+        data["stoch_d"] = stoch.stoch_signal()
 
         return data
 
@@ -1312,6 +1376,7 @@ class CNNStockPredictor:
         """
         if data is None:
             import yfinance as yf
+
             end_date = datetime.now()
             start_date = end_date - timedelta(days=100)
             data = yf.download(symbol, start=start_date, end=end_date, progress=False)
@@ -1321,7 +1386,7 @@ class CNNStockPredictor:
                 "symbol": symbol,
                 "action": "HOLD",
                 "signal": "INSUFFICIENT_DATA",
-                "confidence": 0.0
+                "confidence": 0.0,
             }
 
         # Calculate features
@@ -1333,18 +1398,13 @@ class CNNStockPredictor:
                 "symbol": symbol,
                 "action": "HOLD",
                 "signal": "INSUFFICIENT_DATA",
-                "confidence": 0.0
+                "confidence": 0.0,
             }
 
         # Get prediction from profile builder
         return self.profile_builder.predict(symbol, data)
 
-    def backtest(
-        self,
-        symbol: str,
-        days: int = 180,
-        **kwargs
-    ) -> Dict:
+    def backtest(self, symbol: str, days: int = 180, **kwargs) -> Dict:
         """Run backtest on a symbol"""
         import yfinance as yf
 
@@ -1368,7 +1428,7 @@ class CNNStockPredictor:
             "metrics": asdict(self.training_metrics) if self.training_metrics else None,
             "input_features": self.input_features,
             "sequence_length": self.sequence_length,
-            "profiles_cached": len(self.profile_builder.profiles)
+            "profiles_cached": len(self.profile_builder.profiles),
         }
 
 
@@ -1400,8 +1460,12 @@ if __name__ == "__main__":
     parser.add_argument("--train", action="store_true", help="Train the model")
     parser.add_argument("--predict", type=str, help="Predict for a symbol")
     parser.add_argument("--backtest", type=str, help="Backtest a symbol")
-    parser.add_argument("--symbols", type=str, default="SPY,QQQ,AAPL,MSFT,GOOGL,AMZN,TSLA,NVDA",
-                       help="Comma-separated symbols for training")
+    parser.add_argument(
+        "--symbols",
+        type=str,
+        default="SPY,QQQ,AAPL,MSFT,GOOGL,AMZN,TSLA,NVDA",
+        help="Comma-separated symbols for training",
+    )
     parser.add_argument("--days", type=int, default=365, help="Days of historical data")
     parser.add_argument("--epochs", type=int, default=50, help="Training epochs")
 
@@ -1432,7 +1496,9 @@ if __name__ == "__main__":
         print("\n" + "=" * 60)
         print(f"BACKTEST RESULTS FOR {args.backtest}")
         print("=" * 60)
-        print(f"Total Return: ${results['total_return']:.2f} ({results['total_return_pct']:.2f}%)")
+        print(
+            f"Total Return: ${results['total_return']:.2f} ({results['total_return_pct']:.2f}%)"
+        )
         print(f"Win Rate: {results['win_rate']*100:.1f}%")
         print(f"Profit Factor: {results['profit_factor']:.2f}")
         print(f"Max Drawdown: {results['max_drawdown']:.2f}%")

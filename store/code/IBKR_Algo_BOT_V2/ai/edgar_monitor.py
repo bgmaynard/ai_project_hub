@@ -8,16 +8,17 @@ Uses free SEC API at data.sec.gov (sub-second updates, 10 req/sec limit)
 """
 
 import asyncio
-import logging
 import json
+import logging
 import os
 import re
-import httpx
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Callable
-from dataclasses import dataclass, asdict
 import threading
 import time
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Callable, Dict, List, Optional, Set
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ FILINGS_CACHE_FILE = os.path.join(os.path.dirname(__file__), "edgar_filings_cach
 @dataclass
 class EdgarFiling:
     """Represents an SEC filing"""
+
     accession_number: str
     cik: str
     company_name: str
@@ -80,6 +82,7 @@ class EdgarFiling:
 @dataclass
 class EdgarConfig:
     """Configuration for EDGAR monitor"""
+
     enabled: bool = True
     poll_interval_seconds: int = 5  # How often to check for new filings
     form_types: List[str] = None  # Which form types to monitor
@@ -121,7 +124,7 @@ class EdgarMonitor:
         """Load config from file"""
         try:
             if os.path.exists(CONFIG_FILE):
-                with open(CONFIG_FILE, 'r') as f:
+                with open(CONFIG_FILE, "r") as f:
                     data = json.load(f)
                     for key, value in data.items():
                         if hasattr(self.config, key):
@@ -132,7 +135,7 @@ class EdgarMonitor:
     def _save_config(self):
         """Save config to file"""
         try:
-            with open(CONFIG_FILE, 'w') as f:
+            with open(CONFIG_FILE, "w") as f:
                 json.dump(self.config.to_dict(), f, indent=2)
         except Exception as e:
             logger.error(f"Error saving EDGAR config: {e}")
@@ -141,9 +144,9 @@ class EdgarMonitor:
         """Load seen filings cache"""
         try:
             if os.path.exists(FILINGS_CACHE_FILE):
-                with open(FILINGS_CACHE_FILE, 'r') as f:
+                with open(FILINGS_CACHE_FILE, "r") as f:
                     data = json.load(f)
-                    self.seen_filings = set(data.get('seen', []))
+                    self.seen_filings = set(data.get("seen", []))
                     # Keep only last 1000 to prevent unbounded growth
                     if len(self.seen_filings) > 1000:
                         self.seen_filings = set(list(self.seen_filings)[-1000:])
@@ -153,8 +156,8 @@ class EdgarMonitor:
     def _save_cache(self):
         """Save seen filings cache"""
         try:
-            with open(FILINGS_CACHE_FILE, 'w') as f:
-                json.dump({'seen': list(self.seen_filings)[-1000:]}, f)
+            with open(FILINGS_CACHE_FILE, "w") as f:
+                json.dump({"seen": list(self.seen_filings)[-1000:]}, f)
         except Exception as e:
             logger.error(f"Error saving EDGAR cache: {e}")
 
@@ -181,7 +184,7 @@ class EdgarMonitor:
 
             headers = {
                 "User-Agent": "MorpheusTradingBot contact@example.com",
-                "Accept": "application/atom+xml"
+                "Accept": "application/atom+xml",
             }
 
             async with httpx.AsyncClient() as client:
@@ -192,46 +195,74 @@ class EdgarMonitor:
                     content = response.text
 
                     # Simple regex parsing for ATOM entries
-                    entries = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
+                    entries = re.findall(r"<entry>(.*?)</entry>", content, re.DOTALL)
 
                     for entry in entries:
                         try:
                             # Extract fields
-                            title_match = re.search(r'<title[^>]*>(.*?)</title>', entry)
+                            title_match = re.search(r"<title[^>]*>(.*?)</title>", entry)
                             link_match = re.search(r'<link[^>]*href="([^"]*)"', entry)
-                            updated_match = re.search(r'<updated>(.*?)</updated>', entry)
-                            summary_match = re.search(r'<summary[^>]*>(.*?)</summary>', entry, re.DOTALL)
+                            updated_match = re.search(
+                                r"<updated>(.*?)</updated>", entry
+                            )
+                            summary_match = re.search(
+                                r"<summary[^>]*>(.*?)</summary>", entry, re.DOTALL
+                            )
 
                             if title_match:
                                 title = title_match.group(1)
 
                                 # Parse title: "8-K - Company Name (0001234567)"
-                                title_parts = title.split(' - ', 1)
-                                filing_type = title_parts[0].strip() if title_parts else form_type
+                                title_parts = title.split(" - ", 1)
+                                filing_type = (
+                                    title_parts[0].strip() if title_parts else form_type
+                                )
 
-                                company_info = title_parts[1] if len(title_parts) > 1 else ""
-                                cik_match = re.search(r'\((\d+)\)', company_info)
+                                company_info = (
+                                    title_parts[1] if len(title_parts) > 1 else ""
+                                )
+                                cik_match = re.search(r"\((\d+)\)", company_info)
                                 cik = cik_match.group(1) if cik_match else ""
-                                company_name = re.sub(r'\s*\(\d+\)\s*$', '', company_info).strip()
+                                company_name = re.sub(
+                                    r"\s*\(\d+\)\s*$", "", company_info
+                                ).strip()
 
                                 # Extract accession number from link
                                 accession = ""
                                 if link_match:
                                     link = link_match.group(1)
-                                    acc_match = re.search(r'/(\d{10}-\d{2}-\d{6})', link)
+                                    acc_match = re.search(
+                                        r"/(\d{10}-\d{2}-\d{6})", link
+                                    )
                                     if acc_match:
                                         accession = acc_match.group(1)
 
-                                filings.append({
-                                    'accession_number': accession,
-                                    'cik': cik.zfill(10),
-                                    'company_name': company_name,
-                                    'form_type': filing_type,
-                                    'filed_date': updated_match.group(1)[:10] if updated_match else "",
-                                    'accepted_time': updated_match.group(1) if updated_match else "",
-                                    'url': link_match.group(1) if link_match else "",
-                                    'summary': summary_match.group(1) if summary_match else ""
-                                })
+                                filings.append(
+                                    {
+                                        "accession_number": accession,
+                                        "cik": cik.zfill(10),
+                                        "company_name": company_name,
+                                        "form_type": filing_type,
+                                        "filed_date": (
+                                            updated_match.group(1)[:10]
+                                            if updated_match
+                                            else ""
+                                        ),
+                                        "accepted_time": (
+                                            updated_match.group(1)
+                                            if updated_match
+                                            else ""
+                                        ),
+                                        "url": (
+                                            link_match.group(1) if link_match else ""
+                                        ),
+                                        "summary": (
+                                            summary_match.group(1)
+                                            if summary_match
+                                            else ""
+                                        ),
+                                    }
+                                )
                         except Exception as e:
                             logger.debug(f"Error parsing entry: {e}")
                             continue
@@ -256,7 +287,7 @@ class EdgarMonitor:
 
                 if response.status_code == 200:
                     data = response.json()
-                    tickers = data.get('tickers', [])
+                    tickers = data.get("tickers", [])
                     if tickers:
                         ticker = tickers[0]
                         self._ticker_cache[cik] = ticker
@@ -268,28 +299,40 @@ class EdgarMonitor:
 
     def _determine_priority(self, filing: Dict) -> str:
         """Determine priority based on filing type and content"""
-        form_type = filing.get('form_type', '').upper()
-        summary = filing.get('summary', '').lower()
+        form_type = filing.get("form_type", "").upper()
+        summary = filing.get("summary", "").lower()
 
         # 8-K with material items
-        if '8-K' in form_type:
+        if "8-K" in form_type:
             for item_code in HIGH_PRIORITY_ITEMS:
-                if item_code in summary or MATERIAL_8K_ITEMS.get(item_code, '').lower() in summary:
+                if (
+                    item_code in summary
+                    or MATERIAL_8K_ITEMS.get(item_code, "").lower() in summary
+                ):
                     return "high"
 
             # Check for keywords
-            high_priority_keywords = ['earnings', 'acquisition', 'merger', 'bankruptcy',
-                                     'resignation', 'ceo', 'cfo', 'delisting', 'fda']
+            high_priority_keywords = [
+                "earnings",
+                "acquisition",
+                "merger",
+                "bankruptcy",
+                "resignation",
+                "ceo",
+                "cfo",
+                "delisting",
+                "fda",
+            ]
             for keyword in high_priority_keywords:
                 if keyword in summary:
                     return "high"
 
         # Form 4 (insider trading)
-        if form_type == '4':
+        if form_type == "4":
             return "normal"
 
         # 10-K/10-Q (earnings related)
-        if form_type in ['10-K', '10-Q']:
+        if form_type in ["10-K", "10-Q"]:
             return "high"
 
         return "normal"
@@ -301,7 +344,7 @@ class EdgarMonitor:
                 filings = await self._fetch_recent_filings(form_type)
 
                 for filing_data in filings:
-                    accession = filing_data.get('accession_number', '')
+                    accession = filing_data.get("accession_number", "")
 
                     # Skip if already seen
                     if not accession or accession in self.seen_filings:
@@ -311,14 +354,17 @@ class EdgarMonitor:
                     self.seen_filings.add(accession)
 
                     # Look up ticker
-                    cik = filing_data.get('cik', '')
+                    cik = filing_data.get("cik", "")
                     ticker = await self._lookup_ticker(cik) if cik else None
 
                     # Determine priority
                     priority = self._determine_priority(filing_data)
 
                     # Skip low priority if configured
-                    if priority == "low" and self.config.min_priority in ["normal", "high"]:
+                    if priority == "low" and self.config.min_priority in [
+                        "normal",
+                        "high",
+                    ]:
                         continue
                     if priority == "normal" and self.config.min_priority == "high":
                         continue
@@ -327,14 +373,14 @@ class EdgarMonitor:
                     filing = EdgarFiling(
                         accession_number=accession,
                         cik=cik,
-                        company_name=filing_data.get('company_name', ''),
-                        form_type=filing_data.get('form_type', ''),
-                        filed_date=filing_data.get('filed_date', ''),
-                        accepted_time=filing_data.get('accepted_time', ''),
+                        company_name=filing_data.get("company_name", ""),
+                        form_type=filing_data.get("form_type", ""),
+                        filed_date=filing_data.get("filed_date", ""),
+                        accepted_time=filing_data.get("accepted_time", ""),
                         ticker=ticker,
-                        description=filing_data.get('summary', ''),
-                        url=filing_data.get('url', ''),
-                        priority=priority
+                        description=filing_data.get("summary", ""),
+                        url=filing_data.get("url", ""),
+                        priority=priority,
                     )
 
                     # Add to recent filings
@@ -343,13 +389,19 @@ class EdgarMonitor:
 
                     # Log it
                     ticker_str = f"[{ticker}]" if ticker else ""
-                    logger.info(f"NEW EDGAR FILING: {filing.form_type} {ticker_str} {filing.company_name} - Priority: {priority}")
+                    logger.info(
+                        f"NEW EDGAR FILING: {filing.form_type} {ticker_str} {filing.company_name} - Priority: {priority}"
+                    )
 
                     # Notify callbacks
                     self._notify_callbacks(filing)
 
                     # Auto-add to watchlist if enabled and has ticker
-                    if self.config.auto_add_to_watchlist and ticker and priority == "high":
+                    if (
+                        self.config.auto_add_to_watchlist
+                        and ticker
+                        and priority == "high"
+                    ):
                         await self._add_to_watchlist(ticker)
 
             except Exception as e:
@@ -365,7 +417,7 @@ class EdgarMonitor:
                 response = await client.post(
                     "http://localhost:9100/api/worklist/add",
                     json={"symbol": ticker},
-                    timeout=5
+                    timeout=5,
                 )
                 if response.status_code == 200:
                     logger.info(f"EDGAR: Added {ticker} to watchlist")
@@ -424,7 +476,7 @@ class EdgarMonitor:
             "config": self.config.to_dict(),
             "filings_seen": len(self.seen_filings),
             "recent_filings_count": len(self.recent_filings),
-            "ticker_cache_size": len(self._ticker_cache)
+            "ticker_cache_size": len(self._ticker_cache),
         }
 
     def update_config(self, **kwargs):

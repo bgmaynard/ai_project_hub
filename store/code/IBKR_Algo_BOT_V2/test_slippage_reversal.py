@@ -5,11 +5,11 @@ Phase 4+: High-speed trading protection
 Run with: python test_slippage_reversal_fixed.py
 """
 
-import unittest
-import sys
 import logging
+import sys
+import unittest
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -18,11 +18,10 @@ class TestSlippageMonitor(unittest.TestCase):
 
     def setUp(self):
         try:
-            from ai.warrior_slippage_monitor import (
-                WarriorSlippageMonitor,
-                get_slippage_monitor,
-                SlippageLevel
-            )
+            from ai.warrior_slippage_monitor import (SlippageLevel,
+                                                     WarriorSlippageMonitor,
+                                                     get_slippage_monitor)
+
             self.SlippageMonitor = WarriorSlippageMonitor
             self.get_monitor = get_slippage_monitor
             self.SlippageLevel = SlippageLevel
@@ -62,30 +61,30 @@ class TestSlippageMonitor(unittest.TestCase):
         if not self.available:
             self.skipTest("Not available")
         monitor = self.SlippageMonitor()
-        
+
         e1 = monitor.record_execution("T", "buy", 100, 100.08, 100)
         self.assertEqual(e1.slippage_level, self.SlippageLevel.ACCEPTABLE)
-        
+
         e2 = monitor.record_execution("T", "buy", 100, 100.15, 100)
         self.assertEqual(e2.slippage_level, self.SlippageLevel.WARNING)
-        
+
         e3 = monitor.record_execution("T", "buy", 100, 100.30, 100)
         self.assertEqual(e3.slippage_level, self.SlippageLevel.CRITICAL)
-        
+
         logger.info("[OK] Severity levels correct")
 
     def test_06_statistics(self):
         if not self.available:
             self.skipTest("Not available")
         monitor = self.SlippageMonitor()
-        
+
         monitor.record_execution("AAPL", "buy", 150, 150.05, 100)
         monitor.record_execution("AAPL", "buy", 150, 150.20, 100)
         monitor.record_execution("AAPL", "sell", 150, 149.50, 100)
-        
+
         stats = monitor.get_stats("AAPL")
-        self.assertEqual(stats['total'], 3)
-        self.assertEqual(stats['critical_count'], 1)
+        self.assertEqual(stats["total"], 3)
+        self.assertEqual(stats["critical_count"], 1)
         logger.info(f"[OK] Stats: {stats['total']} executions")
 
 
@@ -94,12 +93,11 @@ class TestReversalDetector(unittest.TestCase):
 
     def setUp(self):
         try:
-            from ai.warrior_reversal_detector import (
-                WarriorReversalDetector,
-                get_reversal_detector,
-                ReversalType,
-                ReversalSeverity
-            )
+            from ai.warrior_reversal_detector import (ReversalSeverity,
+                                                      ReversalType,
+                                                      WarriorReversalDetector,
+                                                      get_reversal_detector)
+
             self.ReversalDetector = WarriorReversalDetector
             self.get_detector = get_reversal_detector
             self.ReversalType = ReversalType
@@ -124,7 +122,7 @@ class TestReversalDetector(unittest.TestCase):
         if not self.available:
             self.skipTest("Not available")
         detector = self.ReversalDetector()
-        rev = detector.detect_jacknife("AAPL", 102, 100, [100, 101, 102], 'long')
+        rev = detector.detect_jacknife("AAPL", 102, 100, [100, 101, 102], "long")
         self.assertIsNone(rev)
         logger.info("[OK] No reversal on uptrend")
 
@@ -133,10 +131,12 @@ class TestReversalDetector(unittest.TestCase):
             self.skipTest("Not available")
         detector = self.ReversalDetector()
         # Up 3%, down 2.5% = HIGH severity
-        rev = detector.detect_jacknife("AAPL", 100.5, 100, [100, 101, 103, 100.5], 'long')
+        rev = detector.detect_jacknife(
+            "AAPL", 100.5, 100, [100, 101, 103, 100.5], "long"
+        )
         self.assertIsNotNone(rev)
         self.assertEqual(rev.severity, self.ReversalSeverity.HIGH)
-        self.assertEqual(rev.recommendation, 'tighten_stop')
+        self.assertEqual(rev.recommendation, "tighten_stop")
         logger.info(f"[OK] HIGH jacknife detected")
 
     def test_05_jacknife_critical(self):
@@ -144,10 +144,10 @@ class TestReversalDetector(unittest.TestCase):
             self.skipTest("Not available")
         detector = self.ReversalDetector()
         # Up 5%, down 4.4% = CRITICAL severity
-        rev = detector.detect_jacknife("TSLA", 241, 240, [240, 245, 252, 241], 'long')
+        rev = detector.detect_jacknife("TSLA", 241, 240, [240, 245, 252, 241], "long")
         self.assertIsNotNone(rev)
         self.assertEqual(rev.severity, self.ReversalSeverity.CRITICAL)
-        self.assertEqual(rev.recommendation, 'exit')
+        self.assertEqual(rev.recommendation, "exit")
         logger.info(f"[OK] CRITICAL jacknife detected")
 
     def test_06_fast_exit(self):
@@ -156,7 +156,7 @@ class TestReversalDetector(unittest.TestCase):
         detector = self.ReversalDetector()
         # CRITICAL reversal (>3% reversal from high)
         # Stock goes from 240 to 250 (+4.2%), then reverses to 240 (4% reversal = CRITICAL)
-        rev = detector.detect_jacknife("TEST", 240, 240, [240, 250, 240], 'long')
+        rev = detector.detect_jacknife("TEST", 240, 240, [240, 250, 240], "long")
         self.assertTrue(detector.should_exit_fast(rev))
         logger.info("[OK] Fast exit for CRITICAL")
 
@@ -164,7 +164,7 @@ class TestReversalDetector(unittest.TestCase):
         if not self.available:
             self.skipTest("Not available")
         detector = self.ReversalDetector()
-        rev = detector.detect_jacknife("TEST", 102, 100, [100, 102], 'long')
+        rev = detector.detect_jacknife("TEST", 102, 100, [100, 102], "long")
         self.assertIsNone(rev)
         logger.info("[OK] No reversal with <3 prices")
 

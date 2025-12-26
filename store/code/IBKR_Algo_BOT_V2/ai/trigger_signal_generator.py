@@ -16,13 +16,14 @@ Trigger Types:
 - MODEL_AGREE: All ML models agree with high confidence
 """
 
-import pandas as pd
-import numpy as np
-import ta
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional
 import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+import numpy as np
+import pandas as pd
+import ta
 import yfinance as yf
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TriggerSignal:
     """A trading trigger signal"""
+
     symbol: str
     action: str  # BUY, SELL, HOLD
     trigger_type: str  # BREAKOUT, REVERSION, RSI_EXTREME, MODEL_AGREE
@@ -60,39 +62,39 @@ class TechnicalIndicators:
         data = df.copy()
 
         # Flatten columns if multi-index
-        if hasattr(data.columns, 'get_level_values'):
+        if hasattr(data.columns, "get_level_values"):
             data.columns = data.columns.get_level_values(0)
 
-        close = data['Close']
-        if hasattr(close, 'values'):
+        close = data["Close"]
+        if hasattr(close, "values"):
             close = pd.Series(close.values.flatten(), index=data.index)
 
-        high = data['High']
-        if hasattr(high, 'values'):
+        high = data["High"]
+        if hasattr(high, "values"):
             high = pd.Series(high.values.flatten(), index=data.index)
 
-        low = data['Low']
-        if hasattr(low, 'values'):
+        low = data["Low"]
+        if hasattr(low, "values"):
             low = pd.Series(low.values.flatten(), index=data.index)
 
         # RSI
-        data['RSI'] = ta.momentum.rsi(close, window=14)
+        data["RSI"] = ta.momentum.rsi(close, window=14)
 
         # MACD
         macd = ta.trend.MACD(close, window_slow=26, window_fast=12, window_sign=9)
-        data['MACD'] = macd.macd()
-        data['MACD_Signal'] = macd.macd_signal()
-        data['MACD_Hist'] = macd.macd_diff()
+        data["MACD"] = macd.macd()
+        data["MACD_Signal"] = macd.macd_signal()
+        data["MACD_Hist"] = macd.macd_diff()
 
         # Bollinger Bands
         bb = ta.volatility.BollingerBands(close, window=20, window_dev=2)
-        data['BB_High'] = bb.bollinger_hband()
-        data['BB_Low'] = bb.bollinger_lband()
-        data['BB_Mid'] = bb.bollinger_mavg()
-        data['BB_Pct'] = bb.bollinger_pband()  # % position within bands
+        data["BB_High"] = bb.bollinger_hband()
+        data["BB_Low"] = bb.bollinger_lband()
+        data["BB_Mid"] = bb.bollinger_mavg()
+        data["BB_Pct"] = bb.bollinger_pband()  # % position within bands
 
         # ATR for stop loss/take profit
-        data['ATR'] = ta.volatility.average_true_range(high, low, close, window=14)
+        data["ATR"] = ta.volatility.average_true_range(high, low, close, window=14)
 
         return data
 
@@ -120,6 +122,7 @@ class TriggerSignalGenerator:
         if self._lgb_predictor is None:
             try:
                 from ai.alpaca_ai_predictor import get_alpaca_predictor
+
                 self._lgb_predictor = get_alpaca_predictor()
             except Exception as e:
                 logger.warning(f"Could not load LightGBM predictor: {e}")
@@ -130,6 +133,7 @@ class TriggerSignalGenerator:
         if self._cnn_predictor is None:
             try:
                 from ai.cnn_stock_predictor import get_cnn_predictor
+
                 self._cnn_predictor = get_cnn_predictor()
             except Exception as e:
                 logger.warning(f"Could not load CNN predictor: {e}")
@@ -142,8 +146,8 @@ class TriggerSignalGenerator:
 
         if cache_key in self._data_cache:
             entry = self._data_cache[cache_key]
-            if (now - entry['timestamp']).total_seconds() < self._cache_ttl:
-                return entry['data'].copy()
+            if (now - entry["timestamp"]).total_seconds() < self._cache_ttl:
+                return entry["data"].copy()
 
         # Download fresh data
         end_date = now
@@ -155,17 +159,14 @@ class TriggerSignalGenerator:
             raise ValueError(f"No data available for {symbol}")
 
         # Flatten columns
-        if hasattr(df.columns, 'get_level_values'):
+        if hasattr(df.columns, "get_level_values"):
             df.columns = df.columns.get_level_values(0)
 
         # Calculate indicators
         df = self.indicators.calculate_all(df)
 
         # Cache
-        self._data_cache[cache_key] = {
-            'timestamp': now,
-            'data': df.copy()
-        }
+        self._data_cache[cache_key] = {"timestamp": now, "data": df.copy()}
 
         return df
 
@@ -188,23 +189,23 @@ class TriggerSignalGenerator:
 
         # Only need the last few rows to have valid indicators
         # Don't dropna the whole dataframe - just check the last row
-        required_cols = ['RSI', 'MACD_Hist', 'BB_Pct', 'ATR', 'Close']
+        required_cols = ["RSI", "MACD_Hist", "BB_Pct", "ATR", "Close"]
         latest = df.iloc[-1]
         if any(pd.isna(latest[col]) for col in required_cols):
             return self._no_signal(symbol, df)
 
         prev = df.iloc[-2] if len(df) > 1 else latest
 
-        close = float(latest['Close'])
-        rsi = float(latest['RSI'])
-        macd_hist = float(latest['MACD_Hist'])
-        macd_hist_prev = float(prev['MACD_Hist'])
-        bb_pct = float(latest['BB_Pct'])
-        atr = float(latest['ATR'])
+        close = float(latest["Close"])
+        rsi = float(latest["RSI"])
+        macd_hist = float(latest["MACD_Hist"])
+        macd_hist_prev = float(prev["MACD_Hist"])
+        bb_pct = float(latest["BB_Pct"])
+        atr = float(latest["ATR"])
 
         # Get ML predictions
-        lgb_pred = self._get_ml_prediction('lgb', symbol)
-        cnn_pred = self._get_ml_prediction('cnn', symbol, df)
+        lgb_pred = self._get_ml_prediction("lgb", symbol)
+        cnn_pred = self._get_ml_prediction("cnn", symbol, df)
 
         # Determine trigger
         trigger = self._evaluate_trigger(
@@ -216,33 +217,35 @@ class TriggerSignalGenerator:
             bb_pct=bb_pct,
             atr=atr,
             lgb_pred=lgb_pred,
-            cnn_pred=cnn_pred
+            cnn_pred=cnn_pred,
         )
 
         return trigger
 
-    def _get_ml_prediction(self, model_type: str, symbol: str, data: pd.DataFrame = None) -> Dict:
+    def _get_ml_prediction(
+        self, model_type: str, symbol: str, data: pd.DataFrame = None
+    ) -> Dict:
         """Get prediction from ML model"""
-        default = {'action': 'HOLD', 'confidence': 0.0, 'signal': 'NEUTRAL'}
+        default = {"action": "HOLD", "confidence": 0.0, "signal": "NEUTRAL"}
 
         try:
-            if model_type == 'lgb':
+            if model_type == "lgb":
                 predictor = self._get_lgb_predictor()
                 if predictor:
                     pred = predictor.predict(symbol)
                     return {
-                        'action': pred.get('action', 'HOLD'),
-                        'confidence': pred.get('confidence', 0),
-                        'signal': pred.get('signal', 'NEUTRAL')
+                        "action": pred.get("action", "HOLD"),
+                        "confidence": pred.get("confidence", 0),
+                        "signal": pred.get("signal", "NEUTRAL"),
                     }
-            elif model_type == 'cnn':
+            elif model_type == "cnn":
                 predictor = self._get_cnn_predictor()
                 if predictor and data is not None:
                     pred = predictor.predict(symbol, data)
                     return {
-                        'action': pred.get('action', 'HOLD'),
-                        'confidence': pred.get('confidence', 0),
-                        'signal': pred.get('signal', 'NEUTRAL')
+                        "action": pred.get("action", "HOLD"),
+                        "confidence": pred.get("confidence", 0),
+                        "signal": pred.get("signal", "NEUTRAL"),
                     }
         except Exception as e:
             logger.debug(f"ML prediction error ({model_type}): {e}")
@@ -259,7 +262,7 @@ class TriggerSignalGenerator:
         bb_pct: float,
         atr: float,
         lgb_pred: Dict,
-        cnn_pred: Dict
+        cnn_pred: Dict,
     ) -> TriggerSignal:
         """Evaluate conditions and return trigger signal"""
 
@@ -273,9 +276,9 @@ class TriggerSignalGenerator:
         macd_strength = min(1.0, abs(macd_hist) * 50)  # Normalize strength
 
         # ML consensus
-        ml_bullish = sum([1 for p in [lgb_pred, cnn_pred] if p['action'] == 'BUY'])
-        ml_bearish = sum([1 for p in [lgb_pred, cnn_pred] if p['action'] == 'SELL'])
-        ml_conf_avg = (lgb_pred['confidence'] + cnn_pred['confidence']) / 2
+        ml_bullish = sum([1 for p in [lgb_pred, cnn_pred] if p["action"] == "BUY"])
+        ml_bearish = sum([1 for p in [lgb_pred, cnn_pred] if p["action"] == "SELL"])
+        ml_conf_avg = (lgb_pred["confidence"] + cnn_pred["confidence"]) / 2
 
         # === TRIGGER CONDITIONS ===
 
@@ -351,16 +354,16 @@ class TriggerSignalGenerator:
             rsi_value=round(rsi, 2),
             macd_value=round(macd_hist, 4),
             bb_position=round(bb_pct, 2),
-            ml_signal=lgb_pred['signal'],
-            ml_confidence=lgb_pred['confidence'],
-            cnn_signal=cnn_pred.get('signal'),
-            cnn_confidence=cnn_pred.get('confidence'),
-            timestamp=datetime.now().isoformat()
+            ml_signal=lgb_pred["signal"],
+            ml_confidence=lgb_pred["confidence"],
+            cnn_signal=cnn_pred.get("signal"),
+            cnn_confidence=cnn_pred.get("confidence"),
+            timestamp=datetime.now().isoformat(),
         )
 
     def _no_signal(self, symbol: str, df: pd.DataFrame) -> TriggerSignal:
         """Return a HOLD signal when no trigger is detected"""
-        close = float(df['Close'].iloc[-1]) if len(df) > 0 else 0
+        close = float(df["Close"].iloc[-1]) if len(df) > 0 else 0
         return TriggerSignal(
             symbol=symbol,
             action="HOLD",
@@ -374,7 +377,7 @@ class TriggerSignalGenerator:
             bb_position=0.5,
             ml_signal="NEUTRAL",
             ml_confidence=0.0,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
     def scan_for_triggers(self, symbols: List[str]) -> List[TriggerSignal]:
@@ -389,8 +392,10 @@ class TriggerSignalGenerator:
                 trigger = self.generate_trigger(symbol)
                 if trigger.action != "HOLD":
                     triggers.append(trigger)
-                    logger.info(f"Trigger: {trigger.action} {symbol} ({trigger.trigger_type}) "
-                               f"@ ${trigger.entry_price:.2f} conf={trigger.confidence:.2f}")
+                    logger.info(
+                        f"Trigger: {trigger.action} {symbol} ({trigger.trigger_type}) "
+                        f"@ ${trigger.entry_price:.2f} conf={trigger.confidence:.2f}"
+                    )
             except Exception as e:
                 logger.warning(f"Error scanning {symbol}: {e}")
 
@@ -433,10 +438,14 @@ if __name__ == "__main__":
             print(f"\n{symbol}: {status}")
             print(f"  Action: {trigger.action} ({trigger.trigger_type})")
             print(f"  Price: ${trigger.entry_price:.2f}")
-            print(f"  RSI: {trigger.rsi_value:.1f}, MACD: {trigger.macd_value:.4f}, BB%: {trigger.bb_position:.2f}")
+            print(
+                f"  RSI: {trigger.rsi_value:.1f}, MACD: {trigger.macd_value:.4f}, BB%: {trigger.bb_position:.2f}"
+            )
             print(f"  ML: {trigger.ml_signal} (conf: {trigger.ml_confidence:.2f})")
             if trigger.cnn_signal:
-                print(f"  CNN: {trigger.cnn_signal} (conf: {trigger.cnn_confidence:.2f})")
+                print(
+                    f"  CNN: {trigger.cnn_signal} (conf: {trigger.cnn_confidence:.2f})"
+                )
             if trigger.action != "HOLD":
                 print(f"  Entry: ${trigger.entry_price:.2f}")
                 print(f"  Stop Loss: ${trigger.stop_loss:.2f}")

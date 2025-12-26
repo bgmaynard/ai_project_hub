@@ -19,22 +19,24 @@ Architecture:
 Created: December 2025
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from collections import defaultdict, deque
 import json
 import logging
-from pathlib import Path
-from enum import Enum
 import math
+from collections import defaultdict, deque
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
 class ModelName(Enum):
     """Available prediction models"""
+
     LIGHTGBM = "lightgbm"
     ENSEMBLE = "ensemble"
     HEURISTIC = "heuristic"
@@ -46,6 +48,7 @@ class ModelName(Enum):
 @dataclass
 class ModelPerformance:
     """Track individual model performance"""
+
     name: str
 
     # Running statistics
@@ -54,7 +57,7 @@ class ModelPerformance:
 
     # Exponential moving average (EMA) of accuracy
     ema_accuracy: float = 0.5  # Start neutral
-    ema_alpha: float = 0.1     # EMA smoothing factor
+    ema_alpha: float = 0.1  # EMA smoothing factor
 
     # Recent window accuracy
     recent_window: deque = field(default_factory=lambda: deque(maxlen=50))
@@ -84,8 +87,9 @@ class ModelPerformance:
             self.correct_predictions += 1
 
         # Update EMA
-        self.ema_accuracy = (self.ema_alpha * outcome +
-                           (1 - self.ema_alpha) * self.ema_accuracy)
+        self.ema_accuracy = (
+            self.ema_alpha * outcome + (1 - self.ema_alpha) * self.ema_accuracy
+        )
 
         # Update recent window
         self.recent_window.append(outcome)
@@ -110,8 +114,8 @@ class ModelPerformance:
             z = 1.96  # 95% CI
 
             denominator = 1 + z**2 / n
-            center = (p + z**2 / (2*n)) / denominator
-            margin = z * math.sqrt((p*(1-p) + z**2/(4*n)) / n) / denominator
+            center = (p + z**2 / (2 * n)) / denominator
+            margin = z * math.sqrt((p * (1 - p) + z**2 / (4 * n)) / n) / denominator
 
             self.last_ci_low = max(0, center - margin)
             self.last_ci_high = min(1, center + margin)
@@ -138,22 +142,23 @@ class ModelPerformance:
 
     def to_dict(self) -> Dict:
         return {
-            'name': self.name,
-            'total_predictions': self.total_predictions,
-            'correct_predictions': self.correct_predictions,
-            'overall_accuracy': self.overall_accuracy,
-            'ema_accuracy': self.ema_accuracy,
-            'recent_accuracy': self.recent_accuracy,
-            'current_weight': self.current_weight,
-            'ci_95': (self.last_ci_low, self.last_ci_high),
-            'regime_accuracy': self.regime_accuracy,
-            'last_update': self.last_update
+            "name": self.name,
+            "total_predictions": self.total_predictions,
+            "correct_predictions": self.correct_predictions,
+            "overall_accuracy": self.overall_accuracy,
+            "ema_accuracy": self.ema_accuracy,
+            "recent_accuracy": self.recent_accuracy,
+            "current_weight": self.current_weight,
+            "ci_95": (self.last_ci_low, self.last_ci_high),
+            "regime_accuracy": self.regime_accuracy,
+            "last_update": self.last_update,
         }
 
 
 @dataclass
 class WeightUpdate:
     """Record of weight update"""
+
     timestamp: str
     old_weights: Dict[str, float]
     new_weights: Dict[str, float]
@@ -169,11 +174,11 @@ class AdaptiveWeightManager:
 
     def __init__(
         self,
-        min_weight: float = 0.05,      # Minimum weight per model
-        max_weight: float = 0.6,        # Maximum weight per model
+        min_weight: float = 0.05,  # Minimum weight per model
+        max_weight: float = 0.6,  # Maximum weight per model
         rebalance_threshold: float = 0.1,  # Min change to trigger rebalance
         min_predictions_for_adjust: int = 10,  # Min predictions before adjusting
-        state_path: str = "store/adaptive_weights.json"
+        state_path: str = "store/adaptive_weights.json",
     ):
         self.min_weight = min_weight
         self.max_weight = max_weight
@@ -188,7 +193,7 @@ class AdaptiveWeightManager:
         for model in ModelName:
             self.models[model.value] = ModelPerformance(
                 name=model.value,
-                current_weight=1.0 / len(ModelName)  # Equal initial weights
+                current_weight=1.0 / len(ModelName),  # Equal initial weights
             )
 
         # Weight history
@@ -204,11 +209,7 @@ class AdaptiveWeightManager:
         logger.info("AdaptiveWeightManager initialized")
 
     def record_prediction(
-        self,
-        model: str,
-        prediction: int,
-        actual: int,
-        regime: Optional[str] = None
+        self, model: str, prediction: int, actual: int, regime: Optional[str] = None
     ):
         """
         Record a prediction outcome for a model.
@@ -220,13 +221,17 @@ class AdaptiveWeightManager:
             regime: Optional market regime
         """
         if model not in self.models:
-            self.models[model] = ModelPerformance(name=model, current_weight=self.min_weight)
+            self.models[model] = ModelPerformance(
+                name=model, current_weight=self.min_weight
+            )
 
-        correct = (prediction == actual)
+        correct = prediction == actual
         self.models[model].update(correct, regime)
         self.models[model].last_prediction = datetime.now().isoformat()
 
-        logger.debug(f"Recorded {model}: pred={prediction}, actual={actual}, correct={correct}")
+        logger.debug(
+            f"Recorded {model}: pred={prediction}, actual={actual}, correct={correct}"
+        )
 
         # Check if rebalancing needed
         self._maybe_rebalance(regime)
@@ -265,8 +270,9 @@ class AdaptiveWeightManager:
 
         # Normalize
         for name in weights:
-            weights[name] = max(self.min_weight,
-                              min(self.max_weight, weights[name] / total))
+            weights[name] = max(
+                self.min_weight, min(self.max_weight, weights[name] / total)
+            )
 
         # Renormalize to sum to 1
         total = sum(weights.values())
@@ -284,12 +290,16 @@ class AdaptiveWeightManager:
 
         # Check if change is significant
         old_weights = {name: m.current_weight for name, m in self.models.items()}
-        max_change = max(abs(new_weights[n] - old_weights.get(n, 0)) for n in new_weights)
+        max_change = max(
+            abs(new_weights[n] - old_weights.get(n, 0)) for n in new_weights
+        )
 
         if max_change >= self.rebalance_threshold:
             self._apply_weights(new_weights, regime, "Performance-based rebalance")
 
-    def _calculate_optimal_weights(self, regime: Optional[str] = None) -> Dict[str, float]:
+    def _calculate_optimal_weights(
+        self, regime: Optional[str] = None
+    ) -> Dict[str, float]:
         """Calculate optimal weights based on performance"""
         weights = {}
 
@@ -329,18 +339,14 @@ class AdaptiveWeightManager:
         # Apply min/max constraints
         normalized = {}
         for name, w in weights.items():
-            normalized[name] = max(self.min_weight,
-                                 min(self.max_weight, w / total))
+            normalized[name] = max(self.min_weight, min(self.max_weight, w / total))
 
         # Renormalize to sum to 1
         total = sum(normalized.values())
         return {name: w / total for name, w in normalized.items()}
 
     def _apply_weights(
-        self,
-        new_weights: Dict[str, float],
-        regime: Optional[str],
-        reason: str
+        self, new_weights: Dict[str, float], regime: Optional[str], reason: str
     ):
         """Apply new weights and record history"""
         old_weights = {name: m.current_weight for name, m in self.models.items()}
@@ -356,7 +362,7 @@ class AdaptiveWeightManager:
             old_weights=old_weights,
             new_weights=new_weights,
             reason=reason,
-            regime=regime
+            regime=regime,
         )
         self.weight_history.append(update)
         if len(self.weight_history) > self.max_history:
@@ -390,17 +396,19 @@ class AdaptiveWeightManager:
         rankings = []
         for name, model in self.models.items():
             acc = model.get_regime_accuracy(regime) if regime else model.ema_accuracy
-            rankings.append({
-                'name': name,
-                'weight': model.current_weight,
-                'accuracy': acc,
-                'ema_accuracy': model.ema_accuracy,
-                'recent_accuracy': model.recent_accuracy,
-                'predictions': model.total_predictions,
-                'ci_95': (model.last_ci_low, model.last_ci_high)
-            })
+            rankings.append(
+                {
+                    "name": name,
+                    "weight": model.current_weight,
+                    "accuracy": acc,
+                    "ema_accuracy": model.ema_accuracy,
+                    "recent_accuracy": model.recent_accuracy,
+                    "predictions": model.total_predictions,
+                    "ci_95": (model.last_ci_low, model.last_ci_high),
+                }
+            )
 
-        rankings.sort(key=lambda x: x['accuracy'], reverse=True)
+        rankings.sort(key=lambda x: x["accuracy"], reverse=True)
         return rankings
 
     def _save_state(self):
@@ -409,35 +417,35 @@ class AdaptiveWeightManager:
             Path(self.state_path).parent.mkdir(parents=True, exist_ok=True)
 
             state = {
-                'models': {
+                "models": {
                     name: {
-                        'total_predictions': m.total_predictions,
-                        'correct_predictions': m.correct_predictions,
-                        'ema_accuracy': m.ema_accuracy,
-                        'current_weight': m.current_weight,
-                        'regime_accuracy': m.regime_accuracy,
-                        'regime_counts': m.regime_counts,
-                        'last_ci_low': m.last_ci_low,
-                        'last_ci_high': m.last_ci_high,
-                        'recent_window': list(m.recent_window),
-                        'last_update': m.last_update
+                        "total_predictions": m.total_predictions,
+                        "correct_predictions": m.correct_predictions,
+                        "ema_accuracy": m.ema_accuracy,
+                        "current_weight": m.current_weight,
+                        "regime_accuracy": m.regime_accuracy,
+                        "regime_counts": m.regime_counts,
+                        "last_ci_low": m.last_ci_low,
+                        "last_ci_high": m.last_ci_high,
+                        "recent_window": list(m.recent_window),
+                        "last_update": m.last_update,
                     }
                     for name, m in self.models.items()
                 },
-                'weight_history': [
+                "weight_history": [
                     {
-                        'timestamp': u.timestamp,
-                        'old_weights': u.old_weights,
-                        'new_weights': u.new_weights,
-                        'reason': u.reason,
-                        'regime': u.regime
+                        "timestamp": u.timestamp,
+                        "old_weights": u.old_weights,
+                        "new_weights": u.new_weights,
+                        "reason": u.reason,
+                        "regime": u.regime,
                     }
                     for u in self.weight_history[-20:]  # Last 20
                 ],
-                'saved_at': datetime.now().isoformat()
+                "saved_at": datetime.now().isoformat(),
             }
 
-            with open(self.state_path, 'w') as f:
+            with open(self.state_path, "w") as f:
                 json.dump(state, f, indent=2)
 
         except Exception as e:
@@ -447,22 +455,24 @@ class AdaptiveWeightManager:
         """Load state from disk"""
         try:
             if Path(self.state_path).exists():
-                with open(self.state_path, 'r') as f:
+                with open(self.state_path, "r") as f:
                     state = json.load(f)
 
-                for name, data in state.get('models', {}).items():
+                for name, data in state.get("models", {}).items():
                     if name in self.models:
                         m = self.models[name]
-                        m.total_predictions = data['total_predictions']
-                        m.correct_predictions = data['correct_predictions']
-                        m.ema_accuracy = data['ema_accuracy']
-                        m.current_weight = data['current_weight']
-                        m.regime_accuracy = data.get('regime_accuracy', {})
-                        m.regime_counts = data.get('regime_counts', {})
-                        m.last_ci_low = data.get('last_ci_low', 0.0)
-                        m.last_ci_high = data.get('last_ci_high', 1.0)
-                        m.recent_window = deque(data.get('recent_window', []), maxlen=50)
-                        m.last_update = data.get('last_update', '')
+                        m.total_predictions = data["total_predictions"]
+                        m.correct_predictions = data["correct_predictions"]
+                        m.ema_accuracy = data["ema_accuracy"]
+                        m.current_weight = data["current_weight"]
+                        m.regime_accuracy = data.get("regime_accuracy", {})
+                        m.regime_counts = data.get("regime_counts", {})
+                        m.last_ci_low = data.get("last_ci_low", 0.0)
+                        m.last_ci_high = data.get("last_ci_high", 1.0)
+                        m.recent_window = deque(
+                            data.get("recent_window", []), maxlen=50
+                        )
+                        m.last_update = data.get("last_update", "")
 
                 logger.info(f"Loaded adaptive weights state from {self.state_path}")
         except Exception as e:
@@ -484,10 +494,7 @@ class AdaptiveEnsemble:
         self._rl_agent = None
 
     def predict(
-        self,
-        symbol: str,
-        df,  # pd.DataFrame
-        regime: Optional[str] = None
+        self, symbol: str, df, regime: Optional[str] = None  # pd.DataFrame
     ) -> Dict[str, Any]:
         """
         Generate weighted ensemble prediction.
@@ -511,38 +518,42 @@ class AdaptiveEnsemble:
         try:
             if self._lgb_predictor is None:
                 from ai.alpaca_ai_predictor import get_alpaca_predictor
+
                 self._lgb_predictor = get_alpaca_predictor()
 
             if self._lgb_predictor and self._lgb_predictor.model:
                 result = self._lgb_predictor.predict(symbol, df=df)
                 if result:
-                    scores['lightgbm'] = result.get('prob_up', 0.5)
-                    predictions['lightgbm'] = 1 if scores['lightgbm'] > 0.5 else 0
+                    scores["lightgbm"] = result.get("prob_up", 0.5)
+                    predictions["lightgbm"] = 1 if scores["lightgbm"] > 0.5 else 0
         except Exception as e:
             logger.debug(f"LightGBM prediction failed: {e}")
-            scores['lightgbm'] = 0.5
-            predictions['lightgbm'] = -1  # Unknown
+            scores["lightgbm"] = 0.5
+            predictions["lightgbm"] = -1  # Unknown
 
         # Ensemble (includes heuristics and momentum)
         try:
             if self._ensemble_predictor is None:
                 from ai.ensemble_predictor import get_ensemble_predictor
+
                 self._ensemble_predictor = get_ensemble_predictor()
 
             result = self._ensemble_predictor.predict(symbol, df)
-            scores['ensemble'] = (result.lgb_score * 0.4 +
-                                result.heuristic_score * 0.35 +
-                                result.momentum_score * 0.25)
-            predictions['ensemble'] = result.prediction
+            scores["ensemble"] = (
+                result.lgb_score * 0.4
+                + result.heuristic_score * 0.35
+                + result.momentum_score * 0.25
+            )
+            predictions["ensemble"] = result.prediction
 
             # Also record component scores
-            scores['heuristic'] = result.heuristic_score
-            scores['momentum'] = result.momentum_score
-            predictions['heuristic'] = 1 if result.heuristic_score > 0.5 else 0
-            predictions['momentum'] = 1 if result.momentum_score > 0.5 else 0
+            scores["heuristic"] = result.heuristic_score
+            scores["momentum"] = result.momentum_score
+            predictions["heuristic"] = 1 if result.heuristic_score > 0.5 else 0
+            predictions["momentum"] = 1 if result.momentum_score > 0.5 else 0
         except Exception as e:
             logger.debug(f"Ensemble prediction failed: {e}")
-            for m in ['ensemble', 'heuristic', 'momentum']:
+            for m in ["ensemble", "heuristic", "momentum"]:
                 scores[m] = 0.5
                 predictions[m] = -1
 
@@ -550,6 +561,7 @@ class AdaptiveEnsemble:
         try:
             if self._rl_agent is None:
                 from ai.rl_trading_agent import get_rl_agent
+
                 self._rl_agent = get_rl_agent()
 
             probs = self._rl_agent.get_action_probabilities(
@@ -557,15 +569,17 @@ class AdaptiveEnsemble:
             )
             # Convert action probs to bullish score
             # BUY prob contributes positively, SELL negatively
-            rl_score = 0.5 + 0.5 * (probs['BUY'] - probs['SELL'])
-            scores['rl_agent'] = rl_score
-            predictions['rl_agent'] = 1 if probs['recommended'] == 'BUY' else (
-                0 if probs['recommended'] == 'SELL' else -1
+            rl_score = 0.5 + 0.5 * (probs["BUY"] - probs["SELL"])
+            scores["rl_agent"] = rl_score
+            predictions["rl_agent"] = (
+                1
+                if probs["recommended"] == "BUY"
+                else (0 if probs["recommended"] == "SELL" else -1)
             )
         except Exception as e:
             logger.debug(f"RL agent prediction failed: {e}")
-            scores['rl_agent'] = 0.5
-            predictions['rl_agent'] = -1
+            scores["rl_agent"] = 0.5
+            predictions["rl_agent"] = -1
 
         # Calculate weighted score
         weighted_score = 0
@@ -583,24 +597,24 @@ class AdaptiveEnsemble:
         confidence = abs(weighted_score - 0.5) * 2  # 0 to 1
 
         return {
-            'symbol': symbol,
-            'prediction': final_prediction,
-            'prediction_label': 'BULLISH' if final_prediction == 1 else 'BEARISH',
-            'weighted_score': weighted_score,
-            'confidence': confidence,
-            'regime': regime,
-            'model_scores': scores,
-            'model_predictions': predictions,
-            'weights_used': weights,
-            'timestamp': datetime.now().isoformat()
+            "symbol": symbol,
+            "prediction": final_prediction,
+            "prediction_label": "BULLISH" if final_prediction == 1 else "BEARISH",
+            "weighted_score": weighted_score,
+            "confidence": confidence,
+            "regime": regime,
+            "model_scores": scores,
+            "model_predictions": predictions,
+            "weights_used": weights,
+            "timestamp": datetime.now().isoformat(),
         }
 
     def _build_rl_state(self, df, scores: Dict) -> Any:
         """Build state for RL agent"""
-        from ai.rl_trading_agent import TradingState
         import ta
+        from ai.rl_trading_agent import TradingState
 
-        close = df['Close']
+        close = df["Close"]
 
         # Calculate basic features
         returns = close.pct_change().dropna()
@@ -608,8 +622,12 @@ class AdaptiveEnsemble:
 
         return TradingState(
             price_change_1d=returns.iloc[-1] if len(returns) > 0 else 0,
-            price_change_5d=(close.iloc[-1] / close.iloc[-5] - 1) if len(close) > 5 else 0,
-            price_change_20d=(close.iloc[-1] / close.iloc[-20] - 1) if len(close) > 20 else 0,
+            price_change_5d=(
+                (close.iloc[-1] / close.iloc[-5] - 1) if len(close) > 5 else 0
+            ),
+            price_change_20d=(
+                (close.iloc[-1] / close.iloc[-20] - 1) if len(close) > 20 else 0
+            ),
             rsi_normalized=(rsi - 50) / 50,
             macd_normalized=0,
             bb_position=0,
@@ -617,14 +635,14 @@ class AdaptiveEnsemble:
             trend_strength=0,
             trend_direction=1 if close.iloc[-1] > close.iloc[-5] else -1,
             volatility=returns.std() if len(returns) > 5 else 0.02,
-            ensemble_score=scores.get('ensemble', 0.5),
-            lgb_score=scores.get('lightgbm', 0.5),
-            momentum_score=scores.get('momentum', 0.5),
+            ensemble_score=scores.get("ensemble", 0.5),
+            lgb_score=scores.get("lightgbm", 0.5),
+            momentum_score=scores.get("momentum", 0.5),
             has_position=0,
             position_pnl=0,
             holding_time=0,
             regime_trending=0,
-            regime_volatile=0
+            regime_volatile=0,
         )
 
     def record_outcome(
@@ -632,7 +650,7 @@ class AdaptiveEnsemble:
         symbol: str,
         predictions: Dict[str, int],
         actual: int,
-        regime: Optional[str] = None
+        regime: Optional[str] = None,
     ):
         """
         Record actual outcome and update model weights.
@@ -684,54 +702,56 @@ if __name__ == "__main__":
 
     # LightGBM does well
     for _ in range(20):
-        manager.record_prediction('lightgbm', 1, 1, 'TRENDING_UP')  # Correct
+        manager.record_prediction("lightgbm", 1, 1, "TRENDING_UP")  # Correct
     for _ in range(8):
-        manager.record_prediction('lightgbm', 1, 0, 'TRENDING_UP')  # Wrong
+        manager.record_prediction("lightgbm", 1, 0, "TRENDING_UP")  # Wrong
 
     # Ensemble also does well
     for _ in range(18):
-        manager.record_prediction('ensemble', 1, 1, 'TRENDING_UP')
+        manager.record_prediction("ensemble", 1, 1, "TRENDING_UP")
     for _ in range(10):
-        manager.record_prediction('ensemble', 0, 0, 'TRENDING_UP')
+        manager.record_prediction("ensemble", 0, 0, "TRENDING_UP")
 
     # Heuristic is mediocre
     for _ in range(15):
-        manager.record_prediction('heuristic', 1, 1, 'TRENDING_UP')
+        manager.record_prediction("heuristic", 1, 1, "TRENDING_UP")
     for _ in range(15):
-        manager.record_prediction('heuristic', 0, 1, 'TRENDING_UP')
+        manager.record_prediction("heuristic", 0, 1, "TRENDING_UP")
 
     # Momentum struggles in trending
     for _ in range(10):
-        manager.record_prediction('momentum', 1, 1, 'TRENDING_UP')
+        manager.record_prediction("momentum", 1, 1, "TRENDING_UP")
     for _ in range(15):
-        manager.record_prediction('momentum', 0, 1, 'TRENDING_UP')
+        manager.record_prediction("momentum", 0, 1, "TRENDING_UP")
 
     # RL agent is learning
     for _ in range(12):
-        manager.record_prediction('rl_agent', 1, 1, 'TRENDING_UP')
+        manager.record_prediction("rl_agent", 1, 1, "TRENDING_UP")
     for _ in range(8):
-        manager.record_prediction('rl_agent', 0, 0, 'TRENDING_UP')
+        manager.record_prediction("rl_agent", 0, 0, "TRENDING_UP")
 
     # Force rebalance
-    manager.force_rebalance('TRENDING_UP')
+    manager.force_rebalance("TRENDING_UP")
 
     # Show results
     print("\n" + "=" * 60)
     print("Model Rankings (TRENDING_UP regime)")
     print("=" * 60)
 
-    rankings = manager.get_ranking('TRENDING_UP')
+    rankings = manager.get_ranking("TRENDING_UP")
     for i, r in enumerate(rankings, 1):
-        print(f"{i}. {r['name']:12} | weight={r['weight']:.3f} | "
-              f"acc={r['accuracy']:.3f} | recent={r['recent_accuracy']:.3f} | "
-              f"n={r['predictions']}")
+        print(
+            f"{i}. {r['name']:12} | weight={r['weight']:.3f} | "
+            f"acc={r['accuracy']:.3f} | recent={r['recent_accuracy']:.3f} | "
+            f"n={r['predictions']}"
+        )
 
     # Show weights
     print("\n" + "=" * 60)
     print("Current Weights")
     print("=" * 60)
 
-    weights = manager.get_weights('TRENDING_UP')
+    weights = manager.get_weights("TRENDING_UP")
     for name, weight in sorted(weights.items(), key=lambda x: -x[1]):
         print(f"  {name:12}: {weight:.3f}")
 

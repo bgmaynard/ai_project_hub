@@ -17,53 +17,57 @@ DESIGN:
 WARRIOR RULE: The market is always changing. Your AI must adapt!
 """
 
-import logging
-import threading
-import multiprocessing
-import time
-import os
 import json
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable, Tuple
-from dataclasses import dataclass, asdict, field
+import logging
+import multiprocessing
+import os
+import threading
+import time
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from typing import Callable, Dict, List, Optional, Tuple
+
+import numpy as np
 import pytz
 
 logger = logging.getLogger(__name__)
 
 # Sector ETF mappings for rotation tracking
 SECTOR_ETFS = {
-    'XLK': 'Technology',
-    'XLF': 'Financials',
-    'XLE': 'Energy',
-    'XLV': 'Healthcare',
-    'XLI': 'Industrials',
-    'XLY': 'Consumer Discretionary',
-    'XLP': 'Consumer Staples',
-    'XLU': 'Utilities',
-    'XLB': 'Materials',
-    'XLRE': 'Real Estate',
-    'XLC': 'Communication Services'
+    "XLK": "Technology",
+    "XLF": "Financials",
+    "XLE": "Energy",
+    "XLV": "Healthcare",
+    "XLI": "Industrials",
+    "XLY": "Consumer Discretionary",
+    "XLP": "Consumer Staples",
+    "XLU": "Utilities",
+    "XLB": "Materials",
+    "XLRE": "Real Estate",
+    "XLC": "Communication Services",
 }
 
 # Volatility thresholds
 VOLATILITY_THRESHOLDS = {
-    'EXTREME': 3.0,   # ATR > 3x normal
-    'HIGH': 2.0,      # ATR > 2x normal
-    'ELEVATED': 1.5,  # ATR > 1.5x normal
-    'NORMAL': 1.0,    # Baseline
-    'LOW': 0.5        # ATR < 0.5x normal
+    "EXTREME": 3.0,  # ATR > 3x normal
+    "HIGH": 2.0,  # ATR > 2x normal
+    "ELEVATED": 1.5,  # ATR > 1.5x normal
+    "NORMAL": 1.0,  # Baseline
+    "LOW": 0.5,  # ATR < 0.5x normal
 }
 
 # Configuration
-BRAIN_STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "store", "brain_state.json")
+BRAIN_STATE_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "store", "brain_state.json"
+)
 
 
 @dataclass
 class VolatilityState:
     """Current volatility measurement"""
+
     level: str  # EXTREME, HIGH, ELEVATED, NORMAL, LOW
     atr_current: float
     atr_baseline: float
@@ -79,6 +83,7 @@ class VolatilityState:
 @dataclass
 class SectorRotation:
     """Sector rotation tracking"""
+
     leading_sectors: List[str]
     lagging_sectors: List[str]
     sector_scores: Dict[str, float]
@@ -92,6 +97,7 @@ class SectorRotation:
 @dataclass
 class PredictionDrift:
     """Tracks prediction accuracy drift"""
+
     current_accuracy: float
     baseline_accuracy: float
     drift_percentage: float
@@ -108,6 +114,7 @@ class PredictionDrift:
 @dataclass
 class MarketRegime:
     """Current market regime classification"""
+
     regime: str  # TRENDING_UP, TRENDING_DOWN, RANGING, VOLATILE, CALM
     confidence: float
     detected_at: str
@@ -122,6 +129,7 @@ class MarketRegime:
 @dataclass
 class BrainMetrics:
     """Performance metrics for the AI brain"""
+
     cpu_usage_target: float
     actual_cpu_usage: float
     tasks_completed: int
@@ -155,7 +163,7 @@ class BackgroundBrain:
         Args:
             cpu_target: Target CPU utilization (0.0-1.0), default 50%
         """
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # CPU management
         self.cpu_target = cpu_target  # Target 50% by default
@@ -174,10 +182,7 @@ class BackgroundBrain:
 
         # Market monitoring
         self.current_regime = MarketRegime(
-            regime="UNKNOWN",
-            confidence=0.0,
-            detected_at="",
-            indicators={}
+            regime="UNKNOWN", confidence=0.0, detected_at="", indicators={}
         )
         self.price_buffer: Dict[str, deque] = {}  # Symbol -> recent prices
         self.prediction_history: deque = deque(maxlen=1000)
@@ -190,7 +195,7 @@ class BackgroundBrain:
             atr_ratio=1.0,
             vix_proxy=0.0,
             spike_detected=False,
-            detected_at=""
+            detected_at="",
         )
         self.atr_history: deque = deque(maxlen=100)  # Track ATR over time
 
@@ -200,9 +205,11 @@ class BackgroundBrain:
             lagging_sectors=[],
             sector_scores={},
             rotation_signal="NEUTRAL",
-            detected_at=""
+            detected_at="",
         )
-        self.sector_price_history: Dict[str, deque] = {etf: deque(maxlen=50) for etf in SECTOR_ETFS}
+        self.sector_price_history: Dict[str, deque] = {
+            etf: deque(maxlen=50) for etf in SECTOR_ETFS
+        }
 
         # Prediction drift tracking
         self.prediction_drift = PredictionDrift(
@@ -213,7 +220,7 @@ class BackgroundBrain:
             samples_evaluated=0,
             window_start="",
             window_end="",
-            recommendation="OK"
+            recommendation="OK",
         )
         self.accuracy_history: deque = deque(maxlen=50)  # Track accuracy over time
 
@@ -235,7 +242,9 @@ class BackgroundBrain:
         self.evaluation_thread = None
         self.training_thread = None
 
-        logger.info(f"BackgroundBrain initialized: {self.num_cores} cores, {self.worker_threads} workers, {cpu_target*100:.0f}% target")
+        logger.info(
+            f"BackgroundBrain initialized: {self.num_cores} cores, {self.worker_threads} workers, {cpu_target*100:.0f}% target"
+        )
 
     def start(self):
         """Start the background brain"""
@@ -247,8 +256,12 @@ class BackgroundBrain:
         self.start_time = datetime.now(self.et_tz)
 
         # Start background threads
-        self.monitor_thread = threading.Thread(target=self._market_monitor_loop, daemon=True)
-        self.evaluation_thread = threading.Thread(target=self._evaluation_loop, daemon=True)
+        self.monitor_thread = threading.Thread(
+            target=self._market_monitor_loop, daemon=True
+        )
+        self.evaluation_thread = threading.Thread(
+            target=self._evaluation_loop, daemon=True
+        )
         self.training_thread = threading.Thread(target=self._training_loop, daemon=True)
 
         self.monitor_thread.start()
@@ -275,9 +288,9 @@ class BackgroundBrain:
                 # Check if market is open
                 now = datetime.now(self.et_tz)
                 is_market_hours = (
-                    now.weekday() < 5 and
-                    9 <= now.hour < 16 and
-                    (now.hour > 9 or now.minute >= 30)
+                    now.weekday() < 5
+                    and 9 <= now.hour < 16
+                    and (now.hour > 9 or now.minute >= 30)
                 )
 
                 if is_market_hours:
@@ -299,10 +312,7 @@ class BackgroundBrain:
         while self.is_running:
             try:
                 now = datetime.now(self.et_tz)
-                is_market_hours = (
-                    now.weekday() < 5 and
-                    9 <= now.hour < 16
-                )
+                is_market_hours = now.weekday() < 5 and 9 <= now.hour < 16
 
                 if is_market_hours:
                     # Evaluate recent predictions
@@ -324,9 +334,8 @@ class BackgroundBrain:
                 now = datetime.now(self.et_tz)
 
                 # Heavy training during off-hours (before market or after)
-                is_training_window = (
-                    now.weekday() < 5 and
-                    (now.hour < 9 or now.hour >= 16)
+                is_training_window = now.weekday() < 5 and (
+                    now.hour < 9 or now.hour >= 16
                 )
 
                 if is_training_window:
@@ -349,6 +358,7 @@ class BackgroundBrain:
         try:
             # Get recent market data (SPY as proxy)
             from ai.alpaca_ai_predictor import get_alpaca_predictor
+
             predictor = get_alpaca_predictor()
 
             # Simple regime detection based on recent price action
@@ -361,8 +371,16 @@ class BackgroundBrain:
             # Check trend (using predictions as proxy)
             recent_predictions = list(self.prediction_history)[-20:]
             if recent_predictions:
-                bullish = sum(1 for p in recent_predictions if p.get('prediction') in ['BUY', 'BULLISH'])
-                bearish = sum(1 for p in recent_predictions if p.get('prediction') in ['SELL', 'BEARISH'])
+                bullish = sum(
+                    1
+                    for p in recent_predictions
+                    if p.get("prediction") in ["BUY", "BULLISH"]
+                )
+                bearish = sum(
+                    1
+                    for p in recent_predictions
+                    if p.get("prediction") in ["SELL", "BEARISH"]
+                )
 
                 total = len(recent_predictions)
                 if bullish / total > 0.7:
@@ -378,7 +396,7 @@ class BackgroundBrain:
                 indicators = {
                     "bullish_ratio": bullish / total,
                     "bearish_ratio": bearish / total,
-                    "sample_size": total
+                    "sample_size": total,
                 }
 
             # Check for regime change
@@ -388,7 +406,7 @@ class BackgroundBrain:
                 regime=regime,
                 confidence=confidence,
                 detected_at=datetime.now(self.et_tz).isoformat(),
-                indicators=indicators
+                indicators=indicators,
             )
 
             if old_regime != regime and self.on_regime_change:
@@ -403,42 +421,44 @@ class BackgroundBrain:
         try:
             # Get SPY data as market proxy
             from alpaca_market_data import AlpacaMarketData
+
             market_data = AlpacaMarketData()
 
             # Fetch recent SPY bars for ATR calculation
-            bars = market_data.get_bars('SPY', timeframe='1Min', limit=30)
+            bars = market_data.get_bars("SPY", timeframe="1Min", limit=30)
             if not bars or len(bars) < 14:
                 return
 
             # Calculate True Range for each bar
             true_ranges = []
             for i in range(1, len(bars)):
-                high = bars[i].get('high', bars[i].get('h', 0))
-                low = bars[i].get('low', bars[i].get('l', 0))
-                prev_close = bars[i-1].get('close', bars[i-1].get('c', 0))
+                high = bars[i].get("high", bars[i].get("h", 0))
+                low = bars[i].get("low", bars[i].get("l", 0))
+                prev_close = bars[i - 1].get("close", bars[i - 1].get("c", 0))
 
-                tr = max(
-                    high - low,
-                    abs(high - prev_close),
-                    abs(low - prev_close)
-                )
+                tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
                 true_ranges.append(tr)
 
             if not true_ranges:
                 return
 
             # Calculate current ATR (14-period)
-            atr_current = np.mean(true_ranges[-14:]) if len(true_ranges) >= 14 else np.mean(true_ranges)
+            atr_current = (
+                np.mean(true_ranges[-14:])
+                if len(true_ranges) >= 14
+                else np.mean(true_ranges)
+            )
 
             # Store in history
-            self.atr_history.append({
-                'atr': atr_current,
-                'timestamp': datetime.now(self.et_tz).isoformat()
-            })
+            self.atr_history.append(
+                {"atr": atr_current, "timestamp": datetime.now(self.et_tz).isoformat()}
+            )
 
             # Calculate baseline ATR (average of historical ATR)
             if len(self.atr_history) >= 20:
-                atr_baseline = np.mean([h['atr'] for h in list(self.atr_history)[:-5]])  # Exclude recent
+                atr_baseline = np.mean(
+                    [h["atr"] for h in list(self.atr_history)[:-5]]
+                )  # Exclude recent
             else:
                 atr_baseline = atr_current  # Not enough history
 
@@ -448,18 +468,22 @@ class BackgroundBrain:
             # Determine volatility level
             level = "NORMAL"
             spike_detected = False
-            for lev, threshold in sorted(VOLATILITY_THRESHOLDS.items(), key=lambda x: -x[1]):
+            for lev, threshold in sorted(
+                VOLATILITY_THRESHOLDS.items(), key=lambda x: -x[1]
+            ):
                 if atr_ratio >= threshold:
                     level = lev
-                    if lev in ['EXTREME', 'HIGH']:
+                    if lev in ["EXTREME", "HIGH"]:
                         spike_detected = True
                     break
 
             # Calculate VIX proxy (annualized volatility from recent price changes)
-            closes = [b.get('close', b.get('c', 0)) for b in bars]
+            closes = [b.get("close", b.get("c", 0)) for b in bars]
             if len(closes) >= 2:
                 returns = np.diff(closes) / closes[:-1]
-                vix_proxy = np.std(returns) * np.sqrt(252 * 390) * 100  # Annualized, percent
+                vix_proxy = (
+                    np.std(returns) * np.sqrt(252 * 390) * 100
+                )  # Annualized, percent
             else:
                 vix_proxy = 0.0
 
@@ -472,12 +496,14 @@ class BackgroundBrain:
                 atr_ratio=round(atr_ratio, 2),
                 vix_proxy=round(vix_proxy, 2),
                 spike_detected=spike_detected,
-                detected_at=datetime.now(self.et_tz).isoformat()
+                detected_at=datetime.now(self.et_tz).isoformat(),
             )
 
             # Log significant changes
-            if spike_detected and old_level not in ['EXTREME', 'HIGH']:
-                logger.warning(f"VOLATILITY SPIKE DETECTED: {level} (ATR ratio: {atr_ratio:.2f}x, VIX proxy: {vix_proxy:.1f})")
+            if spike_detected and old_level not in ["EXTREME", "HIGH"]:
+                logger.warning(
+                    f"VOLATILITY SPIKE DETECTED: {level} (ATR ratio: {atr_ratio:.2f}x, VIX proxy: {vix_proxy:.1f})"
+                )
 
         except Exception as e:
             logger.error(f"Volatility check error: {e}")
@@ -486,6 +512,7 @@ class BackgroundBrain:
         """Track sector strength rotation using ETF relative performance"""
         try:
             from alpaca_market_data import AlpacaMarketData
+
             market_data = AlpacaMarketData()
 
             sector_returns = {}
@@ -493,21 +520,27 @@ class BackgroundBrain:
             # Get recent price data for each sector ETF
             for etf, sector_name in SECTOR_ETFS.items():
                 try:
-                    bars = market_data.get_bars(etf, timeframe='5Min', limit=12)  # Last hour
+                    bars = market_data.get_bars(
+                        etf, timeframe="5Min", limit=12
+                    )  # Last hour
                     if bars and len(bars) >= 2:
-                        first_close = bars[0].get('close', bars[0].get('c', 0))
-                        last_close = bars[-1].get('close', bars[-1].get('c', 0))
+                        first_close = bars[0].get("close", bars[0].get("c", 0))
+                        last_close = bars[-1].get("close", bars[-1].get("c", 0))
 
                         if first_close > 0:
-                            pct_return = ((last_close - first_close) / first_close) * 100
+                            pct_return = (
+                                (last_close - first_close) / first_close
+                            ) * 100
                             sector_returns[sector_name] = pct_return
 
                             # Store in history
-                            self.sector_price_history[etf].append({
-                                'price': last_close,
-                                'return': pct_return,
-                                'timestamp': datetime.now(self.et_tz).isoformat()
-                            })
+                            self.sector_price_history[etf].append(
+                                {
+                                    "price": last_close,
+                                    "return": pct_return,
+                                    "timestamp": datetime.now(self.et_tz).isoformat(),
+                                }
+                            )
                 except Exception as e:
                     logger.debug(f"Could not get data for {etf}: {e}")
                     continue
@@ -516,7 +549,9 @@ class BackgroundBrain:
                 return
 
             # Sort sectors by performance
-            sorted_sectors = sorted(sector_returns.items(), key=lambda x: x[1], reverse=True)
+            sorted_sectors = sorted(
+                sector_returns.items(), key=lambda x: x[1], reverse=True
+            )
 
             # Identify leading and lagging sectors
             leading = [s[0] for s in sorted_sectors[:3]]
@@ -525,8 +560,18 @@ class BackgroundBrain:
             # Determine rotation signal based on which sectors are leading
             # Risk-on: Tech, Consumer Discretionary, Industrials leading
             # Risk-off: Utilities, Consumer Staples, Healthcare leading
-            risk_on_sectors = {'Technology', 'Consumer Discretionary', 'Industrials', 'Financials'}
-            risk_off_sectors = {'Utilities', 'Consumer Staples', 'Healthcare', 'Real Estate'}
+            risk_on_sectors = {
+                "Technology",
+                "Consumer Discretionary",
+                "Industrials",
+                "Financials",
+            }
+            risk_off_sectors = {
+                "Utilities",
+                "Consumer Staples",
+                "Healthcare",
+                "Real Estate",
+            }
 
             leading_set = set(leading)
             risk_on_score = len(leading_set & risk_on_sectors)
@@ -546,7 +591,7 @@ class BackgroundBrain:
                 lagging_sectors=lagging,
                 sector_scores=sector_returns,
                 rotation_signal=rotation_signal,
-                detected_at=datetime.now(self.et_tz).isoformat()
+                detected_at=datetime.now(self.et_tz).isoformat(),
             )
 
             # Log significant rotation changes
@@ -566,9 +611,9 @@ class BackgroundBrain:
             total = 0
 
             for pred in list(self.prediction_history)[-100:]:
-                if 'outcome' in pred:
+                if "outcome" in pred:
                     total += 1
-                    if pred['outcome'] == pred['prediction']:
+                    if pred["outcome"] == pred["prediction"]:
                         correct += 1
 
             if total > 0:
@@ -583,35 +628,49 @@ class BackgroundBrain:
         try:
             # Get predictions with outcomes for evaluation
             predictions_with_outcomes = [
-                p for p in list(self.prediction_history)
-                if 'outcome' in p
+                p for p in list(self.prediction_history) if "outcome" in p
             ]
 
             if len(predictions_with_outcomes) < 20:
                 return  # Not enough data
 
             # Calculate rolling accuracy windows
-            recent_50 = predictions_with_outcomes[-50:] if len(predictions_with_outcomes) >= 50 else predictions_with_outcomes
+            recent_50 = (
+                predictions_with_outcomes[-50:]
+                if len(predictions_with_outcomes) >= 50
+                else predictions_with_outcomes
+            )
             recent_20 = predictions_with_outcomes[-20:]
 
             # Calculate accuracy for each window
             def calc_accuracy(preds):
-                correct = sum(1 for p in preds if p.get('outcome') == p.get('prediction'))
+                correct = sum(
+                    1 for p in preds if p.get("outcome") == p.get("prediction")
+                )
                 return correct / len(preds) if preds else 0
 
             accuracy_50 = calc_accuracy(recent_50)
             accuracy_20 = calc_accuracy(recent_20)
 
             # Store in accuracy history for trend analysis
-            self.accuracy_history.append({
-                'accuracy': accuracy_20,
-                'sample_size': len(recent_20),
-                'timestamp': datetime.now(self.et_tz).isoformat()
-            })
+            self.accuracy_history.append(
+                {
+                    "accuracy": accuracy_20,
+                    "sample_size": len(recent_20),
+                    "timestamp": datetime.now(self.et_tz).isoformat(),
+                }
+            )
 
             # Calculate drift from baseline
-            drift_percentage = ((self.prediction_drift.baseline_accuracy - accuracy_20) /
-                               self.prediction_drift.baseline_accuracy * 100) if self.prediction_drift.baseline_accuracy > 0 else 0
+            drift_percentage = (
+                (
+                    (self.prediction_drift.baseline_accuracy - accuracy_20)
+                    / self.prediction_drift.baseline_accuracy
+                    * 100
+                )
+                if self.prediction_drift.baseline_accuracy > 0
+                else 0
+            )
 
             # Determine if drift is significant
             drift_detected = False
@@ -620,25 +679,36 @@ class BackgroundBrain:
             if drift_percentage > 20:  # More than 20% drop from baseline
                 drift_detected = True
                 recommendation = "RETRAIN_URGENT"
-                logger.warning(f"PREDICTION DRIFT ALERT: Accuracy dropped {drift_percentage:.1f}% from baseline!")
+                logger.warning(
+                    f"PREDICTION DRIFT ALERT: Accuracy dropped {drift_percentage:.1f}% from baseline!"
+                )
             elif drift_percentage > 10:  # More than 10% drop
                 drift_detected = True
                 recommendation = "RETRAIN_SCHEDULED"
-                logger.info(f"Prediction drift detected: {drift_percentage:.1f}% below baseline")
+                logger.info(
+                    f"Prediction drift detected: {drift_percentage:.1f}% below baseline"
+                )
 
             # Check for consistent downward trend
             if len(self.accuracy_history) >= 10:
-                recent_accuracies = [h['accuracy'] for h in list(self.accuracy_history)[-10:]]
-                if all(recent_accuracies[i] >= recent_accuracies[i+1] for i in range(len(recent_accuracies)-1)):
+                recent_accuracies = [
+                    h["accuracy"] for h in list(self.accuracy_history)[-10:]
+                ]
+                if all(
+                    recent_accuracies[i] >= recent_accuracies[i + 1]
+                    for i in range(len(recent_accuracies) - 1)
+                ):
                     # Consistent decline
                     if not drift_detected:
                         drift_detected = True
                         recommendation = "RETRAIN_SCHEDULED"
-                        logger.info("Consistent accuracy decline detected - retraining recommended")
+                        logger.info(
+                            "Consistent accuracy decline detected - retraining recommended"
+                        )
 
             # Get window timestamps
-            window_start = recent_20[0].get('timestamp', '') if recent_20 else ''
-            window_end = recent_20[-1].get('timestamp', '') if recent_20 else ''
+            window_start = recent_20[0].get("timestamp", "") if recent_20 else ""
+            window_end = recent_20[-1].get("timestamp", "") if recent_20 else ""
 
             # Update drift state
             self.prediction_drift = PredictionDrift(
@@ -649,7 +719,7 @@ class BackgroundBrain:
                 samples_evaluated=len(predictions_with_outcomes),
                 window_start=window_start,
                 window_end=window_end,
-                recommendation=recommendation
+                recommendation=recommendation,
             )
 
             # Trigger callback if drift detected
@@ -668,31 +738,55 @@ class BackgroundBrain:
         try:
             # 1. Check time since last training (retrain every 24 hours)
             if self.last_retrain_time:
-                hours_since_retrain = (datetime.now(self.et_tz) - self.last_retrain_time).total_seconds() / 3600
+                hours_since_retrain = (
+                    datetime.now(self.et_tz) - self.last_retrain_time
+                ).total_seconds() / 3600
                 if hours_since_retrain > 24:
-                    logger.info(f"Retraining needed: {hours_since_retrain:.1f} hours since last training")
+                    logger.info(
+                        f"Retraining needed: {hours_since_retrain:.1f} hours since last training"
+                    )
                     return True
 
             # 2. Check prediction drift recommendation
-            if self.prediction_drift.recommendation in ["RETRAIN_SCHEDULED", "RETRAIN_URGENT"]:
-                logger.info(f"Retraining needed: drift recommendation is {self.prediction_drift.recommendation}")
+            if self.prediction_drift.recommendation in [
+                "RETRAIN_SCHEDULED",
+                "RETRAIN_URGENT",
+            ]:
+                logger.info(
+                    f"Retraining needed: drift recommendation is {self.prediction_drift.recommendation}"
+                )
                 return True
 
             # 3. Check if enough new predictions have been made
-            predictions_since_retrain = len([
-                p for p in self.prediction_history
-                if 'outcome' in p and self.last_retrain_time and
-                datetime.fromisoformat(p.get('timestamp', '')) > self.last_retrain_time
-            ]) if self.last_retrain_time else len([p for p in self.prediction_history if 'outcome' in p])
+            predictions_since_retrain = (
+                len(
+                    [
+                        p
+                        for p in self.prediction_history
+                        if "outcome" in p
+                        and self.last_retrain_time
+                        and datetime.fromisoformat(p.get("timestamp", ""))
+                        > self.last_retrain_time
+                    ]
+                )
+                if self.last_retrain_time
+                else len([p for p in self.prediction_history if "outcome" in p])
+            )
 
             if predictions_since_retrain >= 100:
-                logger.info(f"Retraining needed: {predictions_since_retrain} new evaluated predictions")
+                logger.info(
+                    f"Retraining needed: {predictions_since_retrain} new evaluated predictions"
+                )
                 return True
 
             # 4. Check for significant regime change
-            if (self.current_regime.regime in ["VOLATILE", "TRENDING_DOWN"] and
-                self.current_regime.confidence > 0.7):
-                logger.info(f"Retraining recommended: market regime is {self.current_regime.regime}")
+            if (
+                self.current_regime.regime in ["VOLATILE", "TRENDING_DOWN"]
+                and self.current_regime.confidence > 0.7
+            ):
+                logger.info(
+                    f"Retraining recommended: market regime is {self.current_regime.regime}"
+                )
                 return True
 
             return False
@@ -709,17 +803,26 @@ class BackgroundBrain:
                 return True
 
             # Check for extreme volatility combined with poor predictions
-            if (self.volatility_state.level in ["EXTREME", "HIGH"] and
-                self.prediction_drift.current_accuracy < 0.5):
+            if (
+                self.volatility_state.level in ["EXTREME", "HIGH"]
+                and self.prediction_drift.current_accuracy < 0.5
+            ):
                 logger.warning("Urgent retraining: high volatility + low accuracy")
                 return True
 
             # Check for sudden accuracy collapse (last 10 predictions)
-            recent_10 = [p for p in list(self.prediction_history)[-10:] if 'outcome' in p]
+            recent_10 = [
+                p for p in list(self.prediction_history)[-10:] if "outcome" in p
+            ]
             if len(recent_10) >= 10:
-                accuracy_10 = sum(1 for p in recent_10 if p.get('outcome') == p.get('prediction')) / 10
+                accuracy_10 = (
+                    sum(1 for p in recent_10 if p.get("outcome") == p.get("prediction"))
+                    / 10
+                )
                 if accuracy_10 < 0.4:  # Less than 40% on last 10
-                    logger.warning(f"Urgent retraining: recent accuracy collapsed to {accuracy_10:.0%}")
+                    logger.warning(
+                        f"Urgent retraining: recent accuracy collapsed to {accuracy_10:.0%}"
+                    )
                     return True
 
             return False
@@ -740,29 +843,40 @@ class BackgroundBrain:
 
             # Get the predictor
             from ai.alpaca_ai_predictor import get_alpaca_predictor
+
             predictor = get_alpaca_predictor()
 
             # Determine symbols to retrain (use tracked symbols or defaults)
-            symbols_to_train = ['AAPL', 'MSFT', 'NVDA']  # Core symbols
+            symbols_to_train = ["AAPL", "MSFT", "NVDA"]  # Core symbols
 
             # Add symbols from recent predictions
-            recent_symbols = set(p.get('symbol') for p in list(self.prediction_history)[-100:] if p.get('symbol'))
-            symbols_to_train = list(set(symbols_to_train) | recent_symbols)[:10]  # Max 10 symbols
+            recent_symbols = set(
+                p.get("symbol")
+                for p in list(self.prediction_history)[-100:]
+                if p.get("symbol")
+            )
+            symbols_to_train = list(set(symbols_to_train) | recent_symbols)[
+                :10
+            ]  # Max 10 symbols
 
             logger.info(f"Retraining on symbols: {symbols_to_train}")
 
             # Run training
             result = predictor.train_multi(symbols_to_train, days=30)
 
-            if result.get('success'):
+            if result.get("success"):
                 self.last_retrain_time = datetime.now(self.et_tz)
 
                 # Update baseline accuracy if training improved it
-                if result.get('accuracy', 0) > self.prediction_drift.baseline_accuracy:
-                    self.prediction_drift.baseline_accuracy = result.get('accuracy')
-                    logger.info(f"Updated baseline accuracy to {result.get('accuracy'):.2%}")
+                if result.get("accuracy", 0) > self.prediction_drift.baseline_accuracy:
+                    self.prediction_drift.baseline_accuracy = result.get("accuracy")
+                    logger.info(
+                        f"Updated baseline accuracy to {result.get('accuracy'):.2%}"
+                    )
 
-                logger.info(f"Incremental training complete: {result.get('accuracy', 0):.2%} accuracy")
+                logger.info(
+                    f"Incremental training complete: {result.get('accuracy', 0):.2%} accuracy"
+                )
             else:
                 logger.error(f"Training failed: {result.get('error', 'Unknown error')}")
 
@@ -790,32 +904,40 @@ class BackgroundBrain:
             # If accuracy is low, we should be more conservative
             if recent_accuracy < 0.55:
                 # Increase confidence threshold needed for trades
-                logger.info("Quick adaptation: suggesting higher confidence thresholds due to low accuracy")
+                logger.info(
+                    "Quick adaptation: suggesting higher confidence thresholds due to low accuracy"
+                )
 
             # Log current state for monitoring
-            logger.info(f"Current state - Accuracy: {recent_accuracy:.2%}, "
-                       f"Volatility: {self.volatility_state.level}, "
-                       f"Regime: {self.current_regime.regime}")
+            logger.info(
+                f"Current state - Accuracy: {recent_accuracy:.2%}, "
+                f"Volatility: {self.volatility_state.level}, "
+                f"Regime: {self.current_regime.regime}"
+            )
 
         except Exception as e:
             logger.error(f"Quick adaptation error: {e}")
 
-    def record_prediction(self, symbol: str, prediction: str, confidence: float, price: float):
+    def record_prediction(
+        self, symbol: str, prediction: str, confidence: float, price: float
+    ):
         """Record a prediction for later evaluation"""
-        self.prediction_history.append({
-            "symbol": symbol,
-            "prediction": prediction,
-            "confidence": confidence,
-            "price": price,
-            "timestamp": datetime.now(self.et_tz).isoformat()
-        })
+        self.prediction_history.append(
+            {
+                "symbol": symbol,
+                "prediction": prediction,
+                "confidence": confidence,
+                "price": price,
+                "timestamp": datetime.now(self.et_tz).isoformat(),
+            }
+        )
 
     def record_outcome(self, symbol: str, timestamp: str, actual_outcome: str):
         """Record the actual outcome for a prediction"""
         # Find and update the prediction
         for pred in self.prediction_history:
-            if pred.get('symbol') == symbol and pred.get('timestamp') == timestamp:
-                pred['outcome'] = actual_outcome
+            if pred.get("symbol") == symbol and pred.get("timestamp") == timestamp:
+                pred["outcome"] = actual_outcome
                 break
 
     def submit_task(self, func: Callable, *args, **kwargs):
@@ -847,9 +969,9 @@ class BackgroundBrain:
         correct = 0
         total = 0
         for pred in list(self.prediction_history)[-100:]:
-            if 'outcome' in pred:
+            if "outcome" in pred:
                 total += 1
-                if pred.get('outcome') == pred.get('prediction'):
+                if pred.get("outcome") == pred.get("prediction"):
                     correct += 1
         accuracy = correct / total if total > 0 else 0
 
@@ -868,13 +990,14 @@ class BackgroundBrain:
             last_retrain=last_retrain_str,
             models_loaded=1 if accuracy > 0 else 0,
             market_regime=self.current_regime.regime,
-            uptime_seconds=uptime
+            uptime_seconds=uptime,
         )
 
     def _get_cpu_usage(self) -> float:
         """Get current CPU usage"""
         try:
             import psutil
+
             return psutil.cpu_percent() / 100.0
         except:
             return 0.0
@@ -888,8 +1011,8 @@ class BackgroundBrain:
     def get_market_regime(self) -> Dict:
         """Get current market regime with volatility and sector data"""
         regime_data = self.current_regime.to_dict()
-        regime_data['volatility'] = self.volatility_state.to_dict()
-        regime_data['sector_rotation'] = self.sector_rotation.to_dict()
+        regime_data["volatility"] = self.volatility_state.to_dict()
+        regime_data["sector_rotation"] = self.sector_rotation.to_dict()
         return regime_data
 
     def get_volatility_state(self) -> Dict:
@@ -913,7 +1036,7 @@ class BackgroundBrain:
             "sector_rotation": self.sector_rotation.to_dict(),
             "prediction_drift": self.prediction_drift.to_dict(),
             "is_running": self.is_running,
-            "retrain_triggered": self.retrain_triggered
+            "retrain_triggered": self.retrain_triggered,
         }
 
     def update_baseline_accuracy(self, accuracy: float):

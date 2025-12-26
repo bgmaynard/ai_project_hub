@@ -3,8 +3,8 @@ Demo: Slippage Monitor & Reversal Detector
 Shows how to use the new risk management features
 """
 
-from ai.warrior_slippage_monitor import get_slippage_monitor
 from ai.warrior_reversal_detector import get_reversal_detector
+from ai.warrior_slippage_monitor import get_slippage_monitor
 
 print("=" * 70)
 print("SLIPPAGE & REVERSAL MONITORING DEMO")
@@ -55,7 +55,7 @@ reversal = reversal_detector.detect_jacknife(
     current_price=246.0,
     entry_price=244.0,
     recent_prices=recent_prices,
-    direction='long'
+    direction="long",
 )
 
 if reversal:
@@ -70,7 +70,8 @@ else:
 # ===== INTEGRATION EXAMPLE =====
 print("\n\n3. INTEGRATION WITH TRADING")
 print("-" * 70)
-print("""
+print(
+    """
 Example: Monitor slippage and reversals in real-time
 
 # During order execution:
@@ -98,7 +99,8 @@ if reversal and reversal_detector.should_exit_fast(reversal):
     # Execute emergency exit
     exit_position_immediately(symbol)
     alert(f"Jacknife reversal - exited {symbol}")
-""")
+"""
+)
 
 print("\n" + "=" * 70)
 print("Demo complete!")

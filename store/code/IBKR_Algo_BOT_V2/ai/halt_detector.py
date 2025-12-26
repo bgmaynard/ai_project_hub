@@ -16,11 +16,11 @@ This module monitors for:
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from dataclasses import dataclass, field
 import threading
 import time
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HaltInfo:
     """Information about a trading halt"""
+
     symbol: str
     halt_price: float
     halt_time: datetime
@@ -61,12 +62,14 @@ class HaltInfo:
             "spread_percent": self.spread_percent,
             "resume_time": self.resume_time.isoformat() if self.resume_time else None,
             "resume_price": self.resume_price,
-            "estimated_resume": self.estimated_resume.isoformat() if self.estimated_resume else None,
+            "estimated_resume": (
+                self.estimated_resume.isoformat() if self.estimated_resume else None
+            ),
             "is_resumed": self.is_resumed,
             "resume_direction": self.resume_direction,
             "resume_gap_percent": self.resume_gap_percent,
             "continuation_action": self.continuation_action,
-            "duration_seconds": self.duration_seconds
+            "duration_seconds": self.duration_seconds,
         }
 
 
@@ -100,9 +103,9 @@ class HaltDetector:
 
     async def check_for_halt(self, symbol: str, quote: Dict) -> Optional[HaltInfo]:
         """Check if a stock appears to be halted based on quote data"""
-        price = quote.get('price', 0) or quote.get('last', 0)
-        bid = quote.get('bid', 0)
-        ask = quote.get('ask', 0)
+        price = quote.get("price", 0) or quote.get("last", 0)
+        bid = quote.get("bid", 0)
+        ask = quote.get("ask", 0)
 
         if not price or not bid or not ask:
             return None
@@ -127,7 +130,11 @@ class HaltDetector:
 
                 # Calculate continuation direction
                 gap = price - halt_info.halt_price
-                halt_info.resume_gap_percent = (gap / halt_info.halt_price * 100) if halt_info.halt_price > 0 else 0
+                halt_info.resume_gap_percent = (
+                    (gap / halt_info.halt_price * 100)
+                    if halt_info.halt_price > 0
+                    else 0
+                )
 
                 # Determine direction and action
                 if halt_info.resume_gap_percent > 2:
@@ -151,7 +158,7 @@ class HaltDetector:
                     "SELL": "SELL",
                     "WATCH LONG": "WATCH+",
                     "WATCH SHORT": "WATCH-",
-                    "HOLD": "HOLD"
+                    "HOLD": "HOLD",
                 }
 
                 logger.warning(
@@ -166,12 +173,15 @@ class HaltDetector:
                 # Record resume to analytics
                 try:
                     from ai.halt_analytics import get_halt_analytics
+
                     analytics = get_halt_analytics()
-                    halt_id = f"{symbol}_{halt_info.halt_time.strftime('%Y%m%d_%H%M%S')}"
+                    halt_id = (
+                        f"{symbol}_{halt_info.halt_time.strftime('%Y%m%d_%H%M%S')}"
+                    )
                     analytics.record_resume(
                         halt_id=halt_id,
                         resume_price=price,
-                        resume_time=halt_info.resume_time
+                        resume_time=halt_info.resume_time,
                     )
                 except Exception as e:
                     logger.debug(f"Analytics resume record error: {e}")
@@ -206,7 +216,8 @@ class HaltDetector:
                 bid_at_halt=bid,
                 ask_at_halt=ask,
                 spread_percent=spread_percent,
-                estimated_resume=datetime.now() + timedelta(minutes=self.LULD_RESUME_MINUTES)
+                estimated_resume=datetime.now()
+                + timedelta(minutes=self.LULD_RESUME_MINUTES),
             )
 
             self.halted_stocks[symbol] = halt_info
@@ -222,6 +233,7 @@ class HaltDetector:
             # Record to analytics for strategy building
             try:
                 from ai.halt_analytics import get_halt_analytics
+
                 analytics = get_halt_analytics()
                 analytics.record_halt(
                     symbol=symbol,
@@ -229,7 +241,7 @@ class HaltDetector:
                     halt_time=halt_info.halt_time,
                     halt_type=halt_type,
                     pre_halt_price_5min=price * 0.95,  # Estimate, would need historical
-                    pre_halt_volume=quote.get('volume', 0)
+                    pre_halt_volume=quote.get("volume", 0),
                 )
             except Exception as e:
                 logger.debug(f"Analytics record error: {e}")
@@ -324,10 +336,10 @@ class HaltDetector:
         """Get quote for a symbol"""
         try:
             import httpx
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"http://localhost:9100/api/price/{symbol}",
-                    timeout=3.0
+                    f"http://localhost:9100/api/price/{symbol}", timeout=3.0
                 )
                 if response.status_code == 200:
                     return response.json()
@@ -374,10 +386,10 @@ async def check_halt(symbol: str) -> Optional[Dict]:
     # Get fresh quote and check
     try:
         import httpx
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"http://localhost:9100/api/price/{symbol}",
-                timeout=3.0
+                f"http://localhost:9100/api/price/{symbol}", timeout=3.0
             )
             if response.status_code == 200:
                 quote = response.json()
@@ -394,7 +406,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     # Test
-    detector = start_halt_detector(['AMCI', 'ASNS', 'BDRX'])
+    detector = start_halt_detector(["AMCI", "ASNS", "BDRX"])
 
     print("Monitoring for halts... Press Ctrl+C to stop")
 

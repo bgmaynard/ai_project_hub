@@ -16,15 +16,15 @@ Key features:
 """
 
 import asyncio
-import logging
 import json
+import logging
 import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable
-from dataclasses import dataclass, field, asdict
-from enum import Enum
 import threading
 import time
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ class TradeStatus(Enum):
 @dataclass
 class ScalperConfig:
     """Configuration for the scalper"""
+
     # Enable/disable
     enabled: bool = False
     paper_mode: bool = True  # Always start in paper mode
@@ -95,7 +96,7 @@ class ScalperConfig:
 
     # Regime Gating filter
     use_regime_gating: bool = True  # Filter entries by market regime
-    valid_regimes: List[str] = field(default_factory=lambda: ['TRENDING_UP', 'RANGING'])
+    valid_regimes: List[str] = field(default_factory=lambda: ["TRENDING_UP", "RANGING"])
 
     # Technical Signal Filter (EMA/MACD/VWAP confluence)
     use_signal_filter: bool = True  # Filter entries with technical signals
@@ -124,7 +125,9 @@ class ScalperConfig:
 
     # Failed momentum early exit (cut losers fast)
     failed_momentum_seconds: int = 45  # Check for failed momentum after X seconds
-    failed_momentum_threshold: float = 0.5  # Exit if gain < X% after failed_momentum_seconds
+    failed_momentum_threshold: float = (
+        0.5  # Exit if gain < X% after failed_momentum_seconds
+    )
 
     # Momentum velocity filter (ensure still moving up at entry)
     use_velocity_filter: bool = True  # Check if price still rising at entry
@@ -136,12 +139,16 @@ class ScalperConfig:
     cooldown_after_loss: int = 60  # Seconds to wait after a loss
 
     # Time of day filter (block bad hours)
-    blocked_hours: List[int] = field(default_factory=list)  # Legacy - use time range instead
+    blocked_hours: List[int] = field(
+        default_factory=list
+    )  # Legacy - use time range instead
     blocked_time_start: int = 925  # Block from 9:25 AM ET (HHMM format)
-    blocked_time_end: int = 959    # Block until 9:59 AM ET (HHMM format)
+    blocked_time_end: int = 959  # Block until 9:59 AM ET (HHMM format)
 
     # Volume surge entry filter
-    volume_surge_max_hod_distance: float = 2.0  # Max % distance from HOD for volume surge entries
+    volume_surge_max_hod_distance: float = (
+        2.0  # Max % distance from HOD for volume surge entries
+    )
 
     # Symbols
     watchlist: List[str] = field(default_factory=list)
@@ -180,6 +187,7 @@ class ScalperConfig:
 @dataclass
 class ScalpTrade:
     """Record of a scalp trade"""
+
     trade_id: str
     symbol: str
 
@@ -236,6 +244,7 @@ class ScalpTrade:
 @dataclass
 class PricePoint:
     """Price data point for momentum tracking"""
+
     timestamp: datetime
     price: float
     bid: float
@@ -246,6 +255,7 @@ class PricePoint:
 @dataclass
 class PullbackWatch:
     """Track a symbol waiting for pullback confirmation (Warrior method)"""
+
     symbol: str
     spike_time: datetime
     spike_price: float  # Price when spike detected
@@ -308,7 +318,7 @@ class HFTScalper:
         """Load config from file"""
         try:
             if os.path.exists(SCALPER_CONFIG_FILE):
-                with open(SCALPER_CONFIG_FILE, 'r') as f:
+                with open(SCALPER_CONFIG_FILE, "r") as f:
                     data = json.load(f)
                     for key, value in data.items():
                         if hasattr(self.config, key):
@@ -319,7 +329,7 @@ class HFTScalper:
     def _save_config(self):
         """Save config to file"""
         try:
-            with open(SCALPER_CONFIG_FILE, 'w') as f:
+            with open(SCALPER_CONFIG_FILE, "w") as f:
                 json.dump(self.config.to_dict(), f, indent=2)
         except Exception as e:
             logger.error(f"Error saving scalper config: {e}")
@@ -328,27 +338,36 @@ class HFTScalper:
         """Load trade history"""
         try:
             if os.path.exists(SCALPER_TRADES_FILE):
-                with open(SCALPER_TRADES_FILE, 'r') as f:
+                with open(SCALPER_TRADES_FILE, "r") as f:
                     data = json.load(f)
-                    self.trades = [ScalpTrade(**t) for t in data.get('trades', [])]
+                    self.trades = [ScalpTrade(**t) for t in data.get("trades", [])]
 
                     # Calculate daily stats
                     today = datetime.now().date().isoformat()
-                    today_trades = [t for t in self.trades
-                                   if t.entry_time.startswith(today)]
+                    today_trades = [
+                        t for t in self.trades if t.entry_time.startswith(today)
+                    ]
                     self.daily_trades = len(today_trades)
-                    self.daily_pnl = sum(t.pnl for t in today_trades if t.status == 'closed')
+                    self.daily_pnl = sum(
+                        t.pnl for t in today_trades if t.status == "closed"
+                    )
         except Exception as e:
             logger.error(f"Error loading trades: {e}")
 
     def _save_trades(self):
         """Save trade history"""
         try:
-            with open(SCALPER_TRADES_FILE, 'w') as f:
-                json.dump({
-                    'trades': [t.to_dict() for t in self.trades[-500:]],  # Keep last 500
-                    'last_updated': datetime.now().isoformat()
-                }, f, indent=2)
+            with open(SCALPER_TRADES_FILE, "w") as f:
+                json.dump(
+                    {
+                        "trades": [
+                            t.to_dict() for t in self.trades[-500:]
+                        ],  # Keep last 500
+                        "last_updated": datetime.now().isoformat(),
+                    },
+                    f,
+                    indent=2,
+                )
         except Exception as e:
             logger.error(f"Error saving trades: {e}")
 
@@ -359,12 +378,13 @@ class HFTScalper:
         """
         try:
             from ai.chronos_predictor import get_chronos_predictor
+
             chronos = get_chronos_predictor()
             result = chronos.predict(symbol, horizon=1)
             return {
-                'signal': result.get('signal', 'NEUTRAL'),
-                'prob_up': result.get('probabilities', {}).get('prob_up', 0.5),
-                'expected_return': result.get('expected_return_pct', 0)
+                "signal": result.get("signal", "NEUTRAL"),
+                "prob_up": result.get("probabilities", {}).get("prob_up", 0.5),
+                "expected_return": result.get("expected_return_pct", 0),
             }
         except Exception as e:
             logger.warning(f"Chronos check failed for {symbol}: {e}")
@@ -382,7 +402,7 @@ class HFTScalper:
             from polygon_streaming import get_polygon_stream
 
             # Get or create scorer (singleton)
-            if not hasattr(self, '_scalp_scorer'):
+            if not hasattr(self, "_scalp_scorer"):
                 self._scalp_scorer = PolygonScalpScorer()
 
             if not self._scalp_scorer.available:
@@ -398,7 +418,7 @@ class HFTScalper:
             prob, details = self._scalp_scorer.calculate(df)
             verdict = details.get("verdict", "NEUTRAL")
 
-            fade_threshold = getattr(self.config, 'scalp_fade_threshold', 0.45)
+            fade_threshold = getattr(self.config, "scalp_fade_threshold", 0.45)
 
             if prob < fade_threshold:
                 return False, prob, "LIKELY_FADE"
@@ -423,7 +443,7 @@ class HFTScalper:
             with httpx.Client(timeout=10.0) as client:
                 resp = client.get(
                     f"http://localhost:9100/api/charts/signals/{symbol}",
-                    params={"timeframe": "5m", "days": 2}
+                    params={"timeframe": "5m", "days": 2},
                 )
 
                 if resp.status_code != 200:
@@ -437,18 +457,18 @@ class HFTScalper:
                 signals = data.get("signals", {})
 
                 return {
-                    'confluence_score': signals.get('confluence_score', 0),
-                    'signal_bias': signals.get('signal_bias', 'NEUTRAL'),
-                    'ema_bullish': signals.get('ema_bullish', False),
-                    'macd_bullish': signals.get('macd_bullish', False),
-                    'price_above_vwap': signals.get('price_above_vwap', False),
-                    'ema_crossover': signals.get('ema_crossover', 'NONE'),
-                    'macd_crossover': signals.get('macd_crossover', 'NONE'),
-                    'vwap_crossover': signals.get('vwap_crossover', 'NONE'),
-                    'candle_momentum': signals.get('candle_momentum', 'NEUTRAL'),
-                    'ema9': signals.get('ema9', 0),
-                    'ema20': signals.get('ema20', 0),
-                    'vwap': signals.get('vwap', 0)
+                    "confluence_score": signals.get("confluence_score", 0),
+                    "signal_bias": signals.get("signal_bias", "NEUTRAL"),
+                    "ema_bullish": signals.get("ema_bullish", False),
+                    "macd_bullish": signals.get("macd_bullish", False),
+                    "price_above_vwap": signals.get("price_above_vwap", False),
+                    "ema_crossover": signals.get("ema_crossover", "NONE"),
+                    "macd_crossover": signals.get("macd_crossover", "NONE"),
+                    "vwap_crossover": signals.get("vwap_crossover", "NONE"),
+                    "candle_momentum": signals.get("candle_momentum", "NEUTRAL"),
+                    "ema9": signals.get("ema9", 0),
+                    "ema20": signals.get("ema20", 0),
+                    "vwap": signals.get("vwap", 0),
                 }
 
         except Exception as e:
@@ -477,9 +497,9 @@ class HFTScalper:
             self.config.watchlist.remove(symbol)
             self._save_config()
 
-    def _check_pullback_confirmation(self, symbol: str, price: float,
-                                      momentum: float, change_pct: float,
-                                      volume: int) -> Optional[Dict]:
+    def _check_pullback_confirmation(
+        self, symbol: str, price: float, momentum: float, change_pct: float, volume: int
+    ) -> Optional[Dict]:
         """
         Warrior Trading Method: Wait for pullback confirmation before entry.
 
@@ -498,7 +518,9 @@ class HFTScalper:
             # Check for timeout
             elapsed = (now - watch.spike_time).total_seconds()
             if elapsed > self.config.pullback_timeout_seconds:
-                logger.info(f"PULLBACK TIMEOUT: {symbol} - no confirmation in {elapsed:.0f}s")
+                logger.info(
+                    f"PULLBACK TIMEOUT: {symbol} - no confirmation in {elapsed:.0f}s"
+                )
                 del self.pullback_watches[symbol]
                 return None
 
@@ -509,8 +531,16 @@ class HFTScalper:
                 watch.pullback_low = price
 
             # Calculate pullback from high
-            pullback_pct = (watch.spike_high - price) / watch.spike_high * 100 if watch.spike_high > 0 else 0
-            recovery_pct = (price - watch.pullback_low) / watch.pullback_low * 100 if watch.pullback_low > 0 else 0
+            pullback_pct = (
+                (watch.spike_high - price) / watch.spike_high * 100
+                if watch.spike_high > 0
+                else 0
+            )
+            recovery_pct = (
+                (price - watch.pullback_low) / watch.pullback_low * 100
+                if watch.pullback_low > 0
+                else 0
+            )
 
             # State machine
             if watch.state == "WATCHING":
@@ -518,26 +548,41 @@ class HFTScalper:
                 if pullback_pct >= self.config.pullback_min_percent:
                     watch.state = "PULLBACK"
                     watch.pullback_low = price
-                    logger.info(f"PULLBACK DETECTED: {symbol} -{pullback_pct:.1f}% from high ${watch.spike_high:.2f}")
+                    logger.info(
+                        f"PULLBACK DETECTED: {symbol} -{pullback_pct:.1f}% from high ${watch.spike_high:.2f}"
+                    )
                 elif pullback_pct > self.config.pullback_max_percent:
                     # Pullback too deep - failed
-                    logger.info(f"PULLBACK FAILED: {symbol} too deep -{pullback_pct:.1f}%")
+                    logger.info(
+                        f"PULLBACK FAILED: {symbol} too deep -{pullback_pct:.1f}%"
+                    )
                     del self.pullback_watches[symbol]
                     return None
 
             elif watch.state == "PULLBACK":
                 # Check if pullback too deep
-                total_pullback = (watch.spike_high - watch.pullback_low) / watch.spike_high * 100
+                total_pullback = (
+                    (watch.spike_high - watch.pullback_low) / watch.spike_high * 100
+                )
                 if total_pullback > self.config.pullback_max_percent:
-                    logger.info(f"PULLBACK FAILED: {symbol} too deep -{total_pullback:.1f}%")
+                    logger.info(
+                        f"PULLBACK FAILED: {symbol} too deep -{total_pullback:.1f}%"
+                    )
                     del self.pullback_watches[symbol]
                     return None
 
                 # Check for confirmation - price breaking above pullback high
-                break_level = watch.pullback_low * (1 + self.config.confirmation_break_percent / 100)
-                if price > break_level and recovery_pct >= self.config.confirmation_break_percent:
+                break_level = watch.pullback_low * (
+                    1 + self.config.confirmation_break_percent / 100
+                )
+                if (
+                    price > break_level
+                    and recovery_pct >= self.config.confirmation_break_percent
+                ):
                     # CONFIRMED! Ready to enter
-                    logger.info(f"PULLBACK CONFIRMED: {symbol} @ ${price:.2f} (broke ${break_level:.2f})")
+                    logger.info(
+                        f"PULLBACK CONFIRMED: {symbol} @ ${price:.2f} (broke ${break_level:.2f})"
+                    )
                     del self.pullback_watches[symbol]
 
                     return {
@@ -550,7 +595,7 @@ class HFTScalper:
                         "pullback_confirmed": True,
                         "spike_high": watch.spike_high,
                         "pullback_low": watch.pullback_low,
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": datetime.now().isoformat(),
                     }
 
             return None  # Still watching/waiting
@@ -563,9 +608,11 @@ class HFTScalper:
                 spike_price=price,
                 spike_high=price,
                 pullback_low=price,
-                state="WATCHING"
+                state="WATCHING",
             )
-            logger.info(f"SPIKE DETECTED: {symbol} +{momentum:.1f}% @ ${price:.2f} - watching for pullback")
+            logger.info(
+                f"SPIKE DETECTED: {symbol} +{momentum:.1f}% @ ${price:.2f} - watching for pullback"
+            )
             return None  # Don't enter yet - wait for confirmation
 
     def get_pullback_watches(self) -> Dict[str, Dict]:
@@ -579,12 +626,13 @@ class HFTScalper:
                 "spike_price": watch.spike_price,
                 "spike_high": watch.spike_high,
                 "pullback_low": watch.pullback_low,
-                "age_seconds": (datetime.now() - watch.spike_time).total_seconds()
+                "age_seconds": (datetime.now() - watch.spike_time).total_seconds(),
             }
         return result
 
-    async def check_entry_signal(self, symbol: str, quote: Dict,
-                                  priority: bool = False) -> Optional[Dict]:
+    async def check_entry_signal(
+        self, symbol: str, quote: Dict, priority: bool = False
+    ) -> Optional[Dict]:
         """
         Check if there's an entry signal for a symbol.
 
@@ -596,11 +644,11 @@ class HFTScalper:
 
         Returns signal dict if entry opportunity detected, None otherwise.
         """
-        price = quote.get('price', 0) or quote.get('last', 0)
-        bid = quote.get('bid', 0)
-        ask = quote.get('ask', 0)
-        volume = quote.get('volume', 0)
-        change_pct = quote.get('change_percent', 0)
+        price = quote.get("price", 0) or quote.get("last", 0)
+        bid = quote.get("bid", 0)
+        ask = quote.get("ask", 0)
+        volume = quote.get("volume", 0)
+        change_pct = quote.get("change_percent", 0)
 
         if not price or price < self.config.min_price or price > self.config.max_price:
             return None
@@ -611,7 +659,9 @@ class HFTScalper:
             spread_pct = (ask - bid) / price * 100
             if spread_pct > max_spread:
                 if priority:
-                    logger.info(f"PRIORITY REJECT: {symbol} spread {spread_pct:.1f}% > {max_spread:.1f}%")
+                    logger.info(
+                        f"PRIORITY REJECT: {symbol} spread {spread_pct:.1f}% > {max_spread:.1f}%"
+                    )
                 return None
 
         # Skip if already in position
@@ -636,7 +686,8 @@ class HFTScalper:
         # Server is CT (1 hour behind ET), so convert: ET time - 1 hour = CT time
         try:
             from zoneinfo import ZoneInfo
-            et_now = datetime.now(ZoneInfo('America/New_York'))
+
+            et_now = datetime.now(ZoneInfo("America/New_York"))
             et_time = et_now.hour * 100 + et_now.minute  # HHMM format
         except:
             # Fallback: assume server is CT (1 hour behind ET)
@@ -644,24 +695,24 @@ class HFTScalper:
             et_time = (ct_now.hour + 1) * 100 + ct_now.minute  # Add 1 hour for ET
 
         # Configurable blocked time range (default 9:25-9:59 AM ET = 925-959)
-        blocked_start = getattr(self.config, 'blocked_time_start', 925)  # 9:25 AM ET
-        blocked_end = getattr(self.config, 'blocked_time_end', 959)      # 9:59 AM ET
+        blocked_start = getattr(self.config, "blocked_time_start", 925)  # 9:25 AM ET
+        blocked_end = getattr(self.config, "blocked_time_end", 959)  # 9:59 AM ET
 
         if blocked_start <= et_time <= blocked_end and not priority:
-            logger.debug(f"TIME BLOCK: {symbol} - {et_time} ET in blocked range {blocked_start}-{blocked_end}")
+            logger.debug(
+                f"TIME BLOCK: {symbol} - {et_time} ET in blocked range {blocked_start}-{blocked_end}"
+            )
             return None
 
         # Track price history
         if symbol not in self.price_history:
             self.price_history[symbol] = []
 
-        self.price_history[symbol].append(PricePoint(
-            timestamp=datetime.now(),
-            price=price,
-            bid=bid,
-            ask=ask,
-            volume=volume
-        ))
+        self.price_history[symbol].append(
+            PricePoint(
+                timestamp=datetime.now(), price=price, bid=bid, ask=ask, volume=volume
+            )
+        )
 
         # Keep only last 60 data points
         self.price_history[symbol] = self.price_history[symbol][-60:]
@@ -676,7 +727,7 @@ class HFTScalper:
                 "change_percent": change_pct,
                 "volume": volume,
                 "priority": True,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             logger.info(f"PRIORITY ENTRY: {symbol} @ ${price:.2f} (news-triggered)")
         else:
@@ -687,7 +738,9 @@ class HFTScalper:
             # Calculate momentum
             prices = self.price_history[symbol]
             price_5_ago = prices[-5].price if len(prices) >= 5 else prices[0].price
-            momentum = ((price - price_5_ago) / price_5_ago * 100) if price_5_ago > 0 else 0
+            momentum = (
+                ((price - price_5_ago) / price_5_ago * 100) if price_5_ago > 0 else 0
+            )
 
             # Check for momentum spike
             signal = None
@@ -695,7 +748,9 @@ class HFTScalper:
             if momentum >= self.config.min_spike_percent:
                 # WARRIOR METHOD: Pullback Confirmation
                 if self.config.use_pullback_confirmation:
-                    signal = self._check_pullback_confirmation(symbol, price, momentum, change_pct, volume)
+                    signal = self._check_pullback_confirmation(
+                        symbol, price, momentum, change_pct, volume
+                    )
                 else:
                     # Original behavior - enter immediately on spike
                     signal = {
@@ -705,9 +760,11 @@ class HFTScalper:
                         "momentum": momentum,
                         "change_percent": change_pct,
                         "volume": volume,
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": datetime.now().isoformat(),
                     }
-                    logger.info(f"MOMENTUM SPIKE: {symbol} +{momentum:.1f}% in 5 ticks @ ${price:.2f}")
+                    logger.info(
+                        f"MOMENTUM SPIKE: {symbol} +{momentum:.1f}% in 5 ticks @ ${price:.2f}"
+                    )
 
             # Volume surge detection
             if signal is None and len(prices) >= 10:
@@ -718,14 +775,22 @@ class HFTScalper:
                         # ===== NEAR HOD FILTER FOR VOLUME SURGE =====
                         # Only enter on volume surge if stock is near high-of-day
                         # Prevents entering fading stocks that had volume spike
-                        max_distance_from_hod = getattr(self.config, 'volume_surge_max_hod_distance', 2.0)  # 2% default
+                        max_distance_from_hod = getattr(
+                            self.config, "volume_surge_max_hod_distance", 2.0
+                        )  # 2% default
 
                         # Get high of day from quote if available
-                        hod = getattr(quote, 'high', None) or getattr(quote, 'hod', None) or 0
+                        hod = (
+                            getattr(quote, "high", None)
+                            or getattr(quote, "hod", None)
+                            or 0
+                        )
                         if hod > 0:
-                            distance_from_hod = ((hod - price) / hod * 100)
+                            distance_from_hod = (hod - price) / hod * 100
                             if distance_from_hod > max_distance_from_hod:
-                                logger.info(f"VOLUME SURGE REJECTED: {symbol} - {distance_from_hod:.1f}% off HOD (max {max_distance_from_hod}%)")
+                                logger.info(
+                                    f"VOLUME SURGE REJECTED: {symbol} - {distance_from_hod:.1f}% off HOD (max {max_distance_from_hod}%)"
+                                )
                                 signal = None
                             else:
                                 signal = {
@@ -735,9 +800,11 @@ class HFTScalper:
                                     "volume_surge": vol_change,
                                     "change_percent": change_pct,
                                     "distance_from_hod": distance_from_hod,
-                                    "timestamp": datetime.now().isoformat()
+                                    "timestamp": datetime.now().isoformat(),
                                 }
-                                logger.info(f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f} ({distance_from_hod:.1f}% from HOD)")
+                                logger.info(
+                                    f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f} ({distance_from_hod:.1f}% from HOD)"
+                                )
                         else:
                             # No HOD data, fall back to momentum check
                             if momentum >= 1.0:  # At least 1% recent momentum
@@ -747,96 +814,127 @@ class HFTScalper:
                                     "price": price,
                                     "volume_surge": vol_change,
                                     "change_percent": change_pct,
-                                    "timestamp": datetime.now().isoformat()
+                                    "timestamp": datetime.now().isoformat(),
                                 }
-                                logger.info(f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f} (momentum +{momentum:.1f}%)")
+                                logger.info(
+                                    f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f} (momentum +{momentum:.1f}%)"
+                                )
                             else:
-                                logger.debug(f"VOLUME SURGE SKIPPED: {symbol} - No HOD data and weak momentum")
+                                logger.debug(
+                                    f"VOLUME SURGE SKIPPED: {symbol} - No HOD data and weak momentum"
+                                )
 
         # ===== MOMENTUM VELOCITY FILTER =====
         # Check if price is STILL moving up right now (not just moved up in past)
         # This prevents entering after momentum has already stalled
-        if signal and getattr(self.config, 'use_velocity_filter', True):
+        if signal and getattr(self.config, "use_velocity_filter", True):
             if len(prices) >= 3:
                 # Compare current price to price 2 ticks ago
                 price_2_ago = prices[-3].price
-                current_velocity = ((price - price_2_ago) / price_2_ago * 100) if price_2_ago > 0 else 0
-                min_velocity = getattr(self.config, 'min_entry_velocity', 0.1)  # 0.1% min upward movement
+                current_velocity = (
+                    ((price - price_2_ago) / price_2_ago * 100)
+                    if price_2_ago > 0
+                    else 0
+                )
+                min_velocity = getattr(
+                    self.config, "min_entry_velocity", 0.1
+                )  # 0.1% min upward movement
 
                 if current_velocity < min_velocity:
-                    logger.info(f"VELOCITY REJECT: {symbol} - Momentum stalled ({current_velocity:+.2f}% < {min_velocity}%)")
+                    logger.info(
+                        f"VELOCITY REJECT: {symbol} - Momentum stalled ({current_velocity:+.2f}% < {min_velocity}%)"
+                    )
                     signal = None
                 else:
-                    logger.debug(f"VELOCITY OK: {symbol} - Still moving +{current_velocity:.2f}%")
-                    signal['entry_velocity'] = current_velocity
+                    logger.debug(
+                        f"VELOCITY OK: {symbol} - Still moving +{current_velocity:.2f}%"
+                    )
+                    signal["entry_velocity"] = current_velocity
 
         # Apply Chronos AI filter if enabled
         if signal and self.config.use_chronos_filter:
             chronos_result = self._check_chronos_signal(symbol)
             if chronos_result:
-                prob_up = chronos_result.get('prob_up', 0.5)
-                chronos_signal = chronos_result.get('signal', 'NEUTRAL')
+                prob_up = chronos_result.get("prob_up", 0.5)
+                chronos_signal = chronos_result.get("signal", "NEUTRAL")
 
                 # Reject if Chronos says BEARISH or probability too low
-                if 'BEARISH' in chronos_signal or prob_up < self.config.chronos_min_prob_up:
-                    logger.info(f"CHRONOS REJECT: {symbol} - {chronos_signal} ({prob_up:.0%} prob up)")
+                if (
+                    "BEARISH" in chronos_signal
+                    or prob_up < self.config.chronos_min_prob_up
+                ):
+                    logger.info(
+                        f"CHRONOS REJECT: {symbol} - {chronos_signal} ({prob_up:.0%} prob up)"
+                    )
                     signal = None
                 else:
-                    logger.info(f"CHRONOS APPROVE: {symbol} - {chronos_signal} ({prob_up:.0%} prob up)")
-                    signal['chronos_signal'] = chronos_signal
-                    signal['chronos_prob_up'] = prob_up
+                    logger.info(
+                        f"CHRONOS APPROVE: {symbol} - {chronos_signal} ({prob_up:.0%} prob up)"
+                    )
+                    signal["chronos_signal"] = chronos_signal
+                    signal["chronos_prob_up"] = prob_up
 
         # Apply Order Flow filter if enabled
         if signal and self.config.use_order_flow_filter:
             try:
                 from ai.order_flow_analyzer import get_order_flow_analyzer
+
                 analyzer = get_order_flow_analyzer()
                 flow_signal = analyzer.analyze(quote)
 
-                if flow_signal.recommendation == 'SKIP':
+                if flow_signal.recommendation == "SKIP":
                     logger.info(f"ORDER FLOW REJECT: {symbol} - {flow_signal.reason}")
                     signal = None
-                elif flow_signal.recommendation == 'ENTER':
-                    logger.info(f"ORDER FLOW APPROVE: {symbol} - Buy pressure {flow_signal.buy_pressure*100:.0f}%")
-                    signal['order_flow_buy_pressure'] = flow_signal.buy_pressure
-                    signal['order_flow_spread'] = flow_signal.spread_percent
+                elif flow_signal.recommendation == "ENTER":
+                    logger.info(
+                        f"ORDER FLOW APPROVE: {symbol} - Buy pressure {flow_signal.buy_pressure*100:.0f}%"
+                    )
+                    signal["order_flow_buy_pressure"] = flow_signal.buy_pressure
+                    signal["order_flow_spread"] = flow_signal.spread_percent
                 else:
                     # NEUTRAL - allow with lower confidence
                     logger.info(f"ORDER FLOW NEUTRAL: {symbol} - {flow_signal.reason}")
-                    signal['order_flow_buy_pressure'] = flow_signal.buy_pressure
-                    signal['order_flow_spread'] = flow_signal.spread_percent
+                    signal["order_flow_buy_pressure"] = flow_signal.buy_pressure
+                    signal["order_flow_spread"] = flow_signal.spread_percent
             except Exception as e:
                 logger.warning(f"Order flow check failed for {symbol}: {e}")
 
         # Apply Regime Gating filter if enabled
-        if signal and getattr(self.config, 'use_regime_gating', False):
+        if signal and getattr(self.config, "use_regime_gating", False):
             try:
                 from ai.chronos_adapter import get_chronos_adapter
+
                 adapter = get_chronos_adapter()
                 context = adapter.get_context(symbol)
 
-                valid_regimes = getattr(self.config, 'valid_regimes', ['TRENDING_UP', 'RANGING'])
+                valid_regimes = getattr(
+                    self.config, "valid_regimes", ["TRENDING_UP", "RANGING"]
+                )
 
                 if context.market_regime not in valid_regimes:
-                    logger.info(f"REGIME REJECT: {symbol} - {context.market_regime} not in {valid_regimes}")
+                    logger.info(
+                        f"REGIME REJECT: {symbol} - {context.market_regime} not in {valid_regimes}"
+                    )
                     signal = None
                 else:
-                    logger.info(f"REGIME APPROVE: {symbol} - {context.market_regime} ({context.regime_confidence:.0%} conf)")
-                    signal['market_regime'] = context.market_regime
-                    signal['regime_confidence'] = context.regime_confidence
+                    logger.info(
+                        f"REGIME APPROVE: {symbol} - {context.market_regime} ({context.regime_confidence:.0%} conf)"
+                    )
+                    signal["market_regime"] = context.market_regime
+                    signal["regime_confidence"] = context.regime_confidence
             except Exception as e:
                 logger.warning(f"Regime gating check failed for {symbol}: {e}")
 
         # Apply Technical Signal Filter if enabled (EMA/MACD/VWAP confluence)
-        if signal and getattr(self.config, 'use_signal_filter', True):
+        if signal and getattr(self.config, "use_signal_filter", True):
             signal_result = self._check_technical_signals(symbol)
             if signal_result:
-                confluence = signal_result.get('confluence_score', 0)
-                min_conf = getattr(self.config, 'signal_min_confluence', 70.0)
+                confluence = signal_result.get("confluence_score", 0)
+                min_conf = getattr(self.config, "signal_min_confluence", 70.0)
 
-                ema_bullish = signal_result.get('ema_bullish', False)
-                macd_bullish = signal_result.get('macd_bullish', False)
-                above_vwap = signal_result.get('price_above_vwap', False)
+                ema_bullish = signal_result.get("ema_bullish", False)
+                macd_bullish = signal_result.get("macd_bullish", False)
+                above_vwap = signal_result.get("price_above_vwap", False)
 
                 # Check required conditions
                 approved = True
@@ -844,54 +942,83 @@ class HFTScalper:
 
                 if confluence < min_conf:
                     approved = False
-                    reject_reasons.append(f"confluence {confluence:.0f}% < {min_conf:.0f}%")
+                    reject_reasons.append(
+                        f"confluence {confluence:.0f}% < {min_conf:.0f}%"
+                    )
 
-                if getattr(self.config, 'signal_require_ema_bullish', True) and not ema_bullish:
+                if (
+                    getattr(self.config, "signal_require_ema_bullish", True)
+                    and not ema_bullish
+                ):
                     approved = False
                     reject_reasons.append("EMA bearish")
 
-                if getattr(self.config, 'signal_require_macd_bullish', True) and not macd_bullish:
+                if (
+                    getattr(self.config, "signal_require_macd_bullish", True)
+                    and not macd_bullish
+                ):
                     approved = False
                     reject_reasons.append("MACD bearish")
 
-                if getattr(self.config, 'signal_require_above_vwap', False) and not above_vwap:
+                if (
+                    getattr(self.config, "signal_require_above_vwap", False)
+                    and not above_vwap
+                ):
                     approved = False
                     reject_reasons.append("below VWAP")
 
                 if not approved:
-                    logger.info(f"SIGNAL REJECT: {symbol} - {', '.join(reject_reasons)}")
+                    logger.info(
+                        f"SIGNAL REJECT: {symbol} - {', '.join(reject_reasons)}"
+                    )
                     signal = None
                 else:
-                    logger.info(f"SIGNAL APPROVE: {symbol} - Confluence {confluence:.0f}%, EMA={'Bull' if ema_bullish else 'Bear'}, MACD={'Bull' if macd_bullish else 'Bear'}, VWAP={'Above' if above_vwap else 'Below'}")
+                    logger.info(
+                        f"SIGNAL APPROVE: {symbol} - Confluence {confluence:.0f}%, EMA={'Bull' if ema_bullish else 'Bear'}, MACD={'Bull' if macd_bullish else 'Bear'}, VWAP={'Above' if above_vwap else 'Below'}"
+                    )
                     # Store signal state for correlation analysis
-                    signal['signal_confluence'] = confluence
-                    signal['signal_bias'] = signal_result.get('signal_bias', 'NEUTRAL')
-                    signal['signal_ema_bullish'] = ema_bullish
-                    signal['signal_macd_bullish'] = macd_bullish
-                    signal['signal_above_vwap'] = above_vwap
-                    signal['signal_ema_crossover'] = signal_result.get('ema_crossover', 'NONE')
-                    signal['signal_macd_crossover'] = signal_result.get('macd_crossover', 'NONE')
-                    signal['signal_vwap_crossover'] = signal_result.get('vwap_crossover', 'NONE')
-                    signal['signal_candle_momentum'] = signal_result.get('candle_momentum', 'NEUTRAL')
+                    signal["signal_confluence"] = confluence
+                    signal["signal_bias"] = signal_result.get("signal_bias", "NEUTRAL")
+                    signal["signal_ema_bullish"] = ema_bullish
+                    signal["signal_macd_bullish"] = macd_bullish
+                    signal["signal_above_vwap"] = above_vwap
+                    signal["signal_ema_crossover"] = signal_result.get(
+                        "ema_crossover", "NONE"
+                    )
+                    signal["signal_macd_crossover"] = signal_result.get(
+                        "macd_crossover", "NONE"
+                    )
+                    signal["signal_vwap_crossover"] = signal_result.get(
+                        "vwap_crossover", "NONE"
+                    )
+                    signal["signal_candle_momentum"] = signal_result.get(
+                        "candle_momentum", "NEUTRAL"
+                    )
             else:
-                logger.debug(f"SIGNAL CHECK: {symbol} - No signal data available (insufficient history)")
+                logger.debug(
+                    f"SIGNAL CHECK: {symbol} - No signal data available (insufficient history)"
+                )
 
         # Apply Scalp Fade Filter if enabled
-        if signal and getattr(self.config, 'use_scalp_fade_filter', False):
+        if signal and getattr(self.config, "use_scalp_fade_filter", False):
             should_trade, prob, verdict = self._check_scalp_fade_signal(symbol)
 
             if not should_trade:
-                logger.info(f"🚫 FADE FILTER: {symbol} rejected - {prob:.0%} continuation ({verdict})")
+                logger.info(
+                    f"🚫 FADE FILTER: {symbol} rejected - {prob:.0%} continuation ({verdict})"
+                )
                 self.fade_filter_rejects += 1
                 return None
 
             # Add scalp data to signal
-            signal['scalp_prob'] = prob
-            signal['scalp_verdict'] = verdict
+            signal["scalp_prob"] = prob
+            signal["scalp_verdict"] = verdict
             self.fade_filter_approves += 1
 
             if verdict == "LIKELY_CONTINUE":
-                logger.info(f"✅ FADE FILTER: {symbol} approved - {prob:.0%} continuation")
+                logger.info(
+                    f"✅ FADE FILTER: {symbol} approved - {prob:.0%} continuation"
+                )
 
         if signal and self.on_signal:
             self.on_signal(signal)
@@ -908,7 +1035,7 @@ class HFTScalper:
             return None
 
         trade = self.open_positions[symbol]
-        price = quote.get('price', 0) or quote.get('last', 0)
+        price = quote.get("price", 0) or quote.get("last", 0)
 
         if not price:
             return None
@@ -920,11 +1047,13 @@ class HFTScalper:
             trade.low_price = price
 
         # Calculate current P/L
-        pnl_pct = ((price - trade.entry_price) / trade.entry_price * 100)
-        max_gain = ((trade.high_price - trade.entry_price) / trade.entry_price * 100)
+        pnl_pct = (price - trade.entry_price) / trade.entry_price * 100
+        max_gain = (trade.high_price - trade.entry_price) / trade.entry_price * 100
 
         trade.max_gain_percent = max_gain
-        trade.max_drawdown_percent = ((trade.low_price - trade.entry_price) / trade.entry_price * 100)
+        trade.max_drawdown_percent = (
+            (trade.low_price - trade.entry_price) / trade.entry_price * 100
+        )
 
         # Calculate hold time
         entry_time = datetime.fromisoformat(trade.entry_time)
@@ -935,9 +1064,10 @@ class HFTScalper:
 
         # ===== CHRONOS SMART EXIT (Check BEFORE stop loss) =====
         # This prevents stop loss deaths by detecting momentum fading early
-        if getattr(self.config, 'use_chronos_exit', True):
+        if getattr(self.config, "use_chronos_exit", True):
             try:
                 from ai.chronos_exit_manager import get_chronos_exit_manager
+
                 exit_mgr = get_chronos_exit_manager()
 
                 # Register position if not already tracked
@@ -953,8 +1083,9 @@ class HFTScalper:
                         "pnl_percent": pnl_pct,
                         "price": price,
                         "chronos_urgency": chronos_signal.urgency,
-                        "chronos_regime": chronos_signal.regime_after or exit_mgr.positions[symbol].current_regime,
-                        "chronos_details": chronos_signal.details
+                        "chronos_regime": chronos_signal.regime_after
+                        or exit_mgr.positions[symbol].current_regime,
+                        "chronos_details": chronos_signal.details,
                     }
                     logger.info(
                         f"CHRONOS EXIT: {symbol} - {chronos_signal.reason} "
@@ -974,10 +1105,13 @@ class HFTScalper:
                     "pnl_percent": pnl_pct,
                     "price": price,
                     "stop_type": "ATR",
-                    "atr_stop": trade.atr_stop_price
+                    "atr_stop": trade.atr_stop_price,
                 }
             # ATR-based trailing stop - activates once we hit ATR target
-            elif trade.high_price >= trade.atr_target_price and trade.atr_trail_distance > 0:
+            elif (
+                trade.high_price >= trade.atr_target_price
+                and trade.atr_trail_distance > 0
+            ):
                 # Calculate trailing stop from high
                 trailing_stop = trade.high_price - trade.atr_trail_distance
                 if price <= trailing_stop:
@@ -987,7 +1121,7 @@ class HFTScalper:
                         "max_gain": max_gain,
                         "price": price,
                         "stop_type": "ATR",
-                        "trailing_stop": trailing_stop
+                        "trailing_stop": trailing_stop,
                     }
         else:
             # Fallback to fixed percentage stops
@@ -997,7 +1131,7 @@ class HFTScalper:
                     "reason": "STOP_LOSS",
                     "pnl_percent": pnl_pct,
                     "price": price,
-                    "stop_type": "FIXED"
+                    "stop_type": "FIXED",
                 }
 
             # Check trailing stop - activates once we hit profit target
@@ -1012,14 +1146,16 @@ class HFTScalper:
                         "max_gain": max_gain,
                         "locked_profit": trailing_trigger,
                         "price": price,
-                        "stop_type": "FIXED"
+                        "stop_type": "FIXED",
                     }
 
         # ===== FAILED MOMENTUM EARLY EXIT =====
         # If trade hasn't worked after 45 seconds and is flat/down, exit early
         # Don't wait for MAX_HOLD_TIME - cut losers fast
-        failed_momentum_seconds = getattr(self.config, 'failed_momentum_seconds', 45)
-        failed_momentum_threshold = getattr(self.config, 'failed_momentum_threshold', 0.5)
+        failed_momentum_seconds = getattr(self.config, "failed_momentum_seconds", 45)
+        failed_momentum_threshold = getattr(
+            self.config, "failed_momentum_threshold", 0.5
+        )
 
         if exit_signal is None and hold_seconds >= failed_momentum_seconds:
             # Exit if: (1) currently flat or down, (2) never reached +1% gain
@@ -1030,9 +1166,11 @@ class HFTScalper:
                     "pnl_percent": pnl_pct,
                     "max_gain": max_gain,
                     "price": price,
-                    "details": f"Flat/down after {hold_seconds:.0f}s, never hit +1%"
+                    "details": f"Flat/down after {hold_seconds:.0f}s, never hit +1%",
                 }
-                logger.info(f"FAILED_MOMENTUM: {symbol} @ {pnl_pct:+.1f}% after {hold_seconds:.0f}s (max was {max_gain:+.1f}%)")
+                logger.info(
+                    f"FAILED_MOMENTUM: {symbol} @ {pnl_pct:+.1f}% after {hold_seconds:.0f}s (max was {max_gain:+.1f}%)"
+                )
 
         # Check max hold time - but only exit if in profit or small loss
         if exit_signal is None and hold_seconds >= self.config.max_hold_seconds:
@@ -1043,14 +1181,14 @@ class HFTScalper:
                     "reason": "MAX_HOLD_TIME",
                     "hold_seconds": hold_seconds,
                     "pnl_percent": pnl_pct,
-                    "price": price
+                    "price": price,
                 }
 
         # Check for reversal - exit if we were up and now reversing
         if exit_signal is None and len(self.price_history.get(symbol, [])) >= 3:
             prices = self.price_history[symbol]
             recent_high = max(p.price for p in prices[-3:])
-            drop_from_high = ((recent_high - price) / recent_high * 100)
+            drop_from_high = (recent_high - price) / recent_high * 100
 
             # Exit on reversal if we had gains (lock in profit)
             if drop_from_high >= self.config.reversal_candle_percent and max_gain > 1.0:
@@ -1059,18 +1197,20 @@ class HFTScalper:
                     "drop_percent": drop_from_high,
                     "pnl_percent": pnl_pct,
                     "max_gain": max_gain,
-                    "price": price
+                    "price": price,
                 }
 
         return exit_signal
 
-    async def execute_entry(self, symbol: str, signal: Dict, quote: Dict = None) -> Optional[ScalpTrade]:
+    async def execute_entry(
+        self, symbol: str, signal: Dict, quote: Dict = None
+    ) -> Optional[ScalpTrade]:
         """Execute an entry trade"""
         if not self.config.enabled:
             logger.info(f"Scalper disabled - would have entered {symbol}")
             return None
 
-        price = signal.get('price', 0)
+        price = signal.get("price", 0)
         if not price:
             return None
 
@@ -1078,35 +1218,51 @@ class HFTScalper:
         shares, position_value, risk_amount = self.config.calculate_position_size(price)
 
         if shares < self.config.min_shares:
-            logger.debug(f"Position too small for {symbol}: {shares} shares < {self.config.min_shares} min")
+            logger.debug(
+                f"Position too small for {symbol}: {shares} shares < {self.config.min_shares} min"
+            )
             return None
 
         # Capture secondary triggers for correlation analysis
         secondary_triggers = None
         try:
             from ai.trade_signals import get_secondary_triggers
+
             # Use quote if provided, otherwise build from signal
-            entry_quote = quote if quote else {
-                'price': price,
-                'last': price,
-                'change_percent': signal.get('change_percent', 0),
-                'volume': signal.get('volume', 0)
-            }
-            secondary_triggers = await get_secondary_triggers(symbol, entry_quote, signal)
-            logger.debug(f"Captured {len(secondary_triggers)} secondary triggers for {symbol}")
+            entry_quote = (
+                quote
+                if quote
+                else {
+                    "price": price,
+                    "last": price,
+                    "change_percent": signal.get("change_percent", 0),
+                    "volume": signal.get("volume", 0),
+                }
+            )
+            secondary_triggers = await get_secondary_triggers(
+                symbol, entry_quote, signal
+            )
+            logger.debug(
+                f"Captured {len(secondary_triggers)} secondary triggers for {symbol}"
+            )
         except Exception as e:
             logger.warning(f"Failed to capture secondary triggers: {e}")
 
         # Calculate ATR-based dynamic stops if enabled
         atr = 0.0
         atr_stop_price = price * (1 - self.config.stop_loss_percent / 100)  # Fallback
-        atr_target_price = price * (1 + self.config.profit_target_percent / 100)  # Fallback
-        atr_trail_distance = price * (self.config.trailing_stop_percent / 100)  # Fallback
+        atr_target_price = price * (
+            1 + self.config.profit_target_percent / 100
+        )  # Fallback
+        atr_trail_distance = price * (
+            self.config.trailing_stop_percent / 100
+        )  # Fallback
         volatility_regime = ""
 
         if self.config.use_atr_stops:
             try:
                 from ai.atr_stops import get_atr_calculator
+
                 calculator = get_atr_calculator()
                 calculator.stop_multiplier = self.config.atr_stop_multiplier
                 calculator.target_multiplier = self.config.atr_target_multiplier
@@ -1124,7 +1280,9 @@ class HFTScalper:
                         f"Stop=${atr_stop_price:.2f} | Target=${atr_target_price:.2f}"
                     )
             except Exception as e:
-                logger.warning(f"ATR calculation failed for {symbol}, using fixed %: {e}")
+                logger.warning(
+                    f"ATR calculation failed for {symbol}, using fixed %: {e}"
+                )
 
         trade_id = f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
@@ -1133,7 +1291,7 @@ class HFTScalper:
             symbol=symbol,
             entry_time=datetime.now().isoformat(),
             entry_price=price,
-            entry_signal=signal.get('type', 'unknown'),
+            entry_signal=signal.get("type", "unknown"),
             shares=shares,
             high_price=price,
             low_price=price,
@@ -1145,15 +1303,15 @@ class HFTScalper:
             atr_trail_distance=atr_trail_distance,
             volatility_regime=volatility_regime,
             # Technical signal state at entry (for correlation analysis)
-            signal_confluence=signal.get('signal_confluence', 0.0),
-            signal_bias=signal.get('signal_bias', ''),
-            signal_ema_bullish=signal.get('signal_ema_bullish', False),
-            signal_macd_bullish=signal.get('signal_macd_bullish', False),
-            signal_above_vwap=signal.get('signal_above_vwap', False),
-            signal_ema_crossover=signal.get('signal_ema_crossover', ''),
-            signal_macd_crossover=signal.get('signal_macd_crossover', ''),
-            signal_vwap_crossover=signal.get('signal_vwap_crossover', ''),
-            signal_candle_momentum=signal.get('signal_candle_momentum', '')
+            signal_confluence=signal.get("signal_confluence", 0.0),
+            signal_bias=signal.get("signal_bias", ""),
+            signal_ema_bullish=signal.get("signal_ema_bullish", False),
+            signal_macd_bullish=signal.get("signal_macd_bullish", False),
+            signal_above_vwap=signal.get("signal_above_vwap", False),
+            signal_ema_crossover=signal.get("signal_ema_crossover", ""),
+            signal_macd_crossover=signal.get("signal_macd_crossover", ""),
+            signal_vwap_crossover=signal.get("signal_vwap_crossover", ""),
+            signal_candle_momentum=signal.get("signal_candle_momentum", ""),
         )
 
         # Execute order (paper or real)
@@ -1166,6 +1324,7 @@ class HFTScalper:
             # Real order execution
             try:
                 import httpx
+
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
                         "http://localhost:9100/api/order",
@@ -1173,9 +1332,9 @@ class HFTScalper:
                             "symbol": symbol,
                             "side": "buy",
                             "qty": shares,
-                            "type": "market"
+                            "type": "market",
                         },
-                        timeout=5.0
+                        timeout=5.0,
                     )
                     if response.status_code != 200:
                         logger.error(f"Order failed: {response.text}")
@@ -1189,20 +1348,24 @@ class HFTScalper:
         self.daily_trades += 1
         self._save_trades()
 
-        logger.info(f"ENTRY: {symbol} {shares} @ ${price:.2f} | Signal: {signal.get('type')}")
+        logger.info(
+            f"ENTRY: {symbol} {shares} @ ${price:.2f} | Signal: {signal.get('type')}"
+        )
 
         if self.on_entry:
             self.on_entry(trade)
 
         return trade
 
-    async def execute_exit(self, symbol: str, exit_signal: Dict) -> Optional[ScalpTrade]:
+    async def execute_exit(
+        self, symbol: str, exit_signal: Dict
+    ) -> Optional[ScalpTrade]:
         """Execute an exit trade"""
         if symbol not in self.open_positions:
             return None
 
         trade = self.open_positions[symbol]
-        price = exit_signal.get('price', 0)
+        price = exit_signal.get("price", 0)
 
         if not price:
             return None
@@ -1210,9 +1373,9 @@ class HFTScalper:
         # Calculate P/L
         trade.exit_time = datetime.now().isoformat()
         trade.exit_price = price
-        trade.exit_reason = exit_signal.get('reason', 'unknown')
+        trade.exit_reason = exit_signal.get("reason", "unknown")
         trade.pnl = (price - trade.entry_price) * trade.shares
-        trade.pnl_percent = ((price - trade.entry_price) / trade.entry_price * 100)
+        trade.pnl_percent = (price - trade.entry_price) / trade.entry_price * 100
         trade.status = "closed"
 
         # Execute order (paper or real)
@@ -1221,6 +1384,7 @@ class HFTScalper:
         else:
             try:
                 import httpx
+
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
                         "http://localhost:9100/api/order",
@@ -1228,9 +1392,9 @@ class HFTScalper:
                             "symbol": symbol,
                             "side": "sell",
                             "qty": trade.shares,
-                            "type": "market"
+                            "type": "market",
                         },
-                        timeout=5.0
+                        timeout=5.0,
                     )
             except Exception as e:
                 logger.error(f"Exit order error: {e}")
@@ -1247,6 +1411,7 @@ class HFTScalper:
         # Unregister from Chronos exit manager
         try:
             from ai.chronos_exit_manager import get_chronos_exit_manager
+
             exit_mgr = get_chronos_exit_manager()
             exit_mgr.unregister_position(symbol)
         except Exception:
@@ -1264,9 +1429,12 @@ class HFTScalper:
         if trade.pnl_percent >= 2.0:  # Only if +2% or more
             try:
                 from .phase2_manager import register_phase1_exit
+
                 phase2_result = register_phase1_exit(symbol, price, trade.pnl_percent)
                 if phase2_result.get("action") == "WATCHING":
-                    logger.info(f"[PHASE2] {symbol} registered for continuation monitoring")
+                    logger.info(
+                        f"[PHASE2] {symbol} registered for continuation monitoring"
+                    )
             except Exception as e:
                 logger.debug(f"Phase 2 registration skipped: {e}")
 
@@ -1286,15 +1454,18 @@ class HFTScalper:
             self._save_config()
 
         # Subscribe watchlist to Polygon stream for fade filter
-        if getattr(self.config, 'use_scalp_fade_filter', False):
+        if getattr(self.config, "use_scalp_fade_filter", False):
             try:
                 from polygon_streaming import get_polygon_stream
+
                 stream = get_polygon_stream()
                 for symbol in self.config.watchlist:
                     stream.subscribe_trades(symbol)
                     stream.subscribe_luld(symbol)
                 stream.start()
-                logger.info(f"Polygon stream started for fade filter: {len(self.config.watchlist)} symbols")
+                logger.info(
+                    f"Polygon stream started for fade filter: {len(self.config.watchlist)} symbols"
+                )
             except Exception as e:
                 logger.warning(f"Polygon stream failed to start: {e}")
 
@@ -1302,7 +1473,9 @@ class HFTScalper:
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
 
-        logger.info(f"HFT Scalper started - watching {len(self.config.watchlist)} symbols")
+        logger.info(
+            f"HFT Scalper started - watching {len(self.config.watchlist)} symbols"
+        )
 
     def stop(self):
         """Stop the scalper"""
@@ -1332,13 +1505,21 @@ class HFTScalper:
                 async with httpx.AsyncClient() as client:
                     # Sync with common worklist (data bus pattern)
                     try:
-                        wl_resp = await client.get("http://localhost:9100/api/worklist", timeout=3.0)
+                        wl_resp = await client.get(
+                            "http://localhost:9100/api/worklist", timeout=3.0
+                        )
                         if wl_resp.status_code == 200:
                             wl_data = wl_resp.json()
-                            common_symbols = [s.get('symbol') for s in wl_data.get('data', []) if s.get('symbol')]
+                            common_symbols = [
+                                s.get("symbol")
+                                for s in wl_data.get("data", [])
+                                if s.get("symbol")
+                            ]
                             if common_symbols:
                                 # Merge with config watchlist (union)
-                                all_symbols = list(set(self.config.watchlist + common_symbols))
+                                all_symbols = list(
+                                    set(self.config.watchlist + common_symbols)
+                                )
                                 self.config.watchlist = all_symbols
                     except Exception as e:
                         logger.debug(f"Worklist sync: {e}")
@@ -1354,8 +1535,7 @@ class HFTScalper:
 
                         try:
                             response = await client.get(
-                                f"http://localhost:9100/api/price/{symbol}",
-                                timeout=2.0
+                                f"http://localhost:9100/api/price/{symbol}", timeout=2.0
                             )
                             if response.status_code == 200:
                                 quote = response.json()
@@ -1366,7 +1546,9 @@ class HFTScalper:
                                 )
                                 if entry_signal:
                                     logger.warning(f"NEWS-TRIGGERED ENTRY: {symbol}")
-                                    await self.execute_entry(symbol, entry_signal, quote)
+                                    await self.execute_entry(
+                                        symbol, entry_signal, quote
+                                    )
                         except Exception as e:
                             logger.debug(f"Error on priority {symbol}: {e}")
 
@@ -1377,22 +1559,27 @@ class HFTScalper:
 
                         try:
                             response = await client.get(
-                                f"http://localhost:9100/api/price/{symbol}",
-                                timeout=2.0
+                                f"http://localhost:9100/api/price/{symbol}", timeout=2.0
                             )
                             if response.status_code == 200:
                                 quote = response.json()
 
                                 # Check for exit signals first
                                 if symbol in self.open_positions:
-                                    exit_signal = await self.check_exit_signal(symbol, quote)
+                                    exit_signal = await self.check_exit_signal(
+                                        symbol, quote
+                                    )
                                     if exit_signal:
                                         await self.execute_exit(symbol, exit_signal)
                                 else:
                                     # Check for entry signals
-                                    entry_signal = await self.check_entry_signal(symbol, quote)
+                                    entry_signal = await self.check_entry_signal(
+                                        symbol, quote
+                                    )
                                     if entry_signal and self.config.enabled:
-                                        await self.execute_entry(symbol, entry_signal, quote)
+                                        await self.execute_entry(
+                                            symbol, entry_signal, quote
+                                        )
                         except Exception as e:
                             logger.debug(f"Error checking {symbol}: {e}")
 
@@ -1413,7 +1600,7 @@ class HFTScalper:
             example_sizes[f"${price:.0f}_stock"] = {
                 "shares": shares,
                 "position": round(pos_val, 2),
-                "risk": round(risk, 2)
+                "risk": round(risk, 2),
             }
 
         return {
@@ -1427,9 +1614,11 @@ class HFTScalper:
             "risk_management": {
                 "account_size": self.config.account_size,
                 "risk_percent": self.config.risk_percent,
-                "risk_per_trade": round(self.config.account_size * self.config.risk_percent / 100, 2),
+                "risk_per_trade": round(
+                    self.config.account_size * self.config.risk_percent / 100, 2
+                ),
                 "max_trades_before_wipeout": int(100 / self.config.risk_percent),
-                "use_risk_based_sizing": self.config.use_risk_based_sizing
+                "use_risk_based_sizing": self.config.use_risk_based_sizing,
             },
             "position_examples": example_sizes,
             "config": {
@@ -1438,8 +1627,8 @@ class HFTScalper:
                 "trailing_stop": self.config.trailing_stop_percent,
                 "max_position": self.config.max_position_size,
                 "min_price": self.config.min_price,
-                "max_price": self.config.max_price
-            }
+                "max_price": self.config.max_price,
+            },
         }
 
     def get_open_positions(self) -> List[Dict]:
@@ -1448,12 +1637,12 @@ class HFTScalper:
 
     def get_trade_history(self, limit: int = 50) -> List[Dict]:
         """Get trade history"""
-        closed = [t for t in self.trades if t.status == 'closed']
+        closed = [t for t in self.trades if t.status == "closed"]
         return [t.to_dict() for t in closed[-limit:]]
 
     def get_stats(self) -> Dict:
         """Get trading statistics"""
-        closed = [t for t in self.trades if t.status == 'closed']
+        closed = [t for t in self.trades if t.status == "closed"]
 
         if not closed:
             return {"message": "No completed trades yet"}
@@ -1477,7 +1666,13 @@ class HFTScalper:
             "avg_hold_seconds": round(avg_hold, 1),
             "best_trade": max(t.pnl for t in closed) if closed else 0,
             "worst_trade": min(t.pnl for t in closed) if closed else 0,
-            "profit_factor": round(abs(sum(t.pnl for t in wins)) / abs(sum(t.pnl for t in losses)), 2) if losses and sum(t.pnl for t in losses) != 0 else 0
+            "profit_factor": (
+                round(
+                    abs(sum(t.pnl for t in wins)) / abs(sum(t.pnl for t in losses)), 2
+                )
+                if losses and sum(t.pnl for t in losses) != 0
+                else 0
+            ),
         }
 
     def reset_daily(self) -> Dict:
@@ -1496,7 +1691,7 @@ class HFTScalper:
             "previous_trades": old_trades,
             "previous_pnl": round(old_pnl, 2),
             "current_trades": 0,
-            "current_pnl": 0.0
+            "current_pnl": 0.0,
         }
 
 
@@ -1530,7 +1725,7 @@ if __name__ == "__main__":
 
     # Test
     scalper = get_hft_scalper()
-    scalper.config.watchlist = ['YCBD', 'ADTX', 'AZI']
+    scalper.config.watchlist = ["YCBD", "ADTX", "AZI"]
     scalper.config.enabled = False  # Paper mode
 
     print(f"Status: {scalper.get_status()}")

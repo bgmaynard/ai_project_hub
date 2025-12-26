@@ -2,14 +2,15 @@
 Schwab Real-Time WebSocket Streaming
 Provides sub-second market data updates via Schwab's streaming API
 """
+
 import asyncio
 import json
 import logging
 import os
 import threading
 from datetime import datetime
-from typing import Dict, List, Optional, Callable, Set
 from pathlib import Path
+from typing import Callable, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -97,14 +98,16 @@ async def _run_stream():
             logger.error("Schwab token file not found")
             return
 
-        app_key = os.getenv('SCHWAB_APP_KEY')
-        app_secret = os.getenv('SCHWAB_APP_SECRET')
+        app_key = os.getenv("SCHWAB_APP_KEY")
+        app_secret = os.getenv("SCHWAB_APP_SECRET")
         if not app_key or not app_secret:
             logger.error("SCHWAB_APP_KEY or SCHWAB_APP_SECRET not set")
             return
 
         # Create client from token file (requires both app_key and app_secret)
-        client = schwab.auth.client_from_token_file(str(TOKEN_FILE), app_key, app_secret)
+        client = schwab.auth.client_from_token_file(
+            str(TOKEN_FILE), app_key, app_secret
+        )
         _stream_client = StreamClient(client)
 
         # Login to stream
@@ -115,26 +118,28 @@ async def _run_stream():
         def quote_handler(msg):
             """Process incoming quote messages"""
             try:
-                if 'content' in msg:
-                    for item in msg['content']:
-                        symbol = item.get('key', '').upper()
+                if "content" in msg:
+                    for item in msg["content"]:
+                        symbol = item.get("key", "").upper()
                         if symbol:
                             quote = {
-                                'symbol': symbol,
-                                'bid': item.get('BID_PRICE', item.get('1', 0)),
-                                'ask': item.get('ASK_PRICE', item.get('2', 0)),
-                                'last': item.get('LAST_PRICE', item.get('3', 0)),
-                                'bid_size': item.get('BID_SIZE', item.get('4', 0)),
-                                'ask_size': item.get('ASK_SIZE', item.get('5', 0)),
-                                'volume': item.get('TOTAL_VOLUME', item.get('8', 0)),
-                                'high': item.get('HIGH_PRICE', item.get('12', 0)),
-                                'low': item.get('LOW_PRICE', item.get('13', 0)),
-                                'close': item.get('CLOSE_PRICE', item.get('15', 0)),
-                                'open': item.get('OPEN_PRICE', item.get('28', 0)),
-                                'change': item.get('NET_CHANGE', item.get('29', 0)),
-                                'change_percent': item.get('NET_CHANGE_PERCENT', item.get('30', 0)),
-                                'timestamp': datetime.now().isoformat(),
-                                'source': 'schwab_stream'
+                                "symbol": symbol,
+                                "bid": item.get("BID_PRICE", item.get("1", 0)),
+                                "ask": item.get("ASK_PRICE", item.get("2", 0)),
+                                "last": item.get("LAST_PRICE", item.get("3", 0)),
+                                "bid_size": item.get("BID_SIZE", item.get("4", 0)),
+                                "ask_size": item.get("ASK_SIZE", item.get("5", 0)),
+                                "volume": item.get("TOTAL_VOLUME", item.get("8", 0)),
+                                "high": item.get("HIGH_PRICE", item.get("12", 0)),
+                                "low": item.get("LOW_PRICE", item.get("13", 0)),
+                                "close": item.get("CLOSE_PRICE", item.get("15", 0)),
+                                "open": item.get("OPEN_PRICE", item.get("28", 0)),
+                                "change": item.get("NET_CHANGE", item.get("29", 0)),
+                                "change_percent": item.get(
+                                    "NET_CHANGE_PERCENT", item.get("30", 0)
+                                ),
+                                "timestamp": datetime.now().isoformat(),
+                                "source": "schwab_stream",
                             }
                             _quote_cache[symbol] = quote
                             _notify_callbacks(symbol, quote)
@@ -148,34 +153,58 @@ async def _run_stream():
         def nyse_book_handler(msg):
             """Process NYSE L2 book messages"""
             try:
-                if 'content' in msg:
-                    for item in msg['content']:
-                        symbol = item.get('key', '').upper()
+                if "content" in msg:
+                    for item in msg["content"]:
+                        symbol = item.get("key", "").upper()
                         if symbol:
                             # Parse bids and asks from book data
                             bids = []
                             asks = []
                             # Book data comes as arrays of price/size/exchange
                             for i in range(10):  # Up to 10 levels
-                                bid_price = item.get(f'BID_PRICE_{i}', item.get(str(i*3), 0))
-                                bid_size = item.get(f'BID_SIZE_{i}', item.get(str(i*3+1), 0))
-                                ask_price = item.get(f'ASK_PRICE_{i}', item.get(str(i*3+10), 0))
-                                ask_size = item.get(f'ASK_SIZE_{i}', item.get(str(i*3+11), 0))
+                                bid_price = item.get(
+                                    f"BID_PRICE_{i}", item.get(str(i * 3), 0)
+                                )
+                                bid_size = item.get(
+                                    f"BID_SIZE_{i}", item.get(str(i * 3 + 1), 0)
+                                )
+                                ask_price = item.get(
+                                    f"ASK_PRICE_{i}", item.get(str(i * 3 + 10), 0)
+                                )
+                                ask_size = item.get(
+                                    f"ASK_SIZE_{i}", item.get(str(i * 3 + 11), 0)
+                                )
                                 if bid_price and bid_size:
-                                    bids.append({'price': bid_price, 'size': bid_size, 'exchange': 'NYSE'})
+                                    bids.append(
+                                        {
+                                            "price": bid_price,
+                                            "size": bid_size,
+                                            "exchange": "NYSE",
+                                        }
+                                    )
                                 if ask_price and ask_size:
-                                    asks.append({'price': ask_price, 'size': ask_size, 'exchange': 'NYSE'})
+                                    asks.append(
+                                        {
+                                            "price": ask_price,
+                                            "size": ask_size,
+                                            "exchange": "NYSE",
+                                        }
+                                    )
 
                             book = {
-                                'symbol': symbol,
-                                'bids': sorted(bids, key=lambda x: x['price'], reverse=True),
-                                'asks': sorted(asks, key=lambda x: x['price']),
-                                'timestamp': datetime.now().isoformat(),
-                                'source': 'schwab_nyse_book'
+                                "symbol": symbol,
+                                "bids": sorted(
+                                    bids, key=lambda x: x["price"], reverse=True
+                                ),
+                                "asks": sorted(asks, key=lambda x: x["price"]),
+                                "timestamp": datetime.now().isoformat(),
+                                "source": "schwab_nyse_book",
                             }
                             _book_cache[symbol] = book
                             _notify_book_callbacks(symbol, book)
-                            logger.debug(f"NYSE book update: {symbol} - {len(bids)} bids, {len(asks)} asks")
+                            logger.debug(
+                                f"NYSE book update: {symbol} - {len(bids)} bids, {len(asks)} asks"
+                            )
             except Exception as e:
                 logger.error(f"NYSE book handler error: {e}")
 
@@ -183,33 +212,57 @@ async def _run_stream():
         def nasdaq_book_handler(msg):
             """Process NASDAQ L2 book messages"""
             try:
-                if 'content' in msg:
-                    for item in msg['content']:
-                        symbol = item.get('key', '').upper()
+                if "content" in msg:
+                    for item in msg["content"]:
+                        symbol = item.get("key", "").upper()
                         if symbol:
                             bids = []
                             asks = []
                             for i in range(10):
-                                bid_price = item.get(f'BID_PRICE_{i}', item.get(str(i*3), 0))
-                                bid_size = item.get(f'BID_SIZE_{i}', item.get(str(i*3+1), 0))
-                                ask_price = item.get(f'ASK_PRICE_{i}', item.get(str(i*3+10), 0))
-                                ask_size = item.get(f'ASK_SIZE_{i}', item.get(str(i*3+11), 0))
-                                mm = item.get(f'MARKET_MAKER_{i}', '')
+                                bid_price = item.get(
+                                    f"BID_PRICE_{i}", item.get(str(i * 3), 0)
+                                )
+                                bid_size = item.get(
+                                    f"BID_SIZE_{i}", item.get(str(i * 3 + 1), 0)
+                                )
+                                ask_price = item.get(
+                                    f"ASK_PRICE_{i}", item.get(str(i * 3 + 10), 0)
+                                )
+                                ask_size = item.get(
+                                    f"ASK_SIZE_{i}", item.get(str(i * 3 + 11), 0)
+                                )
+                                mm = item.get(f"MARKET_MAKER_{i}", "")
                                 if bid_price and bid_size:
-                                    bids.append({'price': bid_price, 'size': bid_size, 'market_maker': mm})
+                                    bids.append(
+                                        {
+                                            "price": bid_price,
+                                            "size": bid_size,
+                                            "market_maker": mm,
+                                        }
+                                    )
                                 if ask_price and ask_size:
-                                    asks.append({'price': ask_price, 'size': ask_size, 'market_maker': mm})
+                                    asks.append(
+                                        {
+                                            "price": ask_price,
+                                            "size": ask_size,
+                                            "market_maker": mm,
+                                        }
+                                    )
 
                             book = {
-                                'symbol': symbol,
-                                'bids': sorted(bids, key=lambda x: x['price'], reverse=True),
-                                'asks': sorted(asks, key=lambda x: x['price']),
-                                'timestamp': datetime.now().isoformat(),
-                                'source': 'schwab_nasdaq_book'
+                                "symbol": symbol,
+                                "bids": sorted(
+                                    bids, key=lambda x: x["price"], reverse=True
+                                ),
+                                "asks": sorted(asks, key=lambda x: x["price"]),
+                                "timestamp": datetime.now().isoformat(),
+                                "source": "schwab_nasdaq_book",
                             }
                             _book_cache[symbol] = book
                             _notify_book_callbacks(symbol, book)
-                            logger.debug(f"NASDAQ book update: {symbol} - {len(bids)} bids, {len(asks)} asks")
+                            logger.debug(
+                                f"NASDAQ book update: {symbol} - {len(bids)} bids, {len(asks)} asks"
+                            )
             except Exception as e:
                 logger.error(f"NASDAQ book handler error: {e}")
 
@@ -224,14 +277,18 @@ async def _run_stream():
         # Subscribe to symbols if any are pending
         if _subscribed_symbols:
             await _stream_client.level_one_equity_subs(list(_subscribed_symbols))
-            logger.info(f"Schwab streaming: subscribed to {len(_subscribed_symbols)} symbols")
+            logger.info(
+                f"Schwab streaming: subscribed to {len(_subscribed_symbols)} symbols"
+            )
 
         # Subscribe to L2 books if any symbols pending
         if _book_symbols:
             try:
                 await _stream_client.nasdaq_book_subs(list(_book_symbols))
                 await _stream_client.nyse_book_subs(list(_book_symbols))
-                logger.info(f"Schwab streaming: L2 book subscribed to {len(_book_symbols)} symbols")
+                logger.info(
+                    f"Schwab streaming: L2 book subscribed to {len(_book_symbols)} symbols"
+                )
             except Exception as e:
                 logger.warning(f"Could not subscribe to L2 books: {e}")
 
@@ -284,10 +341,7 @@ def stop_streaming():
     if _stream_client:
         try:
             # Close the stream
-            asyncio.run_coroutine_threadsafe(
-                _stream_client.logout(),
-                _stream_loop
-            )
+            asyncio.run_coroutine_threadsafe(_stream_client.logout(), _stream_loop)
         except:
             pass
     logger.info("Schwab streaming stopped")
@@ -315,8 +369,7 @@ def subscribe(symbols: List[str]):
     if _is_running and _stream_loop:
         try:
             future = asyncio.run_coroutine_threadsafe(
-                _subscribe_symbols(symbols),
-                _stream_loop
+                _subscribe_symbols(symbols), _stream_loop
             )
             future.result(timeout=5)
         except Exception as e:
@@ -353,8 +406,7 @@ def subscribe_book(symbols: List[str]):
     if _is_running and _stream_loop:
         try:
             future = asyncio.run_coroutine_threadsafe(
-                _subscribe_book(symbols),
-                _stream_loop
+                _subscribe_book(symbols), _stream_loop
             )
             future.result(timeout=5)
             return True
@@ -372,7 +424,7 @@ def get_status() -> Dict:
         "book_symbols": list(_book_symbols),
         "cached_quotes": len(_quote_cache),
         "cached_books": len(_book_cache),
-        "callbacks_registered": len(_quote_callbacks)
+        "callbacks_registered": len(_quote_callbacks),
     }
 
 
@@ -392,6 +444,6 @@ def get_schwab_streamer():
             "get_quote": get_cached_quote,
             "get_all_quotes": get_quote_cache,
             "get_status": get_status,
-            "register_callback": register_callback
+            "register_callback": register_callback,
         }
     return _schwab_streamer

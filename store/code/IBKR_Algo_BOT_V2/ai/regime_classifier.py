@@ -7,45 +7,49 @@ Part of the Next-Gen AI Logic Blueprint.
 """
 
 import logging
-import numpy as np
-from datetime import datetime, time
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from datetime import datetime, time
 from enum import Enum
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
 class MarketRegime(str, Enum):
     """Market regime classifications"""
-    TRENDING_UP = "trending_up"      # Strong upward momentum
+
+    TRENDING_UP = "trending_up"  # Strong upward momentum
     TRENDING_DOWN = "trending_down"  # Strong downward momentum
-    RANGING = "ranging"              # Sideways, mean-reverting
-    VOLATILE = "volatile"            # High volatility, choppy
-    QUIET = "quiet"                  # Low volatility, low volume
+    RANGING = "ranging"  # Sideways, mean-reverting
+    VOLATILE = "volatile"  # High volatility, choppy
+    QUIET = "quiet"  # Low volatility, low volume
     UNKNOWN = "unknown"
 
 
 class MarketSession(str, Enum):
     """Time-based market sessions"""
-    PRE_MARKET = "pre_market"        # 4:00 AM - 9:30 AM ET
-    MARKET_OPEN = "market_open"      # 9:30 AM - 10:30 AM ET (most volatile)
-    MIDDAY = "midday"                # 10:30 AM - 2:00 PM ET (often choppy)
-    POWER_HOUR = "power_hour"        # 3:00 PM - 4:00 PM ET (trend moves)
-    AFTER_HOURS = "after_hours"      # 4:00 PM - 8:00 PM ET
+
+    PRE_MARKET = "pre_market"  # 4:00 AM - 9:30 AM ET
+    MARKET_OPEN = "market_open"  # 9:30 AM - 10:30 AM ET (most volatile)
+    MIDDAY = "midday"  # 10:30 AM - 2:00 PM ET (often choppy)
+    POWER_HOUR = "power_hour"  # 3:00 PM - 4:00 PM ET (trend moves)
+    AFTER_HOURS = "after_hours"  # 4:00 PM - 8:00 PM ET
     CLOSED = "closed"
 
 
 @dataclass
 class RegimeAnalysis:
     """Result of regime classification"""
+
     regime: MarketRegime
     session: MarketSession
-    confidence: float               # 0-1 confidence in classification
-    trend_strength: float           # -1 (down) to +1 (up)
-    volatility_percentile: float    # 0-100, relative to recent history
-    volume_percentile: float        # 0-100, relative to recent history
-    recommendation: str             # Trading recommendation
+    confidence: float  # 0-1 confidence in classification
+    trend_strength: float  # -1 (down) to +1 (up)
+    volatility_percentile: float  # 0-100, relative to recent history
+    volume_percentile: float  # 0-100, relative to recent history
+    recommendation: str  # Trading recommendation
     details: Dict
 
 
@@ -60,16 +64,16 @@ class RegimeClassifier:
 
     def __init__(self):
         # Lookback periods
-        self.short_period = 10      # Short-term trend
-        self.medium_period = 20     # Medium-term trend
-        self.long_period = 50       # Long-term trend
-        self.volatility_period = 14 # ATR period
+        self.short_period = 10  # Short-term trend
+        self.medium_period = 20  # Medium-term trend
+        self.long_period = 50  # Long-term trend
+        self.volatility_period = 14  # ATR period
 
         # Thresholds
-        self.trend_threshold = 0.002      # 0.2% slope = trending
-        self.volatility_high = 75         # Percentile for "volatile"
-        self.volatility_low = 25          # Percentile for "quiet"
-        self.volume_high = 70             # Percentile for high volume
+        self.trend_threshold = 0.002  # 0.2% slope = trending
+        self.volatility_high = 75  # Percentile for "volatile"
+        self.volatility_low = 25  # Percentile for "quiet"
+        self.volume_high = 70  # Percentile for high volume
 
         # Historical data for percentile calculations
         self.volatility_history: List[float] = []
@@ -115,7 +119,7 @@ class RegimeClassifier:
         if len(prices) < 5:
             return 0.0
 
-        prices = np.array(prices[-self.medium_period:])
+        prices = np.array(prices[-self.medium_period :])
         n = len(prices)
 
         # Linear regression
@@ -134,8 +138,9 @@ class RegimeClassifier:
 
         return float(trend_strength)
 
-    def calculate_volatility(self, highs: List[float], lows: List[float],
-                            closes: List[float]) -> Tuple[float, float]:
+    def calculate_volatility(
+        self, highs: List[float], lows: List[float], closes: List[float]
+    ) -> Tuple[float, float]:
         """
         Calculate ATR-based volatility and return (atr, percentile)
         """
@@ -146,16 +151,16 @@ class RegimeClassifier:
         true_ranges = []
         for i in range(1, len(closes)):
             high_low = highs[i] - lows[i]
-            high_close = abs(highs[i] - closes[i-1])
-            low_close = abs(lows[i] - closes[i-1])
+            high_close = abs(highs[i] - closes[i - 1])
+            low_close = abs(lows[i] - closes[i - 1])
             tr = max(high_low, high_close, low_close)
             true_ranges.append(tr)
 
         # ATR
-        atr = np.mean(true_ranges[-self.volatility_period:])
+        atr = np.mean(true_ranges[-self.volatility_period :])
 
         # Normalize by price
-        avg_price = np.mean(closes[-self.volatility_period:])
+        avg_price = np.mean(closes[-self.volatility_period :])
         if avg_price > 0:
             normalized_atr = (atr / avg_price) * 100  # As percentage
         else:
@@ -167,9 +172,10 @@ class RegimeClassifier:
             self.volatility_history.pop(0)
 
         if len(self.volatility_history) > 10:
-            percentile = (np.searchsorted(
-                np.sort(self.volatility_history), normalized_atr
-            ) / len(self.volatility_history)) * 100
+            percentile = (
+                np.searchsorted(np.sort(self.volatility_history), normalized_atr)
+                / len(self.volatility_history)
+            ) * 100
         else:
             percentile = 50.0
 
@@ -185,20 +191,26 @@ class RegimeClassifier:
         # Update history
         self.volume_history.extend(volumes[-5:])  # Add recent volumes
         if len(self.volume_history) > self.max_history:
-            self.volume_history = self.volume_history[-self.max_history:]
+            self.volume_history = self.volume_history[-self.max_history :]
 
         if len(self.volume_history) > 10:
-            percentile = (np.searchsorted(
-                np.sort(self.volume_history), current_volume
-            ) / len(self.volume_history)) * 100
+            percentile = (
+                np.searchsorted(np.sort(self.volume_history), current_volume)
+                / len(self.volume_history)
+            ) * 100
         else:
             percentile = 50.0
 
         return float(percentile)
 
-    def classify(self, prices: List[float], highs: List[float] = None,
-                lows: List[float] = None, volumes: List[float] = None,
-                timestamp: datetime = None) -> RegimeAnalysis:
+    def classify(
+        self,
+        prices: List[float],
+        highs: List[float] = None,
+        lows: List[float] = None,
+        volumes: List[float] = None,
+        timestamp: datetime = None,
+    ) -> RegimeAnalysis:
         """
         Main classification method.
 
@@ -221,7 +233,7 @@ class RegimeClassifier:
                 volatility_percentile=50.0,
                 volume_percentile=50.0,
                 recommendation="Insufficient data",
-                details={}
+                details={},
             )
 
         # Get market session
@@ -260,13 +272,22 @@ class RegimeClassifier:
             details={
                 "atr_percent": atr,
                 "prices_analyzed": len(prices),
-                "short_ma": float(np.mean(prices[-self.short_period:])) if len(prices) >= self.short_period else 0,
-                "long_ma": float(np.mean(prices[-self.long_period:])) if len(prices) >= self.long_period else 0
-            }
+                "short_ma": (
+                    float(np.mean(prices[-self.short_period :]))
+                    if len(prices) >= self.short_period
+                    else 0
+                ),
+                "long_ma": (
+                    float(np.mean(prices[-self.long_period :]))
+                    if len(prices) >= self.long_period
+                    else 0
+                ),
+            },
         )
 
-    def _determine_regime(self, trend: float, volatility_pct: float,
-                         volume_pct: float) -> Tuple[MarketRegime, float]:
+    def _determine_regime(
+        self, trend: float, volatility_pct: float, volume_pct: float
+    ) -> Tuple[MarketRegime, float]:
         """Determine regime based on indicators"""
         confidence = 0.5  # Base confidence
 
@@ -274,7 +295,11 @@ class RegimeClassifier:
         if volatility_pct >= self.volatility_high:
             if abs(trend) >= 0.5:
                 # High vol + strong trend = trending (but risky)
-                regime = MarketRegime.TRENDING_UP if trend > 0 else MarketRegime.TRENDING_DOWN
+                regime = (
+                    MarketRegime.TRENDING_UP
+                    if trend > 0
+                    else MarketRegime.TRENDING_DOWN
+                )
                 confidence = 0.6
             else:
                 regime = MarketRegime.VOLATILE
@@ -309,10 +334,13 @@ class RegimeClassifier:
 
         return regime, round(confidence, 2)
 
-    def _generate_recommendation(self, regime: MarketRegime,
-                                 session: MarketSession,
-                                 trend: float,
-                                 volatility_pct: float) -> str:
+    def _generate_recommendation(
+        self,
+        regime: MarketRegime,
+        session: MarketSession,
+        trend: float,
+        volatility_pct: float,
+    ) -> str:
         """Generate trading recommendation based on regime and session"""
 
         recommendations = {
@@ -321,7 +349,7 @@ class RegimeClassifier:
             MarketRegime.RANGING: "Mean-reversion strategies. Buy support, sell resistance.",
             MarketRegime.VOLATILE: "Reduce position size. Wide stops. Quick profits.",
             MarketRegime.QUIET: "Low opportunity. Consider waiting for breakout.",
-            MarketRegime.UNKNOWN: "Insufficient data. Wait for clarity."
+            MarketRegime.UNKNOWN: "Insufficient data. Wait for clarity.",
         }
 
         base_rec = recommendations.get(regime, "No recommendation")
@@ -347,47 +375,47 @@ class RegimeClassifier:
         """
         adjustments = {
             MarketRegime.TRENDING_UP: {
-                "confidence_multiplier": 0.9,      # Lower threshold (more trades)
-                "position_size_multiplier": 1.2,   # Larger positions
-                "trailing_stop_multiplier": 1.2,   # Wider stops (let it run)
-                "take_profit_multiplier": 1.5,     # Higher targets
-                "prefer_breakouts": True
+                "confidence_multiplier": 0.9,  # Lower threshold (more trades)
+                "position_size_multiplier": 1.2,  # Larger positions
+                "trailing_stop_multiplier": 1.2,  # Wider stops (let it run)
+                "take_profit_multiplier": 1.5,  # Higher targets
+                "prefer_breakouts": True,
             },
             MarketRegime.TRENDING_DOWN: {
-                "confidence_multiplier": 1.3,      # Higher threshold (fewer trades)
-                "position_size_multiplier": 0.7,   # Smaller positions
-                "trailing_stop_multiplier": 0.8,   # Tighter stops
-                "take_profit_multiplier": 0.8,     # Lower targets
-                "prefer_breakouts": False
+                "confidence_multiplier": 1.3,  # Higher threshold (fewer trades)
+                "position_size_multiplier": 0.7,  # Smaller positions
+                "trailing_stop_multiplier": 0.8,  # Tighter stops
+                "take_profit_multiplier": 0.8,  # Lower targets
+                "prefer_breakouts": False,
             },
             MarketRegime.RANGING: {
                 "confidence_multiplier": 1.1,
                 "position_size_multiplier": 0.9,
                 "trailing_stop_multiplier": 0.9,
-                "take_profit_multiplier": 0.7,     # Quick profits
-                "prefer_breakouts": False
+                "take_profit_multiplier": 0.7,  # Quick profits
+                "prefer_breakouts": False,
             },
             MarketRegime.VOLATILE: {
-                "confidence_multiplier": 1.4,      # Very selective
-                "position_size_multiplier": 0.5,   # Half size
-                "trailing_stop_multiplier": 1.5,   # Wide stops
-                "take_profit_multiplier": 0.6,     # Quick exits
-                "prefer_breakouts": False
+                "confidence_multiplier": 1.4,  # Very selective
+                "position_size_multiplier": 0.5,  # Half size
+                "trailing_stop_multiplier": 1.5,  # Wide stops
+                "take_profit_multiplier": 0.6,  # Quick exits
+                "prefer_breakouts": False,
             },
             MarketRegime.QUIET: {
                 "confidence_multiplier": 1.2,
                 "position_size_multiplier": 0.8,
                 "trailing_stop_multiplier": 0.8,
-                "take_profit_multiplier": 0.5,     # Small targets
-                "prefer_breakouts": True           # Wait for breakout
+                "take_profit_multiplier": 0.5,  # Small targets
+                "prefer_breakouts": True,  # Wait for breakout
             },
             MarketRegime.UNKNOWN: {
-                "confidence_multiplier": 1.5,      # Very conservative
+                "confidence_multiplier": 1.5,  # Very conservative
                 "position_size_multiplier": 0.5,
                 "trailing_stop_multiplier": 1.0,
                 "take_profit_multiplier": 1.0,
-                "prefer_breakouts": False
-            }
+                "prefer_breakouts": False,
+            },
         }
 
         return adjustments.get(regime, adjustments[MarketRegime.UNKNOWN])

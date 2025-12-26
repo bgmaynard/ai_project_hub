@@ -12,80 +12,134 @@ This builds a real-time consensus of market activity:
 5. Generate market consensus report
 """
 
+import json
+import logging
 import sys
 import time
-import json
-import requests
 import xml.etree.ElementTree as ET
-from pathlib import Path
-from datetime import datetime
 from collections import defaultdict
-from typing import Dict, List, Set, Optional, Tuple
-import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Tuple
+
+import requests
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('news_triggered_evaluator.log')
-    ]
+        logging.FileHandler("news_triggered_evaluator.log"),
+    ],
 )
 logger = logging.getLogger(__name__)
 
 # Configuration
 CONFIG = {
     # News API
-    'BENZINGA_KEY': 'bz.MUTADSLMPPPHDWEGOYUMSFHUGH5TS7TD',
-    'BENZINGA_URL': 'https://api.benzinga.com/api/v2/news',
-
+    "BENZINGA_KEY": "bz.MUTADSLMPPPHDWEGOYUMSFHUGH5TS7TD",
+    "BENZINGA_URL": "https://api.benzinga.com/api/v2/news",
     # API endpoints
-    'API_BASE': 'http://localhost:9100',
-    'ALPACA_API': 'http://localhost:9100/api/alpaca',
-
+    "API_BASE": "http://localhost:9100",
+    "ALPACA_API": "http://localhost:9100/api/alpaca",
     # Warrior Trading criteria
-    'MIN_PRICE': 0.50,
-    'MAX_PRICE': 20.00,
-    'MIN_GAP_PCT': 4.0,
-    'MAX_FLOAT': 20_000_000,  # 20M shares
-    'MAX_SPREAD_PCT': 3.0,
-
+    "MIN_PRICE": 0.50,
+    "MAX_PRICE": 20.00,
+    "MIN_GAP_PCT": 4.0,
+    "MAX_FLOAT": 20_000_000,  # 20M shares
+    "MAX_SPREAD_PCT": 3.0,
     # Timing
-    'NEWS_POLL_INTERVAL': 10,  # seconds
-    'EVAL_DELAY': 2,  # seconds between evaluations
+    "NEWS_POLL_INTERVAL": 10,  # seconds
+    "EVAL_DELAY": 2,  # seconds between evaluations
 }
 
 # Sector mapping
 SECTOR_MAP = {
-    'biotech': ['FDA', 'drug', 'trial', 'pharma', 'clinical', 'therapy', 'cancer', 'treatment'],
-    'tech': ['AI', 'software', 'cloud', 'cyber', 'data', 'digital', 'tech', 'semiconductor'],
-    'energy': ['oil', 'gas', 'solar', 'wind', 'energy', 'EV', 'battery', 'renewable'],
-    'finance': ['bank', 'loan', 'credit', 'financial', 'insurance', 'mortgage', 'fintech'],
-    'crypto': ['bitcoin', 'crypto', 'blockchain', 'mining', 'token', 'defi'],
-    'retail': ['store', 'retail', 'consumer', 'shop', 'e-commerce', 'sales'],
-    'healthcare': ['hospital', 'health', 'medical', 'diagnostic', 'device'],
-    'meme': ['reddit', 'squeeze', 'short interest', 'WSB', 'moon', 'ape'],
+    "biotech": [
+        "FDA",
+        "drug",
+        "trial",
+        "pharma",
+        "clinical",
+        "therapy",
+        "cancer",
+        "treatment",
+    ],
+    "tech": [
+        "AI",
+        "software",
+        "cloud",
+        "cyber",
+        "data",
+        "digital",
+        "tech",
+        "semiconductor",
+    ],
+    "energy": ["oil", "gas", "solar", "wind", "energy", "EV", "battery", "renewable"],
+    "finance": [
+        "bank",
+        "loan",
+        "credit",
+        "financial",
+        "insurance",
+        "mortgage",
+        "fintech",
+    ],
+    "crypto": ["bitcoin", "crypto", "blockchain", "mining", "token", "defi"],
+    "retail": ["store", "retail", "consumer", "shop", "e-commerce", "sales"],
+    "healthcare": ["hospital", "health", "medical", "diagnostic", "device"],
+    "meme": ["reddit", "squeeze", "short interest", "WSB", "moon", "ape"],
 }
 
 # Bullish catalysts
 BULLISH_CATALYSTS = [
-    'fda approv', 'breakthrough', 'beat', 'upgrade', 'buy rating',
-    'contract', 'partnership', 'acquisition', 'spike', 'surge',
-    'soar', 'rally', 'breakout', 'positive', 'strong', 'exceed',
-    'profit', 'win', 'green light', 'cleared', 'agree', 'awarded'
+    "fda approv",
+    "breakthrough",
+    "beat",
+    "upgrade",
+    "buy rating",
+    "contract",
+    "partnership",
+    "acquisition",
+    "spike",
+    "surge",
+    "soar",
+    "rally",
+    "breakout",
+    "positive",
+    "strong",
+    "exceed",
+    "profit",
+    "win",
+    "green light",
+    "cleared",
+    "agree",
+    "awarded",
 ]
 
 # Bearish catalysts (to avoid)
 BEARISH_CATALYSTS = [
-    'downgrade', 'sell', 'cut', 'miss', 'decline', 'lawsuit',
-    'dilution', 'offering', 'secondary', 'fraud', 'investigation',
-    'bankruptcy', 'default', 'layoff', 'warning'
+    "downgrade",
+    "sell",
+    "cut",
+    "miss",
+    "decline",
+    "lawsuit",
+    "dilution",
+    "offering",
+    "secondary",
+    "fraud",
+    "investigation",
+    "bankruptcy",
+    "default",
+    "layoff",
+    "warning",
 ]
 
 # Storage files
-CONSENSUS_FILE = Path('store/market_consensus.json')
-SECTOR_SENTIMENT_FILE = Path('store/sector_sentiment.json')
+CONSENSUS_FILE = Path("store/market_consensus.json")
+SECTOR_SENTIMENT_FILE = Path("store/sector_sentiment.json")
 
 
 class NewsTriggeredEvaluator:
@@ -94,23 +148,28 @@ class NewsTriggeredEvaluator:
     def __init__(self):
         self.seen_headlines: Set[str] = set()
         self.qualified_symbols: Dict[str, Dict] = {}
-        self.sector_sentiment: Dict[str, Dict] = defaultdict(lambda: {
-            'bullish': 0, 'bearish': 0, 'neutral': 0,
-            'symbols': [], 'last_updated': None
-        })
+        self.sector_sentiment: Dict[str, Dict] = defaultdict(
+            lambda: {
+                "bullish": 0,
+                "bearish": 0,
+                "neutral": 0,
+                "symbols": [],
+                "last_updated": None,
+            }
+        )
         self.market_consensus: Dict = {
-            'overall_sentiment': 'NEUTRAL',
-            'hot_sectors': [],
-            'top_movers': [],
-            'news_velocity': 0,
-            'qualified_count': 0,
-            'last_updated': None
+            "overall_sentiment": "NEUTRAL",
+            "hot_sectors": [],
+            "top_movers": [],
+            "news_velocity": 0,
+            "qualified_count": 0,
+            "last_updated": None,
         }
         self.stats = {
-            'news_processed': 0,
-            'symbols_checked': 0,
-            'symbols_qualified': 0,
-            'evaluations_run': 0
+            "news_processed": 0,
+            "symbols_checked": 0,
+            "symbols_qualified": 0,
+            "evaluations_run": 0,
         }
 
         # Load existing data
@@ -120,6 +179,7 @@ class NewsTriggeredEvaluator:
         self.evaluator = None
         try:
             from watchlist_evaluator import WatchlistEvaluator
+
             self.evaluator = WatchlistEvaluator()
             logger.info("Watchlist evaluator initialized")
         except Exception as e:
@@ -132,8 +192,14 @@ class NewsTriggeredEvaluator:
                 self.market_consensus = json.loads(CONSENSUS_FILE.read_text())
             if SECTOR_SENTIMENT_FILE.exists():
                 self.sector_sentiment = defaultdict(
-                    lambda: {'bullish': 0, 'bearish': 0, 'neutral': 0, 'symbols': [], 'last_updated': None},
-                    json.loads(SECTOR_SENTIMENT_FILE.read_text())
+                    lambda: {
+                        "bullish": 0,
+                        "bearish": 0,
+                        "neutral": 0,
+                        "symbols": [],
+                        "last_updated": None,
+                    },
+                    json.loads(SECTOR_SENTIMENT_FILE.read_text()),
                 )
         except Exception as e:
             logger.error(f"Error loading data: {e}")
@@ -142,8 +208,12 @@ class NewsTriggeredEvaluator:
         """Save consensus and sentiment data"""
         try:
             CONSENSUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            CONSENSUS_FILE.write_text(json.dumps(self.market_consensus, indent=2, default=str))
-            SECTOR_SENTIMENT_FILE.write_text(json.dumps(dict(self.sector_sentiment), indent=2, default=str))
+            CONSENSUS_FILE.write_text(
+                json.dumps(self.market_consensus, indent=2, default=str)
+            )
+            SECTOR_SENTIMENT_FILE.write_text(
+                json.dumps(dict(self.sector_sentiment), indent=2, default=str)
+            )
         except Exception as e:
             logger.error(f"Error saving data: {e}")
 
@@ -151,12 +221,12 @@ class NewsTriggeredEvaluator:
         """Fetch latest news from Benzinga"""
         try:
             params = {
-                'token': CONFIG['BENZINGA_KEY'],
-                'pageSize': 20,
-                'displayOutput': 'full',
-                'sort': 'created:desc'
+                "token": CONFIG["BENZINGA_KEY"],
+                "pageSize": 20,
+                "displayOutput": "full",
+                "sort": "created:desc",
             }
-            r = requests.get(CONFIG['BENZINGA_URL'], params=params, timeout=10)
+            r = requests.get(CONFIG["BENZINGA_URL"], params=params, timeout=10)
 
             if r.status_code != 200:
                 logger.warning(f"Benzinga API returned {r.status_code}")
@@ -165,31 +235,33 @@ class NewsTriggeredEvaluator:
             root = ET.fromstring(r.content)
             news_items = []
 
-            for item in root.findall('.//item'):
-                title_el = item.find('title')
-                stocks_el = item.find('stocks')
-                created_el = item.find('created')
+            for item in root.findall(".//item"):
+                title_el = item.find("title")
+                stocks_el = item.find("stocks")
+                created_el = item.find("created")
 
                 if title_el is None:
                     continue
 
-                headline = title_el.text or ''
-                created = created_el.text if created_el is not None else ''
+                headline = title_el.text or ""
+                created = created_el.text if created_el is not None else ""
 
                 # Get associated symbols
                 symbols = []
                 if stocks_el is not None:
-                    for stock in stocks_el.findall('.//stock'):
-                        name = stock.get('name', '')
+                    for stock in stocks_el.findall(".//stock"):
+                        name = stock.get("name", "")
                         if name:
                             symbols.append(name.upper())
 
-                news_items.append({
-                    'headline': headline,
-                    'symbols': symbols,
-                    'created': created,
-                    'hash': hash(headline)
-                })
+                news_items.append(
+                    {
+                        "headline": headline,
+                        "symbols": symbols,
+                        "created": created,
+                        "hash": hash(headline),
+                    }
+                )
 
             return news_items
 
@@ -207,14 +279,14 @@ class NewsTriggeredEvaluator:
         # Check for bearish first
         for kw in BEARISH_CATALYSTS:
             if kw in headline_lower:
-                return 'BEARISH', kw, self._detect_sectors(headline_lower)
+                return "BEARISH", kw, self._detect_sectors(headline_lower)
 
         # Check for bullish
         for kw in BULLISH_CATALYSTS:
             if kw in headline_lower:
-                return 'BULLISH', kw, self._detect_sectors(headline_lower)
+                return "BULLISH", kw, self._detect_sectors(headline_lower)
 
-        return 'NEUTRAL', None, self._detect_sectors(headline_lower)
+        return "NEUTRAL", None, self._detect_sectors(headline_lower)
 
     def _detect_sectors(self, text: str) -> List[str]:
         """Detect sectors mentioned in text"""
@@ -236,47 +308,52 @@ class NewsTriggeredEvaluator:
                 return False, "No quote data", {}
 
             quote = r.json()
-            price = float(quote.get('last', quote.get('bid', 0)))
-            bid = float(quote.get('bid', 0))
-            ask = float(quote.get('ask', 0))
-            volume = int(quote.get('volume', 0))
-            change_pct = float(quote.get('change_percent', 0))
+            price = float(quote.get("last", quote.get("bid", 0)))
+            bid = float(quote.get("bid", 0))
+            ask = float(quote.get("ask", 0))
+            volume = int(quote.get("volume", 0))
+            change_pct = float(quote.get("change_percent", 0))
 
             if price <= 0:
                 price = ask if ask > 0 else bid
 
             data = {
-                'price': price,
-                'bid': bid,
-                'ask': ask,
-                'volume': volume,
-                'change_pct': change_pct
+                "price": price,
+                "bid": bid,
+                "ask": ask,
+                "volume": volume,
+                "change_pct": change_pct,
             }
 
             fails = []
 
             # Price range
-            if price < CONFIG['MIN_PRICE']:
+            if price < CONFIG["MIN_PRICE"]:
                 fails.append(f"price ${price:.2f} < ${CONFIG['MIN_PRICE']}")
-            if price > CONFIG['MAX_PRICE']:
+            if price > CONFIG["MAX_PRICE"]:
                 fails.append(f"price ${price:.2f} > ${CONFIG['MAX_PRICE']}")
 
             # Spread check
             if bid > 0 and ask > 0:
                 spread_pct = (ask - bid) / bid * 100
-                data['spread_pct'] = spread_pct
-                if spread_pct > CONFIG['MAX_SPREAD_PCT']:
-                    fails.append(f"spread {spread_pct:.1f}% > {CONFIG['MAX_SPREAD_PCT']}%")
+                data["spread_pct"] = spread_pct
+                if spread_pct > CONFIG["MAX_SPREAD_PCT"]:
+                    fails.append(
+                        f"spread {spread_pct:.1f}% > {CONFIG['MAX_SPREAD_PCT']}%"
+                    )
 
             # Try to get float (optional - don't fail if unavailable)
             try:
                 import yfinance as yf
+
                 ticker = yf.Ticker(symbol)
-                float_shares = ticker.info.get('floatShares', 0)
+                float_shares = ticker.info.get("floatShares", 0)
                 if float_shares:
-                    data['float'] = float_shares
-                    if float_shares > CONFIG['MAX_FLOAT']:
-                        fails.append(f"float {float_shares/1e6:.1f}M > {CONFIG['MAX_FLOAT']/1e6:.0f}M")
+                    data["float"] = float_shares
+                    if float_shares > CONFIG["MAX_FLOAT"]:
+                        fails.append(
+                            f"float {float_shares/1e6:.1f}M > {CONFIG['MAX_FLOAT']/1e6:.0f}M"
+                        )
             except:
                 pass
 
@@ -288,15 +365,17 @@ class NewsTriggeredEvaluator:
         except Exception as e:
             return False, f"Error: {e}", {}
 
-    def add_to_watchlist(self, symbol: str, catalyst: str = None, sectors: List[str] = None) -> bool:
+    def add_to_watchlist(
+        self, symbol: str, catalyst: str = None, sectors: List[str] = None
+    ) -> bool:
         """Add symbol to watchlist"""
         try:
             r = requests.post(
                 f"{CONFIG['API_BASE']}/api/worklist/add",
-                json={'symbol': symbol},
-                timeout=5
+                json={"symbol": symbol},
+                timeout=5,
             )
-            return r.json().get('success', False)
+            return r.json().get("success", False)
         except:
             return False
 
@@ -305,7 +384,7 @@ class NewsTriggeredEvaluator:
         try:
             if self.evaluator:
                 result = self.evaluator.evaluate_symbol(symbol)
-                self.stats['evaluations_run'] += 1
+                self.stats["evaluations_run"] += 1
                 return result
         except Exception as e:
             logger.error(f"Evaluation error for {symbol}: {e}")
@@ -315,53 +394,55 @@ class NewsTriggeredEvaluator:
         """Update sector sentiment tracking"""
         for sector in sectors:
             self.sector_sentiment[sector][sentiment.lower()] += 1
-            if symbol not in self.sector_sentiment[sector]['symbols']:
-                self.sector_sentiment[sector]['symbols'].append(symbol)
-            self.sector_sentiment[sector]['last_updated'] = datetime.now().isoformat()
+            if symbol not in self.sector_sentiment[sector]["symbols"]:
+                self.sector_sentiment[sector]["symbols"].append(symbol)
+            self.sector_sentiment[sector]["last_updated"] = datetime.now().isoformat()
 
     def calculate_market_consensus(self):
         """Calculate overall market consensus from sector data"""
-        total_bullish = sum(s['bullish'] for s in self.sector_sentiment.values())
-        total_bearish = sum(s['bearish'] for s in self.sector_sentiment.values())
+        total_bullish = sum(s["bullish"] for s in self.sector_sentiment.values())
+        total_bearish = sum(s["bearish"] for s in self.sector_sentiment.values())
         total = total_bullish + total_bearish
 
         if total == 0:
-            sentiment = 'NEUTRAL'
+            sentiment = "NEUTRAL"
         elif total_bullish > total_bearish * 1.5:
-            sentiment = 'STRONGLY_BULLISH'
+            sentiment = "STRONGLY_BULLISH"
         elif total_bullish > total_bearish:
-            sentiment = 'BULLISH'
+            sentiment = "BULLISH"
         elif total_bearish > total_bullish * 1.5:
-            sentiment = 'STRONGLY_BEARISH'
+            sentiment = "STRONGLY_BEARISH"
         elif total_bearish > total_bullish:
-            sentiment = 'BEARISH'
+            sentiment = "BEARISH"
         else:
-            sentiment = 'MIXED'
+            sentiment = "MIXED"
 
         # Find hot sectors (most activity)
         sector_activity = []
         for sector, data in self.sector_sentiment.items():
-            activity = data['bullish'] + data['bearish'] + data['neutral']
+            activity = data["bullish"] + data["bearish"] + data["neutral"]
             if activity > 0:
-                net_sentiment = (data['bullish'] - data['bearish']) / activity
-                sector_activity.append({
-                    'sector': sector,
-                    'activity': activity,
-                    'net_sentiment': net_sentiment,
-                    'symbols': data['symbols'][-5:]  # Last 5 symbols
-                })
+                net_sentiment = (data["bullish"] - data["bearish"]) / activity
+                sector_activity.append(
+                    {
+                        "sector": sector,
+                        "activity": activity,
+                        "net_sentiment": net_sentiment,
+                        "symbols": data["symbols"][-5:],  # Last 5 symbols
+                    }
+                )
 
-        sector_activity.sort(key=lambda x: x['activity'], reverse=True)
+        sector_activity.sort(key=lambda x: x["activity"], reverse=True)
 
         self.market_consensus = {
-            'overall_sentiment': sentiment,
-            'bullish_count': total_bullish,
-            'bearish_count': total_bearish,
-            'hot_sectors': sector_activity[:5],
-            'qualified_symbols': list(self.qualified_symbols.keys()),
-            'qualified_count': len(self.qualified_symbols),
-            'stats': self.stats,
-            'last_updated': datetime.now().isoformat()
+            "overall_sentiment": sentiment,
+            "bullish_count": total_bullish,
+            "bearish_count": total_bearish,
+            "hot_sectors": sector_activity[:5],
+            "qualified_symbols": list(self.qualified_symbols.keys()),
+            "qualified_count": len(self.qualified_symbols),
+            "stats": self.stats,
+            "last_updated": datetime.now().isoformat(),
         }
 
         self._save_data()
@@ -373,21 +454,21 @@ class NewsTriggeredEvaluator:
         new_qualifiers = []
 
         for item in news_items:
-            headline = item['headline']
-            symbols = item['symbols']
+            headline = item["headline"]
+            symbols = item["symbols"]
 
             # Skip seen headlines
-            if item['hash'] in self.seen_headlines:
+            if item["hash"] in self.seen_headlines:
                 continue
 
-            self.seen_headlines.add(item['hash'])
-            self.stats['news_processed'] += 1
+            self.seen_headlines.add(item["hash"])
+            self.stats["news_processed"] += 1
 
             # Analyze headline
             sentiment, catalyst, sectors = self.analyze_headline(headline)
 
             # Skip bearish news (avoid these stocks)
-            if sentiment == 'BEARISH':
+            if sentiment == "BEARISH":
                 for sym in symbols:
                     self.update_sector_sentiment(sectors, sentiment, sym)
                 continue
@@ -395,24 +476,28 @@ class NewsTriggeredEvaluator:
             # Process bullish/neutral news with catalyst
             if catalyst and symbols:
                 logger.info(f"\n[{sentiment}] {headline[:70]}...")
-                logger.info(f"  Catalyst: {catalyst} | Symbols: {symbols} | Sectors: {sectors}")
+                logger.info(
+                    f"  Catalyst: {catalyst} | Symbols: {symbols} | Sectors: {sectors}"
+                )
 
                 for symbol in symbols[:3]:  # Max 3 symbols per news
-                    self.stats['symbols_checked'] += 1
+                    self.stats["symbols_checked"] += 1
 
                     # Check criteria
                     passes, reason, data = self.check_stock_criteria(symbol)
 
                     if passes:
-                        self.stats['symbols_qualified'] += 1
-                        logger.info(f"  *** {symbol}: QUALIFIED @ ${data.get('price', 0):.2f} ***")
+                        self.stats["symbols_qualified"] += 1
+                        logger.info(
+                            f"  *** {symbol}: QUALIFIED @ ${data.get('price', 0):.2f} ***"
+                        )
 
                         # Store qualified symbol
                         self.qualified_symbols[symbol] = {
-                            'catalyst': catalyst,
-                            'sectors': sectors,
-                            'data': data,
-                            'qualified_at': datetime.now().isoformat()
+                            "catalyst": catalyst,
+                            "sectors": sectors,
+                            "data": data,
+                            "qualified_at": datetime.now().isoformat(),
                         }
 
                         # Add to watchlist
@@ -421,10 +506,10 @@ class NewsTriggeredEvaluator:
                             new_qualifiers.append(symbol)
 
                         # Update sector sentiment
-                        self.update_sector_sentiment(sectors, 'BULLISH', symbol)
+                        self.update_sector_sentiment(sectors, "BULLISH", symbol)
                     else:
                         logger.info(f"  {symbol}: REJECTED - {reason}")
-                        self.update_sector_sentiment(sectors, 'NEUTRAL', symbol)
+                        self.update_sector_sentiment(sectors, "NEUTRAL", symbol)
 
         return new_qualifiers
 
@@ -436,18 +521,28 @@ class NewsTriggeredEvaluator:
         logger.info("MARKET CONSENSUS REPORT")
         logger.info("=" * 60)
         logger.info(f"Overall Sentiment: {consensus['overall_sentiment']}")
-        logger.info(f"Bullish: {consensus['bullish_count']} | Bearish: {consensus['bearish_count']}")
+        logger.info(
+            f"Bullish: {consensus['bullish_count']} | Bearish: {consensus['bearish_count']}"
+        )
         logger.info(f"Qualified Symbols: {consensus['qualified_count']}")
 
-        if consensus['hot_sectors']:
+        if consensus["hot_sectors"]:
             logger.info("\nHot Sectors:")
-            for sector in consensus['hot_sectors'][:3]:
-                sentiment_str = "BULLISH" if sector['net_sentiment'] > 0 else "BEARISH" if sector['net_sentiment'] < 0 else "MIXED"
-                logger.info(f"  {sector['sector'].upper()}: {sector['activity']} mentions ({sentiment_str})")
-                if sector['symbols']:
+            for sector in consensus["hot_sectors"][:3]:
+                sentiment_str = (
+                    "BULLISH"
+                    if sector["net_sentiment"] > 0
+                    else "BEARISH" if sector["net_sentiment"] < 0 else "MIXED"
+                )
+                logger.info(
+                    f"  {sector['sector'].upper()}: {sector['activity']} mentions ({sentiment_str})"
+                )
+                if sector["symbols"]:
                     logger.info(f"    Symbols: {', '.join(sector['symbols'])}")
 
-        logger.info(f"\nStats: {self.stats['news_processed']} news | {self.stats['symbols_checked']} checked | {self.stats['symbols_qualified']} qualified")
+        logger.info(
+            f"\nStats: {self.stats['news_processed']} news | {self.stats['symbols_checked']} checked | {self.stats['symbols_qualified']} qualified"
+        )
         logger.info("=" * 60 + "\n")
 
     def run(self):
@@ -455,7 +550,9 @@ class NewsTriggeredEvaluator:
         logger.info("=" * 60)
         logger.info("NEWS-TRIGGERED MARKET CONSENSUS SYSTEM")
         logger.info("=" * 60)
-        logger.info(f"Criteria: ${CONFIG['MIN_PRICE']:.2f}-${CONFIG['MAX_PRICE']:.2f} | Float <{CONFIG['MAX_FLOAT']/1e6:.0f}M | Spread <{CONFIG['MAX_SPREAD_PCT']}%")
+        logger.info(
+            f"Criteria: ${CONFIG['MIN_PRICE']:.2f}-${CONFIG['MAX_PRICE']:.2f} | Float <{CONFIG['MAX_FLOAT']/1e6:.0f}M | Spread <{CONFIG['MAX_SPREAD_PCT']}%"
+        )
         logger.info("Monitoring Benzinga news feed...")
         logger.info("=" * 60 + "\n")
 
@@ -468,11 +565,11 @@ class NewsTriggeredEvaluator:
                 # Run evaluation on new qualifiers
                 for symbol in new_qualifiers:
                     logger.info(f"\nRunning AI evaluation for {symbol}...")
-                    time.sleep(CONFIG['EVAL_DELAY'])
+                    time.sleep(CONFIG["EVAL_DELAY"])
                     result = self.run_evaluation(symbol)
                     if result:
-                        score = result.get('score', 0)
-                        rec = result.get('recommendation', 'HOLD')
+                        score = result.get("score", 0)
+                        rec = result.get("recommendation", "HOLD")
                         logger.info(f"  {symbol}: Score {score}/100 -> {rec}")
 
                 cycle += 1
@@ -488,10 +585,10 @@ class NewsTriggeredEvaluator:
             except Exception as e:
                 logger.error(f"Error in main loop: {e}")
 
-            time.sleep(CONFIG['NEWS_POLL_INTERVAL'])
+            time.sleep(CONFIG["NEWS_POLL_INTERVAL"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     evaluator = NewsTriggeredEvaluator()
     try:
         evaluator.run()

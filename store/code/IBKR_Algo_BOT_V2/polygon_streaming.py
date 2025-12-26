@@ -20,19 +20,21 @@ Usage:
     stream.start()
 """
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
+import os
 import threading
-from datetime import datetime
-from typing import Dict, List, Optional, Callable, Set
 from collections import deque
+from datetime import datetime
+from typing import Callable, Dict, List, Optional, Set
+
 import websockets
 from websockets.exceptions import ConnectionClosed
 
 try:
     import pandas as pd
+
     HAS_PANDAS = True
 except ImportError:
     HAS_PANDAS = False
@@ -40,6 +42,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 POLYGON_WS_URL = "wss://socket.polygon.io/stocks"
+
 
 def get_polygon_api_key():
     """Get Polygon API key at runtime (after dotenv loads)"""
@@ -70,7 +73,7 @@ class PolygonStream:
 
         # Data buffers (last N items per symbol)
         self.trades: Dict[str, deque] = {}  # symbol -> deque of trades
-        self.quotes: Dict[str, Dict] = {}   # symbol -> latest quote
+        self.quotes: Dict[str, Dict] = {}  # symbol -> latest quote
         self.tape: deque = deque(maxlen=500)  # Combined tape for all symbols
         self.luld_bands: Dict[str, Dict] = {}  # symbol -> LULD bands
 
@@ -81,12 +84,12 @@ class PolygonStream:
 
         # Stats
         self.stats = {
-            'connected': False,
-            'trades_received': 0,
-            'quotes_received': 0,
-            'luld_received': 0,
-            'last_message': None,
-            'reconnects': 0
+            "connected": False,
+            "trades_received": 0,
+            "quotes_received": 0,
+            "luld_received": 0,
+            "last_message": None,
+            "reconnects": 0,
         }
 
         logger.info("PolygonStream initialized")
@@ -107,13 +110,17 @@ class PolygonStream:
         if symbol not in self.trades:
             self.trades[symbol] = deque(maxlen=200)
         logger.info(f"Subscribed to trades: {symbol}")
-        print(f"[PolygonStream] subscribe_trades({symbol}), is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}")
+        print(
+            f"[PolygonStream] subscribe_trades({symbol}), is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}"
+        )
         # Send subscription to WebSocket if already connected
-        if is_new and self.ws and self.stats.get('connected'):
+        if is_new and self.ws and self.stats.get("connected"):
             print(f"[PolygonStream] Sending live subscription for T.{symbol}")
             self._send_live_subscription(f"T.{symbol}")
         else:
-            print(f"[PolygonStream] NOT sending live sub - is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}")
+            print(
+                f"[PolygonStream] NOT sending live sub - is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}"
+            )
 
     def subscribe_quotes(self, symbol: str):
         """Subscribe to quote stream for symbol"""
@@ -122,19 +129,20 @@ class PolygonStream:
         self.quote_symbols.add(symbol)
         logger.info(f"Subscribed to quotes: {symbol}")
         # Send subscription to WebSocket if already connected
-        if is_new and self.ws and self.stats.get('connected'):
+        if is_new and self.ws and self.stats.get("connected"):
             self._send_live_subscription(f"Q.{symbol}")
 
     def _send_live_subscription(self, channel: str):
         """Send a subscription message to the live WebSocket"""
-        print(f"[PolygonStream] _send_live_subscription({channel}), loop={self._loop is not None}, ws={self.ws is not None}")
+        print(
+            f"[PolygonStream] _send_live_subscription({channel}), loop={self._loop is not None}, ws={self.ws is not None}"
+        )
         if self._loop and self.ws:
             try:
                 msg = {"action": "subscribe", "params": channel}
                 print(f"[PolygonStream] Sending msg: {msg}")
                 future = asyncio.run_coroutine_threadsafe(
-                    self.ws.send(json.dumps(msg)),
-                    self._loop
+                    self.ws.send(json.dumps(msg)), self._loop
                 )
                 # Wait briefly for the result to ensure it's sent
                 try:
@@ -178,9 +186,7 @@ class PolygonStream:
         try:
             print(f"[PolygonStream] Connecting to {POLYGON_WS_URL}...")
             self.ws = await websockets.connect(
-                POLYGON_WS_URL,
-                ping_interval=30,
-                ping_timeout=10
+                POLYGON_WS_URL, ping_interval=30, ping_timeout=10
             )
             logger.info("Connected to Polygon WebSocket")
             print("[PolygonStream] WebSocket connected!")
@@ -203,10 +209,12 @@ class PolygonStream:
                                 logger.info("Polygon WebSocket connected")
                             elif status == "auth_success":
                                 logger.info("Polygon authentication successful")
-                                self.stats['connected'] = True
+                                self.stats["connected"] = True
                                 authenticated = True
                             elif status == "auth_failed":
-                                logger.error(f"Polygon auth failed: {msg.get('message')}")
+                                logger.error(
+                                    f"Polygon auth failed: {msg.get('message')}"
+                                )
                                 return
 
                     if authenticated:
@@ -216,14 +224,14 @@ class PolygonStream:
 
             if not authenticated:
                 logger.warning("Polygon auth not confirmed, proceeding anyway")
-                self.stats['connected'] = True  # Assume connected
+                self.stats["connected"] = True  # Assume connected
 
             # Subscribe to symbols
             await self._send_subscriptions()
 
         except Exception as e:
             logger.error(f"Polygon connection error: {e}")
-            self.stats['connected'] = False
+            self.stats["connected"] = False
 
     async def _send_subscriptions(self):
         """Send subscription messages"""
@@ -257,7 +265,7 @@ class PolygonStream:
             "exchange": data.get("x", ""),
             "timestamp": data.get("t", 0),
             "conditions": data.get("c", []),
-            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3],
         }
 
         # Add to symbol-specific buffer
@@ -267,8 +275,8 @@ class PolygonStream:
         # Add to combined tape
         self.tape.append(trade)
 
-        self.stats['trades_received'] += 1
-        self.stats['last_message'] = datetime.now().isoformat()
+        self.stats["trades_received"] += 1
+        self.stats["last_message"] = datetime.now().isoformat()
 
         # Fire callbacks
         for cb in self._trade_callbacks:
@@ -291,19 +299,19 @@ class PolygonStream:
             "ask": data.get("ap", data.get("P", 0)),
             "ask_size": data.get("as", data.get("S", 0)),
             "timestamp": data.get("t", 0),
-            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3],
         }
 
         # Calculate spread
-        if quote['bid'] > 0 and quote['ask'] > 0:
-            quote['spread'] = quote['ask'] - quote['bid']
-            quote['spread_pct'] = (quote['spread'] / quote['bid']) * 100
+        if quote["bid"] > 0 and quote["ask"] > 0:
+            quote["spread"] = quote["ask"] - quote["bid"]
+            quote["spread_pct"] = (quote["spread"] / quote["bid"]) * 100
 
         # Store latest quote
         self.quotes[symbol] = quote
 
-        self.stats['quotes_received'] += 1
-        self.stats['last_message'] = datetime.now().isoformat()
+        self.stats["quotes_received"] += 1
+        self.stats["last_message"] = datetime.now().isoformat()
 
         # Fire callbacks
         for cb in self._quote_callbacks:
@@ -326,14 +334,14 @@ class PolygonStream:
             "indicators": data.get("i", []),
             "tape": data.get("z", ""),
             "timestamp": data.get("t", 0),
-            "time": datetime.now().strftime("%H:%M:%S")
+            "time": datetime.now().strftime("%H:%M:%S"),
         }
 
         # Store LULD bands
         self.luld_bands[symbol] = luld
 
-        self.stats['luld_received'] += 1
-        self.stats['last_message'] = datetime.now().isoformat()
+        self.stats["luld_received"] += 1
+        self.stats["last_message"] = datetime.now().isoformat()
 
         # Fire callbacks
         for cb in self._luld_callbacks:
@@ -355,7 +363,9 @@ class PolygonStream:
                         await asyncio.sleep(5)
                         continue
 
-                print(f"[PolygonStream] Waiting for recv()... (count so far: {msg_count})")
+                print(
+                    f"[PolygonStream] Waiting for recv()... (count so far: {msg_count})"
+                )
                 message = await asyncio.wait_for(self.ws.recv(), timeout=30)
                 msg_count += 1
                 data = json.loads(message)
@@ -363,7 +373,9 @@ class PolygonStream:
 
                 # Debug first few messages
                 if msg_count <= 5:
-                    print(f"[PolygonStream] Received msg #{msg_count}: {str(data)[:200]}")
+                    print(
+                        f"[PolygonStream] Received msg #{msg_count}: {str(data)[:200]}"
+                    )
 
                 # Handle array of messages
                 if isinstance(data, list):
@@ -386,8 +398,8 @@ class PolygonStream:
             except ConnectionClosed:
                 print("[PolygonStream] WebSocket disconnected!")
                 logger.warning("Polygon WebSocket disconnected, reconnecting...")
-                self.stats['connected'] = False
-                self.stats['reconnects'] += 1
+                self.stats["connected"] = False
+                self.stats["reconnects"] += 1
                 self.ws = None
                 await asyncio.sleep(2)
 
@@ -428,7 +440,7 @@ class PolygonStream:
             self._loop.call_soon_threadsafe(self._loop.stop)
         if self._thread:
             self._thread.join(timeout=2)
-        self.stats['connected'] = False
+        self.stats["connected"] = False
         logger.info("PolygonStream stopped")
 
     def get_trades(self, symbol: str, limit: int = 50) -> List[dict]:
@@ -455,19 +467,19 @@ class PolygonStream:
         """
         symbol = symbol.upper()
         if symbol not in self.trades or len(self.trades[symbol]) < 5:
-            return {'bids': [], 'asks': [], 'source': 'polygon_synthetic'}
+            return {"bids": [], "asks": [], "source": "polygon_synthetic"}
 
         trades = list(self.trades[symbol])
         quote = self.quotes.get(symbol, {})
-        mid_price = quote.get('bid', 0) if quote else 0
+        mid_price = quote.get("bid", 0) if quote else 0
         if not mid_price and trades:
-            mid_price = trades[-1].get('price', 0)
+            mid_price = trades[-1].get("price", 0)
 
         # Aggregate volume by price
         price_volume = {}
         for t in trades:
-            price = round(t.get('price', 0), 2)
-            size = t.get('size', 0)
+            price = round(t.get("price", 0), 2)
+            size = t.get("size", 0)
             if price > 0:
                 price_volume[price] = price_volume.get(price, 0) + size
 
@@ -475,29 +487,31 @@ class PolygonStream:
         bids = []
         asks = []
         for price, volume in sorted(price_volume.items(), reverse=True):
-            entry = {'price': price, 'size': volume, 'orders': 1}
+            entry = {"price": price, "size": volume, "orders": 1}
             if price <= mid_price:
                 bids.append(entry)
             else:
                 asks.append(entry)
 
         # Sort: bids descending (highest first), asks ascending (lowest first)
-        bids = sorted(bids, key=lambda x: x['price'], reverse=True)[:levels]
-        asks = sorted(asks, key=lambda x: x['price'])[:levels]
+        bids = sorted(bids, key=lambda x: x["price"], reverse=True)[:levels]
+        asks = sorted(asks, key=lambda x: x["price"])[:levels]
 
         return {
-            'bids': bids,
-            'asks': asks,
-            'mid_price': mid_price,
-            'source': 'polygon_synthetic',
-            'trade_count': len(trades)
+            "bids": bids,
+            "asks": asks,
+            "mid_price": mid_price,
+            "source": "polygon_synthetic",
+            "trade_count": len(trades),
         }
 
     def get_luld_bands(self, symbol: str) -> Optional[dict]:
         """Get current LULD bands for symbol"""
         return self.luld_bands.get(symbol.upper())
 
-    def get_minute_bars(self, symbol: str, minutes: int = 30) -> Optional['pd.DataFrame']:
+    def get_minute_bars(
+        self, symbol: str, minutes: int = 30
+    ) -> Optional["pd.DataFrame"]:
         """
         Build minute OHLCV bars from recent trade stream.
         Returns DataFrame with Open, High, Low, Close, Volume columns.
@@ -515,17 +529,17 @@ class PolygonStream:
             trades_list = list(self.trades[symbol])
             df = pd.DataFrame(trades_list)
 
-            if 'timestamp' not in df.columns or 'price' not in df.columns:
+            if "timestamp" not in df.columns or "price" not in df.columns:
                 return None
 
             # Convert timestamp (milliseconds) to datetime
-            df['dt'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df = df.set_index('dt')
+            df["dt"] = pd.to_datetime(df["timestamp"], unit="ms")
+            df = df.set_index("dt")
 
             # Resample to 1-minute bars
-            ohlcv = df['price'].resample('1min').ohlc()
-            ohlcv['Volume'] = df['size'].resample('1min').sum()
-            ohlcv.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+            ohlcv = df["price"].resample("1min").ohlc()
+            ohlcv["Volume"] = df["size"].resample("1min").sum()
+            ohlcv.columns = ["Open", "High", "Low", "Close", "Volume"]
 
             # Drop NaN rows and return last N minutes
             result = ohlcv.dropna().tail(minutes)
@@ -538,16 +552,16 @@ class PolygonStream:
     def get_status(self) -> dict:
         """Get stream status"""
         return {
-            "connected": self.stats['connected'],
+            "connected": self.stats["connected"],
             "api_key_configured": bool(self.api_key),
             "trade_subscriptions": list(self.trade_symbols),
             "quote_subscriptions": list(self.quote_symbols),
             "luld_subscriptions": list(self.luld_symbols),
-            "trades_received": self.stats['trades_received'],
-            "quotes_received": self.stats['quotes_received'],
-            "luld_received": self.stats['luld_received'],
-            "last_message": self.stats['last_message'],
-            "reconnects": self.stats['reconnects']
+            "trades_received": self.stats["trades_received"],
+            "quotes_received": self.stats["quotes_received"],
+            "luld_received": self.stats["luld_received"],
+            "last_message": self.stats["last_message"],
+            "reconnects": self.stats["reconnects"],
         }
 
 
@@ -579,7 +593,9 @@ if __name__ == "__main__":
         print(f"TRADE: {trade['symbol']} ${trade['price']:.2f} x{trade['size']}")
 
     def on_quote(quote):
-        print(f"QUOTE: {quote['symbol']} Bid: ${quote['bid']:.2f} Ask: ${quote['ask']:.2f}")
+        print(
+            f"QUOTE: {quote['symbol']} Bid: ${quote['bid']:.2f} Ask: ${quote['ask']:.2f}"
+        )
 
     stream.on_trade(on_trade)
     stream.on_quote(on_quote)
@@ -593,6 +609,7 @@ if __name__ == "__main__":
 
     # Run for 30 seconds
     import time
+
     try:
         time.sleep(30)
     except KeyboardInterrupt:

@@ -8,27 +8,30 @@ Version: 2.2.0
 """
 
 import logging
-from typing import Optional, Dict, List, Any
-from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class BrokerType(str, Enum):
     """Supported brokers"""
+
     SCHWAB = "schwab"
 
 
 class OrderSide(str, Enum):
     """Order side"""
+
     BUY = "BUY"
     SELL = "SELL"
 
 
 class OrderType(str, Enum):
     """Order types"""
+
     MARKET = "MARKET"
     LIMIT = "LIMIT"
     STOP = "STOP"
@@ -38,6 +41,7 @@ class OrderType(str, Enum):
 @dataclass
 class OrderResult:
     """Standardized order result"""
+
     success: bool
     order_id: Optional[str] = None
     symbol: str = ""
@@ -68,7 +72,9 @@ class UnifiedBroker:
     def _initialize(self):
         """Initialize Schwab broker connection"""
         try:
-            from schwab_trading import get_schwab_trading, is_schwab_trading_available
+            from schwab_trading import (get_schwab_trading,
+                                        is_schwab_trading_available)
+
             if is_schwab_trading_available():
                 self._schwab = get_schwab_trading()
                 if self._schwab:
@@ -121,11 +127,7 @@ class UnifiedBroker:
         return []
 
     def place_limit_order(
-        self,
-        symbol: str,
-        side: OrderSide,
-        quantity: int,
-        price: float
+        self, symbol: str, side: OrderSide, quantity: int, price: float
     ) -> OrderResult:
         """Place a limit order"""
         timestamp = datetime.now().isoformat()
@@ -133,10 +135,7 @@ class UnifiedBroker:
         if self._active_broker == BrokerType.SCHWAB and self._schwab:
             try:
                 result = self._schwab.place_limit_order(
-                    symbol=symbol,
-                    quantity=quantity,
-                    side=side.value,
-                    limit_price=price
+                    symbol=symbol, quantity=quantity, side=side.value, limit_price=price
                 )
                 if result and result.get("success"):
                     return OrderResult(
@@ -148,7 +147,7 @@ class UnifiedBroker:
                         price=price,
                         status="PENDING",
                         broker="Schwab",
-                        timestamp=timestamp
+                        timestamp=timestamp,
                     )
                 else:
                     return OrderResult(
@@ -159,7 +158,7 @@ class UnifiedBroker:
                         price=price,
                         broker="Schwab",
                         error=result.get("error", "Unknown error"),
-                        timestamp=timestamp
+                        timestamp=timestamp,
                     )
             except Exception as e:
                 logger.error(f"Schwab order error: {e}")
@@ -172,7 +171,7 @@ class UnifiedBroker:
                     price=price,
                     broker="Schwab",
                     error=str(e),
-                    timestamp=timestamp
+                    timestamp=timestamp,
                 )
 
         return OrderResult(
@@ -183,28 +182,25 @@ class UnifiedBroker:
             price=price,
             broker="none",
             error="No broker available",
-            timestamp=timestamp
+            timestamp=timestamp,
         )
 
     def place_market_order(
-        self,
-        symbol: str,
-        side: OrderSide,
-        quantity: int
+        self, symbol: str, side: OrderSide, quantity: int
     ) -> OrderResult:
         """
         Place a market order
         WARNING: Market orders are discouraged - use limit orders instead!
         """
-        logger.warning(f"Market order requested for {symbol} - consider using limit orders!")
+        logger.warning(
+            f"Market order requested for {symbol} - consider using limit orders!"
+        )
         timestamp = datetime.now().isoformat()
 
         if self._active_broker == BrokerType.SCHWAB and self._schwab:
             try:
                 result = self._schwab.place_market_order(
-                    symbol=symbol,
-                    side=side.value,
-                    quantity=quantity
+                    symbol=symbol, side=side.value, quantity=quantity
                 )
                 if result and result.get("success"):
                     return OrderResult(
@@ -215,7 +211,7 @@ class UnifiedBroker:
                         quantity=quantity,
                         status="PENDING",
                         broker="Schwab",
-                        timestamp=timestamp
+                        timestamp=timestamp,
                     )
             except Exception as e:
                 logger.error(f"Schwab market order error: {e}")
@@ -227,7 +223,7 @@ class UnifiedBroker:
             quantity=quantity,
             broker=self.broker_name,
             error="Market orders should use limit orders instead",
-            timestamp=timestamp
+            timestamp=timestamp,
         )
 
     def cancel_order(self, order_id: str) -> bool:
@@ -247,7 +243,9 @@ class UnifiedBroker:
 
         # Get current positions
         positions = self.get_positions()
-        position = next((p for p in positions if p.get("symbol", "").upper() == symbol), None)
+        position = next(
+            (p for p in positions if p.get("symbol", "").upper() == symbol), None
+        )
 
         if not position:
             return OrderResult(
@@ -255,7 +253,7 @@ class UnifiedBroker:
                 symbol=symbol,
                 broker=self.broker_name,
                 error=f"No position found for {symbol}",
-                timestamp=timestamp
+                timestamp=timestamp,
             )
 
         quantity = abs(int(float(position.get("qty", position.get("quantity", 0)))))
@@ -265,7 +263,7 @@ class UnifiedBroker:
                 symbol=symbol,
                 broker=self.broker_name,
                 error=f"Invalid quantity for {symbol}",
-                timestamp=timestamp
+                timestamp=timestamp,
             )
 
         # Place sell order to close position
@@ -273,7 +271,10 @@ class UnifiedBroker:
             symbol=symbol,
             side=OrderSide.SELL,
             quantity=quantity,
-            price=float(position.get("current_price", position.get("market_value", 0)) / quantity)
+            price=float(
+                position.get("current_price", position.get("market_value", 0))
+                / quantity
+            ),
         )
 
     def close_all_positions(self) -> List[OrderResult]:
@@ -297,7 +298,9 @@ class UnifiedBroker:
         """
         try:
             # Try Schwab market data first
-            from schwab_market_data import SchwabMarketData, is_schwab_available
+            from schwab_market_data import (SchwabMarketData,
+                                            is_schwab_available)
+
             if is_schwab_available():
                 schwab_data = SchwabMarketData()
                 quote = schwab_data.get_quote(symbol)
@@ -324,11 +327,7 @@ class UnifiedBroker:
         return None
 
     def _validate_order(
-        self,
-        symbol: str,
-        quantity: int,
-        side: str,
-        limit_price: float
+        self, symbol: str, quantity: int, side: str, limit_price: float
     ) -> Optional[str]:
         """
         Validate order before submission.
@@ -353,7 +352,9 @@ class UnifiedBroker:
             try:
                 account = self.get_account()
                 if account:
-                    buying_power = float(account.get("buying_power", account.get("buyingPower", 0)))
+                    buying_power = float(
+                        account.get("buying_power", account.get("buyingPower", 0))
+                    )
                     if buying_power > 0 and order_value > buying_power:
                         return f"Insufficient buying power: ${buying_power:.2f} < ${order_value:.2f}"
             except Exception as e:
@@ -367,7 +368,7 @@ class UnifiedBroker:
         quantity: int,
         side: str,
         limit_price: float = None,
-        emergency: bool = False
+        emergency: bool = False,
     ) -> OrderResult:
         """
         Smart order placement - uses best available execution method.
@@ -387,7 +388,9 @@ class UnifiedBroker:
         if not effective_price:
             effective_price = self._get_smart_limit_price(symbol, side)
             if effective_price:
-                logger.info(f"Smart order: Using calculated price ${effective_price:.2f} for {symbol}")
+                logger.info(
+                    f"Smart order: Using calculated price ${effective_price:.2f} for {symbol}"
+                )
             else:
                 logger.warning(f"Smart order: Could not get quote for {symbol}")
                 return OrderResult(
@@ -397,12 +400,14 @@ class UnifiedBroker:
                     quantity=quantity,
                     broker=self.broker_name,
                     error="Could not determine limit price - no market data available",
-                    timestamp=timestamp
+                    timestamp=timestamp,
                 )
 
         # Validate order (skip in emergency mode for faster execution)
         if not emergency:
-            validation_error = self._validate_order(symbol, quantity, side, effective_price)
+            validation_error = self._validate_order(
+                symbol, quantity, side, effective_price
+            )
             if validation_error:
                 return OrderResult(
                     success=False,
@@ -412,7 +417,7 @@ class UnifiedBroker:
                     price=effective_price,
                     broker=self.broker_name,
                     error=validation_error,
-                    timestamp=timestamp
+                    timestamp=timestamp,
                 )
 
         # Use Schwab limit order
@@ -425,7 +430,7 @@ class UnifiedBroker:
             "schwab_available": self._schwab is not None,
             "connected": self.is_connected,
             "broker": "Schwab",
-            "name": "Morpheus Trading Bot"
+            "name": "Morpheus Trading Bot",
         }
 
 

@@ -6,12 +6,12 @@ account equity, and risk parameters.
 Part of the Next-Gen AI Logic Blueprint.
 """
 
-import logging
 import json
+import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +19,16 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SizingResult:
     """Result of position sizing calculation"""
+
     symbol: str
     recommended_shares: int
     recommended_value: float
-    kelly_fraction: float          # Raw Kelly %
-    adjusted_fraction: float       # After safety adjustments
-    position_percent: float        # % of portfolio
-    confidence_factor: float       # 0-1 AI confidence impact
-    risk_per_share: float          # Expected risk per share
-    expected_value: float          # Expected profit
+    kelly_fraction: float  # Raw Kelly %
+    adjusted_fraction: float  # After safety adjustments
+    position_percent: float  # % of portfolio
+    confidence_factor: float  # 0-1 AI confidence impact
+    risk_per_share: float  # Expected risk per share
+    expected_value: float  # Expected profit
     reasoning: str
     timestamp: str
 
@@ -35,16 +36,17 @@ class SizingResult:
 @dataclass
 class TradeStats:
     """Historical trade statistics for Kelly calculation"""
+
     total_trades: int
     winning_trades: int
     losing_trades: int
     win_rate: float
-    avg_win: float               # Average winning trade %
-    avg_loss: float              # Average losing trade %
-    profit_factor: float         # Total wins / Total losses
-    sharpe_estimate: float       # Rough Sharpe ratio
-    max_drawdown: float          # Maximum drawdown %
-    period_days: int             # Days of data
+    avg_win: float  # Average winning trade %
+    avg_loss: float  # Average losing trade %
+    profit_factor: float  # Total wins / Total losses
+    sharpe_estimate: float  # Rough Sharpe ratio
+    max_drawdown: float  # Maximum drawdown %
+    period_days: int  # Days of data
 
 
 class KellySizer:
@@ -69,10 +71,10 @@ class KellySizer:
         self.cache_duration = timedelta(minutes=30)
 
         # Safety parameters
-        self.kelly_multiplier = 0.25     # Use quarter-Kelly (very conservative)
+        self.kelly_multiplier = 0.25  # Use quarter-Kelly (very conservative)
         self.max_position_percent = 0.10  # Max 10% of portfolio per position
         self.min_position_percent = 0.02  # Min 2% to make it worth trading
-        self.max_risk_percent = 0.02      # Max 2% of portfolio at risk per trade
+        self.max_risk_percent = 0.02  # Max 2% of portfolio at risk per trade
 
         # Default stats when no history available
         self.default_win_rate = 0.55
@@ -113,8 +115,14 @@ class KellySizer:
         except Exception as e:
             logger.warning(f"Could not save trade history: {e}")
 
-    def record_trade(self, symbol: str, entry_price: float, exit_price: float,
-                    quantity: int, side: str = "long"):
+    def record_trade(
+        self,
+        symbol: str,
+        entry_price: float,
+        exit_price: float,
+        quantity: int,
+        side: str = "long",
+    ):
         """
         Record a completed trade for statistics tracking.
 
@@ -137,16 +145,22 @@ class KellySizer:
             "quantity": quantity,
             "side": side,
             "pnl_percent": pnl_percent,
-            "pnl_dollars": (exit_price - entry_price) * quantity if side == "long" else (entry_price - exit_price) * quantity,
+            "pnl_dollars": (
+                (exit_price - entry_price) * quantity
+                if side == "long"
+                else (entry_price - exit_price) * quantity
+            ),
             "is_winner": pnl_percent > 0,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         self.trade_history.append(trade)
         self.stats_cache = None  # Invalidate cache
         self._save_history()
 
-        logger.info(f"Recorded trade: {symbol} {side} {'+' if pnl_percent > 0 else ''}{pnl_percent:.2f}%")
+        logger.info(
+            f"Recorded trade: {symbol} {side} {'+' if pnl_percent > 0 else ''}{pnl_percent:.2f}%"
+        )
 
     def calculate_stats(self, lookback_days: int = 30) -> TradeStats:
         """
@@ -159,15 +173,18 @@ class KellySizer:
             TradeStats object with calculated metrics
         """
         # Check cache
-        if (self.stats_cache is not None and
-            self.cache_time is not None and
-            datetime.now() - self.cache_time < self.cache_duration):
+        if (
+            self.stats_cache is not None
+            and self.cache_time is not None
+            and datetime.now() - self.cache_time < self.cache_duration
+        ):
             return self.stats_cache
 
         # Filter trades by date
         cutoff = datetime.now() - timedelta(days=lookback_days)
         recent_trades = [
-            t for t in self.trade_history
+            t
+            for t in self.trade_history
             if datetime.fromisoformat(t["timestamp"]) >= cutoff
         ]
 
@@ -183,7 +200,7 @@ class KellySizer:
                 profit_factor=self.default_win_loss_ratio,
                 sharpe_estimate=0.5,
                 max_drawdown=5.0,
-                period_days=lookback_days
+                period_days=lookback_days,
             )
             logger.debug("Using default stats (insufficient trade history)")
             return stats
@@ -195,12 +212,10 @@ class KellySizer:
         win_rate = len(winners) / len(recent_trades) if recent_trades else 0.5
 
         avg_win = (
-            sum(t["pnl_percent"] for t in winners) / len(winners)
-            if winners else 2.0
+            sum(t["pnl_percent"] for t in winners) / len(winners) if winners else 2.0
         )
         avg_loss = (
-            abs(sum(t["pnl_percent"] for t in losers) / len(losers))
-            if losers else 1.5
+            abs(sum(t["pnl_percent"] for t in losers) / len(losers)) if losers else 1.5
         )
 
         total_wins = sum(t["pnl_percent"] for t in winners) if winners else 0
@@ -223,6 +238,7 @@ class KellySizer:
         if recent_trades:
             returns = [t["pnl_percent"] for t in recent_trades]
             import numpy as np
+
             mean_return = np.mean(returns)
             std_return = np.std(returns) if len(returns) > 1 else 1
             sharpe = mean_return / std_return if std_return > 0 else 0
@@ -239,14 +255,16 @@ class KellySizer:
             profit_factor=profit_factor,
             sharpe_estimate=float(sharpe),
             max_drawdown=max_dd,
-            period_days=lookback_days
+            period_days=lookback_days,
         )
 
         # Cache the stats
         self.stats_cache = stats
         self.cache_time = datetime.now()
 
-        logger.debug(f"Calculated stats: win_rate={win_rate:.1%}, avg_win={avg_win:.2f}%, avg_loss={avg_loss:.2f}%")
+        logger.debug(
+            f"Calculated stats: win_rate={win_rate:.1%}, avg_win={avg_win:.2f}%, avg_loss={avg_loss:.2f}%"
+        )
 
         return stats
 
@@ -271,11 +289,15 @@ class KellySizer:
 
         return kelly
 
-    def calculate_position_size(self, symbol: str, price: float,
-                               confidence: float = 0.5,
-                               stop_loss_percent: float = 2.0,
-                               volatility_factor: float = 1.0,
-                               regime_multiplier: float = 1.0) -> SizingResult:
+    def calculate_position_size(
+        self,
+        symbol: str,
+        price: float,
+        confidence: float = 0.5,
+        stop_loss_percent: float = 2.0,
+        volatility_factor: float = 1.0,
+        regime_multiplier: float = 1.0,
+    ) -> SizingResult:
         """
         Calculate optimal position size for a trade.
 
@@ -313,22 +335,25 @@ class KellySizer:
 
         # Calculate adjusted fraction
         adjusted_fraction = (
-            base_fraction *
-            confidence_factor *
-            volatility_adjustment *
-            regime_adjustment
+            base_fraction
+            * confidence_factor
+            * volatility_adjustment
+            * regime_adjustment
         )
 
         # Apply min/max constraints
-        adjusted_fraction = max(self.min_position_percent,
-                               min(self.max_position_percent, adjusted_fraction))
+        adjusted_fraction = max(
+            self.min_position_percent, min(self.max_position_percent, adjusted_fraction)
+        )
 
         # Calculate position value
         position_value = self.account_value * adjusted_fraction
 
         # Risk-based cap: max 2% of portfolio at risk
         risk_per_share = price * (stop_loss_percent / 100)
-        max_shares_by_risk = (self.account_value * self.max_risk_percent) / risk_per_share
+        max_shares_by_risk = (
+            self.account_value * self.max_risk_percent
+        ) / risk_per_share
 
         # Calculate shares
         shares_by_value = int(position_value / price)
@@ -352,7 +377,7 @@ class KellySizer:
             f"Kelly: {raw_kelly:.1%} raw, {adjusted_fraction:.1%} adjusted",
             f"Confidence factor: {confidence_factor:.2f}",
             f"Win rate: {stats.win_rate:.1%}",
-            f"Profit factor: {stats.profit_factor:.2f}"
+            f"Profit factor: {stats.profit_factor:.2f}",
         ]
 
         if regime_adjustment != 1.0:
@@ -373,10 +398,12 @@ class KellySizer:
             risk_per_share=risk_per_share,
             expected_value=expected_value,
             reasoning=" | ".join(reasoning_parts),
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
-        logger.info(f"Position size for {symbol}: {recommended_shares} shares (${final_value:,.2f}, {position_percent:.1f}% of portfolio)")
+        logger.info(
+            f"Position size for {symbol}: {recommended_shares} shares (${final_value:,.2f}, {position_percent:.1f}% of portfolio)"
+        )
 
         return result
 
@@ -395,7 +422,7 @@ class KellySizer:
             "raw_kelly": f"{kelly:.1%}",
             "adjusted_kelly": f"{kelly * self.kelly_multiplier:.1%}",
             "sharpe_estimate": f"{stats.sharpe_estimate:.2f}",
-            "account_value": f"${self.account_value:,.2f}"
+            "account_value": f"${self.account_value:,.2f}",
         }
 
 

@@ -7,12 +7,14 @@ import sys
 import unittest
 from datetime import datetime
 
+
 class TestRiskManagementAPI(unittest.TestCase):
     """Test Risk Management API"""
 
     def setUp(self):
         try:
             from ai.warrior_risk_router import router
+
             self.router = router
             self.available = True
         except ImportError as e:
@@ -31,12 +33,20 @@ class TestRiskManagementAPI(unittest.TestCase):
 
         self.assertGreater(len(self.router.routes), 0)
         route_paths = [route.path for route in self.router.routes]
-        
-        expected_paths = ['/health', '/calculate-position-size', '/validate-trade', '/status']
+
+        expected_paths = [
+            "/health",
+            "/calculate-position-size",
+            "/validate-trade",
+            "/status",
+        ]
         for path in expected_paths:
-            path_found = any(path.replace('/api/risk', '') in route.path for route in self.router.routes)
+            path_found = any(
+                path.replace("/api/risk", "") in route.path
+                for route in self.router.routes
+            )
             self.assertTrue(path_found, f"Expected route {path} not found")
-        
+
         print(f"[OK] Router has {len(self.router.routes)} routes")
 
     def test_03_position_sizing_logic(self):
@@ -45,20 +55,22 @@ class TestRiskManagementAPI(unittest.TestCase):
         risk_amount = 50.0
         stop_distance = 0.25
         expected_shares = int(risk_amount / stop_distance)  # 200 shares
-        
+
         self.assertEqual(expected_shares, 200)
-        print(f"[OK] Position sizing: ${risk_amount} risk / ${stop_distance} stop = {expected_shares} shares")
+        print(
+            f"[OK] Position sizing: ${risk_amount} risk / ${stop_distance} stop = {expected_shares} shares"
+        )
 
     def test_04_risk_reward_validation(self):
         """Test R:R ratio validation"""
         entry = 150.0
         stop = 149.70
         target = 151.0
-        
+
         risk = abs(entry - stop)  # 0.30
         reward = abs(target - entry)  # 1.00
         rr_ratio = reward / risk  # 3.33
-        
+
         self.assertGreaterEqual(rr_ratio, 2.0, "R:R should meet minimum 2:1")
         print(f"[OK] R:R validation: {rr_ratio:.2f}:1 meets minimum 2:1")
 
@@ -68,10 +80,11 @@ class TestRiskManagementAPI(unittest.TestCase):
         risk_per_share = 0.30
         risk_amount = shares * risk_per_share  # $60
         max_risk = 50.0
-        
+
         exceeds_limit = risk_amount > max_risk
         self.assertTrue(exceeds_limit, "Should detect when risk exceeds limit")
         print(f"[OK] Risk limit detection: ${risk_amount:.2f} > ${max_risk:.2f}")
+
 
 def run_tests():
     """Run all tests"""
@@ -103,6 +116,7 @@ def run_tests():
     else:
         print("[FAIL] Some tests failed")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = run_tests()

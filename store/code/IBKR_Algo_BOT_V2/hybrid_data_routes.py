@@ -19,9 +19,10 @@ STATUS:
 - /api/hybrid/status
 """
 
-from fastapi import APIRouter, Query
-from typing import Optional
 import logging
+from typing import Optional
+
+from fastapi import APIRouter, Query
 
 logger = logging.getLogger(__name__)
 
@@ -29,19 +30,11 @@ router = APIRouter(prefix="/api/hybrid", tags=["Hybrid Data"])
 
 # Import hybrid provider
 try:
-    from schwab_hybrid_data import (
-        get_hybrid_provider,
-        fast_quote,
-        fast_level2,
-        fast_time_sales,
-        fast_positions,
-        bg_bars,
-        bg_account,
-        bg_orders,
-        bg_ai_data,
-        DataType,
-        ChannelPriority
-    )
+    from schwab_hybrid_data import (ChannelPriority, DataType, bg_account,
+                                    bg_ai_data, bg_bars, bg_orders,
+                                    fast_level2, fast_positions, fast_quote,
+                                    fast_time_sales, get_hybrid_provider)
+
     HAS_HYBRID = True
 except ImportError as e:
     logger.warning(f"Hybrid data not available: {e}")
@@ -51,6 +44,7 @@ except ImportError as e:
 # ============================================================================
 # FAST CHANNEL ENDPOINTS - Real-time trading data
 # ============================================================================
+
 
 @router.get("/fast/quote/{symbol}")
 async def get_fast_quote(symbol: str):
@@ -116,11 +110,12 @@ async def get_fast_positions():
 # BACKGROUND CHANNEL ENDPOINTS - Cached, non-blocking
 # ============================================================================
 
+
 @router.get("/bg/bars/{symbol}")
 async def get_bg_bars(
     symbol: str,
     timeframe: str = Query("1D", description="Timeframe: 1m, 5m, 15m, 1H, 1D"),
-    limit: int = Query(100, ge=10, le=500)
+    limit: int = Query(100, ge=10, le=500),
 ):
     """
     Get historical bars via BACKGROUND channel.
@@ -167,8 +162,7 @@ async def get_bg_orders(days: int = Query(7, ge=1, le=30)):
 
 @router.get("/bg/ai-data/{symbol}")
 async def get_bg_ai_data(
-    symbol: str,
-    period: str = Query("3mo", description="Period: 1mo, 3mo, 6mo, 1y")
+    symbol: str, period: str = Query("3mo", description="Period: 1mo, 3mo, 6mo, 1y")
 ):
     """
     Get AI training data via BACKGROUND channel.
@@ -186,6 +180,7 @@ async def get_bg_ai_data(
 # ============================================================================
 # STATUS ENDPOINT
 # ============================================================================
+
 
 @router.get("/status")
 async def get_hybrid_status():
@@ -213,39 +208,48 @@ async def get_hybrid_info():
         "channels": {
             "fast": {
                 "description": "Real-time trading data with minimal latency",
-                "use_cases": ["Level 2", "Time & Sales", "Live quotes", "Order execution", "Position updates"],
+                "use_cases": [
+                    "Level 2",
+                    "Time & Sales",
+                    "Live quotes",
+                    "Order execution",
+                    "Position updates",
+                ],
                 "latency_target": "< 50ms",
-                "caching": "None - always fresh"
+                "caching": "None - always fresh",
             },
             "background": {
                 "description": "Non-critical data with caching to reduce load",
-                "use_cases": ["Historical charts", "Account balance", "Order history", "AI training", "Backtesting"],
+                "use_cases": [
+                    "Historical charts",
+                    "Account balance",
+                    "Order history",
+                    "AI training",
+                    "Backtesting",
+                ],
                 "latency_target": "< 500ms",
-                "caching": "TTL-based (30s - 10min)"
-            }
+                "caching": "TTL-based (30s - 10min)",
+            },
         },
         "benefits": [
             "Trading operations never blocked by heavy data requests",
             "Background caching reduces API rate limit usage",
             "Dedicated thread pools prevent resource contention",
-            "Clear separation of concerns for debugging"
+            "Clear separation of concerns for debugging",
         ],
         "endpoints": {
             "fast": [
                 "GET /api/hybrid/fast/quote/{symbol}",
                 "GET /api/hybrid/fast/level2/{symbol}",
                 "GET /api/hybrid/fast/timesales/{symbol}",
-                "GET /api/hybrid/fast/positions"
+                "GET /api/hybrid/fast/positions",
             ],
             "background": [
                 "GET /api/hybrid/bg/bars/{symbol}",
                 "GET /api/hybrid/bg/account",
                 "GET /api/hybrid/bg/orders",
-                "GET /api/hybrid/bg/ai-data/{symbol}"
+                "GET /api/hybrid/bg/ai-data/{symbol}",
             ],
-            "status": [
-                "GET /api/hybrid/status",
-                "GET /api/hybrid/info"
-            ]
-        }
+            "status": ["GET /api/hybrid/status", "GET /api/hybrid/info"],
+        },
     }

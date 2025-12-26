@@ -53,15 +53,16 @@ INDICATORS TO MONITOR
 - Support/Resistance levels
 """
 
-from dataclasses import dataclass
-from typing import Optional, List, Dict, Tuple
-from enum import Enum
 import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 # Lazy import to avoid circular dependencies
 _macd_analyzer = None
+
 
 def get_macd_analyzer():
     """Lazy load MACD analyzer"""
@@ -69,6 +70,7 @@ def get_macd_analyzer():
     if _macd_analyzer is None:
         try:
             from ai.macd_analyzer import get_macd_analyzer as _get
+
             _macd_analyzer = _get()
         except Exception as e:
             logger.warning(f"Could not load MACD analyzer: {e}")
@@ -76,41 +78,42 @@ def get_macd_analyzer():
 
 
 class TradePhase(Enum):
-    WAITING = "waiting"           # No position, watching for setup
-    PHASE1_WATCHING = "phase1_watching"   # Saw spike, waiting for pullback
-    PHASE1_ENTRY = "phase1_entry"         # Looking for first new high after pullback
-    PHASE1_ACTIVE = "phase1_active"       # In Phase 1 trade
-    PHASE1_TRAILING = "phase1_trailing"   # Hit target 1, now trailing
-    PHASE2_WATCHING = "phase2_watching"   # Exited Phase 1, watching for continuation
-    PHASE2_ACTIVE = "phase2_active"       # In Phase 2 trade
-    PHASE2_TRAILING = "phase2_trailing"   # Trailing in Phase 2
+    WAITING = "waiting"  # No position, watching for setup
+    PHASE1_WATCHING = "phase1_watching"  # Saw spike, waiting for pullback
+    PHASE1_ENTRY = "phase1_entry"  # Looking for first new high after pullback
+    PHASE1_ACTIVE = "phase1_active"  # In Phase 1 trade
+    PHASE1_TRAILING = "phase1_trailing"  # Hit target 1, now trailing
+    PHASE2_WATCHING = "phase2_watching"  # Exited Phase 1, watching for continuation
+    PHASE2_ACTIVE = "phase2_active"  # In Phase 2 trade
+    PHASE2_TRAILING = "phase2_trailing"  # Trailing in Phase 2
 
 
 @dataclass
 class TwoPhasePosition:
     """Tracks a position through both phases"""
+
     symbol: str
     phase: TradePhase
 
     # Phase 1 data
-    spike_high: float = 0.0          # Initial spike high
-    pullback_low: float = 0.0        # Pullback low
-    entry_price: float = 0.0         # Actual entry price
-    last_candle_low: float = 0.0     # For calculating stop
-    stop_distance: float = 0.0       # Entry - last candle low
-    stop_price: float = 0.0          # Actual stop price
-    target1_price: float = 0.0       # 2x stop distance target
-    trailing_stop_pct: float = 3.0   # Trailing stop percentage
-    high_since_entry: float = 0.0    # Track high for trailing
+    spike_high: float = 0.0  # Initial spike high
+    pullback_low: float = 0.0  # Pullback low
+    entry_price: float = 0.0  # Actual entry price
+    last_candle_low: float = 0.0  # For calculating stop
+    stop_distance: float = 0.0  # Entry - last candle low
+    stop_price: float = 0.0  # Actual stop price
+    target1_price: float = 0.0  # 2x stop distance target
+    trailing_stop_pct: float = 3.0  # Trailing stop percentage
+    high_since_entry: float = 0.0  # Track high for trailing
 
     # Phase 2 data
-    phase2_entry: float = 0.0        # Phase 2 entry price
-    phase2_high: float = 0.0         # High since Phase 2 entry
+    phase2_entry: float = 0.0  # Phase 2 entry price
+    phase2_high: float = 0.0  # High since Phase 2 entry
 
     # Indicators at entry
-    macd_signal: str = ""            # bullish/bearish/neutral
-    volume_surge: float = 0.0        # Volume vs average
-    momentum_score: float = 0.0      # Composite momentum
+    macd_signal: str = ""  # bullish/bearish/neutral
+    volume_surge: float = 0.0  # Volume vs average
+    momentum_score: float = 0.0  # Composite momentum
 
 
 class TwoPhaseStrategy:
@@ -123,12 +126,14 @@ class TwoPhaseStrategy:
 
     def __init__(self):
         self.positions: Dict[str, TwoPhasePosition] = {}
-        self.min_pullback_pct = 2.0       # Minimum pullback % to trigger Phase 1 entry watch
-        self.min_volume_surge = 2.0       # Minimum volume surge (vs average)
-        self.trailing_stop_pct = 3.0      # Default trailing stop %
-        self.phase2_profit_multiple = 2.0 # Let Phase 2 run past 2x
+        self.min_pullback_pct = 2.0  # Minimum pullback % to trigger Phase 1 entry watch
+        self.min_volume_surge = 2.0  # Minimum volume surge (vs average)
+        self.trailing_stop_pct = 3.0  # Default trailing stop %
+        self.phase2_profit_multiple = 2.0  # Let Phase 2 run past 2x
 
-    def on_spike_detected(self, symbol: str, spike_high: float, volume_surge: float) -> Dict:
+    def on_spike_detected(
+        self, symbol: str, spike_high: float, volume_surge: float
+    ) -> Dict:
         """
         Called when a volume spike is detected. Start watching for pullback.
         """
@@ -137,10 +142,15 @@ class TwoPhaseStrategy:
                 symbol=symbol,
                 phase=TradePhase.PHASE1_WATCHING,
                 spike_high=spike_high,
-                volume_surge=volume_surge
+                volume_surge=volume_surge,
             )
-            logger.info(f"[PHASE1] {symbol} spike detected at ${spike_high:.2f}, watching for pullback")
-            return {"action": "WATCH", "message": f"Spike detected, waiting for pullback"}
+            logger.info(
+                f"[PHASE1] {symbol} spike detected at ${spike_high:.2f}, watching for pullback"
+            )
+            return {
+                "action": "WATCH",
+                "message": f"Spike detected, waiting for pullback",
+            }
         return {"action": "NONE", "message": "Already tracking"}
 
     def on_pullback(self, symbol: str, pullback_low: float) -> Dict:
@@ -155,11 +165,18 @@ class TwoPhaseStrategy:
                 if pullback_pct >= self.min_pullback_pct:
                     pos.pullback_low = pullback_low
                     pos.phase = TradePhase.PHASE1_ENTRY
-                    logger.info(f"[PHASE1] {symbol} pullback to ${pullback_low:.2f} ({pullback_pct:.1f}%), looking for new high")
-                    return {"action": "READY", "message": f"Pullback {pullback_pct:.1f}%, ready for entry on new high"}
+                    logger.info(
+                        f"[PHASE1] {symbol} pullback to ${pullback_low:.2f} ({pullback_pct:.1f}%), looking for new high"
+                    )
+                    return {
+                        "action": "READY",
+                        "message": f"Pullback {pullback_pct:.1f}%, ready for entry on new high",
+                    }
         return {"action": "NONE"}
 
-    def check_entry(self, symbol: str, current_high: float, last_candle_low: float) -> Dict:
+    def check_entry(
+        self, symbol: str, current_high: float, last_candle_low: float
+    ) -> Dict:
         """
         Check if we should enter - first candle making new high after pullback.
         """
@@ -182,8 +199,12 @@ class TwoPhaseStrategy:
                     pos.phase = TradePhase.PHASE1_ACTIVE
 
                     logger.info(f"[PHASE1 ENTRY] {symbol} @ ${entry_price:.2f}")
-                    logger.info(f"  Stop: ${stop_price:.2f} (${stop_distance:.2f} risk)")
-                    logger.info(f"  Target 1: ${target1:.2f} (2x = ${stop_distance * 2:.2f} reward)")
+                    logger.info(
+                        f"  Stop: ${stop_price:.2f} (${stop_distance:.2f} risk)"
+                    )
+                    logger.info(
+                        f"  Target 1: ${target1:.2f} (2x = ${stop_distance * 2:.2f} reward)"
+                    )
 
                     return {
                         "action": "BUY",
@@ -191,11 +212,13 @@ class TwoPhaseStrategy:
                         "stop": stop_price,
                         "target": target1,
                         "risk_reward": 2.0,
-                        "message": f"Phase 1 entry at ${entry_price:.2f}, stop ${stop_price:.2f}, target ${target1:.2f}"
+                        "message": f"Phase 1 entry at ${entry_price:.2f}, stop ${stop_price:.2f}, target ${target1:.2f}",
                     }
         return {"action": "NONE"}
 
-    def check_exit(self, symbol: str, current_price: float, current_high: float) -> Dict:
+    def check_exit(
+        self, symbol: str, current_price: float, current_high: float
+    ) -> Dict:
         """
         Check exit conditions for active positions.
         """
@@ -208,7 +231,9 @@ class TwoPhaseStrategy:
         if pos.phase == TradePhase.PHASE1_ACTIVE:
             # Stop loss hit
             if current_price <= pos.stop_price:
-                logger.info(f"[PHASE1 STOP] {symbol} stopped out at ${current_price:.2f}")
+                logger.info(
+                    f"[PHASE1 STOP] {symbol} stopped out at ${current_price:.2f}"
+                )
                 del self.positions[symbol]
                 return {"action": "SELL", "reason": "STOP_LOSS", "price": current_price}
 
@@ -216,8 +241,13 @@ class TwoPhaseStrategy:
             if current_price >= pos.target1_price:
                 pos.phase = TradePhase.PHASE1_TRAILING
                 pos.high_since_entry = current_price
-                logger.info(f"[PHASE1 TARGET] {symbol} hit target at ${current_price:.2f}, activating 3% trailing stop")
-                return {"action": "TRAIL", "message": f"Target hit, trailing 3% from ${current_price:.2f}"}
+                logger.info(
+                    f"[PHASE1 TARGET] {symbol} hit target at ${current_price:.2f}, activating 3% trailing stop"
+                )
+                return {
+                    "action": "TRAIL",
+                    "message": f"Target hit, trailing 3% from ${current_price:.2f}",
+                }
 
             # Update high
             pos.high_since_entry = max(pos.high_since_entry, current_high)
@@ -231,7 +261,9 @@ class TwoPhaseStrategy:
             if current_price <= trailing_stop:
                 pnl = current_price - pos.entry_price
                 pnl_pct = (pnl / pos.entry_price) * 100
-                logger.info(f"[PHASE1 EXIT] {symbol} trailing stop at ${current_price:.2f} (+{pnl_pct:.1f}%)")
+                logger.info(
+                    f"[PHASE1 EXIT] {symbol} trailing stop at ${current_price:.2f} (+{pnl_pct:.1f}%)"
+                )
 
                 # Move to Phase 2 watching
                 pos.phase = TradePhase.PHASE2_WATCHING
@@ -241,7 +273,7 @@ class TwoPhaseStrategy:
                     "price": current_price,
                     "pnl": pnl,
                     "pnl_pct": pnl_pct,
-                    "next_phase": "PHASE2_WATCHING"
+                    "next_phase": "PHASE2_WATCHING",
                 }
             return {"action": "TRAIL", "trailing_stop": trailing_stop}
 
@@ -254,13 +286,23 @@ class TwoPhaseStrategy:
                 pnl = current_price - pos.phase2_entry
                 logger.info(f"[PHASE2 EXIT] {symbol} at ${current_price:.2f}")
                 del self.positions[symbol]
-                return {"action": "SELL", "reason": "PHASE2_TRAILING", "price": current_price}
+                return {
+                    "action": "SELL",
+                    "reason": "PHASE2_TRAILING",
+                    "price": current_price,
+                }
             return {"action": "HOLD"}
 
         return {"action": "NONE"}
 
-    def check_phase2_entry(self, symbol: str, price: float, macd_signal: str = "",
-                           volume_vs_avg: float = 0.0, momentum: float = 0.0) -> Dict:
+    def check_phase2_entry(
+        self,
+        symbol: str,
+        price: float,
+        macd_signal: str = "",
+        volume_vs_avg: float = 0.0,
+        momentum: float = 0.0,
+    ) -> Dict:
         """
         Check for Phase 2 continuation entry after consolidation.
 
@@ -282,11 +324,11 @@ class TwoPhaseStrategy:
                     if should_enter:
                         # MACD analyzer says enter
                         conditions.append(f"MACD: {reason}")
-                        if details.get('crossover') == 'bullish_cross':
+                        if details.get("crossover") == "bullish_cross":
                             conditions.append("Bullish crossover")
-                        if details.get('histogram_trend') == 'expanding':
+                        if details.get("histogram_trend") == "expanding":
                             conditions.append("Momentum expanding")
-                        if details.get('divergence') == 'bullish_div':
+                        if details.get("divergence") == "bullish_div":
                             conditions.append("Bullish divergence")
                     else:
                         # MACD analyzer says wait
@@ -294,7 +336,7 @@ class TwoPhaseStrategy:
                         return {
                             "action": "WAIT",
                             "reason": reason,
-                            "macd_details": macd_details
+                            "macd_details": macd_details,
                         }
                 else:
                     # Fallback to simple checks
@@ -312,8 +354,8 @@ class TwoPhaseStrategy:
                     pos.phase = TradePhase.PHASE2_ACTIVE
                     pos.phase2_entry = price
                     pos.phase2_high = price
-                    pos.macd_signal = macd_details.get('macd_signal', macd_signal)
-                    pos.momentum_score = macd_details.get('momentum', momentum)
+                    pos.macd_signal = macd_details.get("macd_signal", macd_signal)
+                    pos.momentum_score = macd_details.get("momentum", momentum)
 
                     logger.info(f"[PHASE2 ENTRY] {symbol} @ ${price:.2f}")
                     logger.info(f"  Signals: {', '.join(conditions)}")
@@ -324,7 +366,7 @@ class TwoPhaseStrategy:
                         "phase": "PHASE2",
                         "signals": conditions,
                         "macd_details": macd_details,
-                        "message": f"Phase 2 continuation entry at ${price:.2f}"
+                        "message": f"Phase 2 continuation entry at ${price:.2f}",
                     }
         return {"action": "NONE"}
 
@@ -351,7 +393,9 @@ class TwoPhaseStrategy:
             pnl = current_price - pos.phase2_entry
             pnl_pct = (pnl / pos.phase2_entry) * 100 if pos.phase2_entry > 0 else 0
 
-            logger.info(f"[PHASE2 MACD EXIT] {symbol} at ${current_price:.2f} - {reason}")
+            logger.info(
+                f"[PHASE2 MACD EXIT] {symbol} at ${current_price:.2f} - {reason}"
+            )
 
             return {
                 "action": "SELL",
@@ -359,13 +403,14 @@ class TwoPhaseStrategy:
                 "price": current_price,
                 "pnl": pnl,
                 "pnl_pct": pnl_pct,
-                "macd_details": details
+                "macd_details": details,
             }
 
         return {"action": "HOLD", "macd_details": details}
 
-    def evaluate_phase2_opportunity(self, symbol: str, current_price: float,
-                                    volume_vs_avg: float = 1.0) -> Dict:
+    def evaluate_phase2_opportunity(
+        self, symbol: str, current_price: float, volume_vs_avg: float = 1.0
+    ) -> Dict:
         """
         Full evaluation of Phase 2 entry opportunity.
 
@@ -375,7 +420,7 @@ class TwoPhaseStrategy:
             return {
                 "eligible": False,
                 "reason": "not_tracking",
-                "message": f"{symbol} is not being tracked for Phase 2"
+                "message": f"{symbol} is not being tracked for Phase 2",
             }
 
         pos = self.positions[symbol]
@@ -384,7 +429,7 @@ class TwoPhaseStrategy:
                 "eligible": False,
                 "reason": "wrong_phase",
                 "phase": pos.phase.value,
-                "message": f"{symbol} is in {pos.phase.value}, not Phase 2 watching"
+                "message": f"{symbol} is in {pos.phase.value}, not Phase 2 watching",
             }
 
         # Get MACD analysis
@@ -398,9 +443,13 @@ class TwoPhaseStrategy:
             "symbol": symbol,
             "current_price": current_price,
             "phase1_entry": pos.entry_price,
-            "phase1_profit_pct": ((current_price - pos.entry_price) / pos.entry_price * 100) if pos.entry_price > 0 else 0,
+            "phase1_profit_pct": (
+                ((current_price - pos.entry_price) / pos.entry_price * 100)
+                if pos.entry_price > 0
+                else 0
+            ),
             "volume_vs_avg": volume_vs_avg,
-            "conditions_met": []
+            "conditions_met": [],
         }
 
         if macd_signal:
@@ -412,7 +461,7 @@ class TwoPhaseStrategy:
                 "strength": macd_signal.strength,
                 "momentum": macd_signal.momentum_score,
                 "divergence": macd_signal.divergence,
-                "phase2_ready": macd_signal.phase2_ready
+                "phase2_ready": macd_signal.phase2_ready,
             }
 
             if macd_signal.phase2_ready:
@@ -453,7 +502,7 @@ class TwoPhaseStrategy:
                 "stop_price": pos.stop_price,
                 "target1": pos.target1_price,
                 "high_since_entry": pos.high_since_entry,
-                "trailing_stop_pct": pos.trailing_stop_pct
+                "trailing_stop_pct": pos.trailing_stop_pct,
             }
         return None
 

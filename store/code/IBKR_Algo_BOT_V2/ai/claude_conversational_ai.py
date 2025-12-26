@@ -16,12 +16,13 @@ Author: AI Trading Bot Team
 Version: 1.0
 """
 
-import os
 import json
 import logging
+import os
 from datetime import datetime
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -44,6 +45,7 @@ class ClaudeConversationalAI:
         # Initialize Anthropic client
         try:
             import anthropic
+
             if self.api_key:
                 self.client = anthropic.Anthropic(api_key=self.api_key)
                 self.ai_available = True
@@ -51,7 +53,9 @@ class ClaudeConversationalAI:
             else:
                 logger.warning("No ANTHROPIC_API_KEY found - AI features disabled")
         except ImportError:
-            logger.warning("anthropic package not installed - run: pip install anthropic")
+            logger.warning(
+                "anthropic package not installed - run: pip install anthropic"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize Claude: {e}")
 
@@ -104,20 +108,12 @@ class ClaudeConversationalAI:
             {
                 "name": "get_account_info",
                 "description": "Get current trading account information including equity, buying power, and positions",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                "input_schema": {"type": "object", "properties": {}, "required": []},
             },
             {
                 "name": "get_positions",
                 "description": "Get all current open positions with P&L",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                "input_schema": {"type": "object", "properties": {}, "required": []},
             },
             {
                 "name": "get_stock_quote",
@@ -127,11 +123,11 @@ class ClaudeConversationalAI:
                     "properties": {
                         "symbol": {
                             "type": "string",
-                            "description": "Stock symbol (e.g., AAPL, TSLA, SPY)"
+                            "description": "Stock symbol (e.g., AAPL, TSLA, SPY)",
                         }
                     },
-                    "required": ["symbol"]
-                }
+                    "required": ["symbol"],
+                },
             },
             {
                 "name": "get_stock_bars",
@@ -139,41 +135,30 @@ class ClaudeConversationalAI:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "symbol": {
-                            "type": "string",
-                            "description": "Stock symbol"
-                        },
+                        "symbol": {"type": "string", "description": "Stock symbol"},
                         "timeframe": {
                             "type": "string",
                             "description": "Bar timeframe (1Min, 5Min, 15Min, 1Hour, 1Day)",
-                            "default": "1Day"
+                            "default": "1Day",
                         },
                         "limit": {
                             "type": "integer",
                             "description": "Number of bars to fetch",
-                            "default": 20
-                        }
+                            "default": 20,
+                        },
                     },
-                    "required": ["symbol"]
-                }
+                    "required": ["symbol"],
+                },
             },
             {
                 "name": "get_market_status",
                 "description": "Check if the market is open and get market clock info",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                "input_schema": {"type": "object", "properties": {}, "required": []},
             },
             {
                 "name": "get_bot_status",
                 "description": "Get the trading bot's current status, configuration, and recent activity",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                "input_schema": {"type": "object", "properties": {}, "required": []},
             },
             {
                 "name": "get_ai_prediction",
@@ -183,21 +168,17 @@ class ClaudeConversationalAI:
                     "properties": {
                         "symbol": {
                             "type": "string",
-                            "description": "Stock symbol to analyze"
+                            "description": "Stock symbol to analyze",
                         }
                     },
-                    "required": ["symbol"]
-                }
+                    "required": ["symbol"],
+                },
             },
             {
                 "name": "get_regime_analysis",
                 "description": "Get market regime analysis (trending, ranging, volatile, etc.)",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
-            }
+                "input_schema": {"type": "object", "properties": {}, "required": []},
+            },
         ]
 
     def _execute_tool(self, tool_name: str, tool_input: Dict) -> Dict:
@@ -205,55 +186,63 @@ class ClaudeConversationalAI:
         try:
             if tool_name == "get_account_info":
                 from alpaca_integration import get_alpaca_connector
+
                 connector = get_alpaca_connector()
                 return connector.get_account()
 
             elif tool_name == "get_positions":
                 from alpaca_integration import get_alpaca_connector
+
                 connector = get_alpaca_connector()
                 positions = connector.get_positions()
                 return {"positions": positions, "count": len(positions)}
 
             elif tool_name == "get_stock_quote":
                 from alpaca_market_data import get_alpaca_market_data
+
                 market_data = get_alpaca_market_data()
                 symbol = tool_input.get("symbol", "SPY").upper()
                 quote = market_data.get_latest_quote(symbol)
                 snapshot = market_data.get_snapshot(symbol)
-                return {
-                    "symbol": symbol,
-                    "quote": quote,
-                    "snapshot": snapshot
-                }
+                return {"symbol": symbol, "quote": quote, "snapshot": snapshot}
 
             elif tool_name == "get_stock_bars":
                 from alpaca_market_data import get_alpaca_market_data
+
                 market_data = get_alpaca_market_data()
                 symbol = tool_input.get("symbol", "SPY").upper()
                 timeframe = tool_input.get("timeframe", "1Day")
                 limit = tool_input.get("limit", 20)
                 bars = market_data.get_bars(symbol, timeframe=timeframe, limit=limit)
-                return {"symbol": symbol, "bars": bars, "count": len(bars) if bars else 0}
+                return {
+                    "symbol": symbol,
+                    "bars": bars,
+                    "count": len(bars) if bars else 0,
+                }
 
             elif tool_name == "get_market_status":
                 from alpaca_integration import get_alpaca_connector
+
                 connector = get_alpaca_connector()
                 clock = connector.get_clock()
                 return clock
 
             elif tool_name == "get_bot_status":
                 from bot_manager import get_bot_manager
+
                 bot = get_bot_manager()
                 return bot.get_status()
 
             elif tool_name == "get_ai_prediction":
                 from ai.alpaca_ai_predictor import get_alpaca_predictor
+
                 predictor = get_alpaca_predictor()
                 symbol = tool_input.get("symbol", "SPY").upper()
                 return predictor.predict(symbol)
 
             elif tool_name == "get_regime_analysis":
                 from bot_manager import get_bot_manager
+
                 bot = get_bot_manager()
                 return bot.classify_market_regime()
 
@@ -297,8 +286,9 @@ You are NOT limited to just trading topics. You can help with:
 
 Be conversational, thoughtful, and genuinely helpful. This should feel like chatting with Claude.ai."""
 
-    def chat(self, message: str, session_id: str = None,
-             use_tools: bool = True) -> Dict:
+    def chat(
+        self, message: str, session_id: str = None, use_tools: bool = True
+    ) -> Dict:
         """
         Full conversational chat with Claude-like reasoning.
 
@@ -317,35 +307,38 @@ Be conversational, thoughtful, and genuinely helpful. This should feel like chat
             self.conversations[session_id] = []
 
         # Add user message to history
-        self.conversations[session_id].append({
-            "role": "user",
-            "content": message,
-            "timestamp": datetime.now().isoformat()
-        })
+        self.conversations[session_id].append(
+            {
+                "role": "user",
+                "content": message,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         if not self.ai_available:
             response = self._get_fallback_response(message)
-            self.conversations[session_id].append({
-                "role": "assistant",
-                "content": response,
-                "timestamp": datetime.now().isoformat()
-            })
+            self.conversations[session_id].append(
+                {
+                    "role": "assistant",
+                    "content": response,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
             self._save_conversations()
             return {
                 "response": response,
                 "session_id": session_id,
                 "ai_available": False,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
         try:
             # Build messages for API call (include conversation history)
             api_messages = []
-            for msg in self.conversations[session_id][-20:]:  # Last 20 messages for context
-                api_messages.append({
-                    "role": msg["role"],
-                    "content": msg["content"]
-                })
+            for msg in self.conversations[session_id][
+                -20:
+            ]:  # Last 20 messages for context
+                api_messages.append({"role": msg["role"], "content": msg["content"]})
 
             # Make API call with tools
             response = self.client.messages.create(
@@ -353,7 +346,7 @@ Be conversational, thoughtful, and genuinely helpful. This should feel like chat
                 max_tokens=self.max_tokens,
                 system=self._get_system_prompt(),
                 tools=self.tools if use_tools else [],
-                messages=api_messages
+                messages=api_messages,
             )
 
             # Handle tool use loop
@@ -368,11 +361,13 @@ Be conversational, thoughtful, and genuinely helpful. This should feel like chat
                 for block in response.content:
                     if block.type == "tool_use":
                         result = self._execute_tool(block.name, block.input)
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": json.dumps(result, default=str)
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": json.dumps(result, default=str),
+                            }
+                        )
                         logger.info(f"Executed tool: {block.name}")
 
                 # Add assistant response and tool results
@@ -385,21 +380,23 @@ Be conversational, thoughtful, and genuinely helpful. This should feel like chat
                     max_tokens=self.max_tokens,
                     system=self._get_system_prompt(),
                     tools=self.tools if use_tools else [],
-                    messages=api_messages
+                    messages=api_messages,
                 )
 
             # Extract final text response
             final_text = ""
             for block in response.content:
-                if hasattr(block, 'text'):
+                if hasattr(block, "text"):
                     final_text += block.text
 
             # Add assistant response to history
-            self.conversations[session_id].append({
-                "role": "assistant",
-                "content": final_text,
-                "timestamp": datetime.now().isoformat()
-            })
+            self.conversations[session_id].append(
+                {
+                    "role": "assistant",
+                    "content": final_text,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
 
             self._save_conversations()
 
@@ -409,25 +406,27 @@ Be conversational, thoughtful, and genuinely helpful. This should feel like chat
                 "ai_available": True,
                 "model": self.model,
                 "tools_used": iteration > 0,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
         except Exception as e:
             logger.error(f"Chat error: {e}")
             error_response = f"I encountered an error: {str(e)}. Please try again."
 
-            self.conversations[session_id].append({
-                "role": "assistant",
-                "content": error_response,
-                "timestamp": datetime.now().isoformat()
-            })
+            self.conversations[session_id].append(
+                {
+                    "role": "assistant",
+                    "content": error_response,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
             self._save_conversations()
 
             return {
                 "response": error_response,
                 "session_id": session_id,
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
     def _get_fallback_response(self, message: str) -> str:
@@ -467,7 +466,7 @@ In the meantime, you can still use the trading platform's other features."""
             "max_tokens": self.max_tokens,
             "sessions": len(self.conversations),
             "tools_available": len(self.tools),
-            "api_key_configured": bool(self.api_key)
+            "api_key_configured": bool(self.api_key),
         }
 
 

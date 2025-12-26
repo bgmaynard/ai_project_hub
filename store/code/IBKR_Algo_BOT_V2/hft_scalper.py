@@ -19,13 +19,14 @@ Usage:
 Author: Claude Code
 """
 
-import os
 import asyncio
 import logging
-import requests
-from datetime import datetime, timedelta
+import os
 from collections import defaultdict, deque
-from typing import Dict, Set, Optional, List
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Set
+
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -33,19 +34,19 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s.%(msecs)03d | %(message)s',
-    datefmt='%H:%M:%S'
+    format="%(asctime)s.%(msecs)03d | %(message)s",
+    datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
+from alpaca.data.historical import StockHistoricalDataClient
 # Alpaca imports
 from alpaca.data.live import StockDataStream
-from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderType
-from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.trading.client import TradingClient
+from alpaca.trading.enums import OrderSide, OrderType, TimeInForce
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
 
 # =============================================================================
 # CONFIGURATION
@@ -53,56 +54,47 @@ from alpaca.data.timeframe import TimeFrame
 
 CONFIG = {
     # Warrior Trading rules
-    'MIN_PRICE': 2.00,
-    'MAX_PRICE': 20.00,
-    'POSITION_SIZE': 500,  # $ per trade
-
+    "MIN_PRICE": 2.00,
+    "MAX_PRICE": 20.00,
+    "POSITION_SIZE": 500,  # $ per trade
     # Momentum thresholds (per tick)
-    'MOMENTUM_THRESHOLD': 0.15,    # 0.15% move to trigger
-    'ACCELERATION_THRESHOLD': 0.05, # Acceleration to confirm
-    'REVERSAL_THRESHOLD': -0.08,   # Exit on reversal
-
+    "MOMENTUM_THRESHOLD": 0.15,  # 0.15% move to trigger
+    "ACCELERATION_THRESHOLD": 0.05,  # Acceleration to confirm
+    "REVERSAL_THRESHOLD": -0.08,  # Exit on reversal
     # Volume profile thresholds
-    'VOLUME_BUY_RATIO': 1.5,       # Buy volume > 1.5x sell volume
-    'VOLUME_SURGE_MULT': 2.0,      # Volume > 2x average = surge
-
+    "VOLUME_BUY_RATIO": 1.5,  # Buy volume > 1.5x sell volume
+    "VOLUME_SURGE_MULT": 2.0,  # Volume > 2x average = surge
     # MACD settings (for 1-min bars)
-    'MACD_FAST': 12,
-    'MACD_SLOW': 26,
-    'MACD_SIGNAL': 9,
-
+    "MACD_FAST": 12,
+    "MACD_SLOW": 26,
+    "MACD_SIGNAL": 9,
     # Candlestick pattern settings
-    'TAIL_RATIO': 0.6,             # Tail > 60% of candle = significant
-    'CONSECUTIVE_TAILS': 2,        # Need 2+ tails to confirm pattern
-
+    "TAIL_RATIO": 0.6,  # Tail > 60% of candle = significant
+    "CONSECUTIVE_TAILS": 2,  # Need 2+ tails to confirm pattern
     # Short interest / ETB penalty
-    'ETB_PENALTY': -1,             # Reduce signal strength for ETB stocks
-
+    "ETB_PENALTY": -1,  # Reduce signal strength for ETB stocks
     # VWAP settings
-    'VWAP_CROSS_BUFFER': 0.002,    # 0.2% buffer above VWAP to confirm cross
-
+    "VWAP_CROSS_BUFFER": 0.002,  # 0.2% buffer above VWAP to confirm cross
     # Support/Resistance levels (whole and half dollars)
-    'SR_BUFFER': 0.01,             # 1 cent buffer for level detection
-    'SR_HOLD_TICKS': 3,            # Need to hold above level for 3 ticks
-
+    "SR_BUFFER": 0.01,  # 1 cent buffer for level detection
+    "SR_HOLD_TICKS": 3,  # Need to hold above level for 3 ticks
     # Historical S/R (peaks and troughs)
-    'PEAK_TOLERANCE': 0.005,       # 0.5% tolerance for matching peaks
-    'MIN_TOUCHES': 2,              # 2+ touches = hard resistance
-    'LOOKBACK_BARS': 50,           # Look back 50 bars for peaks
-
+    "PEAK_TOLERANCE": 0.005,  # 0.5% tolerance for matching peaks
+    "MIN_TOUCHES": 2,  # 2+ touches = hard resistance
+    "LOOKBACK_BARS": 50,  # Look back 50 bars for peaks
     # Risk management
-    'MAX_POSITIONS': 3,
-    'STOP_LOSS_PCT': 0.015,   # 1.5% stop
-    'TAKE_PROFIT_PCT': 0.02,  # 2% take profit
-
+    "MAX_POSITIONS": 3,
+    "STOP_LOSS_PCT": 0.015,  # 1.5% stop
+    "TAKE_PROFIT_PCT": 0.02,  # 2% take profit
     # Tick buffer
-    'TICK_BUFFER_SIZE': 10,  # Ticks to track
-    'BAR_BUFFER_SIZE': 30,   # 1-min bars for MACD
+    "TICK_BUFFER_SIZE": 10,  # Ticks to track
+    "BAR_BUFFER_SIZE": 30,  # 1-min bars for MACD
 }
 
 # =============================================================================
 # HFT SCALPER CLASS
 # =============================================================================
+
 
 class HFTScalper:
     """High-frequency momentum scalper using WebSocket streaming."""
@@ -111,16 +103,18 @@ class HFTScalper:
         self.symbols = [s.upper() for s in symbols]
 
         # Alpaca clients
-        api_key = os.getenv('ALPACA_API_KEY')
-        api_secret = os.getenv('ALPACA_SECRET_KEY')
-        paper = os.getenv('ALPACA_PAPER', 'true').lower() == 'true'
+        api_key = os.getenv("ALPACA_API_KEY")
+        api_secret = os.getenv("ALPACA_SECRET_KEY")
+        paper = os.getenv("ALPACA_PAPER", "true").lower() == "true"
 
         self.trading_client = TradingClient(api_key, api_secret, paper=paper)
         self.data_stream = StockDataStream(api_key, api_secret)
         self.data_client = StockHistoricalDataClient(api_key, api_secret)
 
         # Tick tracking (deque for fast append/pop)
-        self.ticks: Dict[str, deque] = defaultdict(lambda: deque(maxlen=CONFIG['TICK_BUFFER_SIZE']))
+        self.ticks: Dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=CONFIG["TICK_BUFFER_SIZE"])
+        )
         self.last_price: Dict[str, float] = {}
         self.momentum: Dict[str, float] = defaultdict(float)
         self.acceleration: Dict[str, float] = defaultdict(float)
@@ -144,8 +138,10 @@ class HFTScalper:
 
         # Candlestick pattern tracking
         self.candles: Dict[str, deque] = defaultdict(lambda: deque(maxlen=10))
-        self.bottoming_tails: Dict[str, int] = defaultdict(int)  # Count of bullish tails
-        self.topping_tails: Dict[str, int] = defaultdict(int)    # Count of bearish tails
+        self.bottoming_tails: Dict[str, int] = defaultdict(
+            int
+        )  # Count of bullish tails
+        self.topping_tails: Dict[str, int] = defaultdict(int)  # Count of bearish tails
         self.last_candle_update: Dict[str, datetime] = {}
 
         # ETB (Easy To Borrow) tracking - stocks with high short interest
@@ -166,14 +162,18 @@ class HFTScalper:
         self.ticks_above_sr: Dict[str, int] = defaultdict(int)
 
         # Historical peak/trough resistance levels
-        self.resistance_levels: Dict[str, List[dict]] = defaultdict(list)  # {price, touches, type}
+        self.resistance_levels: Dict[str, List[dict]] = defaultdict(
+            list
+        )  # {price, touches, type}
         self.support_levels: Dict[str, List[dict]] = defaultdict(list)
         self.hard_resistance_break: Dict[str, bool] = defaultdict(bool)
         self.hard_support_break: Dict[str, bool] = defaultdict(bool)
         self.last_sr_scan: Dict[str, datetime] = {}
 
         # Candlestick pattern tracking
-        self.pattern_signals: Dict[str, List[str]] = defaultdict(list)  # Active patterns
+        self.pattern_signals: Dict[str, List[str]] = defaultdict(
+            list
+        )  # Active patterns
         self.higher_highs_count: Dict[str, int] = defaultdict(int)
         self.last_pattern_scan: Dict[str, datetime] = {}
 
@@ -189,7 +189,7 @@ class HFTScalper:
 
     def calculate_macd(self, prices: List[float]) -> tuple:
         """Calculate MACD from price series."""
-        if len(prices) < CONFIG['MACD_SLOW']:
+        if len(prices) < CONFIG["MACD_SLOW"]:
             return 0, 0, 0
 
         # EMA calculation
@@ -200,11 +200,11 @@ class HFTScalper:
                 result.append(alpha * price + (1 - alpha) * result[-1])
             return result
 
-        fast_ema = ema(prices, CONFIG['MACD_FAST'])
-        slow_ema = ema(prices, CONFIG['MACD_SLOW'])
+        fast_ema = ema(prices, CONFIG["MACD_FAST"])
+        slow_ema = ema(prices, CONFIG["MACD_SLOW"])
 
         macd_line = [f - s for f, s in zip(fast_ema, slow_ema)]
-        signal_line = ema(macd_line, CONFIG['MACD_SIGNAL'])
+        signal_line = ema(macd_line, CONFIG["MACD_SIGNAL"])
 
         macd = macd_line[-1]
         signal = signal_line[-1]
@@ -214,8 +214,8 @@ class HFTScalper:
 
     async def update_volume_profile(self, symbol: str, trade_data: dict):
         """Update volume profile from trade data."""
-        price = trade_data.get('price', 0)
-        size = trade_data.get('size', 0)
+        price = trade_data.get("price", 0)
+        size = trade_data.get("size", 0)
 
         # Determine if buy or sell based on price movement
         last = self.last_price.get(symbol, price)
@@ -233,7 +233,12 @@ class HFTScalper:
 
         # Check for volume surge
         avg_volume = (total_buy + total_sell) / 2
-        self.volume_surge[symbol] = avg_volume > (sum(self.buy_volume[symbol]) + sum(self.sell_volume[symbol])) / max(len(self.buy_volume[symbol]) + len(self.sell_volume[symbol]), 1) * CONFIG['VOLUME_SURGE_MULT']
+        self.volume_surge[symbol] = (
+            avg_volume
+            > (sum(self.buy_volume[symbol]) + sum(self.sell_volume[symbol]))
+            / max(len(self.buy_volume[symbol]) + len(self.sell_volume[symbol]), 1)
+            * CONFIG["VOLUME_SURGE_MULT"]
+        )
 
     async def update_macd(self, symbol: str):
         """Fetch recent bars and update MACD."""
@@ -248,11 +253,11 @@ class HFTScalper:
             request = StockBarsRequest(
                 symbol_or_symbols=symbol,
                 timeframe=TimeFrame.Minute,
-                start=now - timedelta(hours=1)
+                start=now - timedelta(hours=1),
             )
             bars = self.data_client.get_stock_bars(request)
 
-            if symbol in bars and len(bars[symbol]) >= CONFIG['MACD_SLOW']:
+            if symbol in bars and len(bars[symbol]) >= CONFIG["MACD_SLOW"]:
                 prices = [float(bar.close) for bar in bars[symbol]]
                 macd, signal, histogram = self.calculate_macd(prices)
 
@@ -263,7 +268,9 @@ class HFTScalper:
                 self.macd_histogram[symbol] = histogram
 
                 # Bullish: histogram going from negative to positive OR increasing positive
-                self.macd_bullish[symbol] = (prev_hist < 0 and histogram > 0) or (histogram > 0 and histogram > prev_hist)
+                self.macd_bullish[symbol] = (prev_hist < 0 and histogram > 0) or (
+                    histogram > 0 and histogram > prev_hist
+                )
 
                 self.last_macd_update[symbol] = now
 
@@ -287,7 +294,7 @@ class HFTScalper:
             request = StockBarsRequest(
                 symbol_or_symbols=symbol,
                 timeframe=TimeFrame.Minute,
-                start=now - timedelta(minutes=15)
+                start=now - timedelta(minutes=15),
             )
             bars = self.data_client.get_stock_bars(request)
 
@@ -298,7 +305,12 @@ class HFTScalper:
             topping = 0
 
             for bar in list(bars[symbol])[-5:]:  # Last 5 candles
-                o, h, l, c = float(bar.open), float(bar.high), float(bar.low), float(bar.close)
+                o, h, l, c = (
+                    float(bar.open),
+                    float(bar.high),
+                    float(bar.low),
+                    float(bar.close),
+                )
                 body = abs(c - o)
                 total_range = h - l
 
@@ -317,21 +329,25 @@ class HFTScalper:
                 upper_ratio = upper_tail / total_range
 
                 # Bottoming tail: long lower wick (bullish - buyers pushing back)
-                if lower_ratio > CONFIG['TAIL_RATIO']:
+                if lower_ratio > CONFIG["TAIL_RATIO"]:
                     bottoming += 1
 
                 # Topping tail: long upper wick (bearish - sellers pushing back)
-                if upper_ratio > CONFIG['TAIL_RATIO']:
+                if upper_ratio > CONFIG["TAIL_RATIO"]:
                     topping += 1
 
             self.bottoming_tails[symbol] = bottoming
             self.topping_tails[symbol] = topping
             self.last_candle_update[symbol] = now
 
-            if bottoming >= CONFIG['CONSECUTIVE_TAILS']:
-                logger.info(f"BOTTOMING TAILS: {symbol} has {bottoming} bullish rejection candles")
-            if topping >= CONFIG['CONSECUTIVE_TAILS']:
-                logger.info(f"TOPPING TAILS: {symbol} has {topping} bearish rejection candles")
+            if bottoming >= CONFIG["CONSECUTIVE_TAILS"]:
+                logger.info(
+                    f"BOTTOMING TAILS: {symbol} has {bottoming} bullish rejection candles"
+                )
+            if topping >= CONFIG["CONSECUTIVE_TAILS"]:
+                logger.info(
+                    f"TOPPING TAILS: {symbol} has {topping} bearish rejection candles"
+                )
 
         except Exception as e:
             pass
@@ -351,12 +367,14 @@ class HFTScalper:
 
         # Calculate VWAP
         if self.vwap_cumulative_vol[symbol] > 0:
-            new_vwap = self.vwap_cumulative_pv[symbol] / self.vwap_cumulative_vol[symbol]
+            new_vwap = (
+                self.vwap_cumulative_pv[symbol] / self.vwap_cumulative_vol[symbol]
+            )
             self.vwap[symbol] = new_vwap
 
             # Check for crossover
             was_above = self.above_vwap[symbol]
-            buffer = price * CONFIG['VWAP_CROSS_BUFFER']
+            buffer = price * CONFIG["VWAP_CROSS_BUFFER"]
             is_above = price > (new_vwap + buffer)
 
             self.above_vwap[symbol] = is_above
@@ -364,7 +382,9 @@ class HFTScalper:
             # Detect bullish crossover (was below, now above)
             if is_above and not was_above and new_vwap > 0:
                 self.vwap_cross_up[symbol] = True
-                logger.info(f"VWAP CROSSOVER: {symbol} crossed ABOVE VWAP ${new_vwap:.2f} -> BULLISH")
+                logger.info(
+                    f"VWAP CROSSOVER: {symbol} crossed ABOVE VWAP ${new_vwap:.2f} -> BULLISH"
+                )
             elif not is_above and was_above:
                 self.vwap_cross_up[symbol] = False
 
@@ -388,7 +408,7 @@ class HFTScalper:
             nearest_level = whole_below
 
         # Check if price just broke above a level
-        buffer = CONFIG['SR_BUFFER']
+        buffer = CONFIG["SR_BUFFER"]
         just_above_level = price > nearest_level and price < (nearest_level + 0.10)
 
         if just_above_level:
@@ -400,11 +420,15 @@ class HFTScalper:
                 self.ticks_above_sr[symbol] = 1
 
             # Confirm breakout after holding above for X ticks
-            if self.ticks_above_sr[symbol] >= CONFIG['SR_HOLD_TICKS']:
+            if self.ticks_above_sr[symbol] >= CONFIG["SR_HOLD_TICKS"]:
                 if not self.sr_breakout[symbol]:
                     self.sr_breakout[symbol] = True
-                    level_type = "WHOLE" if nearest_level == int(nearest_level) else "HALF"
-                    logger.info(f"S/R BREAKOUT: {symbol} broke above ${nearest_level:.2f} ({level_type} DOLLAR) - BULLISH")
+                    level_type = (
+                        "WHOLE" if nearest_level == int(nearest_level) else "HALF"
+                    )
+                    logger.info(
+                        f"S/R BREAKOUT: {symbol} broke above ${nearest_level:.2f} ({level_type} DOLLAR) - BULLISH"
+                    )
                 return True, nearest_level
         else:
             # Reset if price moved away
@@ -430,7 +454,7 @@ class HFTScalper:
             request = StockBarsRequest(
                 symbol_or_symbols=symbol,
                 timeframe=TimeFrame.Minute,
-                start=now - timedelta(hours=2)  # 2 hours of 1-min bars
+                start=now - timedelta(hours=2),  # 2 hours of 1-min bars
             )
             bars = self.data_client.get_stock_bars(request)
 
@@ -444,44 +468,52 @@ class HFTScalper:
             # Find local peaks (resistance levels)
             peaks = []
             for i in range(2, len(highs) - 2):
-                if highs[i] > highs[i-1] and highs[i] > highs[i-2] and \
-                   highs[i] > highs[i+1] and highs[i] > highs[i+2]:
+                if (
+                    highs[i] > highs[i - 1]
+                    and highs[i] > highs[i - 2]
+                    and highs[i] > highs[i + 1]
+                    and highs[i] > highs[i + 2]
+                ):
                     peaks.append(highs[i])
 
             # Find local troughs (support levels)
             troughs = []
             for i in range(2, len(lows) - 2):
-                if lows[i] < lows[i-1] and lows[i] < lows[i-2] and \
-                   lows[i] < lows[i+1] and lows[i] < lows[i+2]:
+                if (
+                    lows[i] < lows[i - 1]
+                    and lows[i] < lows[i - 2]
+                    and lows[i] < lows[i + 1]
+                    and lows[i] < lows[i + 2]
+                ):
                     troughs.append(lows[i])
 
             # Group similar peaks together (within tolerance)
-            tolerance = CONFIG['PEAK_TOLERANCE']
+            tolerance = CONFIG["PEAK_TOLERANCE"]
             resistance_clusters = self._cluster_levels(peaks, tolerance)
             support_clusters = self._cluster_levels(troughs, tolerance)
 
             # Store levels with touch count
             self.resistance_levels[symbol] = []
             for level, count in resistance_clusters:
-                level_type = "HARD" if count >= CONFIG['MIN_TOUCHES'] else "SOFT"
-                self.resistance_levels[symbol].append({
-                    'price': level,
-                    'touches': count,
-                    'type': level_type
-                })
-                if count >= CONFIG['MIN_TOUCHES']:
-                    logger.info(f"RESISTANCE: {symbol} has {level_type} resistance at ${level:.2f} ({count} touches)")
+                level_type = "HARD" if count >= CONFIG["MIN_TOUCHES"] else "SOFT"
+                self.resistance_levels[symbol].append(
+                    {"price": level, "touches": count, "type": level_type}
+                )
+                if count >= CONFIG["MIN_TOUCHES"]:
+                    logger.info(
+                        f"RESISTANCE: {symbol} has {level_type} resistance at ${level:.2f} ({count} touches)"
+                    )
 
             self.support_levels[symbol] = []
             for level, count in support_clusters:
-                level_type = "HARD" if count >= CONFIG['MIN_TOUCHES'] else "SOFT"
-                self.support_levels[symbol].append({
-                    'price': level,
-                    'touches': count,
-                    'type': level_type
-                })
-                if count >= CONFIG['MIN_TOUCHES']:
-                    logger.info(f"SUPPORT: {symbol} has {level_type} support at ${level:.2f} ({count} touches)")
+                level_type = "HARD" if count >= CONFIG["MIN_TOUCHES"] else "SOFT"
+                self.support_levels[symbol].append(
+                    {"price": level, "touches": count, "type": level_type}
+                )
+                if count >= CONFIG["MIN_TOUCHES"]:
+                    logger.info(
+                        f"SUPPORT: {symbol} has {level_type} support at ${level:.2f} ({count} touches)"
+                    )
 
             self.last_sr_scan[symbol] = now
 
@@ -520,37 +552,55 @@ class HFTScalper:
 
         Returns: (is_breakout, level, touches, direction)
         """
-        buffer = CONFIG['PEAK_TOLERANCE']
+        buffer = CONFIG["PEAK_TOLERANCE"]
 
         # Check resistance breakouts (bullish)
         for level_info in self.resistance_levels[symbol]:
-            level = level_info['price']
-            touches = level_info['touches']
+            level = level_info["price"]
+            touches = level_info["touches"]
 
-            if touches >= CONFIG['MIN_TOUCHES']:  # Hard resistance
+            if touches >= CONFIG["MIN_TOUCHES"]:  # Hard resistance
                 # Price just broke above
-                if price > level * (1 + buffer) and not self.hard_resistance_break[symbol]:
+                if (
+                    price > level * (1 + buffer)
+                    and not self.hard_resistance_break[symbol]
+                ):
                     self.hard_resistance_break[symbol] = True
-                    top_type = "DOUBLE" if touches == 2 else "TRIPLE" if touches == 3 else f"{touches}X"
-                    logger.info(f"{top_type} TOP BREAK: {symbol} broke ${level:.2f} resistance ({touches} touches) -> BULLISH MOMENTUM")
+                    top_type = (
+                        "DOUBLE"
+                        if touches == 2
+                        else "TRIPLE" if touches == 3 else f"{touches}X"
+                    )
+                    logger.info(
+                        f"{top_type} TOP BREAK: {symbol} broke ${level:.2f} resistance ({touches} touches) -> BULLISH MOMENTUM"
+                    )
                     return True, level, touches, "UP"
 
         # Check support breakdowns (bearish - for exit signals)
         for level_info in self.support_levels[symbol]:
-            level = level_info['price']
-            touches = level_info['touches']
+            level = level_info["price"]
+            touches = level_info["touches"]
 
-            if touches >= CONFIG['MIN_TOUCHES']:  # Hard support
+            if touches >= CONFIG["MIN_TOUCHES"]:  # Hard support
                 # Price just broke below
                 if price < level * (1 - buffer) and not self.hard_support_break[symbol]:
                     self.hard_support_break[symbol] = True
-                    bottom_type = "DOUBLE" if touches == 2 else "TRIPLE" if touches == 3 else f"{touches}X"
-                    logger.info(f"{bottom_type} BOTTOM BREAK: {symbol} broke ${level:.2f} support ({touches} touches) -> BEARISH")
+                    bottom_type = (
+                        "DOUBLE"
+                        if touches == 2
+                        else "TRIPLE" if touches == 3 else f"{touches}X"
+                    )
+                    logger.info(
+                        f"{bottom_type} BOTTOM BREAK: {symbol} broke ${level:.2f} support ({touches} touches) -> BEARISH"
+                    )
                     return True, level, touches, "DOWN"
 
         # Reset if price moved back inside range
         if self.hard_resistance_break[symbol] or self.hard_support_break[symbol]:
-            all_levels = [l['price'] for l in self.resistance_levels[symbol] + self.support_levels[symbol]]
+            all_levels = [
+                l["price"]
+                for l in self.resistance_levels[symbol] + self.support_levels[symbol]
+            ]
             if all_levels:
                 min_level = min(all_levels) * 0.98
                 max_level = max(all_levels) * 1.02
@@ -582,7 +632,7 @@ class HFTScalper:
             request = StockBarsRequest(
                 symbol_or_symbols=symbol,
                 timeframe=TimeFrame.Minute,
-                start=now - timedelta(minutes=30)
+                start=now - timedelta(minutes=30),
             )
             bars = self.data_client.get_stock_bars(request)
 
@@ -595,11 +645,15 @@ class HFTScalper:
             # Extract OHLC for last 10 candles
             candles = []
             for b in bar_list[-10:]:
-                candles.append({
-                    'o': float(b.open), 'h': float(b.high),
-                    'l': float(b.low), 'c': float(b.close),
-                    'v': float(b.volume)
-                })
+                candles.append(
+                    {
+                        "o": float(b.open),
+                        "h": float(b.high),
+                        "l": float(b.low),
+                        "c": float(b.close),
+                        "v": float(b.volume),
+                    }
+                )
 
             # === PATTERN DETECTION ===
 
@@ -609,7 +663,7 @@ class HFTScalper:
                 for i in range(-1, -4, -1):
                     if i == -1:
                         continue
-                    if candles[i]['h'] > candles[i-1]['h']:
+                    if candles[i]["h"] > candles[i - 1]["h"]:
                         hh_count += 1
                 if hh_count >= 2:
                     patterns.append("HIGHER_HIGHS")
@@ -617,11 +671,11 @@ class HFTScalper:
 
             # 2. Hammer (bullish) - small body at top, long lower wick
             last = candles[-1]
-            body = abs(last['c'] - last['o'])
-            total_range = last['h'] - last['l']
+            body = abs(last["c"] - last["o"])
+            total_range = last["h"] - last["l"]
             if total_range > 0:
-                lower_wick = min(last['o'], last['c']) - last['l']
-                upper_wick = last['h'] - max(last['o'], last['c'])
+                lower_wick = min(last["o"], last["c"]) - last["l"]
+                upper_wick = last["h"] - max(last["o"], last["c"])
 
                 if lower_wick > body * 2 and upper_wick < body * 0.5:
                     patterns.append("HAMMER")
@@ -630,7 +684,7 @@ class HFTScalper:
                 if lower_wick > body * 2 and upper_wick < body * 0.5:
                     # Check if after uptrend
                     if len(candles) >= 5:
-                        prev_trend = candles[-5]['c'] < candles[-2]['c']
+                        prev_trend = candles[-5]["c"] < candles[-2]["c"]
                         if prev_trend:
                             patterns.append("HANGING_MAN")
 
@@ -638,23 +692,23 @@ class HFTScalper:
             if len(candles) >= 2:
                 curr = candles[-1]
                 prev = candles[-2]
-                if prev['c'] < prev['o'] and curr['c'] > curr['o']:  # Red then Green
-                    if curr['o'] <= prev['c'] and curr['c'] >= prev['o']:
+                if prev["c"] < prev["o"] and curr["c"] > curr["o"]:  # Red then Green
+                    if curr["o"] <= prev["c"] and curr["c"] >= prev["o"]:
                         patterns.append("BULLISH_ENGULF")
 
             # 5. Bearish Engulfing
             if len(candles) >= 2:
                 curr = candles[-1]
                 prev = candles[-2]
-                if prev['c'] > prev['o'] and curr['c'] < curr['o']:  # Green then Red
-                    if curr['o'] >= prev['c'] and curr['c'] <= prev['o']:
+                if prev["c"] > prev["o"] and curr["c"] < curr["o"]:  # Green then Red
+                    if curr["o"] >= prev["c"] and curr["c"] <= prev["o"]:
                         patterns.append("BEARISH_ENGULF")
 
             # 6. Ascending Wedge (higher lows, converging)
             if len(candles) >= 5:
-                lows = [c['l'] for c in candles[-5:]]
-                highs = [c['h'] for c in candles[-5:]]
-                higher_lows = all(lows[i] >= lows[i-1] for i in range(1, len(lows)))
+                lows = [c["l"] for c in candles[-5:]]
+                highs = [c["h"] for c in candles[-5:]]
+                higher_lows = all(lows[i] >= lows[i - 1] for i in range(1, len(lows)))
                 range_narrowing = (highs[-1] - lows[-1]) < (highs[0] - lows[0])
                 if higher_lows and range_narrowing:
                     patterns.append("ASCENDING_WEDGE")
@@ -664,11 +718,11 @@ class HFTScalper:
                 coc = True
                 for i in range(-1, -4, -1):
                     c = candles[i]
-                    if c['c'] <= c['o']:  # Not green
+                    if c["c"] <= c["o"]:  # Not green
                         coc = False
                         break
                     if i < -1:
-                        if c['h'] <= candles[i+1]['h']:  # Not making new high
+                        if c["h"] <= candles[i + 1]["h"]:  # Not making new high
                             coc = False
                             break
                 if coc:
@@ -706,7 +760,9 @@ class HFTScalper:
                     if asset.easy_to_borrow:
                         if symbol not in self.etb_stocks:
                             self.etb_stocks.add(symbol)
-                            logger.info(f"ETB DETECTED: {symbol} is Easy To Borrow (short interest risk)")
+                            logger.info(
+                                f"ETB DETECTED: {symbol} is Easy To Borrow (short interest risk)"
+                            )
                     else:
                         self.etb_stocks.discard(symbol)
                 except:
@@ -739,16 +795,20 @@ class HFTScalper:
 
         try:
             # Use local API for news
-            response = requests.get('http://localhost:9100/api/news/latest', timeout=2)
+            response = requests.get("http://localhost:9100/api/news/latest", timeout=2)
             if response.status_code == 200:
                 news = response.json()
-                for item in news.get('articles', [])[:10]:
+                for item in news.get("articles", [])[:10]:
                     # Check if any symbol mentioned
-                    text = (item.get('title', '') + ' ' + item.get('description', '')).upper()
+                    text = (
+                        item.get("title", "") + " " + item.get("description", "")
+                    ).upper()
                     for symbol in self.symbols:
                         if symbol in text:
                             self.news_trigger[symbol] = True
-                            logger.info(f"NEWS TRIGGER: {symbol} - {item.get('title', '')[:50]}")
+                            logger.info(
+                                f"NEWS TRIGGER: {symbol} - {item.get('title', '')[:50]}"
+                            )
         except:
             pass  # Silently handle
 
@@ -758,15 +818,15 @@ class HFTScalper:
         reasons = []
 
         # 1. Momentum + Acceleration (primary)
-        if self.momentum[symbol] > CONFIG['MOMENTUM_THRESHOLD']:
+        if self.momentum[symbol] > CONFIG["MOMENTUM_THRESHOLD"]:
             signals.append(1)
             reasons.append(f"MOM={self.momentum[symbol]:.2f}%")
-        if self.acceleration[symbol] > CONFIG['ACCELERATION_THRESHOLD']:
+        if self.acceleration[symbol] > CONFIG["ACCELERATION_THRESHOLD"]:
             signals.append(1)
             reasons.append(f"ACC={self.acceleration[symbol]:.2f}%")
 
         # 2. Volume Profile (buy/sell ratio)
-        if self.volume_ratio[symbol] > CONFIG['VOLUME_BUY_RATIO']:
+        if self.volume_ratio[symbol] > CONFIG["VOLUME_BUY_RATIO"]:
             signals.append(1)
             reasons.append(f"VOL_RATIO={self.volume_ratio[symbol]:.1f}x")
         if self.volume_surge[symbol]:
@@ -785,18 +845,18 @@ class HFTScalper:
             self.news_trigger[symbol] = False  # Reset after use
 
         # 5. Candlestick Patterns - Bottoming tails (bullish)
-        if self.bottoming_tails[symbol] >= CONFIG['CONSECUTIVE_TAILS']:
+        if self.bottoming_tails[symbol] >= CONFIG["CONSECUTIVE_TAILS"]:
             signals.append(1)
             reasons.append(f"BOTTOM_TAILS={self.bottoming_tails[symbol]}")
 
         # 6. Candlestick Patterns - Topping tails (bearish - negative signal)
-        if self.topping_tails[symbol] >= CONFIG['CONSECUTIVE_TAILS']:
+        if self.topping_tails[symbol] >= CONFIG["CONSECUTIVE_TAILS"]:
             signals.append(-1)  # Negative weight - bearish
             reasons.append(f"TOP_TAILS={self.topping_tails[symbol]}(BEARISH)")
 
         # 7. ETB Penalty - Easy To Borrow stocks have more short pressure
         if symbol in self.etb_stocks:
-            signals.append(CONFIG['ETB_PENALTY'])  # -1 penalty
+            signals.append(CONFIG["ETB_PENALTY"])  # -1 penalty
             reasons.append("ETB_PENALTY")
 
         # 8. VWAP Crossover - price crossing above VWAP is bullish
@@ -816,9 +876,13 @@ class HFTScalper:
             signals.append(2)  # Weight 2 - strong signal
             # Find the level that was broken
             for level_info in self.resistance_levels[symbol]:
-                if level_info['touches'] >= CONFIG['MIN_TOUCHES']:
-                    touches = level_info['touches']
-                    top_type = "DOUBLE" if touches == 2 else "TRIPLE" if touches == 3 else f"{touches}X"
+                if level_info["touches"] >= CONFIG["MIN_TOUCHES"]:
+                    touches = level_info["touches"]
+                    top_type = (
+                        "DOUBLE"
+                        if touches == 2
+                        else "TRIPLE" if touches == 3 else f"{touches}X"
+                    )
                     reasons.append(f"{top_type}_TOP_BREAK(${level_info['price']:.2f})")
                     break
 
@@ -826,9 +890,13 @@ class HFTScalper:
         if self.hard_support_break[symbol]:
             signals.append(-2)  # Weight -2 - strong bearish signal
             for level_info in self.support_levels[symbol]:
-                if level_info['touches'] >= CONFIG['MIN_TOUCHES']:
-                    touches = level_info['touches']
-                    bottom_type = "DOUBLE" if touches == 2 else "TRIPLE" if touches == 3 else f"{touches}X"
+                if level_info["touches"] >= CONFIG["MIN_TOUCHES"]:
+                    touches = level_info["touches"]
+                    bottom_type = (
+                        "DOUBLE"
+                        if touches == 2
+                        else "TRIPLE" if touches == 3 else f"{touches}X"
+                    )
                     reasons.append(f"{bottom_type}_BOTTOM_BREAK(BEARISH)")
                     break
 
@@ -836,14 +904,20 @@ class HFTScalper:
         patterns = self.pattern_signals[symbol]
 
         # Bullish patterns
-        bullish_patterns = ['HIGHER_HIGHS', 'HAMMER', 'BULLISH_ENGULF', 'ASCENDING_WEDGE', 'CANDLE_OVER_CANDLE']
+        bullish_patterns = [
+            "HIGHER_HIGHS",
+            "HAMMER",
+            "BULLISH_ENGULF",
+            "ASCENDING_WEDGE",
+            "CANDLE_OVER_CANDLE",
+        ]
         for pattern in bullish_patterns:
             if pattern in patterns:
                 signals.append(1)
                 reasons.append(pattern)
 
         # Bearish patterns (negative signals)
-        bearish_patterns = ['HANGING_MAN', 'BEARISH_ENGULF']
+        bearish_patterns = ["HANGING_MAN", "BEARISH_ENGULF"]
         for pattern in bearish_patterns:
             if pattern in patterns:
                 signals.append(-1)
@@ -858,19 +932,21 @@ class HFTScalper:
         bid = float(quote.bid_price)
         ask = float(quote.ask_price)
         mid = (bid + ask) / 2
-        bid_size = int(quote.bid_size) if hasattr(quote, 'bid_size') else 0
-        ask_size = int(quote.ask_size) if hasattr(quote, 'ask_size') else 0
+        bid_size = int(quote.bid_size) if hasattr(quote, "bid_size") else 0
+        ask_size = int(quote.ask_size) if hasattr(quote, "ask_size") else 0
 
         # Skip if outside Warrior range
-        if mid < CONFIG['MIN_PRICE'] or mid > CONFIG['MAX_PRICE']:
+        if mid < CONFIG["MIN_PRICE"] or mid > CONFIG["MAX_PRICE"]:
             return
 
         # Store tick
         now = datetime.now()
-        self.ticks[symbol].append({'time': now, 'price': mid, 'bid': bid, 'ask': ask})
+        self.ticks[symbol].append({"time": now, "price": mid, "bid": bid, "ask": ask})
 
         # Update volume profile from quote sizes
-        await self.update_volume_profile(symbol, {'price': mid, 'size': bid_size + ask_size})
+        await self.update_volume_profile(
+            symbol, {"price": mid, "size": bid_size + ask_size}
+        )
 
         # Periodically update MACD (non-blocking)
         asyncio.create_task(self.update_macd(symbol))
@@ -905,9 +981,9 @@ class HFTScalper:
 
         # Calculate momentum (price velocity)
         ticks = list(self.ticks[symbol])
-        price_now = ticks[-1]['price']
-        price_prev = ticks[-2]['price']
-        price_prev2 = ticks[-3]['price']
+        price_now = ticks[-1]["price"]
+        price_prev = ticks[-2]["price"]
+        price_prev2 = ticks[-3]["price"]
 
         vel1 = (price_now - price_prev) / price_prev * 100 if price_prev > 0 else 0
         vel2 = (price_prev - price_prev2) / price_prev2 * 100 if price_prev2 > 0 else 0
@@ -921,37 +997,37 @@ class HFTScalper:
         # === ENTRY LOGIC ===
         # Need at least 2 signals to enter (momentum + one other confirmation)
         if symbol not in self.positions and symbol not in self.pending_orders:
-            if strength >= 2 and len(self.positions) < CONFIG['MAX_POSITIONS']:
+            if strength >= 2 and len(self.positions) < CONFIG["MAX_POSITIONS"]:
                 await self.enter_position(symbol, ask, reasons)
 
         # === EXIT LOGIC ===
         elif symbol in self.positions:
             pos = self.positions[symbol]
-            entry = pos['entry_price']
+            entry = pos["entry_price"]
             pnl_pct = (mid - entry) / entry * 100
 
             # Take profit
-            if pnl_pct >= CONFIG['TAKE_PROFIT_PCT'] * 100:
-                await self.exit_position(symbol, bid, 'PROFIT')
+            if pnl_pct >= CONFIG["TAKE_PROFIT_PCT"] * 100:
+                await self.exit_position(symbol, bid, "PROFIT")
 
             # Stop loss
-            elif pnl_pct <= -CONFIG['STOP_LOSS_PCT'] * 100:
-                await self.exit_position(symbol, bid, 'STOP')
+            elif pnl_pct <= -CONFIG["STOP_LOSS_PCT"] * 100:
+                await self.exit_position(symbol, bid, "STOP")
 
             # Momentum reversal + volume confirmation
-            elif self.acceleration[symbol] < CONFIG['REVERSAL_THRESHOLD']:
+            elif self.acceleration[symbol] < CONFIG["REVERSAL_THRESHOLD"]:
                 # Extra confirmation: sell volume increasing
                 if self.volume_ratio[symbol] < 1.0:
-                    await self.exit_position(symbol, bid, 'REVERSAL+VOL')
+                    await self.exit_position(symbol, bid, "REVERSAL+VOL")
                 else:
-                    await self.exit_position(symbol, bid, 'REVERSAL')
+                    await self.exit_position(symbol, bid, "REVERSAL")
 
     async def enter_position(self, symbol: str, price: float, reasons: list = None):
         """Enter a position instantly."""
         self.pending_orders.add(symbol)
 
-        qty = max(1, int(CONFIG['POSITION_SIZE'] / price))
-        reasons_str = ', '.join(reasons) if reasons else ''
+        qty = max(1, int(CONFIG["POSITION_SIZE"] / price))
+        reasons_str = ", ".join(reasons) if reasons else ""
 
         logger.info(f">> BUY {symbol} x{qty} @ ${price:.2f} | {reasons_str}")
 
@@ -964,15 +1040,15 @@ class HFTScalper:
                 type=OrderType.LIMIT,
                 limit_price=round(price * 1.002, 2),  # Slight buffer
                 time_in_force=TimeInForce.DAY,
-                extended_hours=True
+                extended_hours=True,
             )
             result = self.trading_client.submit_order(order)
 
             self.positions[symbol] = {
-                'entry_price': price,
-                'qty': qty,
-                'order_id': result.id,
-                'entry_time': datetime.now()
+                "entry_price": price,
+                "qty": qty,
+                "order_id": result.id,
+                "entry_time": datetime.now(),
             }
             self.trades_executed += 1
             logger.info(f"   ORDER PLACED: {result.id}")
@@ -988,12 +1064,14 @@ class HFTScalper:
             return
 
         pos = self.positions[symbol]
-        qty = pos['qty']
-        entry = pos['entry_price']
+        qty = pos["qty"]
+        entry = pos["entry_price"]
         pnl = (price - entry) * qty
         pnl_pct = (price - entry) / entry * 100
 
-        logger.info(f"<< SELL {symbol} x{qty} @ ${price:.2f} | {reason} | P/L: ${pnl:.2f} ({pnl_pct:+.2f}%)")
+        logger.info(
+            f"<< SELL {symbol} x{qty} @ ${price:.2f} | {reason} | P/L: ${pnl:.2f} ({pnl_pct:+.2f}%)"
+        )
 
         try:
             order = LimitOrderRequest(
@@ -1003,13 +1081,15 @@ class HFTScalper:
                 type=OrderType.LIMIT,
                 limit_price=round(price * 0.998, 2),  # Slight buffer
                 time_in_force=TimeInForce.DAY,
-                extended_hours=True
+                extended_hours=True,
             )
             result = self.trading_client.submit_order(order)
 
             self.total_pnl += pnl
             del self.positions[symbol]
-            logger.info(f"   EXIT ORDER: {result.id} | Total P/L: ${self.total_pnl:.2f}")
+            logger.info(
+                f"   EXIT ORDER: {result.id} | Total P/L: ${self.total_pnl:.2f}"
+            )
 
         except Exception as e:
             logger.error(f"   EXIT FAILED: {e}")
@@ -1034,9 +1114,10 @@ class HFTScalper:
 # MAIN
 # =============================================================================
 
+
 async def main():
     # Warrior Trading compliant symbols ($2-$20)
-    symbols = ['VOR', 'MAMA', 'USGO', 'KGC', 'AG', 'HL', 'EDIT']
+    symbols = ["VOR", "MAMA", "USGO", "KGC", "AG", "HL", "EDIT"]
 
     scalper = HFTScalper(symbols)
     await scalper.run()

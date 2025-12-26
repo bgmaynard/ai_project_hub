@@ -7,14 +7,16 @@ Endpoints:
 - /api/pipeline/* - Trading pipeline control and monitoring
 - /api/coach/* - Trading coach and emotional trading analysis
 """
+
+import json
+import logging
+import math
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-import logging
-import json
-import math
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ def sanitize_for_json(obj: Any) -> Any:
         return obj
     return obj
 
+
 router = APIRouter(tags=["Trading Pipeline & Coach"])
 
 # ============================================================================
@@ -40,7 +43,8 @@ router = APIRouter(tags=["Trading Pipeline & Coach"])
 # ============================================================================
 
 try:
-    from ai.trading_pipeline import get_trading_pipeline, PipelineConfig
+    from ai.trading_pipeline import PipelineConfig, get_trading_pipeline
+
     HAS_PIPELINE = True
 except ImportError as e:
     logger.warning(f"Trading pipeline not available: {e}")
@@ -52,6 +56,7 @@ except ImportError as e:
 
 try:
     from ai.trading_coach import get_trading_coach
+
     HAS_COACH = True
 except ImportError as e:
     logger.warning(f"Trading coach not available: {e}")
@@ -63,6 +68,7 @@ except ImportError as e:
 
 try:
     from ai.ai_watchlist_trader import get_ai_watchlist_trader
+
     HAS_AI_TRADER = True
 except ImportError as e:
     logger.warning(f"AI watchlist trader not available: {e}")
@@ -74,6 +80,7 @@ except ImportError as e:
 
 try:
     from ai.trade_journal import get_trade_journal
+
     HAS_JOURNAL = True
 except ImportError as e:
     logger.warning(f"Trade journal not available: {e}")
@@ -83,6 +90,7 @@ except ImportError as e:
 # ============================================================================
 # REQUEST MODELS
 # ============================================================================
+
 
 class PipelineConfigRequest(BaseModel):
     auto_add_to_watchlist: Optional[bool] = None
@@ -127,6 +135,7 @@ class CoachQuestionRequest(BaseModel):
 # PIPELINE ENDPOINTS
 # ============================================================================
 
+
 @router.get("/api/pipeline/status")
 async def get_pipeline_status():
     """Get current status of the trading pipeline"""
@@ -136,10 +145,7 @@ async def get_pipeline_status():
     pipeline = get_trading_pipeline()
     status = pipeline.get_status()
 
-    return {
-        "available": True,
-        **status
-    }
+    return {"available": True, **status}
 
 
 @router.post("/api/pipeline/start")
@@ -151,14 +157,18 @@ async def start_pipeline():
     pipeline = get_trading_pipeline()
 
     if pipeline.is_running:
-        return {"success": False, "message": "Pipeline already running", "status": pipeline.get_status()}
+        return {
+            "success": False,
+            "message": "Pipeline already running",
+            "status": pipeline.get_status(),
+        }
 
     pipeline.start()
 
     return {
         "success": True,
         "message": "Trading pipeline started",
-        "status": pipeline.get_status()
+        "status": pipeline.get_status(),
     }
 
 
@@ -178,7 +188,7 @@ async def stop_pipeline():
     return {
         "success": True,
         "message": "Trading pipeline stopped",
-        "status": pipeline.get_status()
+        "status": pipeline.get_status(),
     }
 
 
@@ -191,11 +201,7 @@ async def run_scanner():
     pipeline = get_trading_pipeline()
     results = pipeline.run_scanner()
 
-    return {
-        "success": True,
-        "timestamp": datetime.now().isoformat(),
-        **results
-    }
+    return {"success": True, "timestamp": datetime.now().isoformat(), **results}
 
 
 @router.post("/api/pipeline/analyze")
@@ -207,11 +213,7 @@ async def analyze_watchlist():
     pipeline = get_trading_pipeline()
     results = pipeline.analyze_watchlist()
 
-    return {
-        "success": True,
-        "timestamp": datetime.now().isoformat(),
-        **results
-    }
+    return {"success": True, "timestamp": datetime.now().isoformat(), **results}
 
 
 @router.post("/api/pipeline/execute")
@@ -223,11 +225,7 @@ async def process_execution_queue():
     pipeline = get_trading_pipeline()
     results = pipeline.process_execution_queue()
 
-    return {
-        "success": True,
-        "timestamp": datetime.now().isoformat(),
-        **results
-    }
+    return {"success": True, "timestamp": datetime.now().isoformat(), **results}
 
 
 @router.post("/api/pipeline/config")
@@ -247,13 +245,14 @@ async def update_pipeline_config(config: PipelineConfigRequest):
     return {
         "success": True,
         "message": f"Updated {len(updates)} config options",
-        "config": pipeline.config.__dict__
+        "config": pipeline.config.__dict__,
     }
 
 
 # ============================================================================
 # AI TRADER ENDPOINTS
 # ============================================================================
+
 
 @router.get("/api/ai-trader/status")
 async def get_ai_trader_status():
@@ -263,10 +262,7 @@ async def get_ai_trader_status():
 
     trader = get_ai_watchlist_trader()
 
-    return {
-        "available": True,
-        **trader.get_queue_status()
-    }
+    return {"available": True, **trader.get_queue_status()}
 
 
 @router.post("/api/ai-trader/analyze/{symbol}")
@@ -291,11 +287,15 @@ async def analyze_symbol(symbol: str):
             "volume": analysis.volume_score,
             "technical": analysis.technical_score,
             "news_sentiment": analysis.news_sentiment,
-            "overall": analysis.overall_score
+            "overall": analysis.overall_score,
         },
         "strategies_triggered": analysis.strategies_triggered,
         "has_opportunity": analysis.trade_recommendation is not None,
-        "opportunity": analysis.trade_recommendation.__dict__ if analysis.trade_recommendation else None
+        "opportunity": (
+            analysis.trade_recommendation.__dict__
+            if analysis.trade_recommendation
+            else None
+        ),
     }
 
 
@@ -322,12 +322,14 @@ async def get_opportunity_queue():
                 "priority": opp.priority,
                 "status": opp.status,
                 "created_at": opp.created_at,
-                "expires_at": opp.expires_at
+                "expires_at": opp.expires_at,
             }
             for opp in trader.opportunity_queue
             if opp.status in ["pending", "ready"]
         ],
-        "count": len([o for o in trader.opportunity_queue if o.status in ["pending", "ready"]])
+        "count": len(
+            [o for o in trader.opportunity_queue if o.status in ["pending", "ready"]]
+        ),
     }
 
 
@@ -345,7 +347,7 @@ async def update_ai_trader_config(config: AITraderConfigRequest):
     return {
         "success": True,
         "message": f"Updated {len(updates)} config options",
-        "config": trader.config
+        "config": trader.config,
     }
 
 
@@ -361,7 +363,7 @@ async def start_ai_trader_monitoring():
     return {
         "success": True,
         "message": "AI Trader monitoring started",
-        "status": trader.get_queue_status()
+        "status": trader.get_queue_status(),
     }
 
 
@@ -374,15 +376,13 @@ async def stop_ai_trader_monitoring():
     trader = get_ai_watchlist_trader()
     trader.stop_monitoring()
 
-    return {
-        "success": True,
-        "message": "AI Trader monitoring stopped"
-    }
+    return {"success": True, "message": "AI Trader monitoring stopped"}
 
 
 # ============================================================================
 # TRADING COACH ENDPOINTS
 # ============================================================================
+
 
 @router.get("/api/coach/window")
 async def get_trading_window():
@@ -392,10 +392,7 @@ async def get_trading_window():
 
     coach = get_trading_coach()
 
-    return {
-        "available": True,
-        **coach.get_trading_window()
-    }
+    return {"available": True, **coach.get_trading_window()}
 
 
 @router.get("/api/coach/briefing")
@@ -421,8 +418,8 @@ async def get_morning_briefing():
         "trading_plan": {
             "max_trades_today": briefing.max_trades_today,
             "max_risk_today": briefing.max_risk_today,
-            "focus_strategy": briefing.focus_strategy
-        }
+            "focus_strategy": briefing.focus_strategy,
+        },
     }
 
 
@@ -442,7 +439,7 @@ async def critique_trade(request: TradeCritiqueRequest):
         "entry_time": request.entry_time,
         "exit_time": request.exit_time,
         "your_reasoning": request.your_reasoning,
-        "exit_reasoning": request.exit_reasoning
+        "exit_reasoning": request.exit_reasoning,
     }
 
     critique = coach.critique_trade(trade_data)
@@ -456,23 +453,23 @@ async def critique_trade(request: TradeCritiqueRequest):
             "setup_quality": critique.setup_quality,
             "entry_timing": critique.entry_timing,
             "exit_timing": critique.exit_timing,
-            "position_size_assessment": critique.position_size_assessment
+            "position_size_assessment": critique.position_size_assessment,
         },
         "emotional_analysis": {
             "flags": critique.emotional_flags,
-            "score": critique.emotional_score
+            "score": critique.emotional_score,
         },
         "optimal_trade": {
             "optimal_entry": critique.optimal_entry,
             "optimal_exit": critique.optimal_exit,
             "optimal_pnl": critique.optimal_pnl,
-            "missed_profit": critique.missed_profit
+            "missed_profit": critique.missed_profit,
         },
         "coaching": {
             "mistakes": critique.mistakes,
             "lessons": critique.lessons,
-            "recommendations": critique.recommendations
-        }
+            "recommendations": critique.recommendations,
+        },
     }
 
 
@@ -499,7 +496,7 @@ async def ask_coach(request: CoachQuestionRequest):
     return {
         "question": request.question,
         "answer": answer,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -507,10 +504,10 @@ async def ask_coach(request: CoachQuestionRequest):
 # TRADE JOURNAL DIRECT ENDPOINTS
 # ============================================================================
 
+
 @router.get("/api/journal/performance")
 async def get_performance_metrics(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    start_date: Optional[str] = None, end_date: Optional[str] = None
 ):
     """Get comprehensive performance metrics"""
     if not HAS_JOURNAL:
@@ -550,13 +547,11 @@ async def analyze_trends(days: int = Query(default=30, ge=7, le=365)):
 # COMBINED DASHBOARD ENDPOINT
 # ============================================================================
 
+
 @router.get("/api/trading-dashboard")
 async def get_trading_dashboard():
     """Get combined trading dashboard with pipeline, trader, and coach data"""
-    dashboard = {
-        "timestamp": datetime.now().isoformat(),
-        "components": {}
-    }
+    dashboard = {"timestamp": datetime.now().isoformat(), "components": {}}
 
     # Pipeline status
     if HAS_PIPELINE:
@@ -565,7 +560,7 @@ async def get_trading_dashboard():
             dashboard["components"]["pipeline"] = {
                 "available": True,
                 "is_running": pipeline.is_running,
-                "stats": pipeline.stats
+                "stats": pipeline.stats,
             }
         except Exception as e:
             dashboard["components"]["pipeline"] = {"available": True, "error": str(e)}
@@ -578,7 +573,7 @@ async def get_trading_dashboard():
             trader = get_ai_watchlist_trader()
             dashboard["components"]["ai_trader"] = {
                 "available": True,
-                **trader.get_queue_status()
+                **trader.get_queue_status(),
             }
         except Exception as e:
             dashboard["components"]["ai_trader"] = {"available": True, "error": str(e)}
@@ -592,7 +587,7 @@ async def get_trading_dashboard():
             dashboard["components"]["coach"] = {
                 "available": True,
                 **coach.get_trading_window(),
-                "emotional_summary": coach.get_coaching_summary()
+                "emotional_summary": coach.get_coaching_summary(),
             }
         except Exception as e:
             dashboard["components"]["coach"] = {"available": True, "error": str(e)}
@@ -605,7 +600,7 @@ async def get_trading_dashboard():
             journal = get_trade_journal()
             dashboard["components"]["journal"] = {
                 "available": True,
-                "today": journal.run_daily_analysis()
+                "today": journal.run_daily_analysis(),
             }
         except Exception as e:
             dashboard["components"]["journal"] = {"available": True, "error": str(e)}

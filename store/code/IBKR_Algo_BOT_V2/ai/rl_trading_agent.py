@@ -18,17 +18,18 @@ Architecture:
 Created: December 2025
 """
 
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, field, asdict
+import json
+import logging
+import random
+from collections import deque
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
-from collections import deque
-import random
-import logging
-import json
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,9 @@ logger = logging.getLogger(__name__)
 try:
     import torch
     import torch.nn as nn
-    import torch.optim as optim
     import torch.nn.functional as F
+    import torch.optim as optim
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -46,6 +48,7 @@ except ImportError:
 
 class Action(Enum):
     """Trading actions"""
+
     HOLD = 0
     BUY = 1
     SELL = 2
@@ -54,6 +57,7 @@ class Action(Enum):
 @dataclass
 class TradingState:
     """State representation for RL agent"""
+
     # Price features (normalized)
     price_change_1d: float = 0.0
     price_change_5d: float = 0.0
@@ -90,26 +94,29 @@ class TradingState:
 
     def to_array(self) -> np.ndarray:
         """Convert state to numpy array for neural network"""
-        return np.array([
-            self.price_change_1d,
-            self.price_change_5d,
-            self.price_change_20d,
-            self.rsi_normalized,
-            self.macd_normalized,
-            self.bb_position,
-            self.volume_ratio,
-            self.trend_strength,
-            self.trend_direction,
-            self.volatility,
-            self.ensemble_score,
-            self.lgb_score,
-            self.momentum_score,
-            self.has_position,
-            self.position_pnl,
-            self.holding_time,
-            self.regime_trending,
-            self.regime_volatile
-        ], dtype=np.float32)
+        return np.array(
+            [
+                self.price_change_1d,
+                self.price_change_5d,
+                self.price_change_20d,
+                self.rsi_normalized,
+                self.macd_normalized,
+                self.bb_position,
+                self.volume_ratio,
+                self.trend_strength,
+                self.trend_direction,
+                self.volatility,
+                self.ensemble_score,
+                self.lgb_score,
+                self.momentum_score,
+                self.has_position,
+                self.position_pnl,
+                self.holding_time,
+                self.regime_trending,
+                self.regime_volatile,
+            ],
+            dtype=np.float32,
+        )
 
     @property
     def size(self) -> int:
@@ -119,6 +126,7 @@ class TradingState:
 @dataclass
 class Experience:
     """Single experience for replay buffer"""
+
     state: np.ndarray
     action: int
     reward: float
@@ -129,6 +137,7 @@ class Experience:
 @dataclass
 class TrainingMetrics:
     """Training metrics"""
+
     episode: int = 0
     total_reward: float = 0.0
     avg_reward: float = 0.0
@@ -157,6 +166,7 @@ class ReplayBuffer:
 
 
 if HAS_TORCH:
+
     class DQNetwork(nn.Module):
         """Deep Q-Network for trading decisions"""
 
@@ -192,7 +202,7 @@ class TradingEnvironment:
         initial_balance: float = 100000,
         transaction_cost: float = 0.001,  # 0.1% per trade
         max_position_pct: float = 0.1,  # Max 10% per position
-        risk_free_rate: float = 0.02  # 2% annual
+        risk_free_rate: float = 0.02,  # 2% annual
     ):
         self.initial_balance = initial_balance
         self.transaction_cost = transaction_cost
@@ -237,23 +247,40 @@ class TradingEnvironment:
             return TradingState()
 
         row = self.df.iloc[self.current_idx]
-        close = row['Close']
+        close = row["Close"]
         self.current_price = close
 
         # Price changes
-        price_1d = (close / self.df.iloc[self.current_idx - 1]['Close'] - 1) if self.current_idx > 0 else 0
-        price_5d = (close / self.df.iloc[self.current_idx - 5]['Close'] - 1) if self.current_idx >= 5 else 0
-        price_20d = (close / self.df.iloc[self.current_idx - 20]['Close'] - 1) if self.current_idx >= 20 else 0
+        price_1d = (
+            (close / self.df.iloc[self.current_idx - 1]["Close"] - 1)
+            if self.current_idx > 0
+            else 0
+        )
+        price_5d = (
+            (close / self.df.iloc[self.current_idx - 5]["Close"] - 1)
+            if self.current_idx >= 5
+            else 0
+        )
+        price_20d = (
+            (close / self.df.iloc[self.current_idx - 20]["Close"] - 1)
+            if self.current_idx >= 20
+            else 0
+        )
 
         # Get indicators (assume they exist in df)
-        rsi = row.get('rsi', 50)
-        macd = row.get('macd', 0)
-        bb_high = row.get('bb_high', close * 1.02)
-        bb_low = row.get('bb_low', close * 0.98)
-        volume = row.get('Volume', 1)
-        vol_avg = self.df['Volume'].iloc[max(0, self.current_idx-20):self.current_idx].mean() or 1
-        adx = row.get('adx', 20)
-        atr = row.get('atr', close * 0.02)
+        rsi = row.get("rsi", 50)
+        macd = row.get("macd", 0)
+        bb_high = row.get("bb_high", close * 1.02)
+        bb_low = row.get("bb_low", close * 0.98)
+        volume = row.get("Volume", 1)
+        vol_avg = (
+            self.df["Volume"]
+            .iloc[max(0, self.current_idx - 20) : self.current_idx]
+            .mean()
+            or 1
+        )
+        adx = row.get("adx", 20)
+        atr = row.get("atr", close * 0.02)
 
         # Normalize
         rsi_norm = (rsi - 50) / 50
@@ -275,9 +302,9 @@ class TradingEnvironment:
             hold_time = 0.0
 
         # Ensemble signals (if available)
-        ensemble = row.get('ensemble_score', 0.5)
-        lgb = row.get('lgb_score', 0.5)
-        momentum = row.get('momentum_score', 0.5)
+        ensemble = row.get("ensemble_score", 0.5)
+        lgb = row.get("lgb_score", 0.5)
+        momentum = row.get("momentum_score", 0.5)
 
         # Regime
         regime_trend = 1.0 if adx > 25 else 0.0
@@ -301,7 +328,7 @@ class TradingEnvironment:
             position_pnl=pnl_norm,
             holding_time=hold_time,
             regime_trending=regime_trend,
-            regime_volatile=regime_vol
+            regime_volatile=regime_vol,
         )
 
     def step(self, action: int) -> Tuple[TradingState, float, bool, Dict]:
@@ -333,17 +360,17 @@ class TradingEnvironment:
         next_state = self._get_state()
 
         info = {
-            'equity': new_equity,
-            'position': self.position,
-            'trade': trade_info,
-            'daily_return': daily_return
+            "equity": new_equity,
+            "position": self.position,
+            "trade": trade_info,
+            "daily_return": daily_return,
         }
 
         return next_state, reward, done, info
 
     def _execute_action(self, action: Action) -> Dict:
         """Execute trading action"""
-        trade_info = {'action': action.name, 'executed': False}
+        trade_info = {"action": action.name, "executed": False}
 
         if action == Action.BUY and self.position == 0:
             # Calculate position size
@@ -358,17 +385,19 @@ class TradingEnvironment:
                     self.position_price = self.current_price
                     self.position_time = 0
 
-                    trade_info['executed'] = True
-                    trade_info['shares'] = shares
-                    trade_info['price'] = self.current_price
-                    trade_info['cost'] = cost
+                    trade_info["executed"] = True
+                    trade_info["shares"] = shares
+                    trade_info["price"] = self.current_price
+                    trade_info["cost"] = cost
 
-                    self.trade_history.append({
-                        'idx': self.current_idx,
-                        'action': 'BUY',
-                        'shares': shares,
-                        'price': self.current_price
-                    })
+                    self.trade_history.append(
+                        {
+                            "idx": self.current_idx,
+                            "action": "BUY",
+                            "shares": shares,
+                            "price": self.current_price,
+                        }
+                    )
 
         elif action == Action.SELL and self.position > 0:
             # Sell all
@@ -378,21 +407,23 @@ class TradingEnvironment:
 
             self.balance += proceeds
 
-            trade_info['executed'] = True
-            trade_info['shares'] = self.position
-            trade_info['price'] = self.current_price
-            trade_info['pnl'] = pnl
-            trade_info['pnl_pct'] = pnl_pct
-            trade_info['holding_days'] = self.position_time
+            trade_info["executed"] = True
+            trade_info["shares"] = self.position
+            trade_info["price"] = self.current_price
+            trade_info["pnl"] = pnl
+            trade_info["pnl_pct"] = pnl_pct
+            trade_info["holding_days"] = self.position_time
 
-            self.trade_history.append({
-                'idx': self.current_idx,
-                'action': 'SELL',
-                'shares': self.position,
-                'price': self.current_price,
-                'pnl': pnl,
-                'pnl_pct': pnl_pct
-            })
+            self.trade_history.append(
+                {
+                    "idx": self.current_idx,
+                    "action": "SELL",
+                    "shares": self.position,
+                    "price": self.current_price,
+                    "pnl": pnl,
+                    "pnl_pct": pnl_pct,
+                }
+            )
 
             self.position = 0
             self.position_price = 0
@@ -423,17 +454,19 @@ class TradingEnvironment:
                 reward += sharpe_component * 0.5
 
         # Trade rewards/penalties
-        if trade_info.get('executed'):
-            if trade_info['action'] == 'SELL':
-                pnl_pct = trade_info.get('pnl_pct', 0)
+        if trade_info.get("executed"):
+            if trade_info["action"] == "SELL":
+                pnl_pct = trade_info.get("pnl_pct", 0)
                 # Reward winning trades, penalize losing trades
                 if pnl_pct > 0:
                     reward += pnl_pct * 50  # Bonus for profit
                 else:
-                    reward += pnl_pct * 30  # Smaller penalty for loss (encourage cutting losses)
+                    reward += (
+                        pnl_pct * 30
+                    )  # Smaller penalty for loss (encourage cutting losses)
 
                 # Bonus for quick profitable trades
-                holding_days = trade_info.get('holding_days', 0)
+                holding_days = trade_info.get("holding_days", 0)
                 if pnl_pct > 0.02 and holding_days < 5:
                     reward += 1.0  # Bonus for quick wins
 
@@ -453,12 +486,12 @@ class TradingEnvironment:
     def get_metrics(self) -> Dict:
         """Get performance metrics"""
         if not self.trade_history:
-            return {'trades': 0, 'win_rate': 0, 'sharpe': 0, 'max_dd': 0}
+            return {"trades": 0, "win_rate": 0, "sharpe": 0, "max_dd": 0}
 
         # Win rate
-        sells = [t for t in self.trade_history if t['action'] == 'SELL']
+        sells = [t for t in self.trade_history if t["action"] == "SELL"]
         if sells:
-            wins = sum(1 for t in sells if t.get('pnl', 0) > 0)
+            wins = sum(1 for t in sells if t.get("pnl", 0) > 0)
             win_rate = wins / len(sells)
         else:
             win_rate = 0
@@ -466,7 +499,11 @@ class TradingEnvironment:
         # Sharpe ratio
         if len(self.returns_history) > 1:
             returns = np.array(self.returns_history)
-            sharpe = (returns.mean() - self.risk_free_rate) / (returns.std() + 1e-8) * np.sqrt(252)
+            sharpe = (
+                (returns.mean() - self.risk_free_rate)
+                / (returns.std() + 1e-8)
+                * np.sqrt(252)
+            )
         else:
             sharpe = 0
 
@@ -477,15 +514,17 @@ class TradingEnvironment:
         max_dd = drawdown.max()
 
         # Total return
-        total_return = (self._get_equity() - self.initial_balance) / self.initial_balance
+        total_return = (
+            self._get_equity() - self.initial_balance
+        ) / self.initial_balance
 
         return {
-            'trades': len(sells),
-            'win_rate': win_rate,
-            'sharpe': sharpe,
-            'max_dd': max_dd,
-            'total_return': total_return,
-            'final_equity': self._get_equity()
+            "trades": len(sells),
+            "win_rate": win_rate,
+            "sharpe": sharpe,
+            "max_dd": max_dd,
+            "total_return": total_return,
+            "final_equity": self._get_equity(),
         }
 
 
@@ -506,7 +545,7 @@ class RLTradingAgent:
         batch_size: int = 64,
         memory_size: int = 100000,
         target_update_freq: int = 100,
-        model_path: str = "store/models/rl_trading_agent.pt"
+        model_path: str = "store/models/rl_trading_agent.pt",
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -548,7 +587,9 @@ class RLTradingAgent:
         # Try to load existing model
         self._load_model()
 
-        logger.info(f"RLTradingAgent initialized (device: {self.device if HAS_TORCH else 'CPU/Q-table'})")
+        logger.info(
+            f"RLTradingAgent initialized (device: {self.device if HAS_TORCH else 'CPU/Q-table'})"
+        )
 
     def select_action(self, state: TradingState, training: bool = True) -> int:
         """Select action using epsilon-greedy policy"""
@@ -560,7 +601,9 @@ class RLTradingAgent:
 
         if HAS_TORCH:
             with torch.no_grad():
-                state_tensor = torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                state_tensor = (
+                    torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                )
                 self.policy_net.eval()
                 q_values = self.policy_net(state_tensor)
                 return q_values.argmax().item()
@@ -578,15 +621,21 @@ class RLTradingAgent:
         discretized = np.digitize(state_array, bins)
         return tuple(discretized)
 
-    def remember(self, state: TradingState, action: int, reward: float,
-                 next_state: TradingState, done: bool):
+    def remember(
+        self,
+        state: TradingState,
+        action: int,
+        reward: float,
+        next_state: TradingState,
+        done: bool,
+    ):
         """Store experience in memory"""
         experience = Experience(
             state=state.to_array(),
             action=action,
             reward=reward,
             next_state=next_state.to_array(),
-            done=done
+            done=done,
         )
         self.memory.push(experience)
 
@@ -670,7 +719,9 @@ class RLTradingAgent:
         """Decay exploration rate"""
         self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
 
-    def train_episode(self, env: TradingEnvironment, df: pd.DataFrame) -> TrainingMetrics:
+    def train_episode(
+        self, env: TradingEnvironment, df: pd.DataFrame
+    ) -> TrainingMetrics:
         """Train for one episode"""
         state = env.reset(df)
         total_reward = 0
@@ -708,10 +759,10 @@ class RLTradingAgent:
             avg_reward=total_reward / max(1, env.current_idx - 50),
             epsilon=self.epsilon,
             loss=np.mean(losses) if losses else 0,
-            win_rate=env_metrics['win_rate'],
-            sharpe_ratio=env_metrics['sharpe'],
-            max_drawdown=env_metrics['max_dd'],
-            trades=env_metrics['trades']
+            win_rate=env_metrics["win_rate"],
+            sharpe_ratio=env_metrics["sharpe"],
+            max_drawdown=env_metrics["max_dd"],
+            trades=env_metrics["trades"],
         )
 
     def save_model(self):
@@ -719,24 +770,32 @@ class RLTradingAgent:
         Path(self.model_path).parent.mkdir(parents=True, exist_ok=True)
 
         if HAS_TORCH:
-            torch.save({
-                'policy_net': self.policy_net.state_dict(),
-                'target_net': self.target_net.state_dict(),
-                'optimizer': self.optimizer.state_dict(),
-                'epsilon': self.epsilon,
-                'episode': self.episode,
-                'training_step': self.training_step
-            }, self.model_path)
+            torch.save(
+                {
+                    "policy_net": self.policy_net.state_dict(),
+                    "target_net": self.target_net.state_dict(),
+                    "optimizer": self.optimizer.state_dict(),
+                    "epsilon": self.epsilon,
+                    "episode": self.episode,
+                    "training_step": self.training_step,
+                },
+                self.model_path,
+            )
         else:
             # Save Q-table
-            with open(self.model_path.replace('.pt', '.json'), 'w') as f:
+            with open(self.model_path.replace(".pt", ".json"), "w") as f:
                 # Convert tuple keys to strings
-                q_table_serializable = {str(k): v.tolist() for k, v in self.q_table.items()}
-                json.dump({
-                    'q_table': q_table_serializable,
-                    'epsilon': self.epsilon,
-                    'episode': self.episode
-                }, f)
+                q_table_serializable = {
+                    str(k): v.tolist() for k, v in self.q_table.items()
+                }
+                json.dump(
+                    {
+                        "q_table": q_table_serializable,
+                        "epsilon": self.epsilon,
+                        "episode": self.episode,
+                    },
+                    f,
+                )
 
         logger.info(f"Model saved to {self.model_path}")
 
@@ -745,22 +804,26 @@ class RLTradingAgent:
         try:
             if HAS_TORCH and Path(self.model_path).exists():
                 checkpoint = torch.load(self.model_path, map_location=self.device)
-                self.policy_net.load_state_dict(checkpoint['policy_net'])
-                self.target_net.load_state_dict(checkpoint['target_net'])
-                self.optimizer.load_state_dict(checkpoint['optimizer'])
-                self.epsilon = checkpoint.get('epsilon', self.epsilon_end)
-                self.episode = checkpoint.get('episode', 0)
-                self.training_step = checkpoint.get('training_step', 0)
-                logger.info(f"Loaded model from {self.model_path} (episode {self.episode})")
+                self.policy_net.load_state_dict(checkpoint["policy_net"])
+                self.target_net.load_state_dict(checkpoint["target_net"])
+                self.optimizer.load_state_dict(checkpoint["optimizer"])
+                self.epsilon = checkpoint.get("epsilon", self.epsilon_end)
+                self.episode = checkpoint.get("episode", 0)
+                self.training_step = checkpoint.get("training_step", 0)
+                logger.info(
+                    f"Loaded model from {self.model_path} (episode {self.episode})"
+                )
             elif not HAS_TORCH:
-                json_path = self.model_path.replace('.pt', '.json')
+                json_path = self.model_path.replace(".pt", ".json")
                 if Path(json_path).exists():
-                    with open(json_path, 'r') as f:
+                    with open(json_path, "r") as f:
                         data = json.load(f)
                     # Convert string keys back to tuples
-                    self.q_table = {eval(k): np.array(v) for k, v in data['q_table'].items()}
-                    self.epsilon = data.get('epsilon', self.epsilon_end)
-                    self.episode = data.get('episode', 0)
+                    self.q_table = {
+                        eval(k): np.array(v) for k, v in data["q_table"].items()
+                    }
+                    self.epsilon = data.get("epsilon", self.epsilon_end)
+                    self.episode = data.get("episode", 0)
                     logger.info(f"Loaded Q-table from {json_path}")
         except Exception as e:
             logger.warning(f"Could not load model: {e}")
@@ -771,7 +834,9 @@ class RLTradingAgent:
 
         if HAS_TORCH:
             with torch.no_grad():
-                state_tensor = torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                state_tensor = (
+                    torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                )
                 self.policy_net.eval()
                 q_values = self.policy_net(state_tensor).squeeze().cpu().numpy()
         else:
@@ -783,11 +848,11 @@ class RLTradingAgent:
         probs = exp_q / exp_q.sum()
 
         return {
-            'HOLD': float(probs[0]),
-            'BUY': float(probs[1]),
-            'SELL': float(probs[2]),
-            'q_values': q_values.tolist(),
-            'recommended': Action(np.argmax(q_values)).name
+            "HOLD": float(probs[0]),
+            "BUY": float(probs[1]),
+            "SELL": float(probs[2]),
+            "q_values": q_values.tolist(),
+            "recommended": Action(np.argmax(q_values)).name,
         }
 
     def get_action_with_probs(self, state: TradingState) -> Tuple[int, np.ndarray]:
@@ -796,7 +861,9 @@ class RLTradingAgent:
 
         if HAS_TORCH:
             with torch.no_grad():
-                state_tensor = torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                state_tensor = (
+                    torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                )
                 self.policy_net.eval()
                 q_values = self.policy_net(state_tensor).squeeze().cpu().numpy()
         else:
@@ -834,8 +901,8 @@ def get_rl_environment() -> TradingEnvironment:
 
 # Quick test
 if __name__ == "__main__":
-    import yfinance as yf
     import ta
+    import yfinance as yf
 
     logging.basicConfig(level=logging.INFO)
 
@@ -849,13 +916,13 @@ if __name__ == "__main__":
         df.columns = df.columns.droplevel(1)
 
     # Add indicators
-    df['rsi'] = ta.momentum.rsi(df['Close'], window=14)
-    df['macd'] = ta.trend.MACD(df['Close']).macd()
-    bb = ta.volatility.BollingerBands(df['Close'])
-    df['bb_high'] = bb.bollinger_hband()
-    df['bb_low'] = bb.bollinger_lband()
-    df['adx'] = ta.trend.ADXIndicator(df['High'], df['Low'], df['Close']).adx()
-    df['atr'] = ta.volatility.average_true_range(df['High'], df['Low'], df['Close'])
+    df["rsi"] = ta.momentum.rsi(df["Close"], window=14)
+    df["macd"] = ta.trend.MACD(df["Close"]).macd()
+    bb = ta.volatility.BollingerBands(df["Close"])
+    df["bb_high"] = bb.bollinger_hband()
+    df["bb_low"] = bb.bollinger_lband()
+    df["adx"] = ta.trend.ADXIndicator(df["High"], df["Low"], df["Close"]).adx()
+    df["atr"] = ta.volatility.average_true_range(df["High"], df["Low"], df["Close"])
     df = df.dropna()
 
     print(f"Data: {len(df)} bars")
@@ -868,9 +935,11 @@ if __name__ == "__main__":
     print("\nTraining for 5 episodes...")
     for ep in range(5):
         metrics = agent.train_episode(env, df)
-        print(f"Episode {metrics.episode}: reward={metrics.total_reward:.2f}, "
-              f"epsilon={metrics.epsilon:.3f}, trades={metrics.trades}, "
-              f"win_rate={metrics.win_rate:.1%}, sharpe={metrics.sharpe_ratio:.2f}")
+        print(
+            f"Episode {metrics.episode}: reward={metrics.total_reward:.2f}, "
+            f"epsilon={metrics.epsilon:.3f}, trades={metrics.trades}, "
+            f"win_rate={metrics.win_rate:.1%}, sharpe={metrics.sharpe_ratio:.2f}"
+        )
 
     # Save model
     agent.save_model()

@@ -11,22 +11,23 @@ Provides tools to:
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
 try:
     import torch
-    from torch.utils.data import Dataset, DataLoader
+    from torch.utils.data import DataLoader, Dataset
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
 
+from ai.warrior_rl_agent import TradingAction, TradingState, get_rl_agent
 from ai.warrior_transformer_detector import get_transformer_detector
-from ai.warrior_rl_agent import get_rl_agent, TradingState, TradingAction
-
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +43,7 @@ class PatternDataset(Dataset):
     """
 
     def __init__(
-        self,
-        data: pd.DataFrame,
-        sequence_length: int = 100,
-        features: List[str] = None
+        self, data: pd.DataFrame, sequence_length: int = 100, features: List[str] = None
     ):
         """
         Args:
@@ -59,8 +57,16 @@ class PatternDataset(Dataset):
         if features is None:
             # Default features
             self.features = [
-                'open', 'high', 'low', 'close', 'volume',
-                'sma_20', 'rsi', 'macd', 'bb_width', 'atr'
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "sma_20",
+                "rsi",
+                "macd",
+                "bb_width",
+                "atr",
             ]
         else:
             self.features = features
@@ -76,17 +82,19 @@ class PatternDataset(Dataset):
         """Create training sequences from data"""
         for i in range(len(self.data) - self.sequence_length - 10):
             # Extract sequence
-            sequence = self.data.iloc[i:i+self.sequence_length][self.features].values
+            sequence = self.data.iloc[i : i + self.sequence_length][
+                self.features
+            ].values
 
             # Get label (pattern type) if available
-            if 'pattern_label' in self.data.columns:
-                label = self.data.iloc[i+self.sequence_length]['pattern_label']
+            if "pattern_label" in self.data.columns:
+                label = self.data.iloc[i + self.sequence_length]["pattern_label"]
             else:
                 label = 0  # Default: no pattern
 
             # Calculate target (next 10-bar return)
-            current_price = self.data.iloc[i+self.sequence_length]['close']
-            future_price = self.data.iloc[i+self.sequence_length+10]['close']
+            current_price = self.data.iloc[i + self.sequence_length]["close"]
+            future_price = self.data.iloc[i + self.sequence_length + 10]["close"]
             target = (future_price - current_price) / current_price
 
             self.sequences.append(sequence)
@@ -120,16 +128,12 @@ class HistoricalDataLoader:
 
     def load_from_csv(self, filepath: str) -> pd.DataFrame:
         """Load data from CSV file"""
-        df = pd.read_csv(filepath, parse_dates=['timestamp'])
-        df.set_index('timestamp', inplace=True)
+        df = pd.read_csv(filepath, parse_dates=["timestamp"])
+        df.set_index("timestamp", inplace=True)
         return df
 
     def load_from_yfinance(
-        self,
-        symbol: str,
-        start_date: str,
-        end_date: str,
-        interval: str = '5m'
+        self, symbol: str, start_date: str, end_date: str, interval: str = "5m"
     ) -> pd.DataFrame:
         """
         Load data from yfinance
@@ -144,11 +148,7 @@ class HistoricalDataLoader:
             import yfinance as yf
 
             ticker = yf.Ticker(symbol)
-            df = ticker.history(
-                start=start_date,
-                end=end_date,
-                interval=interval
-            )
+            df = ticker.history(start=start_date, end=end_date, interval=interval)
 
             # Rename columns to lowercase
             df.columns = [c.lower() for c in df.columns]
@@ -171,35 +171,35 @@ class HistoricalDataLoader:
         - ATR
         """
         # SMA
-        df['sma_20'] = df['close'].rolling(20).mean()
-        df['sma_50'] = df['close'].rolling(50).mean()
+        df["sma_20"] = df["close"].rolling(20).mean()
+        df["sma_50"] = df["close"].rolling(50).mean()
 
         # RSI
-        delta = df['close'].diff()
+        delta = df["close"].diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
         rs = gain / loss
-        df['rsi'] = 100 - (100 / (1 + rs))
+        df["rsi"] = 100 - (100 / (1 + rs))
 
         # MACD
-        ema_12 = df['close'].ewm(span=12).mean()
-        ema_26 = df['close'].ewm(span=26).mean()
-        df['macd'] = ema_12 - ema_26
-        df['macd_signal'] = df['macd'].ewm(span=9).mean()
+        ema_12 = df["close"].ewm(span=12).mean()
+        ema_26 = df["close"].ewm(span=26).mean()
+        df["macd"] = ema_12 - ema_26
+        df["macd_signal"] = df["macd"].ewm(span=9).mean()
 
         # Bollinger Bands
-        sma_20 = df['close'].rolling(20).mean()
-        std_20 = df['close'].rolling(20).std()
-        df['bb_upper'] = sma_20 + (2 * std_20)
-        df['bb_lower'] = sma_20 - (2 * std_20)
-        df['bb_width'] = (df['bb_upper'] - df['bb_lower']) / sma_20
+        sma_20 = df["close"].rolling(20).mean()
+        std_20 = df["close"].rolling(20).std()
+        df["bb_upper"] = sma_20 + (2 * std_20)
+        df["bb_lower"] = sma_20 - (2 * std_20)
+        df["bb_width"] = (df["bb_upper"] - df["bb_lower"]) / sma_20
 
         # ATR
-        high_low = df['high'] - df['low']
-        high_close = abs(df['high'] - df['close'].shift())
-        low_close = abs(df['low'] - df['close'].shift())
+        high_low = df["high"] - df["low"]
+        high_close = abs(df["high"] - df["close"].shift())
+        low_close = abs(df["low"] - df["close"].shift())
         true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-        df['atr'] = true_range.rolling(14).mean()
+        df["atr"] = true_range.rolling(14).mean()
 
         # Drop NaN rows
         df.dropna(inplace=True)
@@ -215,14 +215,14 @@ class PatternLabeler:
     """
 
     PATTERN_LABELS = {
-        'bull_flag': 0,
-        'bear_flag': 1,
-        'breakout': 2,
-        'breakdown': 3,
-        'bullish_reversal': 4,
-        'bearish_reversal': 5,
-        'consolidation': 6,
-        'gap_and_go': 7
+        "bull_flag": 0,
+        "bear_flag": 1,
+        "breakout": 2,
+        "breakdown": 3,
+        "bullish_reversal": 4,
+        "bearish_reversal": 5,
+        "consolidation": 6,
+        "gap_and_go": 7,
     }
 
     @staticmethod
@@ -231,25 +231,27 @@ class PatternLabeler:
         if idx < lookback:
             return False
 
-        window = df.iloc[idx-lookback:idx]
+        window = df.iloc[idx - lookback : idx]
 
         # Pole: strong uptrend
-        pole_return = (window['close'].iloc[10] - window['close'].iloc[0]) / window['close'].iloc[0]
+        pole_return = (window["close"].iloc[10] - window["close"].iloc[0]) / window[
+            "close"
+        ].iloc[0]
 
         # Flag: consolidation/slight pullback
-        flag_high = window['high'].iloc[10:].max()
-        flag_low = window['low'].iloc[10:].min()
-        flag_range = (flag_high - flag_low) / window['close'].iloc[10]
+        flag_high = window["high"].iloc[10:].max()
+        flag_low = window["low"].iloc[10:].min()
+        flag_range = (flag_high - flag_low) / window["close"].iloc[10]
 
         # Volume: decreasing in flag
-        pole_volume = window['volume'].iloc[:10].mean()
-        flag_volume = window['volume'].iloc[10:].mean()
+        pole_volume = window["volume"].iloc[:10].mean()
+        flag_volume = window["volume"].iloc[10:].mean()
 
         # Criteria
         return (
-            pole_return > 0.05 and  # 5% pole
-            flag_range < 0.03 and   # Tight flag
-            flag_volume < pole_volume * 0.8  # Declining volume
+            pole_return > 0.05  # 5% pole
+            and flag_range < 0.03  # Tight flag
+            and flag_volume < pole_volume * 0.8  # Declining volume
         )
 
     @staticmethod
@@ -258,25 +260,27 @@ class PatternLabeler:
         if idx < lookback + 5:
             return False
 
-        window = df.iloc[idx-lookback:idx]
+        window = df.iloc[idx - lookback : idx]
 
         # Consolidation: tight range
-        consolidation_high = window['high'].iloc[:-5].max()
-        consolidation_low = window['low'].iloc[:-5].min()
-        consolidation_range = (consolidation_high - consolidation_low) / window['close'].iloc[0]
+        consolidation_high = window["high"].iloc[:-5].max()
+        consolidation_low = window["low"].iloc[:-5].min()
+        consolidation_range = (consolidation_high - consolidation_low) / window[
+            "close"
+        ].iloc[0]
 
         # Breakout: price breaks above consolidation
-        breakout_price = window['close'].iloc[-1]
+        breakout_price = window["close"].iloc[-1]
         broke_out = breakout_price > consolidation_high
 
         # Volume surge
-        avg_volume = window['volume'].iloc[:-5].mean()
-        breakout_volume = window['volume'].iloc[-5:].mean()
+        avg_volume = window["volume"].iloc[:-5].mean()
+        breakout_volume = window["volume"].iloc[-5:].mean()
 
         return (
-            consolidation_range < 0.05 and  # Tight consolidation
-            broke_out and
-            breakout_volume > avg_volume * 1.5  # Volume surge
+            consolidation_range < 0.05  # Tight consolidation
+            and broke_out
+            and breakout_volume > avg_volume * 1.5  # Volume surge
         )
 
     @classmethod
@@ -287,14 +291,18 @@ class PatternLabeler:
         Returns DataFrame with 'pattern_label' column
         """
         df = df.copy()
-        df['pattern_label'] = -1  # No pattern
+        df["pattern_label"] = -1  # No pattern
 
         for i in range(50, len(df) - 10):
             # Check each pattern type
             if cls.detect_bull_flag(df, i):
-                df.iloc[i, df.columns.get_loc('pattern_label')] = cls.PATTERN_LABELS['bull_flag']
+                df.iloc[i, df.columns.get_loc("pattern_label")] = cls.PATTERN_LABELS[
+                    "bull_flag"
+                ]
             elif cls.detect_breakout(df, i):
-                df.iloc[i, df.columns.get_loc('pattern_label')] = cls.PATTERN_LABELS['breakout']
+                df.iloc[i, df.columns.get_loc("pattern_label")] = cls.PATTERN_LABELS[
+                    "breakout"
+                ]
             # Add more pattern detectors...
 
         return df
@@ -318,7 +326,7 @@ class ModelTrainer:
         epochs: int = 50,
         batch_size: int = 32,
         learning_rate: float = 0.001,
-        val_split: float = 0.2
+        val_split: float = 0.2,
     ) -> Dict:
         """
         Train transformer pattern detector
@@ -365,7 +373,7 @@ class ModelTrainer:
         criterion_target = torch.nn.MSELoss()
 
         # Training loop
-        history = {'train_loss': [], 'val_loss': [], 'val_accuracy': []}
+        history = {"train_loss": [], "val_loss": [], "val_accuracy": []}
 
         for epoch in range(epochs):
             # Training
@@ -424,9 +432,9 @@ class ModelTrainer:
             avg_val_loss = val_loss / len(val_loader)
             val_accuracy = 100.0 * correct / total
 
-            history['train_loss'].append(avg_train_loss)
-            history['val_loss'].append(avg_val_loss)
-            history['val_accuracy'].append(val_accuracy)
+            history["train_loss"].append(avg_train_loss)
+            history["val_loss"].append(avg_val_loss)
+            history["val_accuracy"].append(val_accuracy)
 
             if (epoch + 1) % 10 == 0:
                 logger.info(
@@ -444,10 +452,7 @@ class ModelTrainer:
         return history
 
     def train_rl_agent(
-        self,
-        data: pd.DataFrame,
-        episodes: int = 1000,
-        max_steps: int = 500
+        self, data: pd.DataFrame, episodes: int = 1000, max_steps: int = 500
     ) -> Dict:
         """
         Train RL agent via backtesting simulation
@@ -482,30 +487,33 @@ class ModelTrainer:
                 # Current state
                 row = data.iloc[current_idx]
                 state = TradingState(
-                    price=row['close'],
-                    volume=row['volume'],
-                    volatility=row['atr'] / row['close'],
-                    trend=(row['sma_20'] - row['sma_50']) / row['close'],
+                    price=row["close"],
+                    volume=row["volume"],
+                    volatility=row["atr"] / row["close"],
+                    trend=(row["sma_20"] - row["sma_50"]) / row["close"],
                     position_size=position_size,
                     entry_price=entry_price,
-                    unrealized_pnl=((row['close'] - entry_price) / entry_price * position_size)
-                                   if entry_price else 0.0,
+                    unrealized_pnl=(
+                        ((row["close"] - entry_price) / entry_price * position_size)
+                        if entry_price
+                        else 0.0
+                    ),
                     sentiment_score=0.0,  # Would come from sentiment module
                     pattern_confidence=0.7,
                     time_in_position=step if entry_price else 0,
                     current_drawdown=0.0,
                     sharpe_ratio=1.0,
-                    win_rate=0.5
+                    win_rate=0.5,
                 )
 
                 # Select action
                 action = agent.select_action(state, training=True)
 
                 # Execute action
-                if action.action_type == 'enter' and position_size == 0:
+                if action.action_type == "enter" and position_size == 0:
                     position_size = 0.3
-                    entry_price = row['close']
-                elif action.action_type == 'exit' and position_size > 0:
+                    entry_price = row["close"]
+                elif action.action_type == "exit" and position_size > 0:
                     position_size = 0.0
                     entry_price = None
 
@@ -513,20 +521,27 @@ class ModelTrainer:
                 current_idx += 1
                 next_row = data.iloc[current_idx]
                 next_state = TradingState(
-                    price=next_row['close'],
-                    volume=next_row['volume'],
-                    volatility=next_row['atr'] / next_row['close'],
-                    trend=(next_row['sma_20'] - next_row['sma_50']) / next_row['close'],
+                    price=next_row["close"],
+                    volume=next_row["volume"],
+                    volatility=next_row["atr"] / next_row["close"],
+                    trend=(next_row["sma_20"] - next_row["sma_50"]) / next_row["close"],
                     position_size=position_size,
                     entry_price=entry_price,
-                    unrealized_pnl=((next_row['close'] - entry_price) / entry_price * position_size)
-                                   if entry_price else 0.0,
+                    unrealized_pnl=(
+                        (
+                            (next_row["close"] - entry_price)
+                            / entry_price
+                            * position_size
+                        )
+                        if entry_price
+                        else 0.0
+                    ),
                     sentiment_score=0.0,
                     pattern_confidence=0.7,
                     time_in_position=step + 1 if entry_price else 0,
                     current_drawdown=0.0,
                     sharpe_ratio=1.0,
-                    win_rate=0.5
+                    win_rate=0.5,
                 )
 
                 # Calculate reward
@@ -534,7 +549,9 @@ class ModelTrainer:
                 total_reward += reward
 
                 # Store experience
-                done = (current_idx >= len(data) - 1) or (position_size == 0 and step > 50)
+                done = (current_idx >= len(data) - 1) or (
+                    position_size == 0 and step > 50
+                )
                 agent.memory.push(state, action, reward, next_state, done)
 
                 # Train
@@ -562,7 +579,7 @@ class ModelTrainer:
         agent_path = self.model_dir / "rl_agent.pth"
         agent.save(str(agent_path))
 
-        return {'episode_rewards': episode_rewards}
+        return {"episode_rewards": episode_rewards}
 
 
 # Example usage

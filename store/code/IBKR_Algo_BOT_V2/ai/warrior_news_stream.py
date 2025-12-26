@@ -16,16 +16,17 @@ WARRIOR TRADING RULES:
 - Get in FAST, scalp the pop, GET OUT
 """
 
-import logging
 import asyncio
-import websockets
 import json
+import logging
 import os
 import threading
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Callable, Dict, List, Optional
+
 import pytz
+import websockets
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RealTimeNewsAlert:
     """Real-time news alert from WebSocket stream"""
+
     id: str
     headline: str
     summary: str
@@ -64,7 +66,9 @@ class RealTimeNewsAlert:
             "symbols": self.symbols,
             "source": self.source,
             "author": self.author,
-            "published_at": self.published_at.isoformat() if self.published_at else None,
+            "published_at": (
+                self.published_at.isoformat() if self.published_at else None
+            ),
             "received_at": self.received_at.isoformat(),
             "url": self.url,
             "urgency": self.urgency,
@@ -73,30 +77,66 @@ class RealTimeNewsAlert:
             "scalp_signal": self.scalp_signal,
             "scalp_reason": self.scalp_reason,
             "latency_ms": self.latency_ms,
-            "time_to_act_seconds": self.time_to_act_seconds
+            "time_to_act_seconds": self.time_to_act_seconds,
         }
 
 
 # Critical catalyst keywords
 CRITICAL_KEYWORDS = [
-    'fda approval', 'fda approves', 'fda grants', 'breakthrough therapy',
-    'acquisition', 'merger', 'buyout', 'takeover', 'acquire',
-    'earnings beat', 'earnings surprise', 'eps beat', 'revenue beat',
-    'upgrade', 'price target raised', 'raised guidance', 'raises guidance',
-    'contract win', 'major deal', 'partnership'
+    "fda approval",
+    "fda approves",
+    "fda grants",
+    "breakthrough therapy",
+    "acquisition",
+    "merger",
+    "buyout",
+    "takeover",
+    "acquire",
+    "earnings beat",
+    "earnings surprise",
+    "eps beat",
+    "revenue beat",
+    "upgrade",
+    "price target raised",
+    "raised guidance",
+    "raises guidance",
+    "contract win",
+    "major deal",
+    "partnership",
 ]
 
 HIGH_KEYWORDS = [
-    'analyst upgrade', 'buy rating', 'outperform', 'strong buy',
-    'guidance raise', 'outlook positive', 'beat estimates',
-    'expansion', 'launch', 'new product', 'clinical trial success'
+    "analyst upgrade",
+    "buy rating",
+    "outperform",
+    "strong buy",
+    "guidance raise",
+    "outlook positive",
+    "beat estimates",
+    "expansion",
+    "launch",
+    "new product",
+    "clinical trial success",
 ]
 
 BEARISH_KEYWORDS = [
-    'fda reject', 'trial fail', 'earnings miss', 'revenue miss',
-    'downgrade', 'price target cut', 'lowered guidance', 'lowers guidance',
-    'lawsuit', 'investigation', 'sec', 'fraud', 'subpoena',
-    'layoff', 'restructuring', 'bankruptcy', 'default'
+    "fda reject",
+    "trial fail",
+    "earnings miss",
+    "revenue miss",
+    "downgrade",
+    "price target cut",
+    "lowered guidance",
+    "lowers guidance",
+    "lawsuit",
+    "investigation",
+    "sec",
+    "fraud",
+    "subpoena",
+    "layoff",
+    "restructuring",
+    "bankruptcy",
+    "default",
 ]
 
 
@@ -112,7 +152,7 @@ class WarriorNewsStream:
     NEWS_WS_URL = "wss://stream.data.alpaca.markets/v1beta1/news"
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # Alpaca credentials
         self.api_key = os.getenv("ALPACA_API_KEY")
@@ -139,7 +179,7 @@ class WarriorNewsStream:
 
         # Scalp timing
         self.scalp_window_seconds = 120  # 2 minutes to act on real-time news
-        self.max_chase_seconds = 180     # 3 minutes max chase
+        self.max_chase_seconds = 180  # 3 minutes max chase
 
         # Stats
         self.news_received_count = 0
@@ -198,6 +238,7 @@ class WarriorNewsStream:
             if self.is_running:
                 logger.info("Reconnecting in 5 seconds...")
                 import time
+
                 time.sleep(5)
 
         self._loop.close()
@@ -219,7 +260,7 @@ class WarriorNewsStream:
                 auth_msg = {
                     "action": "auth",
                     "key": self.api_key,
-                    "secret": self.api_secret
+                    "secret": self.api_secret,
                 }
                 await ws.send(json.dumps(auth_msg))
 
@@ -231,7 +272,10 @@ class WarriorNewsStream:
                 # Check if authenticated
                 if isinstance(auth_response, list):
                     for msg in auth_response:
-                        if msg.get("T") == "success" and msg.get("msg") == "authenticated":
+                        if (
+                            msg.get("T") == "success"
+                            and msg.get("msg") == "authenticated"
+                        ):
                             self.is_connected = True
                             logger.info("AUTHENTICATED to Alpaca News Stream!")
                             break
@@ -245,14 +289,11 @@ class WarriorNewsStream:
                     # Subscribe to specific symbols
                     subscribe_msg = {
                         "action": "subscribe",
-                        "news": self.watched_symbols
+                        "news": self.watched_symbols,
                     }
                 else:
                     # Subscribe to ALL news
-                    subscribe_msg = {
-                        "action": "subscribe",
-                        "news": ["*"]
-                    }
+                    subscribe_msg = {"action": "subscribe", "news": ["*"]}
 
                 await ws.send(json.dumps(subscribe_msg))
                 logger.info(f"Subscribed to news: {subscribe_msg}")
@@ -351,24 +392,20 @@ class WarriorNewsStream:
             scalp_signal=scalp_signal,
             scalp_reason=scalp_reason,
             latency_ms=latency_ms,
-            time_to_act_seconds=self.scalp_window_seconds
+            time_to_act_seconds=self.scalp_window_seconds,
         )
 
         # Store alert
         self.active_alerts[news_id] = alert
         self.alert_history.insert(0, alert)
         if len(self.alert_history) > self.max_history:
-            self.alert_history = self.alert_history[:self.max_history]
+            self.alert_history = self.alert_history[: self.max_history]
 
         # Only log/alert for medium+ urgency
         if urgency in ["critical", "high", "medium"]:
             self.alerts_generated_count += 1
 
-            urgency_emoji = {
-                "critical": "🚨🚨🚨",
-                "high": "🚨",
-                "medium": "📰"
-            }
+            urgency_emoji = {"critical": "🚨🚨🚨", "high": "🚨", "medium": "📰"}
 
             logger.warning(
                 f"\n{urgency_emoji.get(urgency, '')} REAL-TIME NEWS [{urgency.upper()}] "
@@ -387,7 +424,10 @@ class WarriorNewsStream:
                 except Exception as e:
                     logger.error(f"News callback error: {e}")
 
-            if scalp_signal in ["long_now", "short_now"] and self.on_scalp_signal_callback:
+            if (
+                scalp_signal in ["long_now", "short_now"]
+                and self.on_scalp_signal_callback
+            ):
                 try:
                     self.on_scalp_signal_callback(alert)
                 except Exception as e:
@@ -431,15 +471,45 @@ class WarriorNewsStream:
         text_lower = text.lower()
 
         bullish_words = [
-            'beat', 'exceed', 'surge', 'soar', 'rally', 'upgrade', 'breakthrough',
-            'approval', 'approved', 'growth', 'record', 'strong', 'positive',
-            'outperform', 'raise', 'higher', 'partnership', 'contract', 'deal'
+            "beat",
+            "exceed",
+            "surge",
+            "soar",
+            "rally",
+            "upgrade",
+            "breakthrough",
+            "approval",
+            "approved",
+            "growth",
+            "record",
+            "strong",
+            "positive",
+            "outperform",
+            "raise",
+            "higher",
+            "partnership",
+            "contract",
+            "deal",
         ]
 
         bearish_words = [
-            'miss', 'decline', 'plunge', 'crash', 'downgrade', 'rejection',
-            'layoff', 'weak', 'negative', 'lower', 'cut', 'warning',
-            'lawsuit', 'investigation', 'fail', 'fraud', 'bankruptcy'
+            "miss",
+            "decline",
+            "plunge",
+            "crash",
+            "downgrade",
+            "rejection",
+            "layoff",
+            "weak",
+            "negative",
+            "lower",
+            "cut",
+            "warning",
+            "lawsuit",
+            "investigation",
+            "fail",
+            "fraud",
+            "bankruptcy",
         ]
 
         bullish_count = sum(1 for w in bullish_words if w in text_lower)
@@ -457,8 +527,9 @@ class WarriorNewsStream:
             return "bearish", score
         return "neutral", score
 
-    def _generate_scalp_signal(self, urgency: str, sentiment: str,
-                               sentiment_score: float, latency_ms: float) -> tuple:
+    def _generate_scalp_signal(
+        self, urgency: str, sentiment: str, sentiment_score: float, latency_ms: float
+    ) -> tuple:
         """Generate scalp signal"""
 
         # Too much latency = stale news
@@ -467,11 +538,17 @@ class WarriorNewsStream:
 
         # Critical + Bullish = LONG NOW
         if urgency == "critical" and sentiment == "bullish":
-            return "long_now", f"CRITICAL bullish catalyst - SCALP NOW! ({latency_ms:.0f}ms)"
+            return (
+                "long_now",
+                f"CRITICAL bullish catalyst - SCALP NOW! ({latency_ms:.0f}ms)",
+            )
 
         # Critical + Bearish = SHORT NOW
         if urgency == "critical" and sentiment == "bearish":
-            return "short_now", f"CRITICAL bearish catalyst - SHORT NOW! ({latency_ms:.0f}ms)"
+            return (
+                "short_now",
+                f"CRITICAL bearish catalyst - SHORT NOW! ({latency_ms:.0f}ms)",
+            )
 
         # High + Bullish
         if urgency == "high" and sentiment == "bullish":
@@ -491,6 +568,7 @@ class WarriorNewsStream:
         """Add symbols to spike detector"""
         try:
             from .momentum_spike_detector import get_spike_detector
+
             detector = get_spike_detector()
 
             for symbol in symbols:
@@ -518,10 +596,12 @@ class WarriorNewsStream:
                     active.append(alert)
 
         # Sort by urgency then recency
-        active.sort(key=lambda x: (
-            -urgency_order.index(x.urgency),
-            (now - x.received_at).total_seconds()
-        ))
+        active.sort(
+            key=lambda x: (
+                -urgency_order.index(x.urgency),
+                (now - x.received_at).total_seconds(),
+            )
+        )
 
         return active
 
@@ -543,7 +623,7 @@ class WarriorNewsStream:
             "alerts_generated": self.alerts_generated_count,
             "active_alerts": len(self.get_active_alerts()),
             "scalp_signals": len(self.get_scalp_signals()),
-            "scalp_window_seconds": self.scalp_window_seconds
+            "scalp_window_seconds": self.scalp_window_seconds,
         }
 
 

@@ -6,6 +6,7 @@ API endpoints for unified data collection and history.
 
 import logging
 from typing import Optional
+
 from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
@@ -17,12 +18,9 @@ router = APIRouter()
 # SCHWAB HISTORY / MINUTE BARS
 # ============================================================================
 
+
 @router.get("/api/schwab/history/{symbol}")
-async def get_schwab_history(
-    symbol: str,
-    days: int = 1,
-    frequency: str = "minute"
-):
+async def get_schwab_history(symbol: str, days: int = 1, frequency: str = "minute"):
     """
     Get historical price bars from Schwab.
 
@@ -41,7 +39,11 @@ async def get_schwab_history(
 
         schwab = get_schwab_market_data()
         if not schwab:
-            return {"success": False, "error": "Schwab market data not connected", "bars": []}
+            return {
+                "success": False,
+                "error": "Schwab market data not connected",
+                "bars": [],
+            }
 
         # Map to Schwab API parameters
         if frequency == "minute":
@@ -59,7 +61,7 @@ async def get_schwab_history(
             period_type=period_type,
             period=min(days, 10),  # Schwab limits minute data
             frequency_type=frequency_type,
-            frequency=freq
+            frequency=freq,
         )
 
         if not data:
@@ -71,21 +73,23 @@ async def get_schwab_history(
         # Format for our system
         bars = []
         for c in candles:
-            bars.append({
-                "timestamp": c.get("datetime"),
-                "open": c.get("open"),
-                "high": c.get("high"),
-                "low": c.get("low"),
-                "close": c.get("close"),
-                "volume": c.get("volume")
-            })
+            bars.append(
+                {
+                    "timestamp": c.get("datetime"),
+                    "open": c.get("open"),
+                    "high": c.get("high"),
+                    "low": c.get("low"),
+                    "close": c.get("close"),
+                    "volume": c.get("volume"),
+                }
+            )
 
         return {
             "success": True,
             "symbol": symbol,
             "frequency": frequency,
             "bars": bars,
-            "count": len(bars)
+            "count": len(bars),
         }
 
     except Exception as e:
@@ -97,11 +101,13 @@ async def get_schwab_history(
 # UNIFIED DATA COLLECTOR ENDPOINTS
 # ============================================================================
 
+
 @router.get("/api/data/summary")
 async def get_data_summary():
     """Get summary of collected market data"""
     try:
         from ai.unified_data_collector import get_data_collector
+
         collector = get_data_collector()
         return {"success": True, "data": collector.get_data_summary()}
     except Exception as e:
@@ -121,6 +127,7 @@ async def collect_history(symbol: str, days: int = 5):
     symbol = symbol.upper()
     try:
         from ai.unified_data_collector import get_data_collector
+
         collector = get_data_collector()
 
         # Fetch from Schwab
@@ -133,13 +140,13 @@ async def collect_history(symbol: str, days: int = 5):
                 "success": True,
                 "symbol": symbol,
                 "fetched": len(bars),
-                "stored": stored
+                "stored": stored,
             }
         else:
             return {
                 "success": False,
                 "symbol": symbol,
-                "error": "No bars fetched from Schwab"
+                "error": "No bars fetched from Schwab",
             }
 
     except Exception as e:
@@ -149,9 +156,7 @@ async def collect_history(symbol: str, days: int = 5):
 
 @router.get("/api/data/bars/{symbol}")
 async def get_stored_bars(
-    symbol: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None
 ):
     """
     Get stored minute bars from database.
@@ -164,16 +169,12 @@ async def get_stored_bars(
     symbol = symbol.upper()
     try:
         from ai.unified_data_collector import get_data_collector
+
         collector = get_data_collector()
 
         bars = collector.get_minute_bars(symbol, start_date, end_date)
 
-        return {
-            "success": True,
-            "symbol": symbol,
-            "bars": bars,
-            "count": len(bars)
-        }
+        return {"success": True, "symbol": symbol, "bars": bars, "count": len(bars)}
 
     except Exception as e:
         logger.error(f"Error getting bars for {symbol}: {e}")
@@ -185,15 +186,12 @@ async def get_trade_signals(symbol: Optional[str] = None, limit: int = 100):
     """Get stored trade signals for analysis"""
     try:
         from ai.unified_data_collector import get_data_collector
+
         collector = get_data_collector()
 
         signals = collector.get_trade_signals(symbol, limit)
 
-        return {
-            "success": True,
-            "signals": signals,
-            "count": len(signals)
-        }
+        return {"success": True, "signals": signals, "count": len(signals)}
 
     except Exception as e:
         logger.error(f"Error getting signals: {e}")
@@ -205,14 +203,12 @@ async def get_signal_correlations():
     """Analyze correlations between signal characteristics and outcomes"""
     try:
         from ai.unified_data_collector import get_data_collector
+
         collector = get_data_collector()
 
         analysis = collector.analyze_signal_correlations()
 
-        return {
-            "success": True,
-            "analysis": analysis
-        }
+        return {"success": True, "analysis": analysis}
 
     except Exception as e:
         logger.error(f"Error analyzing correlations: {e}")
@@ -224,6 +220,7 @@ async def store_trade_signal(signal: dict):
     """Store a trade signal with all indicators"""
     try:
         from ai.unified_data_collector import get_data_collector
+
         collector = get_data_collector()
 
         collector.store_trade_signal(signal)
@@ -239,11 +236,10 @@ async def store_trade_signal(signal: dict):
 # BACKTEST ENDPOINTS
 # ============================================================================
 
+
 @router.post("/api/backtest/minute")
 async def run_minute_backtest(
-    symbols: str = "SPY",
-    days: int = 5,
-    initial_cash: float = 1000.0
+    symbols: str = "SPY", days: int = 5, initial_cash: float = 1000.0
 ):
     """
     Run minute-bar backtest using Schwab data.
@@ -261,11 +257,7 @@ async def run_minute_backtest(
 
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
 
-        result = do_backtest(
-            symbols=symbol_list,
-            days=days,
-            initial_cash=initial_cash
-        )
+        result = do_backtest(symbols=symbol_list, days=days, initial_cash=initial_cash)
 
         return result
 
@@ -275,10 +267,7 @@ async def run_minute_backtest(
 
 
 @router.post("/api/backtest/walkforward")
-async def run_walkforward(
-    symbols: str = "SPY",
-    initial_cash: float = 1000.0
-):
+async def run_walkforward(symbols: str = "SPY", initial_cash: float = 1000.0):
     """
     Run walkforward analysis using YFinance daily data.
 
@@ -296,10 +285,7 @@ async def run_walkforward(
 
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
 
-        result = run_walkforward_test(
-            symbols=symbol_list,
-            initial_cash=initial_cash
-        )
+        result = run_walkforward_test(symbols=symbol_list, initial_cash=initial_cash)
 
         return result
 
@@ -309,10 +295,7 @@ async def run_walkforward(
 
 
 @router.post("/api/backtest/full")
-async def run_full_backtest(
-    symbols: str = "SPY",
-    initial_cash: float = 1000.0
-):
+async def run_full_backtest(symbols: str = "SPY", initial_cash: float = 1000.0):
     """
     Run comprehensive analysis: minute backtest + daily walkforward.
 
@@ -328,10 +311,7 @@ async def run_full_backtest(
 
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
 
-        result = run_full_analysis(
-            symbols=symbol_list,
-            initial_cash=initial_cash
-        )
+        result = run_full_analysis(symbols=symbol_list, initial_cash=initial_cash)
 
         return {"success": True, "results": result}
 
@@ -346,23 +326,26 @@ async def get_backtest_status():
     status = {
         "schwab_connected": False,
         "pybroker_available": False,
-        "data_collector_ready": False
+        "data_collector_ready": False,
     }
 
     try:
         from schwab_market_data import is_schwab_available
+
         status["schwab_connected"] = is_schwab_available()
     except:
         pass
 
     try:
         from pybroker import Strategy
+
         status["pybroker_available"] = True
     except:
         pass
 
     try:
         from ai.unified_data_collector import get_data_collector
+
         collector = get_data_collector()
         summary = collector.get_data_summary()
         status["data_collector_ready"] = True

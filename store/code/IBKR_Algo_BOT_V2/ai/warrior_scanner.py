@@ -11,26 +11,31 @@ Scans for:
 """
 
 import logging
-from dataclasses import dataclass, asdict
-from typing import List, Optional, Dict, Any
-from datetime import datetime, time
-import pandas as pd
-import numpy as np
-from pathlib import Path
 import sys
+from dataclasses import asdict, dataclass
+from datetime import datetime, time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
 try:
     from finvizfinance.screener.overview import Overview
+
     FINVIZ_AVAILABLE = True
 except ImportError:
-    logging.warning("finvizfinance not installed. Scanner will have limited functionality.")
+    logging.warning(
+        "finvizfinance not installed. Scanner will have limited functionality."
+    )
     FINVIZ_AVAILABLE = False
 
 try:
     import yfinance as yf
+
     YFINANCE_AVAILABLE = True
 except ImportError:
     logging.warning("yfinance not installed. Daily chart analysis will be disabled.")
@@ -61,6 +66,7 @@ class WarriorCandidate:
         sector: Stock sector
         timestamp: When scan was performed
     """
+
     symbol: str
     price: float
     gap_percent: float
@@ -118,7 +124,7 @@ class WarriorScanner:
         min_gap_percent: Optional[float] = None,
         min_rvol: Optional[float] = None,
         max_float: Optional[float] = None,
-        min_premarket_vol: Optional[int] = None
+        min_premarket_vol: Optional[int] = None,
     ) -> List[WarriorCandidate]:
         """
         Run pre-market scan for momentum candidates
@@ -136,7 +142,9 @@ class WarriorScanner:
         min_gap_percent = min_gap_percent or self.scanner_config.min_gap_percent
         min_rvol = min_rvol or self.scanner_config.min_rvol
         max_float = max_float or self.scanner_config.max_float_millions
-        min_premarket_vol = min_premarket_vol or self.scanner_config.min_premarket_volume
+        min_premarket_vol = (
+            min_premarket_vol or self.scanner_config.min_premarket_volume
+        )
 
         logger.info(
             f"Starting pre-market scan: gap≥{min_gap_percent}%, "
@@ -152,10 +160,10 @@ class WarriorScanner:
             # Set FinViz filters
             # FinViz requires specific integer values for filters (no decimals)
             filters_dict = {
-                'Change': f'Up {int(min_gap_percent)}%',
-                'Relative Volume': f'Over {int(min_rvol)}',
-                'Float': f'Under {int(max_float)}M',
-                'Price': f'Over ${int(self.scanner_config.min_price)}'
+                "Change": f"Up {int(min_gap_percent)}%",
+                "Relative Volume": f"Over {int(min_rvol)}",
+                "Float": f"Under {int(max_float)}M",
+                "Price": f"Over ${int(self.scanner_config.min_price)}",
             }
 
             logger.debug(f"FinViz filters: {filters_dict}")
@@ -177,7 +185,9 @@ class WarriorScanner:
                     if candidate:
                         candidates.append(candidate)
                 except Exception as e:
-                    logger.error(f"Error processing {row.get('Ticker', 'UNKNOWN')}: {e}")
+                    logger.error(
+                        f"Error processing {row.get('Ticker', 'UNKNOWN')}: {e}"
+                    )
                     continue
 
             # Sort by confidence score (descending)
@@ -213,19 +223,22 @@ class WarriorScanner:
             WarriorCandidate or None if invalid
         """
         try:
-            symbol = row['Ticker']
+            symbol = row["Ticker"]
 
             # Extract basic data from FinViz
-            price = self._safe_float(row.get('Price', 0))
-            gap_percent = self._parse_percent(row.get('Change', '0%'))
-            relative_volume = self._safe_float(row.get('Rel Volume', 0))
-            volume = int(row.get('Volume', 0))
-            float_shares = self._parse_float_string(row.get('Float', '0M'))
-            market_cap = self._parse_float_string(row.get('Market Cap', '0M'))
-            sector = row.get('Sector', 'Unknown')
+            price = self._safe_float(row.get("Price", 0))
+            gap_percent = self._parse_percent(row.get("Change", "0%"))
+            relative_volume = self._safe_float(row.get("Rel Volume", 0))
+            volume = int(row.get("Volume", 0))
+            float_shares = self._parse_float_string(row.get("Float", "0M"))
+            market_cap = self._parse_float_string(row.get("Market Cap", "0M"))
+            sector = row.get("Sector", "Unknown")
 
             # Filter by price range
-            if price < self.scanner_config.min_price or price > self.scanner_config.max_price:
+            if (
+                price < self.scanner_config.min_price
+                or price > self.scanner_config.max_price
+            ):
                 logger.debug(f"{symbol}: Price ${price} out of range")
                 return None
 
@@ -240,7 +253,7 @@ class WarriorScanner:
                 rvol=relative_volume,
                 float_shares=float_shares,
                 catalyst=catalyst,
-                daily_signal=daily_signal
+                daily_signal=daily_signal,
             )
 
             candidate = WarriorCandidate(
@@ -255,7 +268,7 @@ class WarriorScanner:
                 distance_to_resistance=resistance_distance,
                 confidence_score=confidence,
                 market_cap=market_cap,
-                sector=sector
+                sector=sector,
             )
 
             logger.debug(
@@ -289,13 +302,25 @@ class WarriorScanner:
             if news and len(news) > 0:
                 # Get most recent headline
                 latest_news = news[0]
-                headline = latest_news.get('title', '')
+                headline = latest_news.get("title", "")
 
                 # Check for key catalyst words
                 catalyst_words = [
-                    'earnings', 'beat', 'miss', 'guidance', 'upgrade', 'downgrade',
-                    'fda', 'approval', 'trial', 'acquisition', 'merger', 'contract',
-                    'partnership', 'product', 'launch'
+                    "earnings",
+                    "beat",
+                    "miss",
+                    "guidance",
+                    "upgrade",
+                    "downgrade",
+                    "fda",
+                    "approval",
+                    "trial",
+                    "acquisition",
+                    "merger",
+                    "contract",
+                    "partnership",
+                    "product",
+                    "launch",
                 ]
 
                 headline_lower = headline.lower()
@@ -329,15 +354,15 @@ class WarriorScanner:
                 return "NEUTRAL"
 
             # Calculate moving averages
-            hist['SMA20'] = hist['Close'].rolling(window=20).mean()
-            hist['SMA50'] = hist['Close'].rolling(window=50).mean()
+            hist["SMA20"] = hist["Close"].rolling(window=20).mean()
+            hist["SMA50"] = hist["Close"].rolling(window=50).mean()
 
-            current_price = hist['Close'].iloc[-1]
-            sma20 = hist['SMA20'].iloc[-1]
-            sma50 = hist['SMA50'].iloc[-1] if len(hist) >= 50 else sma20
+            current_price = hist["Close"].iloc[-1]
+            sma20 = hist["SMA20"].iloc[-1]
+            sma50 = hist["SMA50"].iloc[-1] if len(hist) >= 50 else sma20
 
             # Check for breakout (new 30-day high)
-            high_30d = hist['High'].iloc[-30:].max()
+            high_30d = hist["High"].iloc[-30:].max()
             if current_price >= high_30d * 0.99:  # Within 1% of 30-day high
                 return "BREAKOUT"
 
@@ -373,18 +398,20 @@ class WarriorScanner:
             if len(hist) < 10:
                 return 50.0
 
-            current_price = hist['Close'].iloc[-1]
+            current_price = hist["Close"].iloc[-1]
 
             # Find swing highs (local maxima)
-            highs = hist['High'].rolling(window=5, center=True).max()
-            swing_highs = hist[hist['High'] == highs]['High'].values
+            highs = hist["High"].rolling(window=5, center=True).max()
+            swing_highs = hist[hist["High"] == highs]["High"].values
 
             # Find next resistance above current price
             resistance_levels = [h for h in swing_highs if h > current_price]
 
             if resistance_levels:
                 nearest_resistance = min(resistance_levels)
-                distance_pct = ((nearest_resistance - current_price) / current_price) * 100
+                distance_pct = (
+                    (nearest_resistance - current_price) / current_price
+                ) * 100
                 return distance_pct
 
             return 999.0  # No clear resistance = "blue sky breakout"
@@ -399,7 +426,7 @@ class WarriorScanner:
         rvol: float,
         float_shares: float,
         catalyst: str,
-        daily_signal: str
+        daily_signal: str,
     ) -> float:
         """
         Calculate confidence score (0-100)
@@ -457,7 +484,7 @@ class WarriorScanner:
             "UPTREND": 12,
             "NEUTRAL": 5,
             "DOWNTREND": 0,
-            "UNKNOWN": 3
+            "UNKNOWN": 3,
         }
         score += daily_scores.get(daily_signal, 5)
 
@@ -476,7 +503,7 @@ class WarriorScanner:
     def _parse_percent(percent_str: str) -> float:
         """Parse percentage string like '+5.2%' to 5.2"""
         try:
-            return float(percent_str.strip('%').strip('+'))
+            return float(percent_str.strip("%").strip("+"))
         except (ValueError, AttributeError):
             return 0.0
 
@@ -489,12 +516,12 @@ class WarriorScanner:
 
             float_str = str(float_str).strip().upper()
 
-            if 'M' in float_str:
-                return float(float_str.replace('M', ''))
-            elif 'B' in float_str:
-                return float(float_str.replace('B', '')) * 1000
-            elif 'K' in float_str:
-                return float(float_str.replace('K', '')) / 1000
+            if "M" in float_str:
+                return float(float_str.replace("M", ""))
+            elif "B" in float_str:
+                return float(float_str.replace("B", "")) * 1000
+            elif "K" in float_str:
+                return float(float_str.replace("K", "")) / 1000
             else:
                 return float(float_str)
         except (ValueError, AttributeError):
@@ -524,7 +551,7 @@ if __name__ == "__main__":
     # Set up logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     print("=" * 80)
@@ -543,14 +570,18 @@ if __name__ == "__main__":
             print("\n❌ No candidates found")
         else:
             print(f"\n✅ Found {len(candidates)} candidates:\n")
-            print(f"{'Symbol':8} {'Price':>8} {'Gap %':>8} {'RVOL':>6} {'Float':>8} "
-                  f"{'Signal':12} {'Score':>6}")
+            print(
+                f"{'Symbol':8} {'Price':>8} {'Gap %':>8} {'RVOL':>6} {'Float':>8} "
+                f"{'Signal':12} {'Score':>6}"
+            )
             print("-" * 80)
 
             for c in candidates:
-                print(f"{c.symbol:8} ${c.price:7.2f} {c.gap_percent:+7.1f}% "
-                      f"{c.relative_volume:6.1f} {c.float_shares:7.1f}M "
-                      f"{c.daily_chart_signal:12} {c.confidence_score:6.0f}")
+                print(
+                    f"{c.symbol:8} ${c.price:7.2f} {c.gap_percent:+7.1f}% "
+                    f"{c.relative_volume:6.1f} {c.float_shares:7.1f}M "
+                    f"{c.daily_chart_signal:12} {c.confidence_score:6.0f}"
+                )
 
             print("\n" + "=" * 80)
 
