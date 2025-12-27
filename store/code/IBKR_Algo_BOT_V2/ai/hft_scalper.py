@@ -143,6 +143,14 @@ class ScalperConfig:
     # Volume surge entry filter
     volume_surge_max_hod_distance: float = 2.0  # Max % distance from HOD for volume surge entries
 
+    # Warrior Trading filter (Ross Cameron methodology)
+    use_warrior_filter: bool = True  # Filter entries with Warrior setup grading
+    warrior_min_grade: str = 'B'  # Minimum grade to enter (A, B, or C)
+    warrior_require_pattern: bool = False  # Require confirmed pattern (Bull Flag, ABCD, etc.)
+    warrior_require_tape_signal: bool = False  # Require tape confirmation (green flow, seller thinning)
+    warrior_max_float: float = 20.0  # Max float in millions (low float = more volatility)
+    warrior_min_rvol: float = 2.0  # Minimum relative volume
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -228,6 +236,12 @@ class ScalpTrade:
     signal_macd_crossover: str = ""  # BULLISH, BEARISH, NONE
     signal_vwap_crossover: str = ""  # BULLISH, BEARISH, NONE
     signal_candle_momentum: str = ""  # BUILDING, FADING, NEUTRAL
+
+    # Warrior Trading state at entry (Ross Cameron methodology)
+    warrior_grade: str = ""  # A, B, or C
+    warrior_score: float = 0.0  # 0-100 setup quality score
+    warrior_patterns: List[str] = field(default_factory=list)  # Detected patterns
+    warrior_tape_signals: List[str] = field(default_factory=list)  # Tape reading signals
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -893,6 +907,49 @@ class HFTScalper:
             if verdict == "LIKELY_CONTINUE":
                 logger.info(f"✅ FADE FILTER: {symbol} approved - {prob:.0%} continuation")
 
+        # Apply Warrior Trading filter if enabled (Ross Cameron methodology)
+        if signal and getattr(self.config, 'use_warrior_filter', True):
+            try:
+                from ai.warrior_setup_detector import get_warrior_setup_detector
+                detector = get_warrior_setup_detector()
+                warrior_signal = detector.analyze(symbol, quote)
+
+                if warrior_signal:
+                    grade = warrior_signal.grade
+                    min_grade = getattr(self.config, 'warrior_min_grade', 'B')
+                    grade_order = {'A': 1, 'B': 2, 'C': 3}
+
+                    # Check grade requirement
+                    if grade_order.get(grade, 99) > grade_order.get(min_grade, 2):
+                        logger.info(f"WARRIOR REJECT: {symbol} - Grade {grade} < minimum {min_grade}")
+                        signal = None
+                    else:
+                        # Check pattern requirement
+                        if getattr(self.config, 'warrior_require_pattern', False):
+                            if not warrior_signal.patterns:
+                                logger.info(f"WARRIOR REJECT: {symbol} - No confirmed pattern")
+                                signal = None
+
+                        # Check tape signal requirement
+                        if signal and getattr(self.config, 'warrior_require_tape_signal', False):
+                            if not warrior_signal.tape_signals:
+                                logger.info(f"WARRIOR REJECT: {symbol} - No tape confirmation")
+                                signal = None
+
+                        if signal:
+                            logger.info(f"WARRIOR APPROVE: {symbol} - Grade {grade}, Patterns: {len(warrior_signal.patterns)}, Tape: {len(warrior_signal.tape_signals)}")
+                            signal['warrior_grade'] = grade
+                            signal['warrior_score'] = warrior_signal.score
+                            signal['warrior_patterns'] = [p.name for p in warrior_signal.patterns] if warrior_signal.patterns else []
+                            signal['warrior_tape_signals'] = warrior_signal.tape_signals
+                            signal['warrior_entry'] = warrior_signal.entry_price
+                            signal['warrior_stop'] = warrior_signal.stop_loss
+                            signal['warrior_target'] = warrior_signal.target_price
+                else:
+                    logger.debug(f"WARRIOR CHECK: {symbol} - No signal (insufficient data)")
+            except Exception as e:
+                logger.warning(f"Warrior filter check failed for {symbol}: {e}")
+
         if signal and self.on_signal:
             self.on_signal(signal)
 
@@ -1077,6 +1134,15 @@ class HFTScalper:
         # Calculate position size using risk-based sizing
         shares, position_value, risk_amount = self.config.calculate_position_size(price)
 
+        # Adjust position size based on Warrior grade (A=75%, B=50%, C=25%)
+        warrior_grade = signal.get('warrior_grade')
+        if warrior_grade and getattr(self.config, 'use_warrior_filter', True):
+            grade_multipliers = {'A': 0.75, 'B': 0.50, 'C': 0.25}
+            multiplier = grade_multipliers.get(warrior_grade, 0.50)
+            original_shares = shares
+            shares = max(int(shares * multiplier), self.config.min_shares)
+            logger.info(f"WARRIOR SIZING: {symbol} Grade {warrior_grade} = {multiplier*100:.0f}% size ({original_shares} -> {shares} shares)")
+
         if shares < self.config.min_shares:
             logger.debug(f"Position too small for {symbol}: {shares} shares < {self.config.min_shares} min")
             return None
@@ -1126,6 +1192,16 @@ class HFTScalper:
             except Exception as e:
                 logger.warning(f"ATR calculation failed for {symbol}, using fixed %: {e}")
 
+        # Override with Warrior levels if provided (from setup detector analysis)
+        warrior_stop = signal.get('warrior_stop')
+        warrior_target = signal.get('warrior_target')
+        if warrior_stop and warrior_target and warrior_stop > 0 and warrior_target > 0:
+            logger.info(f"WARRIOR LEVELS: {symbol} using Warrior stop=${warrior_stop:.2f}, target=${warrior_target:.2f}")
+            atr_stop_price = warrior_stop
+            atr_target_price = warrior_target
+            # Calculate trailing from distance to stop
+            atr_trail_distance = (price - warrior_stop) * 0.5  # Trail at 50% of stop distance
+
         trade_id = f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         trade = ScalpTrade(
@@ -1153,7 +1229,12 @@ class HFTScalper:
             signal_ema_crossover=signal.get('signal_ema_crossover', ''),
             signal_macd_crossover=signal.get('signal_macd_crossover', ''),
             signal_vwap_crossover=signal.get('signal_vwap_crossover', ''),
-            signal_candle_momentum=signal.get('signal_candle_momentum', '')
+            signal_candle_momentum=signal.get('signal_candle_momentum', ''),
+            # Warrior Trading state at entry
+            warrior_grade=signal.get('warrior_grade', ''),
+            warrior_score=signal.get('warrior_score', 0.0),
+            warrior_patterns=signal.get('warrior_patterns', []),
+            warrior_tape_signals=signal.get('warrior_tape_signals', [])
         )
 
         # Execute order (paper or real)

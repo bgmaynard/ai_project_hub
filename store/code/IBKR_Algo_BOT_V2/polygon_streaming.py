@@ -676,6 +676,191 @@ def _auto_add_to_watchlists(symbol: str):
     threading.Thread(target=_add, daemon=True).start()
 
 
+# ============ Tape Analyzer Integration ============
+
+_tape_analyzer_wired = False
+
+def wire_tape_analyzer():
+    """
+    Wire Tape Analyzer to receive real-time trades from Polygon.
+
+    Enables Ross Cameron tape reading:
+    - Green/red flow analysis
+    - Seller thinning detection
+    - First green print trigger
+    - Irrational flush detection
+    """
+    global _tape_analyzer_wired
+
+    if _tape_analyzer_wired:
+        logger.debug("Tape analyzer already wired to Polygon stream")
+        return
+
+    try:
+        from ai.tape_analyzer import get_tape_analyzer, TapeEntry
+        from datetime import datetime
+
+        stream = get_polygon_stream()
+        tape_analyzer = get_tape_analyzer()
+
+        def on_polygon_trade_for_tape(trade: dict):
+            """Process each trade and feed to tape analyzer"""
+            try:
+                symbol = trade.get('symbol', '')
+                price = trade.get('price', 0)
+                size = trade.get('size', 0)
+
+                if not symbol or price <= 0:
+                    return
+
+                # Determine trade side from conditions or price vs quote
+                quote = stream.quotes.get(symbol, {})
+                bid = quote.get('bid', 0)
+                ask = quote.get('ask', 0)
+
+                # Classify as buy (at ask) or sell (at bid)
+                if ask > 0 and price >= ask:
+                    side = 'buy'
+                elif bid > 0 and price <= bid:
+                    side = 'sell'
+                else:
+                    side = 'mid'
+
+                # Create tape entry
+                entry = TapeEntry(
+                    timestamp=datetime.now(),
+                    price=price,
+                    size=size,
+                    side=side,
+                    exchange=trade.get('exchange', '')
+                )
+
+                # Add to tape analyzer
+                tape_analyzer.add_trade(symbol, entry)
+
+            except Exception as e:
+                pass  # Don't spam logs
+
+        # Register the callback
+        stream.on_trade(on_polygon_trade_for_tape)
+
+        _tape_analyzer_wired = True
+        logger.info("✅ Tape analyzer wired to Polygon stream - real-time tape reading enabled")
+
+    except Exception as e:
+        logger.error(f"Failed to wire tape analyzer to Polygon: {e}")
+
+
+# ============ Pattern Detector Integration ============
+
+_pattern_detector_wired = False
+_pattern_candle_buffers: Dict[str, List] = {}  # symbol -> list of trades for candle building
+_last_candle_time: Dict[str, datetime] = {}  # symbol -> last candle timestamp
+
+def wire_pattern_detector():
+    """
+    Wire Pattern Detector to receive candle data from Polygon trades.
+
+    Builds 1-minute candles from trade stream and feeds to pattern detector
+    for real-time pattern recognition:
+    - Bull Flag
+    - ABCD Pattern
+    - Micro Pullback
+    - HOD Break
+    """
+    global _pattern_detector_wired
+
+    if _pattern_detector_wired:
+        logger.debug("Pattern detector already wired to Polygon stream")
+        return
+
+    try:
+        from ai.pattern_detector import get_pattern_detector, Candle
+        from datetime import datetime, timedelta
+
+        stream = get_polygon_stream()
+        pattern_detector = get_pattern_detector()
+
+        def on_polygon_trade_for_patterns(trade: dict):
+            """Aggregate trades into candles and feed to pattern detector"""
+            global _pattern_candle_buffers, _last_candle_time
+
+            try:
+                symbol = trade.get('symbol', '')
+                price = trade.get('price', 0)
+                size = trade.get('size', 0)
+
+                if not symbol or price <= 0:
+                    return
+
+                now = datetime.now()
+                current_minute = now.replace(second=0, microsecond=0)
+
+                # Initialize buffers for new symbols
+                if symbol not in _pattern_candle_buffers:
+                    _pattern_candle_buffers[symbol] = []
+                    _last_candle_time[symbol] = current_minute
+
+                # Check if we need to close the current candle
+                last_time = _last_candle_time[symbol]
+                if current_minute > last_time and _pattern_candle_buffers[symbol]:
+                    # Build candle from buffered trades
+                    trades = _pattern_candle_buffers[symbol]
+
+                    prices = [t['price'] for t in trades]
+                    volumes = [t['size'] for t in trades]
+
+                    candle = Candle(
+                        timestamp=last_time,
+                        open=prices[0],
+                        high=max(prices),
+                        low=min(prices),
+                        close=prices[-1],
+                        volume=sum(volumes)
+                    )
+
+                    # Add to pattern detector
+                    pattern_detector.add_candle(symbol, candle)
+
+                    # Clear buffer and update time
+                    _pattern_candle_buffers[symbol] = []
+                    _last_candle_time[symbol] = current_minute
+
+                # Add trade to current candle buffer
+                _pattern_candle_buffers[symbol].append({
+                    'price': price,
+                    'size': size,
+                    'time': now
+                })
+
+            except Exception as e:
+                pass  # Don't spam logs
+
+        # Register the callback
+        stream.on_trade(on_polygon_trade_for_patterns)
+
+        _pattern_detector_wired = True
+        logger.info("✅ Pattern detector wired to Polygon stream - real-time pattern detection enabled")
+
+    except Exception as e:
+        logger.error(f"Failed to wire pattern detector to Polygon: {e}")
+
+
+def wire_warrior_trading():
+    """
+    Wire all Warrior Trading components to Polygon stream.
+
+    Enables:
+    - HOD scanner (A/B grade detection)
+    - Tape analyzer (green/red flow, seller thinning)
+    - Pattern detector (Bull Flag, ABCD, Micro PB, HOD Break)
+    """
+    wire_hod_scanner()
+    wire_tape_analyzer()
+    wire_pattern_detector()
+    logger.info("✅ All Warrior Trading components wired to Polygon stream")
+
+
 if __name__ == "__main__":
     # Test the stream
     logging.basicConfig(level=logging.INFO)

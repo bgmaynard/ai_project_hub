@@ -26,7 +26,14 @@ router = APIRouter(prefix="/api/polygon/stream", tags=["Polygon Streaming"])
 
 # Import polygon streaming
 try:
-    from polygon_streaming import get_polygon_stream, is_polygon_streaming_available, wire_hod_scanner
+    from polygon_streaming import (
+        get_polygon_stream,
+        is_polygon_streaming_available,
+        wire_hod_scanner,
+        wire_tape_analyzer,
+        wire_pattern_detector,
+        wire_warrior_trading
+    )
     HAS_POLYGON_STREAM = True
 except ImportError as e:
     logger.warning(f"Polygon streaming not available: {e}")
@@ -65,15 +72,15 @@ async def start_stream():
 
     stream.start()
 
-    # Wire HOD scanner to receive trade updates
+    # Wire all Warrior Trading components to receive trade updates
     try:
-        wire_hod_scanner()
+        wire_warrior_trading()
     except Exception as e:
-        logger.warning(f"Could not wire HOD scanner: {e}")
+        logger.warning(f"Could not wire Warrior Trading components: {e}")
 
     return {
         "success": True,
-        "message": "Polygon stream started (HOD scanner enabled)",
+        "message": "Polygon stream started (Warrior Trading components enabled: HOD scanner, Tape analyzer, Pattern detector)",
         "status": stream.get_status()
     }
 
