@@ -1110,3 +1110,47 @@ Full documentation in `docs/WARRIOR_TRADING_STRATEGY_GUIDE.md` includes:
 - Exit strategies (breakout or bailout, failed momentum)
 - Halt trading mechanics
 - Implementation priorities
+
+### Warrior Filter Integration (HFT Scalper)
+
+The Warrior Trading methodology is now integrated as an entry filter in the HFT Scalper.
+
+**New Config Options:**
+```json
+{
+  "use_warrior_filter": true,      // Enable Warrior setup grading
+  "warrior_min_grade": "B",        // Minimum grade to enter (A, B, or C)
+  "warrior_require_pattern": false, // Require Bull Flag, ABCD, etc.
+  "warrior_require_tape_signal": false, // Require tape confirmation
+  "warrior_max_float": 20.0,       // Max float in millions
+  "warrior_min_rvol": 2.0          // Minimum relative volume
+}
+```
+
+**Grade-Based Position Sizing:**
+- Grade A (5/5 criteria): 75% of calculated position
+- Grade B (4/5 criteria): 50% of calculated position
+- Grade C (3/5 or less): 25% of calculated position
+
+**Warrior Levels:**
+When Warrior setup provides entry/stop/target levels, they override ATR-calculated stops.
+
+**Trade History Fields:**
+- `warrior_grade`: A, B, or C
+- `warrior_score`: 0-100 setup quality
+- `warrior_patterns`: Detected patterns (Bull Flag, ABCD, etc.)
+- `warrior_tape_signals`: Tape reading signals (green flow, seller thinning)
+
+### Live Data Wiring (Polygon Streaming)
+
+The Polygon WebSocket stream is now wired to all Warrior components:
+
+```python
+# In polygon_streaming.py
+wire_warrior_trading()  # Wires all components:
+  # - wire_hod_scanner() - HOD momentum tracking
+  # - wire_tape_analyzer() - Tape reading from trades
+  # - wire_pattern_detector() - Pattern detection from candles
+```
+
+When Polygon streaming starts, all Warrior components receive live trade data automatically.
