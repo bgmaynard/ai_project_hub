@@ -1147,3 +1147,193 @@ async def update_exhaustion_config(config: Dict):
     except Exception as e:
         logger.error(f"Exhaustion config error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# LEVEL 2 DEPTH ANALYZER ENDPOINTS
+# ============================================================================
+
+@router.get("/depth/{symbol}")
+async def get_depth_snapshot(symbol: str):
+    """
+    Get current order book depth snapshot for a symbol.
+
+    Returns bid/ask levels, volume, spread, and detected walls.
+    """
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+        snapshot = analyzer.get_depth(symbol.upper())
+
+        if not snapshot:
+            return {
+                "symbol": symbol.upper(),
+                "tracked": False,
+                "message": "No depth data. Update depth to start tracking."
+            }
+
+        return snapshot.to_dict()
+
+    except Exception as e:
+        logger.error(f"Depth snapshot error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/depth/analysis/{symbol}")
+async def get_depth_analysis(symbol: str):
+    """
+    Get trading analysis from order book depth.
+
+    Includes imbalance, wall detection, absorption signals.
+    """
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+        analysis = analyzer.get_analysis(symbol.upper())
+
+        if not analysis:
+            return {
+                "symbol": symbol.upper(),
+                "analyzed": False,
+                "message": "No depth data available"
+            }
+
+        return analysis.to_dict()
+
+    except Exception as e:
+        logger.error(f"Depth analysis error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/depth/walls/{symbol}")
+async def get_depth_walls(symbol: str):
+    """
+    Get active order walls for a symbol.
+
+    Shows bid walls (support) and ask walls (resistance).
+    """
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+        return analyzer.get_walls(symbol.upper())
+
+    except Exception as e:
+        logger.error(f"Depth walls error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/depth/imbalance/{symbol}")
+async def get_depth_imbalance(symbol: str):
+    """
+    Get bid/ask imbalance trend for a symbol.
+
+    Shows current ratio and trend direction.
+    """
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+        return analyzer.get_imbalance_trend(symbol.upper())
+
+    except Exception as e:
+        logger.error(f"Depth imbalance error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/depth/check/{symbol}")
+async def check_depth_entry(symbol: str):
+    """
+    Check if entry is valid based on depth analysis.
+
+    Returns validation result and boost factor.
+    """
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+        valid, reason = analyzer.is_entry_valid(symbol.upper())
+        boost = analyzer.get_entry_boost(symbol.upper())
+        analysis = analyzer.get_analysis(symbol.upper())
+
+        return {
+            "symbol": symbol.upper(),
+            "entry_valid": valid,
+            "reason": reason,
+            "boost": round(boost, 2),
+            "signal": analysis.signal.value if analysis else "UNKNOWN",
+            "imbalance_ratio": round(analysis.imbalance_ratio, 2) if analysis else 1.0
+        }
+
+    except Exception as e:
+        logger.error(f"Depth check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/depth/update/{symbol}")
+async def update_depth_data(symbol: str, data: Dict):
+    """
+    Update order book depth for a symbol.
+
+    Body should contain:
+    - bids: List of {price, size} dicts
+    - asks: List of {price, size} dicts
+    - price: Current market price (optional)
+    """
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+
+        bids = data.get("bids", [])
+        asks = data.get("asks", [])
+        price = data.get("price")
+
+        analysis = analyzer.update_depth(symbol.upper(), bids, asks, price)
+
+        return {
+            "success": True,
+            "analysis": analysis.to_dict()
+        }
+
+    except Exception as e:
+        logger.error(f"Depth update error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/depth/status")
+async def get_depth_status():
+    """Get depth analyzer status"""
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+        return analyzer.get_status()
+
+    except Exception as e:
+        logger.error(f"Depth status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/depth/config")
+async def update_depth_config(config: Dict):
+    """Update depth analyzer configuration"""
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+
+        for key, value in config.items():
+            if key in analyzer.config:
+                analyzer.config[key] = value
+
+        return {
+            "success": True,
+            "config": analyzer.config
+        }
+
+    except Exception as e:
+        logger.error(f"Depth config error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

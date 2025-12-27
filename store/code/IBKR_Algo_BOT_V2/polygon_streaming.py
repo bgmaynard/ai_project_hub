@@ -849,6 +849,89 @@ def wire_pattern_detector():
 _vwap_manager_wired = False
 _float_rotation_wired = False
 _exhaustion_detector_wired = False
+_depth_analyzer_wired = False
+
+
+def wire_depth_analyzer():
+    """
+    Wire Level 2 Depth Analyzer to Polygon stream.
+
+    Analyzes order book depth for:
+    - Bid/ask wall detection
+    - Order absorption tracking
+    - Spoofing detection
+    - Imbalance analysis
+    """
+    global _depth_analyzer_wired
+
+    if _depth_analyzer_wired:
+        logger.debug("Depth analyzer already wired")
+        return
+
+    try:
+        from ai.level2_depth_analyzer import get_depth_analyzer
+
+        analyzer = get_depth_analyzer()
+        stream = get_polygon_stream()
+
+        # Track Level 2 data per symbol
+        _depth_bid_cache: Dict[str, List] = {}
+        _depth_ask_cache: Dict[str, List] = {}
+        _depth_last_update: Dict[str, float] = {}
+
+        def on_polygon_quote_for_depth(quote: Dict):
+            """Handle quote for depth analysis"""
+            try:
+                symbol = quote.get('symbol', '')
+                bid = quote.get('bid', 0)
+                ask = quote.get('ask', 0)
+                bid_size = quote.get('bid_size', quote.get('bidsz', 0))
+                ask_size = quote.get('ask_size', quote.get('asksz', 0))
+
+                if not symbol or not bid or not ask:
+                    return
+
+                import time
+                now = time.time()
+
+                # Initialize cache
+                if symbol not in _depth_bid_cache:
+                    _depth_bid_cache[symbol] = []
+                    _depth_ask_cache[symbol] = []
+                    _depth_last_update[symbol] = 0
+
+                # Update bid/ask levels (aggregate by price)
+                # For NBBO quotes, we get top of book
+                _depth_bid_cache[symbol] = [{"price": bid, "size": bid_size * 100}]  # Convert to shares
+                _depth_ask_cache[symbol] = [{"price": ask, "size": ask_size * 100}]
+
+                # Rate limit depth updates (every 500ms)
+                if now - _depth_last_update[symbol] >= 0.5:
+                    mid_price = (bid + ask) / 2
+
+                    # Update depth analyzer
+                    analyzer.update_depth(
+                        symbol,
+                        _depth_bid_cache[symbol],
+                        _depth_ask_cache[symbol],
+                        mid_price
+                    )
+
+                    _depth_last_update[symbol] = now
+
+            except Exception as e:
+                pass  # Don't spam logs
+
+        # Note: For full Level 2, we would use Polygon's Level 2 WebSocket
+        # which requires a higher tier subscription. For now, we use NBBO quotes
+        # which give us top of book.
+        stream.on_quote(on_polygon_quote_for_depth)
+
+        _depth_analyzer_wired = True
+        logger.info("✅ Depth analyzer wired to Polygon stream - order book analysis enabled")
+
+    except Exception as e:
+        logger.error(f"Failed to wire depth analyzer to Polygon: {e}")
 
 
 def wire_exhaustion_detector():
@@ -1057,6 +1140,7 @@ def wire_warrior_trading():
     - VWAP manager (real-time VWAP calculation)
     - Float rotation tracker (volume vs float monitoring)
     - Exhaustion detector (momentum exhaustion detection)
+    - Depth analyzer (Level 2 order book analysis)
     """
     wire_hod_scanner()
     wire_tape_analyzer()
@@ -1064,6 +1148,7 @@ def wire_warrior_trading():
     wire_vwap_manager()
     wire_float_rotation_tracker()
     wire_exhaustion_detector()
+    wire_depth_analyzer()
     logger.info("✅ All Warrior Trading components wired to Polygon stream")
 
 

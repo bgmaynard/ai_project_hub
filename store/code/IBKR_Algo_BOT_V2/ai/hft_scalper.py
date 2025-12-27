@@ -175,6 +175,12 @@ class ScalperConfig:
     exhaustion_exit_on_divergence: bool = True  # Exit on RSI divergence
     exhaustion_exit_on_red_candles: int = 4  # Exit after N consecutive red candles
 
+    # Level 2 Depth Analysis (order book signals)
+    use_depth_analysis: bool = True  # Use order book for entry/exit decisions
+    depth_require_bullish_imbalance: bool = False  # Require bid > ask imbalance
+    depth_min_imbalance_ratio: float = 1.2  # Min bid/ask ratio for boost
+    depth_block_on_ask_wall: bool = True  # Block entry if strong ask wall nearby
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -1094,6 +1100,53 @@ class HFTScalper:
 
             except Exception as e:
                 logger.warning(f"Float rotation check failed for {symbol}: {e}")
+
+        # Apply Level 2 Depth Analysis if enabled
+        if signal and getattr(self.config, 'use_depth_analysis', True):
+            try:
+                from ai.level2_depth_analyzer import get_depth_analyzer
+
+                analyzer = get_depth_analyzer()
+                analysis = analyzer.get_analysis(symbol)
+
+                if analysis:
+                    # Check entry validity from depth
+                    if not analysis.entry_valid:
+                        if getattr(self.config, 'depth_block_on_ask_wall', True):
+                            logger.info(f"DEPTH REJECT: {symbol} - {analysis.entry_reason}")
+                            signal = None
+
+                    # Check for bullish imbalance requirement
+                    elif getattr(self.config, 'depth_require_bullish_imbalance', False):
+                        min_ratio = getattr(self.config, 'depth_min_imbalance_ratio', 1.2)
+                        if analysis.imbalance_ratio < min_ratio:
+                            logger.info(
+                                f"DEPTH REJECT: {symbol} - Imbalance {analysis.imbalance_ratio:.2f} "
+                                f"< {min_ratio} required"
+                            )
+                            signal = None
+
+                    if signal:
+                        # Get boost from depth
+                        boost = analyzer.get_entry_boost(symbol)
+                        signal['depth_signal'] = analysis.signal.value
+                        signal['depth_imbalance'] = analysis.imbalance_ratio
+                        signal['depth_boost'] = boost
+
+                        if analysis.suggested_stop:
+                            signal['depth_stop'] = analysis.suggested_stop
+                        if analysis.suggested_target:
+                            signal['depth_target'] = analysis.suggested_target
+
+                        # Log depth info
+                        if boost != 0:
+                            logger.info(
+                                f"DEPTH: {symbol} - {analysis.signal.value}, "
+                                f"imbalance {analysis.imbalance_ratio:.2f}, boost {boost:+.0%}"
+                            )
+
+            except Exception as e:
+                logger.warning(f"Depth analysis check failed for {symbol}: {e}")
 
         if signal and self.on_signal:
             self.on_signal(signal)

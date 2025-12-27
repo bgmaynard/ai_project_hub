@@ -1425,3 +1425,86 @@ POST /api/warrior/exhaustion/config        - Update config
 
 **Polygon Integration:**
 Exhaustion detector is wired to Polygon streaming via `wire_exhaustion_detector()`. Builds candles from trades and analyzes quotes for spread.
+
+### Level 2 Depth Analyzer (Order Book Signals)
+
+Analyze order book depth for trading signals. Detect walls, absorption, and imbalance.
+
+| File | Purpose |
+|------|---------|
+| `ai/level2_depth_analyzer.py` | Order book analysis and wall detection |
+
+**Key Concepts:**
+- **Bid Walls** - Large buy orders = support levels
+- **Ask Walls** - Large sell orders = resistance levels
+- **Absorption** - Wall getting eaten = breakout imminent
+- **Spoofing** - Walls that appear/disappear = fake orders
+- **Imbalance** - Bid > Ask = bullish pressure
+
+**Wall Detection:**
+- Wall = 3x average level size (configurable)
+- Minimum wall size: 5,000 shares
+- Track walls within 2% of current price
+
+**Wall Status:**
+- `ACTIVE` - Wall is present
+- `ABSORBING` - Wall being eaten (30%+ consumed)
+- `ABSORBED` - Wall fully eaten (80%+ gone) = breakout
+- `DISAPPEARED` - Wall vanished quickly = spoofing
+- `REINFORCED` - Wall got bigger
+
+**Signals:**
+- `BULLISH_IMBALANCE` - More bids than asks
+- `BEARISH_IMBALANCE` - More asks than bids
+- `ASK_ABSORPTION` - Ask wall being eaten (bullish breakout)
+- `BID_ABSORPTION` - Bid wall being eaten (bearish breakdown)
+- `SPOOFING_DETECTED` - Fake wall detected
+
+**API Endpoints:**
+```
+GET  /api/warrior/depth/{symbol}           - Get depth snapshot
+GET  /api/warrior/depth/analysis/{symbol}  - Get trading analysis
+GET  /api/warrior/depth/walls/{symbol}     - Get active walls
+GET  /api/warrior/depth/imbalance/{symbol} - Get imbalance trend
+GET  /api/warrior/depth/check/{symbol}     - Check entry validity
+POST /api/warrior/depth/update/{symbol}    - Update depth data
+GET  /api/warrior/depth/status             - Analyzer status
+POST /api/warrior/depth/config             - Update config
+```
+
+**Scalper Config:**
+```json
+{
+  "use_depth_analysis": true,           // Use order book for decisions
+  "depth_require_bullish_imbalance": false, // Require bid > ask
+  "depth_min_imbalance_ratio": 1.2,     // Min ratio for boost
+  "depth_block_on_ask_wall": true       // Block if strong ask wall nearby
+}
+```
+
+**Confidence Boost:**
+- Bullish imbalance (moderate): +5%
+- Bullish imbalance (strong): +10%
+- Ask absorption: +15% (breakout signal)
+- Bearish imbalance: -5% to -10%
+- Bid absorption: -15%
+- Spoofing detected: -10%
+
+**Example Response:**
+```json
+{
+  "symbol": "AAPL",
+  "signal": "BULLISH_IMBALANCE",
+  "confidence": 72.5,
+  "imbalance_ratio": 1.85,
+  "imbalance_strength": "MODERATE",
+  "nearest_bid_wall": {"price": 184.50, "size": 15000, "status": "ACTIVE"},
+  "nearest_ask_wall": {"price": 185.25, "size": 8000, "status": "ABSORBING"},
+  "entry_valid": true,
+  "suggested_stop": 184.45,
+  "suggested_target": 185.25
+}
+```
+
+**Polygon Integration:**
+Depth analyzer is wired to Polygon streaming via `wire_depth_analyzer()`. Uses NBBO quotes for top-of-book analysis.
