@@ -80,10 +80,18 @@ class ChronosExitManager:
     """
     Monitors open positions with Chronos context.
     Provides early exit signals when momentum fades.
+
+    STATE MACHINE INTEGRATION:
+    - Entry logic owns: IDLE → ATTENTION → SETUP → IGNITION
+    - Exit/Monitor logic (Chronos) owns: IN_POSITION → EXIT
+    - On exit signal, state machine transitions to EXIT → COOLDOWN
     """
 
     def __init__(self):
         self.positions: Dict[str, PositionContext] = {}
+
+        # State machine integration (lazy loaded)
+        self._state_machine = None
 
         # Exit thresholds (tuned for momentum scalping)
         self.config = {
@@ -126,7 +134,18 @@ class ChronosExitManager:
         self._chronos_adapter = None
         self._init_chronos()
 
-        logger.info("ChronosExitManager initialized")
+        logger.info("ChronosExitManager initialized with state machine support")
+
+    @property
+    def state_machine(self):
+        """Lazy load state machine for position tracking"""
+        if self._state_machine is None:
+            try:
+                from ai.momentum_state_machine import get_state_machine
+                self._state_machine = get_state_machine()
+            except Exception as e:
+                logger.warning(f"State machine init failed: {e}")
+        return self._state_machine
 
     def _init_chronos(self):
         """Initialize Chronos adapter"""
@@ -144,7 +163,29 @@ class ChronosExitManager:
         """
         Register a new position for Chronos monitoring.
         Called when scalper enters a trade.
+
+        STATE MACHINE HANDOFF:
+        - Entry logic (HFT Scalper) has transitioned to IN_POSITION
+        - Chronos Exit Manager now takes over position monitoring
+        - Exit signals will trigger state machine EXIT → COOLDOWN
         """
+        # Verify state machine handoff (state should be IN_POSITION)
+        state_info = None
+        if self.state_machine:
+            try:
+                from ai.momentum_state_machine import MomentumState
+                symbol_state = self.state_machine.get_state(symbol)
+                if symbol_state and symbol_state.state == MomentumState.IN_POSITION:
+                    logger.info(f"[STATE HANDOFF] {symbol}: Entry logic → Chronos Exit Manager")
+                    state_info = self.state_machine.get_state_info(symbol)
+                elif symbol_state is not None:
+                    logger.warning(
+                        f"[STATE HANDOFF] {symbol}: Expected IN_POSITION, got {symbol_state.state.value}. "
+                        f"Chronos will still monitor."
+                    )
+            except Exception as e:
+                logger.debug(f"State machine check failed: {e}")
+
         # Get initial context
         initial_context = self._get_chronos_context(symbol)
 
@@ -170,6 +211,11 @@ class ChronosExitManager:
 
         self.positions[symbol] = ctx
 
+        # Sync position info from state machine if available
+        if state_info:
+            ctx.entry_price = state_info.get("entry_price", entry_price)
+            logger.debug(f"[STATE SYNC] {symbol}: Entry price synced from state machine")
+
         logger.info(
             f"[CHRONOS EXIT] Registered {symbol}: "
             f"Regime={ctx.entry_regime}, "
@@ -180,10 +226,40 @@ class ChronosExitManager:
         return ctx
 
     def unregister_position(self, symbol: str):
-        """Remove position from monitoring (on exit)"""
+        """
+        Remove position from monitoring (on exit).
+
+        STATE MACHINE NOTE:
+        The HFT Scalper handles state machine transition to EXIT → COOLDOWN.
+        Chronos just cleans up its internal tracking here.
+        """
         if symbol in self.positions:
+            ctx = self.positions[symbol]
+            hold_seconds = (datetime.now() - ctx.entry_time).total_seconds()
+            max_gain = (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100 if ctx.entry_price > 0 else 0
+
             del self.positions[symbol]
-            logger.debug(f"[CHRONOS EXIT] Unregistered {symbol}")
+
+            logger.info(
+                f"[CHRONOS EXIT] Unregistered {symbol}: "
+                f"Hold={hold_seconds:.0f}s, MaxGain={max_gain:.1f}%, "
+                f"Stalls={ctx.stall_count}"
+            )
+
+    def get_state_machine_status(self, symbol: str) -> Optional[Dict]:
+        """Get state machine status for a symbol"""
+        if not self.state_machine:
+            return None
+        try:
+            symbol_state = self.state_machine.get_state(symbol)
+            info = self.state_machine.get_state_info(symbol)
+            return {
+                "state": symbol_state.state.value if symbol_state else "UNKNOWN",
+                "info": info
+            }
+        except Exception as e:
+            logger.debug(f"State machine status failed for {symbol}: {e}")
+            return None
 
     def _get_chronos_context(self, symbol: str) -> Dict:
         """Get current Chronos context for a symbol"""
@@ -637,11 +713,14 @@ class ChronosExitManager:
         return signal
 
     def get_position_contexts(self) -> Dict[str, Dict]:
-        """Get all position contexts for dashboard display"""
+        """Get all position contexts for dashboard display (includes state machine status)"""
         result = {}
         for symbol, ctx in self.positions.items():
             hold_seconds = (datetime.now() - ctx.entry_time).total_seconds()
             max_gain_pct = (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100 if ctx.entry_price > 0 else 0
+
+            # Get state machine status
+            sm_status = self.get_state_machine_status(symbol)
 
             result[symbol] = {
                 "symbol": symbol,
@@ -660,7 +739,9 @@ class ChronosExitManager:
                 "high_since_entry": ctx.high_since_entry,
                 "max_gain_pct": max_gain_pct,
                 "momentum_stalled": ctx.momentum_stalled,
-                "stall_count": ctx.stall_count
+                "stall_count": ctx.stall_count,
+                # State machine integration
+                "state_machine": sm_status
             }
         return result
 
@@ -689,24 +770,61 @@ def get_chronos_exit_manager() -> ChronosExitManager:
 
 
 if __name__ == "__main__":
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
     logging.basicConfig(level=logging.INFO)
 
     print("=" * 60)
-    print("CHRONOS EXIT MANAGER TEST")
+    print("CHRONOS EXIT MANAGER + STATE MACHINE TEST")
     print("=" * 60)
 
-    manager = get_chronos_exit_manager()
+    # First, set up state machine to IN_POSITION (simulate entry)
+    print("\n1. Setting up state machine...")
+    from ai.momentum_state_machine import get_state_machine, MomentumState
+    sm = get_state_machine()
 
-    # Simulate position registration
+    # Transition AAPL through states to IN_POSITION
+    sm.update_momentum("AAPL", 45, {"grade": "D"})  # -> ATTENTION
+    sm.update_momentum("AAPL", 60, {"grade": "C"})  # -> SETUP
+    sm.update_momentum("AAPL", 75, {"grade": "B"})  # -> IGNITION
+    sm.enter_position("AAPL", 150.0, 10, 147.0, 154.5)  # -> IN_POSITION
+
+    symbol_state = sm.get_state("AAPL")
+    print(f"   State machine state: {symbol_state.state.value if symbol_state else 'None'}")
+    assert symbol_state.state == MomentumState.IN_POSITION, f"Expected IN_POSITION, got {symbol_state.state}"
+
+    # Now register with Chronos Exit Manager
+    print("\n2. Registering position with Chronos Exit Manager...")
+    manager = get_chronos_exit_manager()
     manager.register_position("AAPL", 150.0)
 
+    # Check state machine status is visible
+    sm_status = manager.get_state_machine_status("AAPL")
+    print(f"   State machine status: {sm_status}")
+
     # Simulate exit check
+    print("\n3. Testing exit signal detection...")
     import time
     time.sleep(11)  # Wait past min hold time
 
     signal = manager.check_exit("AAPL", 148.5, 150.0)  # -1% loss
-    print(f"\nExit Signal: {signal}")
+    print(f"   Exit Signal: should_exit={signal.should_exit}, reason={signal.reason}")
 
-    print("\nPosition Contexts:")
-    for sym, ctx in manager.get_position_contexts().items():
-        print(f"  {sym}: {ctx}")
+    # Check position context includes state machine
+    print("\n4. Checking position contexts...")
+    contexts = manager.get_position_contexts()
+    for sym, ctx in contexts.items():
+        print(f"   {sym}:")
+        print(f"      Entry: ${ctx['entry_price']:.2f}")
+        print(f"      Regime: {ctx['current_regime']}")
+        print(f"      State Machine: {ctx.get('state_machine', 'N/A')}")
+
+    # Unregister (simulating exit)
+    print("\n5. Unregistering position (exit)...")
+    manager.unregister_position("AAPL")
+
+    print("\n" + "=" * 60)
+    print("STATE MACHINE HANDOFF TEST PASSED!")
+    print("=" * 60)

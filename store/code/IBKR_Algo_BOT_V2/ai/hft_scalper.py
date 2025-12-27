@@ -197,6 +197,12 @@ class ScalperConfig:
     low_float_min_volume_ratio: float = 5.0  # Min volume vs avg to qualify
     low_float_min_rotation: float = 50.0  # Min float rotation % to qualify
 
+    # Momentum State Machine (ChatGPT recommendation)
+    use_state_machine: bool = True  # Use state machine for entry decisions
+    state_machine_attention_score: int = 40  # Score to enter ATTENTION
+    state_machine_setup_score: int = 55  # Score to enter SETUP
+    state_machine_ignition_score: int = 70  # Score to enter IGNITION (allow entry)
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -347,6 +353,10 @@ class HFTScalper:
         # Priority queue for news-triggered entries
         self.priority_symbols: List[str] = []  # Symbols to check immediately
 
+        # Momentum State Machine (ChatGPT recommendation)
+        self._state_machine = None  # Lazy init
+        self._momentum_scorer = None  # Lazy init
+
         # Pullback confirmation tracking (Warrior method)
         self.pullback_watches: Dict[str, PullbackWatch] = {}  # symbol -> watch state
 
@@ -363,6 +373,22 @@ class HFTScalper:
         self._load_trades()
 
         logger.info("HFTScalper initialized")
+
+    @property
+    def state_machine(self):
+        """Lazy init momentum state machine"""
+        if self._state_machine is None:
+            from ai.momentum_state_machine import get_state_machine
+            self._state_machine = get_state_machine()
+        return self._state_machine
+
+    @property
+    def momentum_scorer(self):
+        """Lazy init momentum scorer"""
+        if self._momentum_scorer is None:
+            from ai.momentum_score import get_momentum_scorer
+            self._momentum_scorer = get_momentum_scorer()
+        return self._momentum_scorer
 
     def _load_config(self):
         """Load config from file"""
@@ -710,6 +736,69 @@ class HFTScalper:
         if blocked_start <= et_time <= blocked_end and not priority:
             logger.debug(f"TIME BLOCK: {symbol} - {et_time} ET in blocked range {blocked_start}-{blocked_end}")
             return None
+
+        # ===== MOMENTUM STATE MACHINE (ChatGPT recommendation) =====
+        # Only allow entry when state machine is in IGNITION state
+        # This provides unified entry decision logic
+        momentum_score_result = None
+        if getattr(self.config, 'use_state_machine', True):
+            try:
+                from ai.momentum_state_machine import MomentumState, TransitionReason
+
+                # Calculate momentum score
+                prices = self.price_history.get(symbol, [])
+                prices_30s = [p.price for p in prices[-10:]] if len(prices) >= 10 else []
+                prices_60s = [p.price for p in prices[-20:]] if len(prices) >= 20 else []
+                prices_5m = [p.price for p in prices[-60:]] if len(prices) >= 60 else []
+
+                # Get additional data for scoring
+                spread_pct = ((ask - bid) / price * 100) if bid and ask and price > 0 else 0
+                buy_pressure = quote.get('buy_pressure', 0.5)
+
+                momentum_score_result = self.momentum_scorer.calculate(
+                    symbol=symbol,
+                    current_price=price,
+                    prices_30s=prices_30s,
+                    prices_60s=prices_60s,
+                    prices_5m=prices_5m,
+                    current_volume=volume,
+                    spread_pct=spread_pct,
+                    buy_pressure=buy_pressure
+                )
+
+                # Update state machine with score
+                new_state = self.state_machine.update_momentum(
+                    symbol, momentum_score_result.score,
+                    {'score_details': momentum_score_result.to_dict()}
+                )
+
+                # Check if symbol is in IGNITION state
+                symbol_state = self.state_machine.get_state(symbol)
+                if symbol_state:
+                    if symbol_state.state != MomentumState.IGNITION:
+                        # Not in IGNITION - log but allow priority entries to bypass
+                        if not priority:
+                            logger.debug(
+                                f"STATE MACHINE: {symbol} in {symbol_state.state.value} "
+                                f"(score {momentum_score_result.score}/100) - waiting for IGNITION"
+                            )
+                            return None
+                        else:
+                            logger.info(
+                                f"STATE MACHINE BYPASS: {symbol} - Priority entry bypassing state "
+                                f"(current: {symbol_state.state.value}, score: {momentum_score_result.score})"
+                            )
+                    else:
+                        logger.info(
+                            f"STATE MACHINE IGNITION: {symbol} ready for entry "
+                            f"(score {momentum_score_result.score}/100, grade {momentum_score_result.grade.value})"
+                        )
+
+                # Check timeouts
+                self.state_machine.check_timeouts()
+
+            except Exception as e:
+                logger.warning(f"State machine error for {symbol}: {e}")
 
         # Track price history
         if symbol not in self.price_history:
@@ -1296,6 +1385,13 @@ class HFTScalper:
             except Exception as e:
                 logger.warning(f"Overnight continuation check failed for {symbol}: {e}")
 
+        # Add momentum score data to signal if available
+        if signal and momentum_score_result:
+            signal['momentum_score'] = momentum_score_result.score
+            signal['momentum_grade'] = momentum_score_result.grade.value
+            signal['momentum_ignition_ready'] = momentum_score_result.ignition_ready
+            signal['momentum_reasons'] = momentum_score_result.reasons
+
         if signal and self.on_signal:
             self.on_signal(signal)
 
@@ -1712,6 +1808,19 @@ class HFTScalper:
         self.daily_trades += 1
         self._save_trades()
 
+        # Transition state machine to IN_POSITION
+        if getattr(self.config, 'use_state_machine', True):
+            try:
+                self.state_machine.enter_position(
+                    symbol=symbol,
+                    entry_price=price,
+                    shares=shares,
+                    stop_price=atr_stop_price,
+                    target_price=atr_target_price
+                )
+            except Exception as e:
+                logger.warning(f"State machine enter_position error: {e}")
+
         logger.info(f"ENTRY: {symbol} {shares} @ ${price:.2f} | Signal: {signal.get('type')}")
 
         if self.on_entry:
@@ -1774,6 +1883,25 @@ class HFTScalper:
             exit_mgr.unregister_position(symbol)
         except Exception:
             pass
+
+        # Transition state machine to EXIT/COOLDOWN
+        if getattr(self.config, 'use_state_machine', True):
+            try:
+                from ai.momentum_state_machine import TransitionReason
+                # Map exit reason to TransitionReason
+                reason_map = {
+                    'stop_loss': TransitionReason.STOP_LOSS,
+                    'profit_target': TransitionReason.PROFIT_TARGET,
+                    'trailing_stop': TransitionReason.TRAILING_STOP,
+                    'momentum_failed': TransitionReason.MOMENTUM_FAILED,
+                    'regime_change': TransitionReason.REGIME_CHANGE,
+                    'max_hold': TransitionReason.MAX_HOLD_TIME,
+                }
+                exit_reason_str = trade.exit_reason.lower().replace(' ', '_')
+                transition_reason = reason_map.get(exit_reason_str, TransitionReason.MANUAL_EXIT)
+                self.state_machine.exit_position(symbol, transition_reason, trade.pnl_percent)
+            except Exception as e:
+                logger.warning(f"State machine exit_position error: {e}")
 
         pnl_emoji = "WIN" if trade.pnl > 0 else "LOSS"
         logger.info(

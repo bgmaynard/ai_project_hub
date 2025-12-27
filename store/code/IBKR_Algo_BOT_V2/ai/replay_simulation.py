@@ -268,6 +268,135 @@ def run_replay(date: str = None, min_change_pct: float = 3.0):
     return results
 
 
+def simulate_state_machine(symbols: list = None, verbose: bool = True):
+    """
+    Simulate the momentum state machine on a list of symbols.
+    Tests the new state machine architecture with real market data.
+
+    Args:
+        symbols: List of symbols to test (defaults to scalper watchlist)
+        verbose: Print detailed output
+    """
+    from ai.momentum_state_machine import get_state_machine, MomentumState
+    from ai.momentum_score import MomentumScorer
+
+    if symbols is None:
+        # Load from scalper config
+        config_path = os.path.join(os.path.dirname(__file__), "scalper_config.json")
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            symbols = config.get('watchlist', [])[:5]  # Top 5 for speed
+        else:
+            symbols = ["AAPL", "TSLA", "NVDA"]
+
+    print(f"\n{'='*60}")
+    print("STATE MACHINE SIMULATION")
+    print(f"{'='*60}")
+    print(f"Testing symbols: {symbols}")
+
+    sm = get_state_machine()
+    scorer = MomentumScorer()
+
+    results = {
+        'tested': 0,
+        'reached_ignition': [],
+        'stuck_in_attention': [],
+        'stuck_in_setup': [],
+        'no_momentum': []
+    }
+
+    for symbol in symbols:
+        print(f"\n--- {symbol} ---")
+        results['tested'] += 1
+
+        try:
+            # Get historical prices for scoring
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period="1d", interval="1m")
+
+            if len(hist) < 30:
+                print(f"  Insufficient data ({len(hist)} bars)")
+                results['no_momentum'].append(symbol)
+                continue
+
+            # Get current quote
+            current_price = hist['Close'].iloc[-1]
+            spread_pct = 0.1  # Estimated for simulation
+
+            # Calculate momentum score
+            prices_30s = hist['Close'].iloc[-6:].tolist()  # ~30s of 5s bars
+            prices_60s = hist['Close'].iloc[-12:].tolist()
+            prices_5m = hist['Close'].iloc[-60:].tolist() if len(hist) >= 60 else hist['Close'].tolist()
+            current_volume = int(hist['Volume'].iloc[-1])
+
+            score_result = scorer.calculate(
+                symbol=symbol,
+                current_price=current_price,
+                prices_30s=prices_30s,
+                prices_60s=prices_60s,
+                prices_5m=prices_5m,
+                current_volume=current_volume,
+                spread_pct=spread_pct,
+                buy_pressure=0.55,  # Neutral for simulation
+                tape_signal="NEUTRAL"
+            )
+
+            if verbose:
+                print(f"  Price: ${current_price:.2f}")
+                print(f"  Momentum Score: {score_result.score}/100 (Grade {score_result.grade.value})")
+                print(f"    - Price Urgency: {score_result.price_urgency.total:.0f}/40")
+                print(f"    - Participation: {score_result.participation.total:.0f}/35")
+                print(f"    - Liquidity: {score_result.liquidity.total:.0f}/25")
+                print(f"  Tradeable: {score_result.is_tradeable}, Ignition Ready: {score_result.ignition_ready}")
+
+            # Simulate state machine transitions
+            details = {
+                "grade": score_result.grade.value,
+                "price_urgency": score_result.price_urgency.total,
+                "participation": score_result.participation.total,
+                "liquidity": score_result.liquidity.total,
+                "tradeable": score_result.is_tradeable,
+                "ignition_ready": score_result.ignition_ready
+            }
+
+            new_state = sm.update_momentum(symbol, score_result.score, details)
+
+            if new_state:
+                state_obj = sm.get_state(symbol)
+                final_state = state_obj.state if state_obj else MomentumState.IDLE
+                print(f"  State: {final_state.value}")
+
+                if final_state == MomentumState.IGNITION:
+                    results['reached_ignition'].append(symbol)
+                    print(f"  --> IGNITION TRIGGERED! Ready to enter.")
+                elif final_state == MomentumState.SETUP:
+                    results['stuck_in_setup'].append(symbol)
+                elif final_state == MomentumState.ATTENTION:
+                    results['stuck_in_attention'].append(symbol)
+                else:
+                    results['no_momentum'].append(symbol)
+            else:
+                results['no_momentum'].append(symbol)
+                print(f"  State: IDLE (no momentum)")
+
+        except Exception as e:
+            print(f"  Error: {e}")
+            results['no_momentum'].append(symbol)
+
+    # Summary
+    print(f"\n{'='*60}")
+    print("STATE MACHINE SIMULATION SUMMARY")
+    print(f"{'='*60}")
+    print(f"Symbols tested: {results['tested']}")
+    print(f"Reached IGNITION: {len(results['reached_ignition'])} - {results['reached_ignition']}")
+    print(f"In SETUP: {len(results['stuck_in_setup'])} - {results['stuck_in_setup']}")
+    print(f"In ATTENTION: {len(results['stuck_in_attention'])} - {results['stuck_in_attention']}")
+    print(f"No momentum: {len(results['no_momentum'])} - {results['no_momentum']}")
+
+    return results
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -276,7 +405,14 @@ if __name__ == "__main__":
                         help="Date to replay (YYYY-MM-DD)")
     parser.add_argument("--min-change", "-m", type=float, default=3.0,
                         help="Minimum price change percent")
+    parser.add_argument("--state-machine", "-s", action="store_true",
+                        help="Run state machine simulation instead")
+    parser.add_argument("--symbols", nargs="*", default=None,
+                        help="Symbols to test (for state machine mode)")
 
     args = parser.parse_args()
 
-    run_replay(date=args.date, min_change_pct=args.min_change)
+    if args.state_machine:
+        simulate_state_machine(symbols=args.symbols)
+    else:
+        run_replay(date=args.date, min_change_pct=args.min_change)

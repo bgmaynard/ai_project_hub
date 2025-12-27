@@ -1,0 +1,1239 @@
+{
+  "total_trades": 114,
+  "old_system": {
+    "winners": 33,
+    "losers": 81,
+    "total_pnl": -304.4549999999999
+  },
+  "new_system": {
+    "would_trade": 11,
+    "would_skip": 103,
+    "winners_taken": 11,
+    "losers_avoided": 81,
+    "winners_missed": 22,
+    "losers_taken": 0,
+    "total_pnl": 140.40000000000006
+  },
+  "by_reason": {
+    "IDLE (score 10 < 40)": {
+      "count": 26,
+      "pnl": -387.0,
+      "winners": 0,
+      "losers": 26
+    },
+    "IGNITION (score 85)": {
+      "count": 2,
+      "pnl": 42.954999999999984,
+      "winners": 2,
+      "losers": 0
+    },
+    "ATTENTION only (score 40 < 55)": {
+      "count": 43,
+      "pnl": -44.46499999999999,
+      "winners": 0,
+      "losers": 43
+    },
+    "ATTENTION only (score 50 < 55)": {
+      "count": 12,
+      "pnl": 26.72499999999998,
+      "winners": 12,
+      "losers": 0
+    },
+    "ATTENTION only (score 45 < 55)": {
+      "count": 7,
+      "pnl": 6.155000000000074,
+      "winners": 6,
+      "losers": 1
+    },
+    "IGNITION (score 75)": {
+      "count": 3,
+      "pnl": 16.74000000000003,
+      "winners": 3,
+      "losers": 0
+    },
+    "SETUP only (score 55 < 70)": {
+      "count": 2,
+      "pnl": 8.469999999999995,
+      "winners": 2,
+      "losers": 0
+    },
+    "SETUP only (score 60 < 70)": {
+      "count": 2,
+      "pnl": -2.7800000000000025,
+      "winners": 0,
+      "losers": 2
+    },
+    "SETUP only (score 65 < 70)": {
+      "count": 2,
+      "pnl": 1.7450000000000037,
+      "winners": 2,
+      "losers": 0
+    },
+    "IDLE (score 35 < 40)": {
+      "count": 8,
+      "pnl": -42.02500000000005,
+      "winners": 0,
+      "losers": 8
+    },
+    "IGNITION (score 70)": {
+      "count": 1,
+      "pnl": 3.7200000000000033,
+      "winners": 1,
+      "losers": 0
+    },
+    "IGNITION (score 80)": {
+      "count": 5,
+      "pnl": 76.98500000000004,
+      "winners": 5,
+      "losers": 0
+    },
+    "IDLE (score 20 < 40)": {
+      "count": 1,
+      "pnl": -11.68000000000001,
+      "winners": 0,
+      "losers": 1
+    }
+  },
+  "detailed": [
+    {
+      "symbol": "RILY",
+      "pnl": -14.85000000000002,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": 17.70999999999998,
+      "exit_reason": "PROFIT_TARGET",
+      "is_winner": true,
+      "momentum_score": 85,
+      "momentum_grade": "A",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "ISPO",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "RILY",
+      "pnl": 1.3750000000000195,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "RILY",
+      "pnl": -9.900000000000034,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": -15.400000000000013,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "SOUN",
+      "pnl": 1.4500000000000206,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 45,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 45 < 55)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": 0.785000000000053,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "RILY",
+      "pnl": -2.80000000000004,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 25.245000000000005,
+      "exit_reason": "PROFIT_TARGET",
+      "is_winner": true,
+      "momentum_score": 85,
+      "momentum_grade": "A",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": -20.540000000000017,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "ISPO",
+      "pnl": 0.3999999999999915,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 45,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 45 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -15.014999999999997,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": -12.560000000000011,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 1.4799999999999685,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "SOUN",
+      "pnl": -0.870000000000033,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 5.180000000000021,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 75,
+      "momentum_grade": "B",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "AZI",
+      "pnl": -12.879999999999976,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "RILY",
+      "pnl": 3.769999999999971,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": true,
+      "momentum_score": 55,
+      "momentum_grade": "C",
+      "would_trade": false,
+      "skip_reason": "SETUP only (score 55 < 70)"
+    },
+    {
+      "symbol": "ISPO",
+      "pnl": 2.40000000000002,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 0,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": false,
+      "momentum_score": 60,
+      "momentum_grade": "C",
+      "would_trade": false,
+      "skip_reason": "SETUP only (score 60 < 70)"
+    },
+    {
+      "symbol": "SOUN",
+      "pnl": -2.175000000000031,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ISPO",
+      "pnl": -1.1849999999999747,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": 0.8249999999999824,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 65,
+      "momentum_grade": "C",
+      "would_trade": false,
+      "skip_reason": "SETUP only (score 65 < 70)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": -16.100000000000016,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "SOUN",
+      "pnl": 2.1749999999999794,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": -14.849999999999977,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -2.7800000000000025,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": false,
+      "momentum_score": 60,
+      "momentum_grade": "C",
+      "would_trade": false,
+      "skip_reason": "SETUP only (score 60 < 70)"
+    },
+    {
+      "symbol": "BDRX",
+      "pnl": -2.499999999999991,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -11.12000000000001,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "SOUN",
+      "pnl": 0.14500000000002267,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 45,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 45 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 5.680000000000005,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 75,
+      "momentum_grade": "B",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "SOUN",
+      "pnl": 3.769999999999971,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "RILY",
+      "pnl": 2.160000000000002,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "SOUN",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": -8.324999999999987,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 35,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 35 < 40)"
+    },
+    {
+      "symbol": "RILY",
+      "pnl": -5.670000000000023,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 35,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 35 < 40)"
+    },
+    {
+      "symbol": "MBRX",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "AZI",
+      "pnl": -3.220000000000003,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "MBRX",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": 3.7200000000000033,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 70,
+      "momentum_grade": "B",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "AZI",
+      "pnl": -1.6199999999999655,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "MBRX",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": -7.2800000000000065,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 35,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 35 < 40)"
+    },
+    {
+      "symbol": "AZI",
+      "pnl": 3.260000000000003,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "MBRX",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "BDRX",
+      "pnl": -1.000000000000023,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 0,
+      "exit_reason": "",
+      "is_winner": false,
+      "momentum_score": 35,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 35 < 40)"
+    },
+    {
+      "symbol": "AMCI",
+      "pnl": -0.9899999999999789,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "AMCI",
+      "pnl": 1.5299999999999976,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 45,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 45 < 55)"
+    },
+    {
+      "symbol": "AMCI",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "AMCI",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "DJT",
+      "pnl": -10.250000000000004,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 2.8200000000000025,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "DJT",
+      "pnl": -2.080000000000002,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 2.8000000000000025,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "DJT",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "DJT",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -2.7600000000000025,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "EVTV",
+      "pnl": 11.879999999999944,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 80,
+      "momentum_grade": "A",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "EVTV",
+      "pnl": 5.880000000000005,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 75,
+      "momentum_grade": "B",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "EVTV",
+      "pnl": -11.679999999999946,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "EVTV",
+      "pnl": -11.759999999999945,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "LHAI",
+      "pnl": -31.459999999999994,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "LHAI",
+      "pnl": 13.530000000000005,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 80,
+      "momentum_grade": "A",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "LHAI",
+      "pnl": -10.879999999999995,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "ATHA",
+      "pnl": 3.009999999999974,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "KLRS",
+      "pnl": -1.550000000000022,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -2.175000000000018,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ATHA",
+      "pnl": 1.2600000000000104,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 45,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 45 < 55)"
+    },
+    {
+      "symbol": "KLRS",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ATHA",
+      "pnl": 12.60000000000003,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 80,
+      "momentum_grade": "A",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 28.27500000000004,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 80,
+      "momentum_grade": "A",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "PHUN",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ATHA",
+      "pnl": -4.400000000000048,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 35,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 35 < 40)"
+    },
+    {
+      "symbol": "KLRS",
+      "pnl": -2.8999999999999897,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -12.059999999999981,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 0.6899999999999853,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": true,
+      "momentum_score": 50,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 50 < 55)"
+    },
+    {
+      "symbol": "ATHA",
+      "pnl": -5.599999999999952,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "INBS",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": 1.3700000000000316,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": true,
+      "momentum_score": 45,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 45 < 55)"
+    },
+    {
+      "symbol": "PHUN",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "INBS",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "ATHA",
+      "pnl": -14.800000000000004,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "PHUN",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "INBS",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "PHUN",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "INBS",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "PHUN",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "LHAI",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "LHAI",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": -6.960000000000006,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 35,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 35 < 40)"
+    },
+    {
+      "symbol": "LHAI",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": -3.4499999999999775,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 35,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 35 < 40)"
+    },
+    {
+      "symbol": "LHAI",
+      "pnl": -43.19999999999999,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": -13.320000000000011,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": -13.519999999999989,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": 10.70000000000001,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 80,
+      "momentum_grade": "A",
+      "would_trade": true,
+      "skip_reason": ""
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": 0,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": false,
+      "momentum_score": 45,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 45 < 55)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": -8.100000000000026,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": -10.229999999999988,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": 4.700000000000025,
+      "exit_reason": "REVERSAL_DETECTED",
+      "is_winner": true,
+      "momentum_score": 55,
+      "momentum_grade": "C",
+      "would_trade": false,
+      "skip_reason": "SETUP only (score 55 < 70)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": -13.020000000000012,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": 0.9200000000000212,
+      "exit_reason": "TRAILING_STOP",
+      "is_winner": true,
+      "momentum_score": 65,
+      "momentum_grade": "C",
+      "would_trade": false,
+      "skip_reason": "SETUP only (score 65 < 70)"
+    },
+    {
+      "symbol": "PAVS",
+      "pnl": -10.119999999999989,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -2.9399999999999373,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -10.575000000000024,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -11.309999999999992,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "ADTX",
+      "pnl": -15.600000000000014,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 10,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 10 < 40)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -11.68000000000001,
+      "exit_reason": "STOP_LOSS",
+      "is_winner": false,
+      "momentum_score": 20,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 20 < 40)"
+    },
+    {
+      "symbol": "YCBD",
+      "pnl": -5.940000000000005,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 35,
+      "momentum_grade": "F",
+      "would_trade": false,
+      "skip_reason": "IDLE (score 35 < 40)"
+    },
+    {
+      "symbol": "NRXS",
+      "pnl": 0,
+      "exit_reason": "MAX_HOLD_TIME",
+      "is_winner": false,
+      "momentum_score": 40,
+      "momentum_grade": "D",
+      "would_trade": false,
+      "skip_reason": "ATTENTION only (score 40 < 55)"
+    }
+  ]
+}
