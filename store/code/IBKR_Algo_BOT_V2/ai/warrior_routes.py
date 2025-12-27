@@ -1337,3 +1337,271 @@ async def update_depth_config(config: Dict):
     except Exception as e:
         logger.error(f"Depth config error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# GAP GRADER ENDPOINTS
+# ============================================================================
+
+@router.get("/gap/status")
+async def get_gap_grader_status():
+    """Get gap grader status"""
+    try:
+        from ai.gap_grader import get_gap_grader
+
+        grader = get_gap_grader()
+        return grader.get_status()
+
+    except Exception as e:
+        logger.error(f"Gap grader status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/gap/grade/{symbol}")
+async def grade_gap(
+    symbol: str,
+    gap_percent: float,
+    current_price: float,
+    prior_close: float,
+    premarket_volume: int = 0,
+    float_shares: int = 0,
+    avg_volume: int = 0,
+    prior_day_change: float = 0,
+    catalyst_headline: str = "",
+    premarket_high: float = 0,
+    premarket_low: float = 0
+):
+    """Grade a gap using Ross Cameron methodology"""
+    try:
+        from ai.gap_grader import get_gap_grader
+
+        grader = get_gap_grader()
+        graded = grader.grade_gap(
+            symbol=symbol,
+            gap_percent=gap_percent,
+            current_price=current_price,
+            prior_close=prior_close,
+            premarket_volume=premarket_volume,
+            float_shares=float_shares,
+            avg_volume=avg_volume,
+            prior_day_change=prior_day_change,
+            catalyst_headline=catalyst_headline,
+            premarket_high=premarket_high,
+            premarket_low=premarket_low
+        )
+
+        return graded.to_dict()
+
+    except Exception as e:
+        logger.error(f"Gap grading error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gap/{symbol}")
+async def get_gap_grade(symbol: str):
+    """Get graded gap for symbol"""
+    try:
+        from ai.gap_grader import get_gap_grader
+
+        grader = get_gap_grader()
+        graded = grader.get_grade(symbol)
+
+        if graded:
+            return graded.to_dict()
+        else:
+            return {"symbol": symbol, "graded": False, "message": "Symbol not graded yet"}
+
+    except Exception as e:
+        logger.error(f"Gap grade retrieval error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gap/top")
+async def get_top_gaps(min_grade: str = "C", limit: int = 10):
+    """Get top graded gaps"""
+    try:
+        from ai.gap_grader import get_gap_grader, GapGrade
+
+        grader = get_gap_grader()
+        grade = GapGrade[min_grade.upper()]
+        gaps = grader.get_top_gaps(min_grade=grade, limit=limit)
+
+        return {
+            "gaps": [g.to_dict() for g in gaps],
+            "count": len(gaps)
+        }
+
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Invalid grade: {min_grade}. Use A, B, C, D, or F")
+    except Exception as e:
+        logger.error(f"Top gaps error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gap/tradeable")
+async def get_tradeable_gaps():
+    """Get all tradeable gaps (C grade or better)"""
+    try:
+        from ai.gap_grader import get_gap_grader
+
+        grader = get_gap_grader()
+        gaps = grader.get_tradeable_gaps()
+
+        return {
+            "gaps": [g.to_dict() for g in gaps],
+            "count": len(gaps)
+        }
+
+    except Exception as e:
+        logger.error(f"Tradeable gaps error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gap/a-grades")
+async def get_a_grade_gaps():
+    """Get only A-grade gaps (highest quality)"""
+    try:
+        from ai.gap_grader import get_gap_grader
+
+        grader = get_gap_grader()
+        gaps = grader.get_a_grades()
+
+        return {
+            "gaps": [g.to_dict() for g in gaps],
+            "count": len(gaps)
+        }
+
+    except Exception as e:
+        logger.error(f"A-grade gaps error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/gap/clear")
+async def clear_gaps():
+    """Clear all graded gaps (call at market close)"""
+    try:
+        from ai.gap_grader import get_gap_grader
+
+        grader = get_gap_grader()
+        grader.clear_gaps()
+
+        return {"success": True, "message": "Gap grader cleared"}
+
+    except Exception as e:
+        logger.error(f"Gap clear error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/gap/scan")
+async def scan_and_grade_gaps():
+    """
+    Scan for gaps using premarket scanner and grade them.
+    This integrates gap grader with premarket scanner for automated gap detection.
+    """
+    try:
+        from ai.gap_grader import get_gap_grader
+        from ai.premarket_scanner import get_premarket_scanner
+        import yfinance as yf
+
+        grader = get_gap_grader()
+        scanner = get_premarket_scanner()
+
+        # Run premarket scan
+        await scanner.scan()
+        watchlist = scanner.get_watchlist()
+
+        graded_results = []
+
+        for item in watchlist:
+            symbol = item.get("symbol")
+            if not symbol:
+                continue
+
+            try:
+                # Get additional data via yfinance
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+
+                gap_percent = item.get("change_pct", 0)
+                current_price = item.get("price", 0)
+                prior_close = info.get("previousClose", current_price / (1 + gap_percent/100) if gap_percent else current_price)
+                premarket_volume = item.get("volume", 0)
+                float_shares = info.get("floatShares", 0)
+                avg_volume = info.get("averageVolume", 0)
+
+                # Get prior day change from history
+                hist = ticker.history(period="2d")
+                prior_day_change = 0
+                if len(hist) >= 2:
+                    prior_day_change = ((hist.iloc[-2]["Close"] - hist.iloc[-2]["Open"]) / hist.iloc[-2]["Open"]) * 100
+
+                # Get catalyst from news monitor
+                catalyst = item.get("catalyst", "") or item.get("headline", "")
+
+                graded = grader.grade_gap(
+                    symbol=symbol,
+                    gap_percent=gap_percent,
+                    current_price=current_price,
+                    prior_close=prior_close,
+                    premarket_volume=premarket_volume,
+                    float_shares=float_shares,
+                    avg_volume=avg_volume,
+                    prior_day_change=prior_day_change,
+                    catalyst_headline=catalyst
+                )
+
+                graded_results.append(graded.to_dict())
+
+            except Exception as e:
+                logger.warning(f"Error grading {symbol}: {e}")
+                continue
+
+        return {
+            "success": True,
+            "scanned": len(watchlist),
+            "graded": len(graded_results),
+            "results": graded_results,
+            "top_5": [g for g in graded_results if g.get("grade") in ["A", "B"]][:5]
+        }
+
+    except Exception as e:
+        logger.error(f"Gap scan error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/gap/add-to-scalper")
+async def add_graded_gaps_to_scalper(min_grade: str = "B"):
+    """Add top graded gaps to HFT Scalper watchlist"""
+    try:
+        from ai.gap_grader import get_gap_grader, GapGrade
+        from ai.hft_scalper import get_hft_scalper
+
+        grader = get_gap_grader()
+        scalper = get_hft_scalper()
+
+        grade = GapGrade[min_grade.upper()]
+        gaps = grader.get_top_gaps(min_grade=grade, limit=10)
+
+        added = []
+        for gap in gaps:
+            if gap.gap_percent > 0:  # Only add gap-ups (we don't short)
+                scalper.watchlist.add(gap.symbol)
+                added.append({
+                    "symbol": gap.symbol,
+                    "grade": gap.grade.value,
+                    "score": gap.score.total,
+                    "gap_percent": gap.gap_percent
+                })
+
+        return {
+            "success": True,
+            "added": len(added),
+            "symbols": added,
+            "scalper_watchlist": list(scalper.watchlist)
+        }
+
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Invalid grade: {min_grade}. Use A, B, C, D, or F")
+    except Exception as e:
+        logger.error(f"Add to scalper error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1508,3 +1508,105 @@ POST /api/warrior/depth/config             - Update config
 
 **Polygon Integration:**
 Depth analyzer is wired to Polygon streaming via `wire_depth_analyzer()`. Uses NBBO quotes for top-of-book analysis.
+
+### Pre-Market Gap Grader (Ross Cameron Methodology)
+
+Grade pre-market gaps by quality for trading potential. Uses Ross Cameron's gap scoring system.
+
+| File | Purpose |
+|------|---------|
+| `ai/gap_grader.py` | Gap scoring and grading engine |
+
+**Ross Cameron Gap Criteria:**
+1. **GAP SIZE** - 5-20% is ideal (too small = no momentum, too big = risky)
+2. **VOLUME** - Pre-market volume must be significant (>100K shares)
+3. **FLOAT** - Low float (<20M) gaps harder, more potential
+4. **CATALYST** - News-driven gaps more reliable than technical gaps
+5. **PRIOR DAY** - Continuation gaps (prior day green) are stronger
+6. **PRICE RANGE** - $2-$20 ideal for scalping
+
+**Scoring Breakdown (100 points max):**
+- Gap Size: 20 points (5-15% optimal)
+- Volume: 20 points (pre-market volume significance)
+- Float: 15 points (lower float = higher potential)
+- Catalyst: 25 points (news-driven gaps)
+- Prior Day: 10 points (continuation patterns)
+- Price: 10 points ($2-$20 optimal)
+
+**Gap Grades:**
+- **A** (80+): Perfect setup - full position
+- **B** (65-79): Good setup - 75% position
+- **C** (50-64): Okay setup - 50% position
+- **D** (35-49): Marginal - watch only
+- **F** (<35): Avoid - false gap or too risky
+
+**Gap Types:**
+- `CONTINUATION_UP` - Prior day green + gap up (strongest)
+- `CONTINUATION_DOWN` - Prior day red + gap down
+- `REVERSAL_UP` - Prior day red + gap up (risky)
+- `REVERSAL_DOWN` - Prior day green + gap down
+- `GAP_UP` / `GAP_DOWN` - Standard gaps
+
+**Catalyst Detection:**
+Automatically detects catalyst type from news headlines:
+- FDA, Earnings, Merger, Contract, Clinical, Partnership, Upgrade, Downgrade, Offering
+
+**API Endpoints:**
+```
+GET  /api/warrior/gap/status           - Grader status & grade distribution
+POST /api/warrior/gap/grade/{symbol}   - Grade a gap manually
+GET  /api/warrior/gap/{symbol}         - Get graded gap data
+GET  /api/warrior/gap/top?min_grade=B  - Get top graded gaps
+GET  /api/warrior/gap/tradeable        - Get all tradeable gaps (C+)
+GET  /api/warrior/gap/a-grades         - Get A-grade gaps only
+POST /api/warrior/gap/clear            - Clear all grades (EOD)
+POST /api/warrior/gap/scan             - Scan & grade premarket movers
+POST /api/warrior/gap/add-to-scalper   - Add top gaps to scalper watchlist
+```
+
+**Example Usage:**
+```bash
+# Scan and grade all pre-market gaps
+curl -X POST http://localhost:9100/api/warrior/gap/scan
+
+# Get top A and B grades
+curl http://localhost:9100/api/warrior/gap/top?min_grade=B
+
+# Add top graded gaps to scalper
+curl -X POST http://localhost:9100/api/warrior/gap/add-to-scalper?min_grade=B
+```
+
+**Example Response:**
+```json
+{
+  "symbol": "AAPL",
+  "grade": "A",
+  "score": {
+    "gap_size": 18,
+    "volume": 20,
+    "float": 10,
+    "catalyst": 25,
+    "prior_day": 8,
+    "price": 10,
+    "total": 91
+  },
+  "gap_type": "CONTINUATION_UP",
+  "catalyst_type": "FDA",
+  "gap_percent": 12.5,
+  "entry_zone": {"low": 5.85, "high": 5.95},
+  "stop_loss": 5.45,
+  "targets": {"target_1": 6.22, "target_2": 6.56},
+  "position_size_pct": 100,
+  "warnings": []
+}
+```
+
+**Integration with Pre-Market Scanner:**
+The gap grader integrates with `premarket_scanner.py` via the `/gap/scan` endpoint. When called:
+1. Runs premarket scan for movers
+2. Fetches float & prior day data from yfinance
+3. Grades each gap using Ross Cameron methodology
+4. Returns sorted by score with top A/B picks highlighted
+
+**Auto-Population of Scalper Watchlist:**
+Use `/gap/add-to-scalper` to automatically add the best pre-market gaps to the HFT Scalper's watchlist. Only gap-ups are added (we don't short).
