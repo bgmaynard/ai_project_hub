@@ -169,6 +169,12 @@ class ScalperConfig:
     require_low_float: bool = False  # Only trade low float stocks (<20M)
     max_float_millions: float = 50.0  # Max float in millions to trade
 
+    # Momentum Exhaustion Detection (early exit before big drops)
+    use_exhaustion_exit: bool = True  # Exit on exhaustion signals
+    exhaustion_exit_threshold: float = 60.0  # Min exhaustion score to exit (0-100)
+    exhaustion_exit_on_divergence: bool = True  # Exit on RSI divergence
+    exhaustion_exit_on_red_candles: int = 4  # Exit after N consecutive red candles
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -1193,6 +1199,69 @@ class HFTScalper:
 
             except Exception as e:
                 logger.debug(f"VWAP trailing stop check failed for {symbol}: {e}")
+
+        # ===== MOMENTUM EXHAUSTION EXIT (Exit before big drops) =====
+        if getattr(self.config, 'use_exhaustion_exit', True):
+            try:
+                from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+                detector = get_exhaustion_detector()
+
+                # Register position if not already tracked
+                if symbol not in detector.symbols or detector.symbols[symbol].entry_price == 0:
+                    detector.register_position(symbol, trade.entry_price)
+
+                # Check exhaustion score
+                score, reasons = detector.get_exhaustion_score(symbol)
+                threshold = getattr(self.config, 'exhaustion_exit_threshold', 60.0)
+
+                if score >= threshold:
+                    exit_signal = {
+                        "reason": "EXHAUSTION",
+                        "pnl_percent": pnl_pct,
+                        "price": price,
+                        "exhaustion_score": score,
+                        "exhaustion_reasons": reasons
+                    }
+                    logger.info(
+                        f"EXHAUSTION EXIT: {symbol} - Score {score:.0f}% "
+                        f"({', '.join(reasons[:2])}) @ {pnl_pct:+.1f}%"
+                    )
+                    return exit_signal
+
+                # Check for specific exhaustion signals
+                state = detector.symbols.get(symbol)
+                if state:
+                    # Exit on RSI divergence
+                    if getattr(self.config, 'exhaustion_exit_on_divergence', True):
+                        alert = detector.check_exit(symbol, price)
+                        if alert and alert.signal.value == "RSI_DIVERGENCE":
+                            exit_signal = {
+                                "reason": "EXHAUSTION_RSI_DIVERGENCE",
+                                "pnl_percent": pnl_pct,
+                                "price": price,
+                                "exhaustion_details": alert.details
+                            }
+                            logger.info(f"EXHAUSTION EXIT: {symbol} - RSI Divergence @ {pnl_pct:+.1f}%")
+                            return exit_signal
+
+                    # Exit on consecutive red candles
+                    red_threshold = getattr(self.config, 'exhaustion_exit_on_red_candles', 4)
+                    if state.consecutive_red_candles >= red_threshold:
+                        exit_signal = {
+                            "reason": "EXHAUSTION_RED_CANDLES",
+                            "pnl_percent": pnl_pct,
+                            "price": price,
+                            "consecutive_red": state.consecutive_red_candles
+                        }
+                        logger.info(
+                            f"EXHAUSTION EXIT: {symbol} - {state.consecutive_red_candles} "
+                            f"red candles @ {pnl_pct:+.1f}%"
+                        )
+                        return exit_signal
+
+            except Exception as e:
+                logger.debug(f"Exhaustion exit check failed for {symbol}: {e}")
 
         # Use ATR-based stops if available, otherwise fall back to fixed %
         if self.config.use_atr_stops and trade.atr_stop_price > 0:

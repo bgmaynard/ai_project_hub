@@ -848,6 +848,109 @@ def wire_pattern_detector():
 
 _vwap_manager_wired = False
 _float_rotation_wired = False
+_exhaustion_detector_wired = False
+
+
+def wire_exhaustion_detector():
+    """
+    Wire Momentum Exhaustion Detector to Polygon stream.
+
+    Detects momentum exhaustion signals from candle and quote data:
+    - RSI divergence
+    - Volume exhaustion
+    - Consecutive red candles
+    - Spread widening
+    """
+    global _exhaustion_detector_wired
+
+    if _exhaustion_detector_wired:
+        logger.debug("Exhaustion detector already wired")
+        return
+
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+        stream = get_polygon_stream()
+
+        # Track candle building from trades
+        _exhaustion_candle_buffers: Dict[str, List] = {}
+        _exhaustion_last_minute: Dict[str, int] = {}
+
+        def on_polygon_trade_for_exhaustion(trade: Dict):
+            """Build candles from trades for exhaustion detection"""
+            try:
+                symbol = trade.get('symbol', '')
+                price = trade.get('price', 0)
+                size = trade.get('size', 0)
+
+                if not symbol or not price:
+                    return
+
+                from datetime import datetime
+                now = datetime.now()
+                current_minute = now.hour * 60 + now.minute
+
+                # Initialize buffers
+                if symbol not in _exhaustion_candle_buffers:
+                    _exhaustion_candle_buffers[symbol] = []
+                    _exhaustion_last_minute[symbol] = current_minute
+
+                # Check if we need to close the current candle
+                last_minute = _exhaustion_last_minute[symbol]
+                if current_minute > last_minute and _exhaustion_candle_buffers[symbol]:
+                    # Build candle from buffered trades
+                    trades = _exhaustion_candle_buffers[symbol]
+
+                    prices = [t['price'] for t in trades]
+                    volumes = [t['size'] for t in trades]
+
+                    candle = {
+                        'open': prices[0],
+                        'high': max(prices),
+                        'low': min(prices),
+                        'close': prices[-1],
+                        'volume': sum(volumes)
+                    }
+
+                    # Update exhaustion detector
+                    detector.update_candle(symbol, candle)
+
+                    # Clear buffer
+                    _exhaustion_candle_buffers[symbol] = []
+                    _exhaustion_last_minute[symbol] = current_minute
+
+                # Add trade to current candle buffer
+                _exhaustion_candle_buffers[symbol].append({
+                    'price': price,
+                    'size': size
+                })
+
+            except Exception as e:
+                pass  # Don't spam logs
+
+        def on_polygon_quote_for_exhaustion(quote: Dict):
+            """Update exhaustion detector with quote data for spread analysis"""
+            try:
+                symbol = quote.get('symbol', '')
+                bid = quote.get('bid', 0)
+                ask = quote.get('ask', 0)
+
+                if symbol and bid > 0 and ask > 0:
+                    detector.update_quote(symbol, bid, ask)
+
+            except Exception as e:
+                pass
+
+        # Register callbacks
+        stream.on_trade(on_polygon_trade_for_exhaustion)
+        stream.on_quote(on_polygon_quote_for_exhaustion)
+
+        _exhaustion_detector_wired = True
+        logger.info("✅ Exhaustion detector wired to Polygon stream - momentum exhaustion detection enabled")
+
+    except Exception as e:
+        logger.error(f"Failed to wire exhaustion detector to Polygon: {e}")
 
 
 def wire_float_rotation_tracker():
@@ -953,12 +1056,14 @@ def wire_warrior_trading():
     - Pattern detector (Bull Flag, ABCD, Micro PB, HOD Break)
     - VWAP manager (real-time VWAP calculation)
     - Float rotation tracker (volume vs float monitoring)
+    - Exhaustion detector (momentum exhaustion detection)
     """
     wire_hod_scanner()
     wire_tape_analyzer()
     wire_pattern_detector()
     wire_vwap_manager()
     wire_float_rotation_tracker()
+    wire_exhaustion_detector()
     logger.info("✅ All Warrior Trading components wired to Polygon stream")
 
 

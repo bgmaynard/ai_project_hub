@@ -931,3 +931,219 @@ async def reset_float_rotation(symbol: str = None):
     except Exception as e:
         logger.error(f"Float rotation reset error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# MOMENTUM EXHAUSTION DETECTOR ENDPOINTS
+# ============================================================================
+
+@router.get("/exhaustion/{symbol}")
+async def get_exhaustion_data(symbol: str):
+    """
+    Get exhaustion data for a symbol.
+
+    Returns RSI, volume trend, consecutive red candles, and active alerts.
+    """
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+        state = detector.symbols.get(symbol.upper())
+
+        if not state:
+            return {
+                "symbol": symbol.upper(),
+                "tracked": False,
+                "message": "Symbol not being tracked. Add candle data to start."
+            }
+
+        score, reasons = detector.get_exhaustion_score(symbol.upper())
+
+        return {
+            "symbol": symbol.upper(),
+            "tracked": True,
+            "exhaustion_score": round(score, 1),
+            "reasons": reasons,
+            "rsi": round(state.current_rsi, 1),
+            "consecutive_red_candles": state.consecutive_red_candles,
+            "avg_spread": round(state.avg_spread, 4),
+            "last_high": round(state.last_high, 4),
+            "entry_price": round(state.entry_price, 4) if state.entry_price else None,
+            "high_since_entry": round(state.high_since_entry, 4) if state.high_since_entry else None,
+            "active_alerts": [a.to_dict() for a in state.active_alerts[-5:]]
+        }
+
+    except Exception as e:
+        logger.error(f"Exhaustion data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/exhaustion/score/{symbol}")
+async def get_exhaustion_score(symbol: str):
+    """
+    Get exhaustion score for a symbol (0-100).
+
+    Higher score = more exhausted = more likely to reverse.
+    """
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+        score, reasons = detector.get_exhaustion_score(symbol.upper())
+
+        return {
+            "symbol": symbol.upper(),
+            "score": round(score, 1),
+            "level": "CRITICAL" if score > 70 else "HIGH" if score > 50 else "MEDIUM" if score > 30 else "LOW",
+            "should_exit": score > 60,
+            "reasons": reasons
+        }
+
+    except Exception as e:
+        logger.error(f"Exhaustion score error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/exhaustion/check/{symbol}")
+async def check_exhaustion_exit(symbol: str):
+    """
+    Check if should exit based on exhaustion signals.
+
+    Returns the highest severity exit alert if any.
+    """
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+        state = detector.symbols.get(symbol.upper())
+
+        if not state:
+            return {
+                "symbol": symbol.upper(),
+                "should_exit": False,
+                "reason": "Not tracked"
+            }
+
+        # Check for exit signal
+        alert = detector.check_exit(symbol.upper(), 0)
+
+        if alert:
+            return {
+                "symbol": symbol.upper(),
+                "should_exit": True,
+                "alert": alert.to_dict()
+            }
+
+        score, reasons = detector.get_exhaustion_score(symbol.upper())
+
+        return {
+            "symbol": symbol.upper(),
+            "should_exit": False,
+            "exhaustion_score": round(score, 1),
+            "reasons": reasons
+        }
+
+    except Exception as e:
+        logger.error(f"Exhaustion check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/exhaustion/alerts")
+async def get_exhaustion_alerts(limit: int = 20):
+    """Get recent exhaustion alerts across all symbols"""
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+        alerts = detector.get_recent_alerts(limit)
+
+        return {
+            "count": len(alerts),
+            "alerts": [a.to_dict() for a in alerts]
+        }
+
+    except Exception as e:
+        logger.error(f"Exhaustion alerts error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/exhaustion/status")
+async def get_exhaustion_status():
+    """Get exhaustion detector status"""
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+        return detector.get_status()
+
+    except Exception as e:
+        logger.error(f"Exhaustion status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/exhaustion/register/{symbol}")
+async def register_exhaustion_position(symbol: str, entry_price: float):
+    """
+    Register a position for exhaustion monitoring.
+
+    Call this when entering a trade to track exhaustion from entry.
+    """
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+        detector.register_position(symbol.upper(), entry_price)
+
+        return {
+            "success": True,
+            "symbol": symbol.upper(),
+            "entry_price": entry_price,
+            "message": "Position registered for exhaustion monitoring"
+        }
+
+    except Exception as e:
+        logger.error(f"Exhaustion register error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/exhaustion/{symbol}")
+async def unregister_exhaustion_position(symbol: str):
+    """Unregister a position from exhaustion monitoring"""
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+        detector.unregister_position(symbol.upper())
+
+        return {
+            "success": True,
+            "symbol": symbol.upper(),
+            "message": "Position unregistered from exhaustion monitoring"
+        }
+
+    except Exception as e:
+        logger.error(f"Exhaustion unregister error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/exhaustion/config")
+async def update_exhaustion_config(config: Dict):
+    """Update exhaustion detector configuration"""
+    try:
+        from ai.momentum_exhaustion_detector import get_exhaustion_detector
+
+        detector = get_exhaustion_detector()
+
+        # Update config
+        for key, value in config.items():
+            if key in detector.config:
+                detector.config[key] = value
+
+        return {
+            "success": True,
+            "config": detector.config
+        }
+
+    except Exception as e:
+        logger.error(f"Exhaustion config error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

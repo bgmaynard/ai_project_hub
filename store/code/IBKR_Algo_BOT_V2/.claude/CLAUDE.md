@@ -1356,3 +1356,72 @@ Float rotation provides confidence boosts to entry signals:
 
 **Polygon Integration:**
 Float rotation tracker is wired to Polygon streaming via `wire_float_rotation_tracker()`. Every trade tick updates cumulative volume.
+
+### Momentum Exhaustion Detector (Exit Before Big Drops)
+
+Detect when momentum is fading BEFORE the big drop. Exit early with smaller profit instead of riding it down to a loss.
+
+| File | Purpose |
+|------|---------|
+| `ai/momentum_exhaustion_detector.py` | Multi-signal exhaustion detection |
+
+**Exhaustion Signals:**
+- `RSI_DIVERGENCE` - Price higher high, RSI lower high (most reliable)
+- `VOLUME_EXHAUSTION` - Declining volume on rising price
+- `RED_CANDLES` - 3+ consecutive red candles
+- `PRICE_STALLING` - Multiple failed breakout attempts
+- `SPREAD_WIDENING` - Market makers pulling bids
+- `CLIMAX_TOP` - Blow-off top pattern (huge volume + rejection wick)
+
+**Severity Levels:**
+- `LOW` - Watch closely
+- `MEDIUM` - Consider exit
+- `HIGH` - Exit recommended
+- `CRITICAL` - Exit immediately
+
+**Exhaustion Score (0-100):**
+Combines all signals into single score:
+- RSI overbought: +points
+- Red candles: +10 per candle
+- Volume declining: +points based on decline %
+- Spread widening: +points based on ratio
+- Active alerts: +10 to +30 based on severity
+
+**API Endpoints:**
+```
+GET  /api/warrior/exhaustion/{symbol}      - Get exhaustion data
+GET  /api/warrior/exhaustion/score/{symbol} - Get exhaustion score
+GET  /api/warrior/exhaustion/check/{symbol} - Check for exit signal
+GET  /api/warrior/exhaustion/alerts        - Recent alerts
+GET  /api/warrior/exhaustion/status        - Detector status
+POST /api/warrior/exhaustion/register/{symbol}?entry_price=X - Register position
+DELETE /api/warrior/exhaustion/{symbol}    - Unregister position
+POST /api/warrior/exhaustion/config        - Update config
+```
+
+**Scalper Config:**
+```json
+{
+  "use_exhaustion_exit": true,           // Exit on exhaustion signals
+  "exhaustion_exit_threshold": 60.0,     // Min score to exit (0-100)
+  "exhaustion_exit_on_divergence": true, // Exit on RSI divergence
+  "exhaustion_exit_on_red_candles": 4    // Exit after N red candles
+}
+```
+
+**Example Response:**
+```json
+{
+  "symbol": "AAPL",
+  "exhaustion_score": 72.5,
+  "reasons": ["RSI overbought (78)", "3 red candles", "Volume declining 35%"],
+  "rsi": 78.2,
+  "consecutive_red_candles": 3,
+  "active_alerts": [
+    {"signal": "RSI_DIVERGENCE", "severity": "HIGH", "should_exit": true}
+  ]
+}
+```
+
+**Polygon Integration:**
+Exhaustion detector is wired to Polygon streaming via `wire_exhaustion_detector()`. Builds candles from trades and analyzes quotes for spread.
