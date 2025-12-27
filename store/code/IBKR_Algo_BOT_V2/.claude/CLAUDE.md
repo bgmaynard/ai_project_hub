@@ -1154,3 +1154,60 @@ wire_warrior_trading()  # Wires all components:
 ```
 
 When Polygon streaming starts, all Warrior components receive live trade data automatically.
+
+### Multi-Timeframe Confirmation (MTF)
+
+Ross Cameron rule: **Only enter when 1-minute and 5-minute charts agree.**
+
+| File | Purpose |
+|------|---------|
+| `ai/mtf_confirmation.py` | Multi-timeframe analysis engine |
+
+**What It Checks:**
+- Trend alignment (both bullish or both bearish)
+- MACD alignment (both above signal line)
+- EMA alignment (both EMA9 > EMA20)
+- VWAP alignment (both above VWAP)
+- RSI confirmation
+- Price structure (higher highs/lows)
+
+**Signals:**
+- `CONFIRMED_LONG` - Both timeframes bullish with full alignment
+- `WEAK_LONG` - Trend aligned but missing some confirmations
+- `NO_CONFIRMATION` - Timeframes disagree
+- `CONFIRMED_SHORT` - Both bearish (avoid longs)
+
+**API Endpoints:**
+```
+GET  /api/warrior/mtf/{symbol}    - Get MTF confirmation
+POST /api/warrior/mtf/analyze     - Batch analyze symbols
+GET  /api/warrior/mtf/confirmed   - Get confirmed symbols from watchlist
+GET  /api/warrior/mtf/status      - Engine status
+```
+
+**Scalper Config:**
+```json
+{
+  "use_mtf_filter": true,          // Enable MTF confirmation
+  "mtf_min_confidence": 60.0,      // Minimum confidence (0-100)
+  "mtf_require_vwap_aligned": true, // Both timeframes above VWAP
+  "mtf_require_macd_aligned": true  // Both timeframes MACD bullish
+}
+```
+
+**Example Response:**
+```json
+{
+  "symbol": "AAPL",
+  "signal": "CONFIRMED_LONG",
+  "confidence": 85.0,
+  "recommendation": "ENTER",
+  "alignment": {
+    "trend": true,
+    "macd": true,
+    "ema": true,
+    "vwap": true
+  },
+  "reasons": ["Both timeframes bullish with MACD and VWAP confirmation"]
+}
+```
