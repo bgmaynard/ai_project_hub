@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Sterling Trader Pro Theme Base */
+:root {
+  --sterling-bg: #000000;
+  --sterling-panel: #0a0a0a;
+  --sterling-border: #1a1a1a;
+  --sterling-header: #0d0d0d;
+  --sterling-text: #c0c0c0;
+  --sterling-muted: #666666;
+  --buy-color: #0066cc;
+  --sell-color: #cc0000;
+  --up-color: #00cc00;
+  --down-color: #ff3333;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  font-size: 12px;
+  background: var(--sterling-bg);
+  color: var(--sterling-text);
+  overflow: hidden;
+}
+
+/* Golden Layout Overrides */
+.lm_goldenlayout {
+  background: var(--sterling-bg) !important;
+}
+
+.lm_header {
+  background: var(--sterling-header) !important;
+  border-bottom: 1px solid var(--sterling-border) !important;
+}
+
+.lm_tab {
+  background: var(--sterling-panel) !important;
+  color: var(--sterling-text) !important;
+  border: 1px solid var(--sterling-border) !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+}
+
+.lm_tab.lm_active {
+  background: var(--sterling-bg) !important;
+  border-bottom-color: var(--sterling-bg) !important;
+}
+
+.lm_content {
+  background: var(--sterling-panel) !important;
+  border: 1px solid var(--sterling-border) !important;
+}
+
+.lm_splitter {
+  background: var(--sterling-border) !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sterling-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sterling-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sterling-muted);
+}
+
+/* Panel styling */
+@layer components {
+  .panel {
+    @apply bg-sterling-panel border border-sterling-border rounded;
+  }
+
+  .panel-header {
+    @apply bg-sterling-header px-2 py-1 border-b border-sterling-border font-bold text-xs uppercase tracking-wide;
+  }
+
+  .panel-content {
+    @apply p-2 overflow-auto;
+  }
+
+  .btn-buy {
+    @apply bg-buy text-white px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition;
+  }
+
+  .btn-sell {
+    @apply bg-sell text-white px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition;
+  }
+
+  /* text-up and text-down are defined in tailwind.config.js colors */
+
+  .table-row {
+    @apply border-b border-sterling-border hover:bg-sterling-header cursor-pointer;
+  }
+
+  .table-cell {
+    @apply px-2 py-1 text-xs;
+  }
+}
