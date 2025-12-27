@@ -767,20 +767,23 @@ class HFTScalper:
                 )
 
                 # Update state machine with score
+                # Pass veto info to state machine
                 new_state = self.state_machine.update_momentum(
                     symbol, momentum_score_result.score,
-                    {'score_details': momentum_score_result.to_dict()}
+                    vetoed=momentum_score_result.vetoed,
+                    veto_reasons=[v.value for v in momentum_score_result.veto_reasons],
+                    details={'score_details': momentum_score_result.to_dict()}
                 )
 
-                # Check if symbol is in IGNITION state
+                # Check if symbol is in GATED state (ready for entry)
                 symbol_state = self.state_machine.get_state(symbol)
                 if symbol_state:
-                    if symbol_state.state != MomentumState.IGNITION:
-                        # Not in IGNITION - log but allow priority entries to bypass
+                    if symbol_state.state != MomentumState.GATED:
+                        # Not in GATED - log but allow priority entries to bypass
                         if not priority:
                             logger.debug(
                                 f"STATE MACHINE: {symbol} in {symbol_state.state.value} "
-                                f"(score {momentum_score_result.score}/100) - waiting for IGNITION"
+                                f"(score {momentum_score_result.score}/100) - waiting for GATED"
                             )
                             return None
                         else:
@@ -790,7 +793,7 @@ class HFTScalper:
                             )
                     else:
                         logger.info(
-                            f"STATE MACHINE IGNITION: {symbol} ready for entry "
+                            f"STATE MACHINE GATED: {symbol} ready for entry "
                             f"(score {momentum_score_result.score}/100, grade {momentum_score_result.grade.value})"
                         )
 
