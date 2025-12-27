@@ -163,6 +163,12 @@ class ScalperConfig:
     use_vwap_trailing_stop: bool = True  # Use VWAP as trailing stop
     vwap_stop_offset_pct: float = 0.3  # Trail 0.3% below VWAP
 
+    # Float Rotation (Ross Cameron - volume vs float tracking)
+    use_float_rotation_boost: bool = True  # Boost confidence when float rotating
+    min_rotation_for_boost: float = 0.5  # Min rotation ratio for boost (0.5 = 50% of float)
+    require_low_float: bool = False  # Only trade low float stocks (<20M)
+    max_float_millions: float = 50.0  # Max float in millions to trade
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -1042,6 +1048,46 @@ class HFTScalper:
 
             except Exception as e:
                 logger.warning(f"VWAP filter check failed for {symbol}: {e}")
+
+        # Apply Float Rotation boost if enabled (Ross Cameron - volume vs float)
+        if signal and getattr(self.config, 'use_float_rotation_boost', True):
+            try:
+                from ai.float_rotation_tracker import get_float_tracker
+
+                tracker = get_float_tracker()
+                data = tracker.get_float_data(symbol)
+
+                if data:
+                    # Check float size limits
+                    max_float = getattr(self.config, 'max_float_millions', 50.0)
+                    if data.float_shares > max_float * 1_000_000:
+                        logger.debug(f"FLOAT: {symbol} - Float too large ({data.float_shares/1e6:.1f}M > {max_float}M)")
+                        # Don't reject, just skip boost
+
+                    # Check if require low float
+                    elif getattr(self.config, 'require_low_float', False) and not data.is_low_float:
+                        logger.info(f"FLOAT REJECT: {symbol} - Not a low float stock ({data.float_shares/1e6:.1f}M shares)")
+                        signal = None
+
+                    else:
+                        # Apply boost based on rotation level
+                        boost = tracker.get_rotation_boost(symbol)
+                        min_rotation = getattr(self.config, 'min_rotation_for_boost', 0.5)
+
+                        if data.rotation_ratio >= min_rotation and boost > 0:
+                            logger.info(
+                                f"FLOAT ROTATION BOOST: {symbol} - {data.rotation_ratio:.1f}x rotation, "
+                                f"+{boost*100:.0f}% confidence boost, "
+                                f"{'LOW FLOAT ' if data.is_low_float else ''}{data.float_shares/1e6:.1f}M float"
+                            )
+                            signal['float_rotation'] = data.rotation_ratio
+                            signal['float_rotation_boost'] = boost
+                            signal['float_shares'] = data.float_shares
+                            signal['is_low_float'] = data.is_low_float
+                            signal['rotation_level'] = data.rotation_level.value
+
+            except Exception as e:
+                logger.warning(f"Float rotation check failed for {symbol}: {e}")
 
         if signal and self.on_signal:
             self.on_signal(signal)

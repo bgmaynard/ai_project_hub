@@ -1279,3 +1279,80 @@ POST /api/warrior/vwap/reset         - Reset daily VWAP
 
 **Polygon Integration:**
 VWAP manager is wired to Polygon streaming via `wire_vwap_manager()`. Every trade tick updates the VWAP calculation in real-time.
+
+### Float Rotation Tracker (Ross Cameron - Volume vs Float)
+
+Ross Cameron rule: **When volume exceeds float, explosive moves happen.**
+
+| File | Purpose |
+|------|---------|
+| `ai/float_rotation_tracker.py` | Track cumulative volume vs float shares |
+
+**Key Concepts:**
+- Float = free-floating shares available for trading
+- Float Rotation = cumulative volume / float shares
+- 1x rotation = every share has theoretically changed hands once
+- Low float (<20M) + high rotation = parabolic potential
+- Multiple rotations (2x, 3x) indicate extreme momentum
+
+**Rotation Levels:**
+- `NONE` (<0.25x) - Low activity
+- `WARMING` (0.25-0.5x) - Building momentum
+- `ACTIVE` (0.5-1.0x) - Significant interest
+- `ROTATING` (1.0-2.0x) - Every share traded once
+- `HOT` (2.0-3.0x) - Multiple rotations
+- `EXTREME` (3.0x+) - Parabolic territory
+
+**Float Classifications:**
+- Nano float: <1M shares (most volatile)
+- Micro float: <5M shares (very volatile)
+- Low float: <20M shares (Ross Cameron's focus)
+
+**API Endpoints:**
+```
+GET  /api/warrior/float-rotation/{symbol}    - Get rotation data
+GET  /api/warrior/float-rotation/boost/{symbol} - Get confidence boost
+GET  /api/warrior/float-rotation/rotating    - Get all rotating stocks
+GET  /api/warrior/float-rotation/low-float   - Get low float movers
+GET  /api/warrior/float-rotation/alerts      - Recent rotation alerts
+GET  /api/warrior/float-rotation/status      - Tracker status
+POST /api/warrior/float-rotation/set-float/{symbol} - Set float manually
+POST /api/warrior/float-rotation/load-float/{symbol} - Load from yfinance
+POST /api/warrior/float-rotation/reset       - Reset daily tracking
+```
+
+**Scalper Config:**
+```json
+{
+  "use_float_rotation_boost": true,   // Boost confidence when rotating
+  "min_rotation_for_boost": 0.5,      // Min rotation for boost (50% of float)
+  "require_low_float": false,         // Only trade low float stocks
+  "max_float_millions": 50.0          // Max float size to trade
+}
+```
+
+**Confidence Boost:**
+Float rotation provides confidence boosts to entry signals:
+- ACTIVE (0.5-1.0x): +5%
+- ROTATING (1.0-2.0x): +10%
+- HOT (2.0-3.0x): +20%
+- EXTREME (3.0x+): +30%
+- Extra +5% for micro float, +10% for nano float
+
+**Example Response:**
+```json
+{
+  "symbol": "AAPL",
+  "float_millions": 5.2,
+  "cumulative_volume": 8500000,
+  "rotation_ratio": 1.63,
+  "rotation_level": "ROTATING",
+  "is_low_float": true,
+  "is_micro_float": true,
+  "thresholds_hit": [0.25, 0.5, 0.75, 1.0, 1.5],
+  "time_to_first_rotation": 45.2
+}
+```
+
+**Polygon Integration:**
+Float rotation tracker is wired to Polygon streaming via `wire_float_rotation_tracker()`. Every trade tick updates cumulative volume.

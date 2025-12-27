@@ -694,3 +694,240 @@ async def reset_vwap(symbol: str = None):
     except Exception as e:
         logger.error(f"VWAP reset error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# FLOAT ROTATION TRACKER ENDPOINTS
+# ============================================================================
+
+@router.get("/float-rotation/{symbol}")
+async def get_float_rotation(symbol: str):
+    """
+    Get float rotation data for a symbol.
+
+    Float rotation = cumulative_volume / float_shares
+    - < 0.5x = Warming up
+    - 0.5x - 1.0x = Active
+    - 1.0x - 2.0x = Rotating (every share traded once)
+    - 2.0x+ = Hot/Extreme
+    """
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        data = tracker.get_float_data(symbol.upper())
+
+        if not data:
+            # Try to load float data
+            float_shares = await tracker.load_float_data(symbol.upper())
+            if float_shares:
+                return {
+                    "symbol": symbol.upper(),
+                    "float_shares": float_shares,
+                    "message": "Float loaded, volume tracking will start with trades"
+                }
+            return {
+                "symbol": symbol.upper(),
+                "error": "No float data available"
+            }
+
+        return data.to_dict()
+
+    except Exception as e:
+        logger.error(f"Float rotation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/float-rotation/boost/{symbol}")
+async def get_float_rotation_boost(symbol: str):
+    """
+    Get confidence boost from float rotation.
+
+    Used by HFT Scalper to increase confidence on rotating stocks.
+    Returns boost factor (0.0 to 0.4).
+    """
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        boost = tracker.get_rotation_boost(symbol.upper())
+        data = tracker.get_float_data(symbol.upper())
+
+        return {
+            "symbol": symbol.upper(),
+            "boost": round(boost, 2),
+            "rotation_ratio": round(data.rotation_ratio, 2) if data else 0,
+            "rotation_level": data.rotation_level.value if data else "NONE",
+            "is_low_float": data.is_low_float if data else False
+        }
+
+    except Exception as e:
+        logger.error(f"Float rotation boost error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/float-rotation/rotating")
+async def get_rotating_stocks(min_rotation: float = 1.0):
+    """
+    Get all stocks currently rotating (volume >= float).
+
+    Args:
+        min_rotation: Minimum rotation ratio (default 1.0 = 100% of float)
+    """
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        rotating = tracker.get_all_rotating(min_rotation)
+
+        return {
+            "count": len(rotating),
+            "min_rotation": min_rotation,
+            "stocks": [d.to_dict() for d in rotating]
+        }
+
+    except Exception as e:
+        logger.error(f"Rotating stocks error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/float-rotation/low-float")
+async def get_low_float_movers():
+    """
+    Get low float stocks (<20M) with significant volume (>25% of float).
+    These are the stocks Ross Cameron focuses on.
+    """
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        movers = tracker.get_low_float_movers()
+
+        return {
+            "count": len(movers),
+            "stocks": [d.to_dict() for d in movers]
+        }
+
+    except Exception as e:
+        logger.error(f"Low float movers error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/float-rotation/alerts")
+async def get_float_rotation_alerts(limit: int = 20):
+    """
+    Get recent float rotation alerts.
+
+    Alerts fire when stocks cross rotation thresholds (0.5x, 1x, 2x, etc.)
+    """
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        alerts = tracker.get_recent_alerts(limit)
+
+        return {
+            "count": len(alerts),
+            "alerts": [a.to_dict() for a in alerts]
+        }
+
+    except Exception as e:
+        logger.error(f"Float rotation alerts error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/float-rotation/status")
+async def get_float_rotation_status():
+    """Get float rotation tracker status"""
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        return tracker.get_status()
+
+    except Exception as e:
+        logger.error(f"Float rotation status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/float-rotation/set-float/{symbol}")
+async def set_symbol_float(symbol: str, float_shares: int, avg_volume: int = 0):
+    """
+    Manually set float data for a symbol.
+
+    Args:
+        symbol: Stock symbol
+        float_shares: Free float in shares
+        avg_volume: Average daily volume (optional)
+    """
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        tracker.set_float(symbol.upper(), float_shares, avg_volume)
+
+        return {
+            "success": True,
+            "symbol": symbol.upper(),
+            "float_shares": float_shares,
+            "float_millions": round(float_shares / 1_000_000, 2),
+            "avg_volume": avg_volume
+        }
+
+    except Exception as e:
+        logger.error(f"Set float error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/float-rotation/load-float/{symbol}")
+async def load_symbol_float(symbol: str):
+    """
+    Load float data from fundamental analysis (yfinance).
+    """
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        float_shares = await tracker.load_float_data(symbol.upper())
+
+        if float_shares:
+            return {
+                "success": True,
+                "symbol": symbol.upper(),
+                "float_shares": float_shares,
+                "float_millions": round(float_shares / 1_000_000, 2)
+            }
+        else:
+            return {
+                "success": False,
+                "symbol": symbol.upper(),
+                "error": "Could not load float data"
+            }
+
+    except Exception as e:
+        logger.error(f"Load float error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/float-rotation/reset")
+async def reset_float_rotation(symbol: str = None):
+    """
+    Reset float rotation tracking (call at market open).
+
+    If symbol provided, resets only that symbol.
+    Otherwise resets all symbols.
+    """
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        tracker.reset_daily(symbol.upper() if symbol else None)
+
+        return {
+            "success": True,
+            "message": f"Float rotation reset for {symbol.upper() if symbol else 'all symbols'}"
+        }
+
+    except Exception as e:
+        logger.error(f"Float rotation reset error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

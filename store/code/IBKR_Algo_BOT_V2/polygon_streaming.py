@@ -847,6 +847,56 @@ def wire_pattern_detector():
 
 
 _vwap_manager_wired = False
+_float_rotation_wired = False
+
+
+def wire_float_rotation_tracker():
+    """
+    Wire Float Rotation Tracker to Polygon stream for real-time volume tracking.
+
+    Tracks cumulative volume vs float to detect float rotation.
+    Ross Cameron: When volume exceeds float, explosive moves happen.
+    """
+    global _float_rotation_wired
+
+    if _float_rotation_wired:
+        logger.debug("Float rotation tracker already wired")
+        return
+
+    try:
+        from ai.float_rotation_tracker import get_float_tracker
+
+        tracker = get_float_tracker()
+        stream = get_polygon_stream()
+
+        def on_polygon_trade_for_float_rotation(trade: Dict):
+            """Handle trade tick for float rotation tracking"""
+            try:
+                symbol = trade.get('symbol', '')
+                size = trade.get('size', 0)
+
+                if not symbol or not size:
+                    return
+
+                # Determine if pre-market (before 9:30 ET)
+                from datetime import datetime
+                now = datetime.now()
+                is_premarket = now.hour < 9 or (now.hour == 9 and now.minute < 30)
+
+                # Update volume for float rotation tracking
+                tracker.update_volume(symbol, size, is_premarket)
+
+            except Exception as e:
+                pass  # Don't spam logs
+
+        # Register the callback
+        stream.on_trade(on_polygon_trade_for_float_rotation)
+
+        _float_rotation_wired = True
+        logger.info("✅ Float rotation tracker wired to Polygon stream - real-time rotation detection enabled")
+
+    except Exception as e:
+        logger.error(f"Failed to wire float rotation tracker to Polygon: {e}")
 
 
 def wire_vwap_manager():
@@ -902,11 +952,13 @@ def wire_warrior_trading():
     - Tape analyzer (green/red flow, seller thinning)
     - Pattern detector (Bull Flag, ABCD, Micro PB, HOD Break)
     - VWAP manager (real-time VWAP calculation)
+    - Float rotation tracker (volume vs float monitoring)
     """
     wire_hod_scanner()
     wire_tape_analyzer()
     wire_pattern_detector()
     wire_vwap_manager()
+    wire_float_rotation_tracker()
     logger.info("✅ All Warrior Trading components wired to Polygon stream")
 
 
