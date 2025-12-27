@@ -181,6 +181,16 @@ class ScalperConfig:
     depth_min_imbalance_ratio: float = 1.2  # Min bid/ask ratio for boost
     depth_block_on_ask_wall: bool = True  # Block entry if strong ask wall nearby
 
+    # Gap Grader Filter (Ross Cameron gap quality scoring)
+    use_gap_grader_filter: bool = True  # Filter entries by gap grade
+    gap_grader_min_grade: str = 'B'  # Minimum grade to trade (A or B only)
+    gap_grader_require_catalyst: bool = True  # Require news catalyst for entry
+
+    # Overnight Continuation Filter
+    use_overnight_filter: bool = True  # Filter by overnight continuation pattern
+    overnight_min_strength: str = 'MODERATE'  # Minimum continuation strength
+    overnight_block_reversals: bool = True  # Block if PM reversed AH direction
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -1147,6 +1157,105 @@ class HFTScalper:
 
             except Exception as e:
                 logger.warning(f"Depth analysis check failed for {symbol}: {e}")
+
+        # Apply Gap Grader filter if enabled (Ross Cameron gap quality scoring)
+        if signal and getattr(self.config, 'use_gap_grader_filter', True):
+            try:
+                from ai.gap_grader import get_gap_grader, GapGrade
+
+                grader = get_gap_grader()
+                graded = grader.get_grade(symbol)
+
+                if graded:
+                    # Check minimum grade requirement (A or B only for best setups)
+                    min_grade = getattr(self.config, 'gap_grader_min_grade', 'B')
+                    grade_order = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'F': 4}
+                    current_order = grade_order.get(graded.grade.value, 4)
+                    min_order = grade_order.get(min_grade, 1)
+
+                    if current_order > min_order:
+                        logger.info(
+                            f"GAP GRADER REJECT: {symbol} - Grade {graded.grade.value} < minimum {min_grade} "
+                            f"(Score: {graded.score.total}/100)"
+                        )
+                        signal = None
+                    else:
+                        # Check catalyst requirement
+                        require_catalyst = getattr(self.config, 'gap_grader_require_catalyst', True)
+                        if require_catalyst and not graded.has_catalyst:
+                            logger.info(f"GAP GRADER REJECT: {symbol} - No catalyst (required for {min_grade}+ grade)")
+                            signal = None
+                        else:
+                            logger.info(
+                                f"GAP GRADER APPROVE: {symbol} - Grade {graded.grade.value} "
+                                f"(Score: {graded.score.total}/100, Gap: {graded.gap_percent:+.1f}%, "
+                                f"Catalyst: {graded.catalyst_type.value})"
+                            )
+                            signal['gap_grade'] = graded.grade.value
+                            signal['gap_score'] = graded.score.total
+                            signal['gap_percent'] = graded.gap_percent
+                            signal['gap_type'] = graded.gap_type.value
+                            signal['gap_catalyst'] = graded.catalyst_type.value
+                            signal['gap_entry_zone'] = (graded.entry_zone_low, graded.entry_zone_high)
+                            signal['gap_stop'] = graded.stop_loss
+                            signal['gap_target'] = graded.target_1
+                else:
+                    # Symbol not graded yet - need to grade it first
+                    # For pre-market, we should have graded gaps already
+                    # For regular hours, skip this filter if no grade exists
+                    logger.debug(f"GAP GRADER: {symbol} - Not graded yet, skipping filter")
+
+            except Exception as e:
+                logger.warning(f"Gap grader check failed for {symbol}: {e}")
+
+        # Apply Overnight Continuation filter if enabled
+        if signal and getattr(self.config, 'use_overnight_filter', True):
+            try:
+                from ai.overnight_continuation import get_overnight_scanner, ContinuationPattern, ContinuationStrength
+
+                scanner = get_overnight_scanner()
+                mover = scanner.get_mover(symbol)
+
+                if mover and mover.pattern != ContinuationPattern.NO_MOVEMENT:
+                    # Check for reversals (always block)
+                    if getattr(self.config, 'overnight_block_reversals', True):
+                        if mover.pattern == ContinuationPattern.REVERSAL:
+                            logger.info(
+                                f"OVERNIGHT REJECT: {symbol} - REVERSAL pattern (AH {mover.after_hours.change_pct:+.1f}% → "
+                                f"PM {mover.premarket.change_pct:+.1f}%)"
+                            )
+                            signal = None
+
+                    # Check minimum strength
+                    if signal:
+                        min_strength = getattr(self.config, 'overnight_min_strength', 'MODERATE')
+                        strength_order = {'STRONG': 0, 'MODERATE': 1, 'WEAK': 2, 'NONE': 3}
+                        current_order = strength_order.get(mover.strength.value, 3)
+                        min_order = strength_order.get(min_strength, 1)
+
+                        if current_order > min_order:
+                            logger.info(
+                                f"OVERNIGHT REJECT: {symbol} - Strength {mover.strength.value} < minimum {min_strength} "
+                                f"(Pattern: {mover.pattern.value}, Score: {mover.continuation_score:.0f})"
+                            )
+                            signal = None
+                        else:
+                            logger.info(
+                                f"OVERNIGHT APPROVE: {symbol} - {mover.pattern.value} ({mover.strength.value}), "
+                                f"Score: {mover.continuation_score:.0f}, Total: {mover.total_overnight_change:+.1f}%"
+                            )
+                            signal['overnight_pattern'] = mover.pattern.value
+                            signal['overnight_strength'] = mover.strength.value
+                            signal['overnight_score'] = mover.continuation_score
+                            signal['overnight_ah_pct'] = mover.after_hours.change_pct
+                            signal['overnight_pm_pct'] = mover.premarket.change_pct
+                            signal['overnight_total'] = mover.total_overnight_change
+                else:
+                    # Not tracked overnight - skip filter
+                    logger.debug(f"OVERNIGHT: {symbol} - Not tracked overnight, skipping filter")
+
+            except Exception as e:
+                logger.warning(f"Overnight continuation check failed for {symbol}: {e}")
 
         if signal and self.on_signal:
             self.on_signal(signal)
