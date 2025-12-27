@@ -1527,6 +1527,7 @@
                 <a href="#" onclick="event.preventDefault(); openAIMonitor()">📡 AI Monitor</a>
                 <a href="#" onclick="event.preventDefault(); openNewsTraderPanel()">📰 Breaking News</a>
                 <a href="#" onclick="event.preventDefault(); openAISignalsPanel()">📊 AI Signals (Watchlist)</a>
+                <a href="#" onclick="event.preventDefault(); openWarriorPanel()" style="color: #ef4444;">⚔️ Warrior Trading (Ross Cameron)</a>
                 <hr>
                 <strong style="font-size: 10px;">🔧 TOOLS</strong>
                 <a href="#" onclick="event.preventDefault(); openScannerPanel()">🔍 Stock Scanner</a>
@@ -4830,6 +4831,73 @@
                                 <tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">Loading...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            `,
+
+            // Warrior Trading Panel - Ross Cameron Methodology
+            warrior: `
+                <div class="module-content" style="display: flex; flex-direction: column; height: 100%; padding: 0; font-size: 10px;">
+                    <!-- Header -->
+                    <div style="background: linear-gradient(180deg, #1a0a0a 0%, #0d0d0d 100%); padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dc2626;">
+                        <span style="color: #ef4444; font-weight: 700;">⚔️ WARRIOR TRADING</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="refreshWarriorPanel()" style="padding: 2px 8px; background: #333; border: none; color: #888; font-size: 9px; border-radius: 3px; cursor: pointer;">REFRESH</button>
+                        </div>
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div style="display: flex; background: #0a0a0a; border-bottom: 1px solid #333;">
+                        <button id="warriorTabSignals" class="warrior-tab active" onclick="switchWarriorTab('signals')" style="flex: 1; padding: 6px; background: #1a1a1a; border: none; border-right: 1px solid #333; color: #ef4444; font-size: 10px; cursor: pointer;">SIGNALS</button>
+                        <button id="warriorTabPatterns" class="warrior-tab" onclick="switchWarriorTab('patterns')" style="flex: 1; padding: 6px; background: #0a0a0a; border: none; border-right: 1px solid #333; color: #888; font-size: 10px; cursor: pointer;">PATTERNS</button>
+                        <button id="warriorTabTape" class="warrior-tab" onclick="switchWarriorTab('tape')" style="flex: 1; padding: 6px; background: #0a0a0a; border: none; border-right: 1px solid #333; color: #888; font-size: 10px; cursor: pointer;">TAPE</button>
+                        <button id="warriorTabHalts" class="warrior-tab" onclick="switchWarriorTab('halts')" style="flex: 1; padding: 6px; background: #0a0a0a; border: none; color: #888; font-size: 10px; cursor: pointer;">HALTS</button>
+                    </div>
+
+                    <!-- Signals Tab -->
+                    <div id="warriorSignalsTab" style="flex: 1; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                            <thead style="position: sticky; top: 0; background: #1a1a1a;">
+                                <tr>
+                                    <th style="padding: 4px 6px; text-align: left; color: #888; border-bottom: 1px solid #333;">SYM</th>
+                                    <th style="padding: 4px 6px; text-align: center; color: #888; border-bottom: 1px solid #333;">GRADE</th>
+                                    <th style="padding: 4px 6px; text-align: center; color: #888; border-bottom: 1px solid #333;">SCORE</th>
+                                    <th style="padding: 4px 6px; text-align: center; color: #888; border-bottom: 1px solid #333;">PATTERN</th>
+                                    <th style="padding: 4px 6px; text-align: center; color: #888; border-bottom: 1px solid #333;">ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody id="warriorSignalsTable">
+                                <tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Patterns Tab -->
+                    <div id="warriorPatternsTab" style="flex: 1; overflow-y: auto; display: none;">
+                        <div id="warriorPatternsContent" style="padding: 8px;">
+                            <div style="color: #666; text-align: center; padding: 20px;">Click REFRESH to load patterns</div>
+                        </div>
+                    </div>
+
+                    <!-- Tape Tab -->
+                    <div id="warriorTapeTab" style="flex: 1; overflow-y: auto; display: none;">
+                        <div id="warriorTapeContent" style="padding: 8px;">
+                            <div style="color: #666; text-align: center; padding: 20px;">Click REFRESH to load tape signals</div>
+                        </div>
+                    </div>
+
+                    <!-- Halts Tab -->
+                    <div id="warriorHaltsTab" style="flex: 1; overflow-y: auto; display: none;">
+                        <div id="warriorHaltsContent" style="padding: 8px;">
+                            <div style="color: #666; text-align: center; padding: 20px;">No active halts detected</div>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div style="padding: 4px 8px; background: #0a0a0a; border-top: 1px solid #333; font-size: 9px; display: flex; gap: 12px; justify-content: center;">
+                        <span><span style="color: #22c55e; font-weight: 700;">A</span>=Full Size</span>
+                        <span><span style="color: #fbbf24; font-weight: 700;">B</span>=Half Size</span>
+                        <span><span style="color: #ef4444; font-weight: 700;">C</span>=Scalp Only</span>
                     </div>
                 </div>
             `,
@@ -11102,6 +11170,197 @@ Confirm order?`;
 
                 table.innerHTML = rows.join('');
             } catch (e) {
+                table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #ef4444;">Error loading signals</td></tr>';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //                     WARRIOR TRADING PANEL (Ross Cameron)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function openWarriorPanel() {
+            const existing = windows.find(w => w.id === 'warrior');
+            if (existing) {
+                existing.restore();
+                existing.activate();
+                return;
+            }
+            createWindow('warrior', '⚔️ WARRIOR TRADING', windowTemplates.warrior, 550, 80, 420, 450);
+            setTimeout(refreshWarriorPanel, 100);
+        }
+
+        function switchWarriorTab(tab) {
+            // Hide all tabs
+            document.getElementById('warriorSignalsTab').style.display = 'none';
+            document.getElementById('warriorPatternsTab').style.display = 'none';
+            document.getElementById('warriorTapeTab').style.display = 'none';
+            document.getElementById('warriorHaltsTab').style.display = 'none';
+
+            // Reset all tab buttons
+            document.querySelectorAll('.warrior-tab').forEach(btn => {
+                btn.style.background = '#0a0a0a';
+                btn.style.color = '#888';
+            });
+
+            // Show selected tab
+            const tabElement = document.getElementById(`warrior${tab.charAt(0).toUpperCase() + tab.slice(1)}Tab`);
+            if (tabElement) tabElement.style.display = 'block';
+
+            // Highlight selected tab button
+            const tabBtn = document.getElementById(`warriorTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+            if (tabBtn) {
+                tabBtn.style.background = '#1a1a1a';
+                tabBtn.style.color = '#ef4444';
+            }
+        }
+
+        async function refreshWarriorPanel() {
+            const table = document.getElementById('warriorSignalsTable');
+            if (!table) return;
+
+            table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">Loading...</td></tr>';
+
+            try {
+                // Get watchlist symbols
+                const wlResponse = await fetch('/api/worklist');
+                const wlData = await wlResponse.json();
+
+                const allSymbols = wlData.data ? wlData.data.map(s => s.symbol) : (wlData.symbols || []);
+                if (!allSymbols || allSymbols.length === 0) {
+                    table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">No symbols in watchlist</td></tr>';
+                    return;
+                }
+
+                const symbols = allSymbols.slice(0, 15); // Limit to 15
+                const rows = [];
+                const patternRows = [];
+                const tapeRows = [];
+                const haltRows = [];
+
+                // Batch analyze symbols
+                const analyzeResponse = await fetch('/api/warrior/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: symbols })
+                });
+                const analyzeData = await analyzeResponse.json();
+
+                if (analyzeData.signals) {
+                    for (const signal of analyzeData.signals) {
+                        const sym = signal.symbol;
+                        const grade = signal.setup?.grade || 'C';
+                        const confidence = signal.setup?.confidence || 0;
+                        const pattern = signal.components?.pattern || '--';
+                        const action = signal.action || 'WAIT';
+                        const tapeSignal = signal.components?.tape || '--';
+                        const haltWarning = signal.components?.halt_warning;
+
+                        // Grade colors
+                        const gradeColor = grade === 'A' ? '#22c55e' : grade === 'B' ? '#fbbf24' : '#ef4444';
+                        const actionColor = action === 'BUY' ? '#22c55e' : action === 'WAIT' ? '#888' : '#ef4444';
+
+                        rows.push(`
+                            <tr style="border-bottom: 1px solid #222; cursor: pointer;" onclick="handleSymbolChange('${sym}')">
+                                <td style="padding: 4px 6px; color: #60a5fa; font-weight: 600;">${sym}</td>
+                                <td style="padding: 4px 6px; text-align: center;">
+                                    <span style="color: ${gradeColor}; font-weight: 700; font-size: 12px;">${grade}</span>
+                                </td>
+                                <td style="padding: 4px 6px; text-align: center; color: #888;">${confidence.toFixed(0)}%</td>
+                                <td style="padding: 4px 6px; text-align: center; color: ${pattern !== '--' ? '#a78bfa' : '#444'}; font-size: 9px;">${pattern.substring(0, 12)}</td>
+                                <td style="padding: 4px 6px; text-align: center; color: ${actionColor}; font-weight: 600;">${action}</td>
+                            </tr>
+                        `);
+
+                        // Patterns tab
+                        if (pattern && pattern !== '--') {
+                            patternRows.push(`
+                                <div style="padding: 6px; margin-bottom: 4px; background: #1a1a1a; border-radius: 4px; border-left: 3px solid #a78bfa;">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #60a5fa; font-weight: 600;">${sym}</span>
+                                        <span style="color: #a78bfa; font-size: 11px;">${pattern}</span>
+                                    </div>
+                                    <div style="color: #666; font-size: 9px; margin-top: 2px;">
+                                        Entry: $${signal.trade?.entry?.toFixed(2) || '--'} | Stop: $${signal.trade?.stop?.toFixed(2) || '--'} | Target: $${signal.trade?.target?.toFixed(2) || '--'}
+                                    </div>
+                                </div>
+                            `);
+                        }
+
+                        // Tape tab
+                        if (tapeSignal && tapeSignal !== 'NO_SIGNAL' && tapeSignal !== '--') {
+                            const tapeColor = tapeSignal.includes('BUY') || tapeSignal.includes('GREEN') ? '#22c55e' :
+                                             tapeSignal.includes('SELL') || tapeSignal.includes('RED') ? '#ef4444' : '#fbbf24';
+                            tapeRows.push(`
+                                <div style="padding: 6px; margin-bottom: 4px; background: #1a1a1a; border-radius: 4px; border-left: 3px solid ${tapeColor};">
+                                    <span style="color: #60a5fa; font-weight: 600;">${sym}</span>
+                                    <span style="color: ${tapeColor}; margin-left: 8px; font-size: 10px;">${tapeSignal}</span>
+                                </div>
+                            `);
+                        }
+
+                        // Halts tab
+                        if (haltWarning) {
+                            haltRows.push(`
+                                <div style="padding: 6px; margin-bottom: 4px; background: #1a0a0a; border-radius: 4px; border-left: 3px solid #ef4444;">
+                                    <span style="color: #ef4444; font-weight: 600;">⚠️ ${sym}</span>
+                                    <span style="color: #888; margin-left: 8px; font-size: 10px;">Near LULD Band</span>
+                                </div>
+                            `);
+                        }
+                    }
+                }
+
+                // Update signals table
+                table.innerHTML = rows.length > 0 ? rows.join('') :
+                    '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #666;">No signals</td></tr>';
+
+                // Update patterns tab
+                const patternsContent = document.getElementById('warriorPatternsContent');
+                if (patternsContent) {
+                    patternsContent.innerHTML = patternRows.length > 0 ? patternRows.join('') :
+                        '<div style="color: #666; text-align: center; padding: 20px;">No patterns detected</div>';
+                }
+
+                // Update tape tab
+                const tapeContent = document.getElementById('warriorTapeContent');
+                if (tapeContent) {
+                    tapeContent.innerHTML = tapeRows.length > 0 ? tapeRows.join('') :
+                        '<div style="color: #666; text-align: center; padding: 20px;">No tape signals</div>';
+                }
+
+                // Update halts tab
+                const haltsContent = document.getElementById('warriorHaltsContent');
+                if (haltsContent) {
+                    haltsContent.innerHTML = haltRows.length > 0 ? haltRows.join('') :
+                        '<div style="color: #666; text-align: center; padding: 20px;">No active halt warnings</div>';
+                }
+
+                // Also fetch active halts
+                try {
+                    const haltsResponse = await fetch('/api/warrior/halts');
+                    const haltsData = await haltsResponse.json();
+                    if (haltsData.halts && haltsData.halts.length > 0) {
+                        const activeHaltRows = haltsData.halts.map(h => `
+                            <div style="padding: 6px; margin-bottom: 4px; background: #2a0a0a; border-radius: 4px; border: 1px solid #ef4444;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #ef4444; font-weight: 700;">🛑 ${h.symbol}</span>
+                                    <span style="color: #fbbf24; font-size: 10px;">${h.halt_type || 'HALT'}</span>
+                                </div>
+                                <div style="color: #888; font-size: 9px; margin-top: 2px;">
+                                    ${h.countdown ? `Countdown: ${h.countdown}s` : 'Active'}
+                                </div>
+                            </div>
+                        `).join('');
+                        if (haltsContent) {
+                            haltsContent.innerHTML = activeHaltRows + (haltRows.length > 0 ? '<hr style="border-color: #333; margin: 8px 0;">' + haltRows.join('') : '');
+                        }
+                    }
+                } catch (e) {
+                    console.log('No halt data:', e);
+                }
+
+            } catch (e) {
+                console.error('Error refreshing warrior panel:', e);
                 table.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #ef4444;">Error loading signals</td></tr>';
             }
         }
