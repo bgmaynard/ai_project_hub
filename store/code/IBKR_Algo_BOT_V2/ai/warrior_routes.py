@@ -513,3 +513,184 @@ async def get_mtf_status():
             "status": "error",
             "error": str(e)
         }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#                 VWAP MANAGEMENT
+# ═══════════════════════════════════════════════════════════════════════
+
+@router.get("/vwap/{symbol}")
+async def get_vwap_data(symbol: str):
+    """
+    Get VWAP data for a symbol.
+
+    Returns VWAP, position relative to VWAP, bands, and trading signal.
+    """
+    try:
+        from ai.vwap_manager import get_vwap_manager
+
+        manager = get_vwap_manager()
+        data = manager.get_vwap(symbol.upper())
+
+        if data:
+            return {
+                "success": True,
+                **data.to_dict()
+            }
+        else:
+            # Try to load from recent candles
+            try:
+                from polygon_data import get_polygon_client
+                client = get_polygon_client()
+
+                from datetime import datetime, timedelta
+                end = datetime.now()
+                start = end - timedelta(days=1)
+
+                bars = client.get_bars(
+                    symbol.upper(),
+                    multiplier=1,
+                    timespan="minute",
+                    from_date=start.strftime("%Y-%m-%d"),
+                    to_date=end.strftime("%Y-%m-%d")
+                )
+
+                if bars:
+                    candles = [
+                        {
+                            "high": b.get("h", b.get("high", 0)),
+                            "low": b.get("l", b.get("low", 0)),
+                            "close": b.get("c", b.get("close", 0)),
+                            "volume": b.get("v", b.get("volume", 0))
+                        }
+                        for b in bars[-100:]  # Last 100 candles
+                    ]
+                    data = manager.load_from_candles(symbol.upper(), candles)
+                    return {
+                        "success": True,
+                        **data.to_dict()
+                    }
+            except Exception as e:
+                logger.warning(f"Could not load VWAP from Polygon: {e}")
+
+            return {
+                "success": False,
+                "symbol": symbol.upper(),
+                "message": "No VWAP data available - send candle data first"
+            }
+    except Exception as e:
+        logger.error(f"VWAP error for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/vwap/check/{symbol}")
+async def check_vwap_entry(symbol: str):
+    """
+    Check if entry is valid based on VWAP.
+
+    Ross Cameron rules:
+    - Must be ABOVE VWAP
+    - Not too extended (>3% above is risky)
+    """
+    try:
+        from ai.vwap_manager import get_vwap_manager
+
+        manager = get_vwap_manager()
+        valid, reason = manager.is_entry_valid(symbol.upper())
+
+        data = manager.get_vwap(symbol.upper())
+
+        return {
+            "success": True,
+            "symbol": symbol.upper(),
+            "entry_valid": valid,
+            "reason": reason,
+            "vwap": data.vwap if data else 0,
+            "current_price": data.current_price if data else 0,
+            "distance_pct": data.distance_pct if data else 0,
+            "position": data.position.value if data else "UNKNOWN",
+            "stop_price": data.stop_price if data else 0
+        }
+    except Exception as e:
+        logger.error(f"VWAP check error for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class VWAPFeedRequest(BaseModel):
+    """Request to feed candle data for VWAP calculation"""
+    symbol: str
+    candles: List[Dict]
+
+
+@router.post("/vwap/feed")
+async def feed_vwap_candles(request: VWAPFeedRequest):
+    """
+    Feed candle data to calculate VWAP.
+
+    Use this to initialize VWAP from historical data.
+    """
+    try:
+        from ai.vwap_manager import get_vwap_manager
+
+        manager = get_vwap_manager()
+        data = manager.load_from_candles(request.symbol.upper(), request.candles)
+
+        return {
+            "success": True,
+            "symbol": request.symbol.upper(),
+            "candles_processed": len(request.candles),
+            **data.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"VWAP feed error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/vwap/status")
+async def get_vwap_status():
+    """Get VWAP manager status"""
+    try:
+        from ai.vwap_manager import get_vwap_manager
+
+        manager = get_vwap_manager()
+
+        return {
+            "success": True,
+            "status": "operational",
+            "tracked_symbols": list(manager.vwap_data.keys()),
+            "count": len(manager.vwap_data),
+            "trailing_stops": list(manager.trailing_stops.keys()),
+            "config": {
+                "extended_threshold_pct": manager.extended_threshold_pct,
+                "at_vwap_threshold_pct": manager.at_vwap_threshold_pct
+            }
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@router.post("/vwap/reset")
+async def reset_vwap(symbol: str = None):
+    """
+    Reset VWAP data (for new trading day).
+
+    If symbol provided, resets only that symbol.
+    Otherwise resets all symbols.
+    """
+    try:
+        from ai.vwap_manager import get_vwap_manager
+
+        manager = get_vwap_manager()
+        manager.reset_daily(symbol.upper() if symbol else None)
+
+        return {
+            "success": True,
+            "message": f"VWAP reset for {symbol.upper() if symbol else 'all symbols'}"
+        }
+    except Exception as e:
+        logger.error(f"VWAP reset error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

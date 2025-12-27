@@ -846,6 +846,53 @@ def wire_pattern_detector():
         logger.error(f"Failed to wire pattern detector to Polygon: {e}")
 
 
+_vwap_manager_wired = False
+
+
+def wire_vwap_manager():
+    """
+    Wire VWAP manager to Polygon stream for real-time VWAP updates.
+
+    Updates VWAP on every trade tick for accurate real-time calculation.
+    """
+    global _vwap_manager_wired
+
+    if _vwap_manager_wired:
+        logger.debug("VWAP manager already wired")
+        return
+
+    try:
+        from ai.vwap_manager import get_vwap_manager
+
+        vwap_manager = get_vwap_manager()
+        stream = get_polygon_stream()
+
+        def on_polygon_trade_for_vwap(trade: Dict):
+            """Handle trade tick for VWAP update"""
+            try:
+                symbol = trade.get('symbol', '')
+                price = trade.get('price', 0)
+                size = trade.get('size', 0)
+
+                if not symbol or not price or not size:
+                    return
+
+                # Update VWAP from trade
+                vwap_manager.update_from_trade(symbol, price, size)
+
+            except Exception as e:
+                pass  # Don't spam logs
+
+        # Register the callback
+        stream.on_trade(on_polygon_trade_for_vwap)
+
+        _vwap_manager_wired = True
+        logger.info("✅ VWAP manager wired to Polygon stream - real-time VWAP enabled")
+
+    except Exception as e:
+        logger.error(f"Failed to wire VWAP manager to Polygon: {e}")
+
+
 def wire_warrior_trading():
     """
     Wire all Warrior Trading components to Polygon stream.
@@ -854,10 +901,12 @@ def wire_warrior_trading():
     - HOD scanner (A/B grade detection)
     - Tape analyzer (green/red flow, seller thinning)
     - Pattern detector (Bull Flag, ABCD, Micro PB, HOD Break)
+    - VWAP manager (real-time VWAP calculation)
     """
     wire_hod_scanner()
     wire_tape_analyzer()
     wire_pattern_detector()
+    wire_vwap_manager()
     logger.info("✅ All Warrior Trading components wired to Polygon stream")
 
 

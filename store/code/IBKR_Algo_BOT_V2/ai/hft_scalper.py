@@ -157,6 +157,12 @@ class ScalperConfig:
     mtf_require_vwap_aligned: bool = True  # Both timeframes above VWAP
     mtf_require_macd_aligned: bool = True  # Both timeframes MACD bullish
 
+    # VWAP Filter (Ross Cameron - line in the sand)
+    use_vwap_filter: bool = True  # Require price above VWAP for entry
+    vwap_max_extension_pct: float = 3.0  # Max % above VWAP (avoid chasing)
+    use_vwap_trailing_stop: bool = True  # Use VWAP as trailing stop
+    vwap_stop_offset_pct: float = 0.3  # Trail 0.3% below VWAP
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -1006,6 +1012,37 @@ class HFTScalper:
             except Exception as e:
                 logger.warning(f"MTF filter check failed for {symbol}: {e}")
 
+        # Apply VWAP filter if enabled (Ross Cameron - VWAP is the line in the sand)
+        if signal and getattr(self.config, 'use_vwap_filter', True):
+            try:
+                from ai.vwap_manager import get_vwap_manager
+
+                vwap_manager = get_vwap_manager()
+                valid, reason = vwap_manager.is_entry_valid(symbol)
+
+                if valid:
+                    vwap_data = vwap_manager.get_vwap(symbol)
+                    if vwap_data:
+                        # Check if too extended above VWAP
+                        max_ext = getattr(self.config, 'vwap_max_extension_pct', 3.0)
+                        if vwap_data.distance_pct > max_ext:
+                            logger.info(f"VWAP REJECT: {symbol} - Extended {vwap_data.distance_pct:.1f}% > {max_ext}%, wait for pullback")
+                            signal = None
+                        else:
+                            logger.info(f"VWAP APPROVE: {symbol} - {reason}, dist={vwap_data.distance_pct:.1f}%")
+                            signal['vwap'] = vwap_data.vwap
+                            signal['vwap_distance_pct'] = vwap_data.distance_pct
+                            signal['vwap_position'] = vwap_data.position.value
+                            signal['vwap_stop'] = vwap_data.stop_price
+                    else:
+                        logger.debug(f"VWAP: {symbol} - No VWAP data yet, allowing entry")
+                else:
+                    logger.info(f"VWAP REJECT: {symbol} - {reason}")
+                    signal = None
+
+            except Exception as e:
+                logger.warning(f"VWAP filter check failed for {symbol}: {e}")
+
         if signal and self.on_signal:
             self.on_signal(signal)
 
@@ -1077,6 +1114,39 @@ class HFTScalper:
 
             except Exception as e:
                 logger.debug(f"Chronos exit check failed for {symbol}: {e}")
+
+        # ===== VWAP TRAILING STOP (Ross Cameron - VWAP is support) =====
+        # If price breaks below VWAP, momentum is lost
+        if getattr(self.config, 'use_vwap_trailing_stop', True):
+            try:
+                from ai.vwap_manager import get_vwap_manager
+
+                vwap_manager = get_vwap_manager()
+
+                # Create trailing stop if not exists
+                if symbol not in vwap_manager.trailing_stops:
+                    vwap_manager.create_trailing_stop(symbol, trade.entry_price)
+                    # Set offset from config
+                    offset = getattr(self.config, 'vwap_stop_offset_pct', 0.3)
+                    vwap_manager.trailing_stops[symbol].trail_offset_pct = offset
+
+                # Check VWAP trailing stop
+                should_exit, reason = vwap_manager.update_trailing_stop(symbol, price)
+
+                if should_exit:
+                    exit_signal = {
+                        "reason": "VWAP_STOP",
+                        "pnl_percent": pnl_pct,
+                        "price": price,
+                        "vwap_details": reason,
+                        "vwap": vwap_manager.trailing_stops[symbol].current_vwap,
+                        "vwap_stop": vwap_manager.trailing_stops[symbol].current_stop
+                    }
+                    logger.info(f"VWAP EXIT: {symbol} - {reason} @ {pnl_pct:+.1f}%")
+                    return exit_signal
+
+            except Exception as e:
+                logger.debug(f"VWAP trailing stop check failed for {symbol}: {e}")
 
         # Use ATR-based stops if available, otherwise fall back to fixed %
         if self.config.use_atr_stops and trade.atr_stop_price > 0:

@@ -1211,3 +1211,71 @@ GET  /api/warrior/mtf/status      - Engine status
   "reasons": ["Both timeframes bullish with MACD and VWAP confirmation"]
 }
 ```
+
+### VWAP Manager (Ross Cameron - Line in the Sand)
+
+Ross Cameron rule: **VWAP is the institutional support line. Only enter above VWAP.**
+
+| File | Purpose |
+|------|---------|
+| `ai/vwap_manager.py` | VWAP calculation and trailing stop management |
+
+**Key Concepts:**
+- VWAP = Sum(Price × Volume) / Sum(Volume) for the day
+- Resets at market open each day
+- Institutions use VWAP for large order execution
+- Price above VWAP = bullish (buyers in control)
+- Price below VWAP = bearish (sellers in control)
+- Extended above VWAP (>3%) = risky to chase
+
+**Entry Rules:**
+- `ABOVE` (0-3%) - Ideal entry zone
+- `AT_VWAP` - Waiting for direction
+- `FAR_ABOVE` (>3%) - Avoid, wait for pullback
+- `BELOW` - No entry on longs
+
+**Exit Rules:**
+- Trail stop 0.3% below VWAP
+- Exit if price breaks below VWAP
+
+**API Endpoints:**
+```
+GET  /api/warrior/vwap/{symbol}      - Get VWAP data
+GET  /api/warrior/vwap/check/{symbol} - Check entry validity
+POST /api/warrior/vwap/feed          - Feed trade data
+GET  /api/warrior/vwap/status        - Manager status
+POST /api/warrior/vwap/reset         - Reset daily VWAP
+```
+
+**Scalper Config:**
+```json
+{
+  "use_vwap_filter": true,           // Require price above VWAP
+  "vwap_max_extension_pct": 3.0,     // Max % above VWAP (avoid chasing)
+  "use_vwap_trailing_stop": true,    // Use VWAP as trailing stop
+  "vwap_stop_offset_pct": 0.3        // Trail 0.3% below VWAP
+}
+```
+
+**Example Response:**
+```json
+{
+  "symbol": "AAPL",
+  "vwap": 185.25,
+  "current_price": 186.50,
+  "position": "ABOVE",
+  "distance_pct": 0.67,
+  "signal": "BUY_SUPPORTED",
+  "entry_valid": true,
+  "stop_price": 184.69,
+  "bands": {
+    "upper_1": 186.75,
+    "upper_2": 188.25,
+    "lower_1": 183.75,
+    "lower_2": 182.25
+  }
+}
+```
+
+**Polygon Integration:**
+VWAP manager is wired to Polygon streaming via `wire_vwap_manager()`. Every trade tick updates the VWAP calculation in real-time.
