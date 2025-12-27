@@ -92,6 +92,10 @@
   "use_overnight_filter": true,
   "overnight_min_strength": "MODERATE",
   "overnight_block_reversals": true,
+  "use_low_float_bypass": true,
+  "low_float_max_shares": 10.0,
+  "low_float_min_volume_ratio": 5.0,
+  "low_float_min_rotation": 50.0,
   "watchlist": [
     "SUUN",
     "BDRX",

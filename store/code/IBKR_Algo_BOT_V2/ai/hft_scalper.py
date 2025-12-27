@@ -191,6 +191,12 @@ class ScalperConfig:
     overnight_min_strength: str = 'MODERATE'  # Minimum continuation strength
     overnight_block_reversals: bool = True  # Block if PM reversed AH direction
 
+    # Low-Float Momentum Bypass
+    use_low_float_bypass: bool = True  # Bypass AI filters for low-float momentum plays
+    low_float_max_shares: float = 10.0  # Max float in millions to qualify
+    low_float_min_volume_ratio: float = 5.0  # Min volume vs avg to qualify
+    low_float_min_rotation: float = 50.0  # Min float rotation % to qualify
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -1158,8 +1164,40 @@ class HFTScalper:
             except Exception as e:
                 logger.warning(f"Depth analysis check failed for {symbol}: {e}")
 
+        # Check for low-float momentum bypass BEFORE applying AI filters
+        # Low-float momentum plays behave differently and AI models incorrectly predict reversal
+        low_float_bypass = False
+        if signal and getattr(self.config, 'use_low_float_bypass', True):
+            try:
+                from ai.low_float_momentum import check_low_float_momentum, MomentumSignal
+
+                lf_analysis = check_low_float_momentum(
+                    symbol,
+                    current_price=quote.get('price', 0) or quote.get('last', 0),
+                    gap_percent=signal.get('spike_pct', 0)
+                )
+
+                if lf_analysis.signal in [MomentumSignal.STRONG, MomentumSignal.MODERATE]:
+                    low_float_bypass = True
+                    signal['low_float_momentum'] = True
+                    signal['low_float_signal'] = lf_analysis.signal.value
+                    signal['float_shares_m'] = lf_analysis.float_shares / 1e6
+                    signal['float_rotation_pct'] = lf_analysis.float_rotation
+                    signal['volume_ratio'] = lf_analysis.volume_ratio
+
+                    logger.info(
+                        f"LOW-FLOAT MOMENTUM: {symbol} - {lf_analysis.signal.value} "
+                        f"(Float: {lf_analysis.float_shares/1e6:.1f}M, "
+                        f"Vol: {lf_analysis.volume_ratio:.0f}x, "
+                        f"Rotation: {lf_analysis.float_rotation:.0f}%) - "
+                        f"BYPASSING AI FILTERS"
+                    )
+            except Exception as e:
+                logger.warning(f"Low-float momentum check failed for {symbol}: {e}")
+
         # Apply Gap Grader filter if enabled (Ross Cameron gap quality scoring)
-        if signal and getattr(self.config, 'use_gap_grader_filter', True):
+        # SKIP if low-float momentum bypass is active
+        if signal and getattr(self.config, 'use_gap_grader_filter', True) and not low_float_bypass:
             try:
                 from ai.gap_grader import get_gap_grader, GapGrade
 
@@ -1209,7 +1247,8 @@ class HFTScalper:
                 logger.warning(f"Gap grader check failed for {symbol}: {e}")
 
         # Apply Overnight Continuation filter if enabled
-        if signal and getattr(self.config, 'use_overnight_filter', True):
+        # SKIP if low-float momentum bypass is active
+        if signal and getattr(self.config, 'use_overnight_filter', True) and not low_float_bypass:
             try:
                 from ai.overnight_continuation import get_overnight_scanner, ContinuationPattern, ContinuationStrength
 
