@@ -420,6 +420,16 @@ except ImportError as e:
     logger.warning(f"Pre-Market Scanner routes not available: {e}")
     HAS_PREMARKET_SCANNER = False
 
+# Warrior Trading Setup Detection Routes
+try:
+    from ai.warrior_routes import router as warrior_router
+    app.include_router(warrior_router, tags=["Warrior Trading"])
+    HAS_WARRIOR_SETUP = True
+    logger.info("Warrior Trading Setup Detection routes included")
+except ImportError as e:
+    logger.warning(f"Warrior Trading routes not available: {e}")
+    HAS_WARRIOR_SETUP = False
+
 # Lightweight Charts API Routes
 try:
     from charts_routes import router as charts_router

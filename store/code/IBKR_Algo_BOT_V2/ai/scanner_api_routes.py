@@ -2161,4 +2161,483 @@ async def unregister_chronos_position(symbol: str):
         return {"success": False, "error": str(e)}
 
 
-logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader, MACD Analyzer, Two-Phase Strategy, Phase 2 Manager, Chronos Exit Manager)")
+# ============ HOD Momentum Scanner Endpoints ============
+
+@router.get("/hod/status")
+async def get_hod_scanner_status():
+    """
+    Get HOD Momentum Scanner status.
+
+    Returns tracking count, recent alerts, A/B grade stocks.
+    """
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+        return {
+            "success": True,
+            **scanner.get_status()
+        }
+    except Exception as e:
+        logger.error(f"HOD scanner status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/hod/alerts")
+async def get_hod_alerts(limit: int = 50):
+    """Get recent HOD alerts with grades"""
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+        data = scanner.to_dict()
+        return {
+            "success": True,
+            "count": len(data["alerts"]),
+            "alerts": data["alerts"][-limit:],
+            "a_grade": data["a_grade_stocks"],
+            "b_grade": data["b_grade_stocks"],
+            "running": data["running_stocks"]
+        }
+    except Exception as e:
+        logger.error(f"HOD alerts error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/hod/a-grade")
+async def get_hod_a_grade():
+    """Get A-grade stocks (5/5 Ross criteria) - FULL POSITION worthy"""
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+        return {
+            "success": True,
+            "grade": "A",
+            "description": "5/5 Ross criteria - FULL POSITION",
+            "stocks": scanner.get_a_grade_stocks()
+        }
+    except Exception as e:
+        logger.error(f"HOD A-grade error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/hod/b-grade")
+async def get_hod_b_grade():
+    """Get B-grade stocks (4/5 Ross criteria) - HALF POSITION worthy"""
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+        return {
+            "success": True,
+            "grade": "B",
+            "description": "4/5 Ross criteria - HALF POSITION",
+            "stocks": scanner.get_b_grade_stocks()
+        }
+    except Exception as e:
+        logger.error(f"HOD B-grade error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/hod/running")
+async def get_hod_running():
+    """Get actively running stocks (multiple HOD breaks)"""
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+        return {
+            "success": True,
+            "description": "Stocks with multiple HOD breaks in 5 min",
+            "stocks": scanner.get_running_stocks()
+        }
+    except Exception as e:
+        logger.error(f"HOD running error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/hod/grade/{symbol}")
+async def grade_symbol(symbol: str, has_news: bool = False):
+    """
+    Grade a symbol based on Ross Cameron's 5 criteria.
+
+    Returns grade (A/B/C) and criteria breakdown.
+    """
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+        result = scanner.grade_symbol(symbol.upper(), has_news)
+        return {
+            "success": True,
+            **result
+        }
+    except Exception as e:
+        logger.error(f"HOD grade error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/hod/add/{symbol}")
+async def add_to_hod_tracker(symbol: str):
+    """Add a symbol to HOD tracking"""
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        import httpx
+
+        scanner = get_hod_scanner()
+
+        # Get quote data
+        async with httpx.AsyncClient() as client:
+            quote_resp = await client.get(f"http://localhost:9100/api/price/{symbol.upper()}", timeout=5.0)
+            quote = quote_resp.json() if quote_resp.status_code == 200 else {}
+
+            # Get float
+            float_data = {}
+            try:
+                float_resp = await client.get(f"http://localhost:9100/api/stock/float/{symbol.upper()}", timeout=5.0)
+                if float_resp.status_code == 200:
+                    float_data = float_resp.json()
+            except:
+                pass
+
+        # Prepare data
+        data = {
+            'price': quote.get('price', quote.get('last', 0)),
+            'open': quote.get('open', 0),
+            'high': quote.get('high', 0),
+            'low': quote.get('low', 0),
+            'previous_close': quote.get('prev_close', quote.get('close', 0)),
+            'volume': quote.get('volume', 0),
+            'avg_volume': quote.get('avg_volume', 0),
+            'float_shares': float_data.get('float', 0)
+        }
+
+        scanner.add_symbol(symbol.upper(), data)
+
+        return {
+            "success": True,
+            "symbol": symbol.upper(),
+            "tracking_count": len(scanner.trackers),
+            "data_loaded": data
+        }
+    except Exception as e:
+        logger.error(f"HOD add error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.delete("/hod/{symbol}")
+async def remove_from_hod_tracker(symbol: str):
+    """Remove a symbol from HOD tracking"""
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+        scanner.remove_symbol(symbol.upper())
+        return {
+            "success": True,
+            "symbol": symbol.upper(),
+            "tracking_count": len(scanner.trackers)
+        }
+    except Exception as e:
+        logger.error(f"HOD remove error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/hod/update/{symbol}")
+async def update_hod_price(symbol: str, price: float, volume: int = 0, has_news: bool = False):
+    """
+    Update price for a symbol and check for HOD break.
+
+    Returns HOD alert if new high detected.
+    """
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+
+        alert = scanner.update_price(symbol.upper(), price, volume)
+
+        if alert:
+            return {
+                "success": True,
+                "hod_alert": True,
+                "symbol": alert.symbol,
+                "price": alert.price,
+                "change_pct": alert.change_pct,
+                "grade": alert.grade,
+                "criteria_met": alert.criteria_met,
+                "strategy": alert.strategy_name
+            }
+        else:
+            return {
+                "success": True,
+                "hod_alert": False,
+                "symbol": symbol.upper(),
+                "price": price
+            }
+    except Exception as e:
+        logger.error(f"HOD update error for {symbol}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/hod/sync-watchlist")
+async def sync_hod_from_watchlist():
+    """
+    Sync HOD scanner with current watchlist.
+
+    Loads all watchlist symbols into HOD tracker with their data.
+    """
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        import httpx
+
+        scanner = get_hod_scanner()
+        added = []
+
+        async with httpx.AsyncClient() as client:
+            # Get watchlist
+            resp = await client.get("http://localhost:9100/api/worklist", timeout=10.0)
+            if resp.status_code != 200:
+                return {"success": False, "error": "Could not fetch watchlist"}
+
+            data = resp.json()
+
+            for item in data.get('data', []):
+                symbol = item.get('symbol')
+                if symbol:
+                    scanner.add_symbol(symbol, {
+                        'price': item.get('price', 0),
+                        'open': item.get('open', 0),
+                        'high': item.get('high', 0),
+                        'low': item.get('low', 0),
+                        'previous_close': item.get('prev_close', item.get('close', 0)),
+                        'volume': item.get('volume', 0),
+                        'avg_volume': item.get('avg_volume', 0),
+                        'float_shares': item.get('float', 0)
+                    })
+                    added.append(symbol)
+
+        return {
+            "success": True,
+            "synced_count": len(added),
+            "symbols": added,
+            "tracking_count": len(scanner.trackers)
+        }
+    except Exception as e:
+        logger.error(f"HOD sync error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/hod/config")
+async def get_hod_config():
+    """Get HOD scanner configuration (Ross Cameron's 5 criteria thresholds)"""
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        scanner = get_hod_scanner()
+        return {
+            "success": True,
+            "ross_criteria": {
+                "description": "Ross Cameron's 5 Indicators of High Demand & Low Supply",
+                "1_rvol": f">= {scanner.min_relative_volume}x (5x Relative Volume)",
+                "2_change": f">= {scanner.min_change_pct}% (Already up 10%)",
+                "3_news": "News Event catalyst (checked separately)",
+                "4_price": f"${scanner.min_price} - ${scanner.max_price} (Price range)",
+                "5_float": f"< {scanner.max_float/1_000_000:.0f}M shares (Low float)"
+            },
+            "grading": {
+                "A": "5/5 criteria → FULL POSITION",
+                "B": "4/5 criteria → HALF POSITION",
+                "C": "3 or less → SCALP ONLY"
+            },
+            "filters": {
+                "min_price": scanner.min_price,
+                "max_price": scanner.max_price,
+                "min_change_pct": scanner.min_change_pct,
+                "min_relative_volume": scanner.min_relative_volume,
+                "max_float": scanner.max_float,
+                "alert_cooldown_seconds": scanner.alert_cooldown_seconds
+            }
+        }
+    except Exception as e:
+        logger.error(f"HOD config error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ============ Top Gappers Scanner Endpoints ============
+
+@router.get("/gappers/status")
+async def get_gappers_status():
+    """Get Top Gappers scanner status"""
+    try:
+        from .top_gappers_scanner import get_gappers_scanner
+        scanner = get_gappers_scanner()
+        return {
+            "success": True,
+            **scanner.get_status()
+        }
+    except Exception as e:
+        logger.error(f"Gappers status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/gappers/scan")
+async def run_gappers_scan():
+    """
+    Run Top Gappers scan.
+
+    Scans Schwab movers, FinViz, and Yahoo gainers.
+    Returns stocks graded by Ross Cameron's 5 criteria.
+    """
+    try:
+        from .top_gappers_scanner import run_gappers_scan
+        gappers = await run_gappers_scan()
+        return {
+            "success": True,
+            "count": len(gappers),
+            "gappers": [g.to_dict() for g in gappers],
+            "a_grade": [g.to_dict() for g in gappers if g.grade == "A"],
+            "b_grade": [g.to_dict() for g in gappers if g.grade == "B"]
+        }
+    except Exception as e:
+        logger.error(f"Gappers scan error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/gappers/results")
+async def get_gappers_results():
+    """Get latest gappers scan results"""
+    try:
+        from .top_gappers_scanner import get_gappers_scanner
+        scanner = get_gappers_scanner()
+        return {
+            "success": True,
+            **scanner.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Gappers results error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/gappers/a-grade")
+async def get_gappers_a_grade():
+    """Get A-grade gappers (5/5 Ross criteria) - FULL POSITION worthy"""
+    try:
+        from .top_gappers_scanner import get_gappers_scanner
+        scanner = get_gappers_scanner()
+        a_grade = scanner.get_a_grade()
+        return {
+            "success": True,
+            "grade": "A",
+            "description": "5/5 Ross criteria - FULL POSITION",
+            "count": len(a_grade),
+            "stocks": [g.to_dict() for g in a_grade]
+        }
+    except Exception as e:
+        logger.error(f"Gappers A-grade error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/gappers/b-grade")
+async def get_gappers_b_grade():
+    """Get B-grade gappers (4/5 Ross criteria) - HALF POSITION worthy"""
+    try:
+        from .top_gappers_scanner import get_gappers_scanner
+        scanner = get_gappers_scanner()
+        b_grade = scanner.get_b_grade()
+        return {
+            "success": True,
+            "grade": "B",
+            "description": "4/5 Ross criteria - HALF POSITION",
+            "count": len(b_grade),
+            "stocks": [g.to_dict() for g in b_grade]
+        }
+    except Exception as e:
+        logger.error(f"Gappers B-grade error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/gappers/top3")
+async def get_gappers_top3():
+    """
+    Get top 3 leading percentage gainers.
+
+    Ross: "I typically focus on the top 2-3 leading percentage gainers each day,
+    as these will be the most obvious."
+    """
+    try:
+        from .top_gappers_scanner import get_gappers_scanner
+        scanner = get_gappers_scanner()
+        top3 = scanner.get_top_3()
+        return {
+            "success": True,
+            "description": "Top 3 leading % gainers - the most obvious plays",
+            "count": len(top3),
+            "stocks": [g.to_dict() for g in top3]
+        }
+    except Exception as e:
+        logger.error(f"Gappers top3 error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/gappers/add-to-watchlist")
+async def add_gappers_to_watchlist(grade: str = "A"):
+    """
+    Add A-grade (or B-grade) gappers to watchlist.
+
+    Args:
+        grade: "A" for A-grade only, "B" for B-grade, "AB" for both
+    """
+    try:
+        from .top_gappers_scanner import get_gappers_scanner
+        import httpx
+
+        scanner = get_gappers_scanner()
+        added = []
+
+        # Get stocks by grade
+        stocks = []
+        if "A" in grade.upper():
+            stocks.extend(scanner.get_a_grade())
+        if "B" in grade.upper():
+            stocks.extend(scanner.get_b_grade())
+
+        async with httpx.AsyncClient() as client:
+            for stock in stocks:
+                # Add to dashboard watchlist
+                try:
+                    await client.post(
+                        "http://localhost:9100/api/worklist/add",
+                        json={"symbol": stock.symbol},
+                        timeout=3.0
+                    )
+                except:
+                    pass
+
+                # Add to scalper watchlist
+                try:
+                    await client.post(
+                        f"http://localhost:9100/api/scanner/scalper/watchlist/add/{stock.symbol}",
+                        timeout=3.0
+                    )
+                except:
+                    pass
+
+                # Add to HOD tracker
+                try:
+                    await client.post(
+                        f"http://localhost:9100/api/scanner/hod/add/{stock.symbol}",
+                        timeout=3.0
+                    )
+                except:
+                    pass
+
+                added.append({
+                    "symbol": stock.symbol,
+                    "grade": stock.grade,
+                    "change_pct": stock.change_pct
+                })
+
+        return {
+            "success": True,
+            "added_count": len(added),
+            "added": added
+        }
+    except Exception as e:
+        logger.error(f"Gappers add to watchlist error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader, MACD Analyzer, Two-Phase Strategy, Phase 2 Manager, Chronos Exit Manager, HOD Momentum Scanner, Top Gappers Scanner)")

@@ -568,6 +568,114 @@ def is_polygon_streaming_available() -> bool:
     return bool(get_polygon_api_key())
 
 
+# ============ HOD Scanner Integration ============
+
+_hod_scanner_wired = False
+
+def wire_hod_scanner():
+    """
+    Wire HOD Momentum Scanner to receive real-time trades from Polygon.
+
+    This enables automatic HOD detection and A/B grade stock identification
+    based on Ross Cameron's 5 criteria.
+    """
+    global _hod_scanner_wired
+
+    if _hod_scanner_wired:
+        logger.debug("HOD scanner already wired to Polygon stream")
+        return
+
+    try:
+        from ai.hod_momentum_scanner import get_hod_scanner
+        import httpx
+
+        stream = get_polygon_stream()
+        hod_scanner = get_hod_scanner()
+
+        def on_polygon_trade(trade: dict):
+            """Process each trade from Polygon and update HOD scanner"""
+            try:
+                symbol = trade.get('symbol', '')
+                price = trade.get('price', 0)
+                size = trade.get('size', 0)
+
+                if not symbol or price <= 0:
+                    return
+
+                # Update HOD scanner - returns alert if new HOD made
+                alert = hod_scanner.update_price(symbol, price, size)
+
+                if alert:
+                    logger.info(f"🚀 HOD Alert from Polygon: {alert.symbol} ${alert.price:.2f} "
+                               f"[{alert.grade}] {alert.strategy_name}")
+
+                    # Auto-add A and B grade stocks to watchlists
+                    if alert.grade in ["A", "B"]:
+                        _auto_add_to_watchlists(alert.symbol)
+
+            except Exception as e:
+                # Don't spam logs - HOD updates are very frequent
+                pass
+
+        # Register the callback
+        stream.on_trade(on_polygon_trade)
+
+        # Register HOD alert callback for additional processing
+        def on_hod_alert(alert):
+            """Called when HOD scanner generates an alert"""
+            logger.info(f"📈 HOD Break: {alert.symbol} ${alert.price:.2f} ({alert.change_pct:+.1f}%) "
+                       f"[{alert.grade}] {alert.criteria_met}/5 criteria")
+
+        hod_scanner.on_alert(on_hod_alert)
+
+        _hod_scanner_wired = True
+        logger.info("✅ HOD scanner wired to Polygon stream - real-time HOD detection enabled")
+
+    except Exception as e:
+        logger.error(f"Failed to wire HOD scanner to Polygon: {e}")
+
+
+def _auto_add_to_watchlists(symbol: str):
+    """Auto-add symbol to dashboard and scalper watchlists"""
+    import threading
+    import httpx
+
+    def _add():
+        try:
+            with httpx.Client(timeout=3.0) as client:
+                # Add to dashboard watchlist
+                try:
+                    client.post(
+                        "http://localhost:9100/api/worklist/add",
+                        json={"symbol": symbol}
+                    )
+                except:
+                    pass
+
+                # Add to scalper watchlist
+                try:
+                    client.post(
+                        f"http://localhost:9100/api/scanner/scalper/watchlist/add/{symbol}"
+                    )
+                except:
+                    pass
+
+                # Add to HOD tracker
+                try:
+                    client.post(
+                        f"http://localhost:9100/api/scanner/hod/add/{symbol}"
+                    )
+                except:
+                    pass
+
+                logger.info(f"📝 Auto-added {symbol} to watchlists (HOD A/B grade)")
+        except Exception as e:
+            logger.debug(f"Auto-add failed for {symbol}: {e}")
+
+    # Run in background thread to not block streaming
+    threading.Thread(target=_add, daemon=True).start()
+
+
 if __name__ == "__main__":
     # Test the stream
     logging.basicConfig(level=logging.INFO)

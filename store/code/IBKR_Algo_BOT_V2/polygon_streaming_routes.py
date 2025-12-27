@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/polygon/stream", tags=["Polygon Streaming"])
 
 # Import polygon streaming
 try:
-    from polygon_streaming import get_polygon_stream, is_polygon_streaming_available
+    from polygon_streaming import get_polygon_stream, is_polygon_streaming_available, wire_hod_scanner
     HAS_POLYGON_STREAM = True
 except ImportError as e:
     logger.warning(f"Polygon streaming not available: {e}")
@@ -64,9 +64,16 @@ async def start_stream():
         raise HTTPException(status_code=400, detail="Polygon API key not configured")
 
     stream.start()
+
+    # Wire HOD scanner to receive trade updates
+    try:
+        wire_hod_scanner()
+    except Exception as e:
+        logger.warning(f"Could not wire HOD scanner: {e}")
+
     return {
         "success": True,
-        "message": "Polygon stream started",
+        "message": "Polygon stream started (HOD scanner enabled)",
         "status": stream.get_status()
     }
 
