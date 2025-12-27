@@ -209,10 +209,10 @@ class MomentumStateMachine:
     EXITING_TIMEOUT = 30        # 30 seconds to complete exit
     COOLDOWN_DURATION = 300     # 5 minute cooldown after exit
 
-    # Score thresholds
-    CANDIDATE_SCORE = 40        # Score to enter CANDIDATE
-    IGNITING_SCORE = 55         # Score to enter IGNITING
-    GATED_SCORE = 70            # Score to request gating
+    # Default score thresholds (can be overridden via configure())
+    DEFAULT_CANDIDATE_SCORE = 30   # Grid search optimal
+    DEFAULT_IGNITING_SCORE = 45    # Grid search optimal
+    DEFAULT_GATED_SCORE = 60       # Grid search optimal
 
     def __init__(self):
         self._states: Dict[str, SymbolState] = {}
@@ -232,6 +232,21 @@ class MomentumStateMachine:
 
         # Gating manager reference (lazy loaded)
         self._gating_manager = None
+
+        # Instance-level thresholds (configurable)
+        self.candidate_score = self.DEFAULT_CANDIDATE_SCORE
+        self.igniting_score = self.DEFAULT_IGNITING_SCORE
+        self.gated_score = self.DEFAULT_GATED_SCORE
+
+    def configure(self, candidate_score: int = None, igniting_score: int = None, gated_score: int = None):
+        """Configure state machine thresholds"""
+        if candidate_score is not None:
+            self.candidate_score = candidate_score
+        if igniting_score is not None:
+            self.igniting_score = igniting_score
+        if gated_score is not None:
+            self.gated_score = gated_score
+        logger.info(f"FSM thresholds configured: CANDIDATE={self.candidate_score}, IGNITING={self.igniting_score}, GATED={self.gated_score}")
 
     @property
     def gating_manager(self):
@@ -431,12 +446,12 @@ class MomentumStateMachine:
             self._states[symbol].is_vetoed = False
             self._states[symbol].veto_reasons = []
 
-        # Determine target state based on score
-        if score >= self.GATED_SCORE:
+        # Determine target state based on score (using instance thresholds)
+        if score >= self.gated_score:
             target_state = MomentumState.GATED
-        elif score >= self.IGNITING_SCORE:
+        elif score >= self.igniting_score:
             target_state = MomentumState.IGNITING
-        elif score >= self.CANDIDATE_SCORE:
+        elif score >= self.candidate_score:
             target_state = MomentumState.CANDIDATE
         else:
             target_state = MomentumState.IDLE

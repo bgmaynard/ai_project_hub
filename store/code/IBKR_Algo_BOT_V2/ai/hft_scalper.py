@@ -197,11 +197,11 @@ class ScalperConfig:
     low_float_min_volume_ratio: float = 5.0  # Min volume vs avg to qualify
     low_float_min_rotation: float = 50.0  # Min float rotation % to qualify
 
-    # Momentum State Machine (ChatGPT recommendation)
+    # Momentum State Machine v2 (ChatGPT FSM Spec)
     use_state_machine: bool = True  # Use state machine for entry decisions
-    state_machine_attention_score: int = 40  # Score to enter ATTENTION
-    state_machine_setup_score: int = 55  # Score to enter SETUP
-    state_machine_ignition_score: int = 70  # Score to enter IGNITION (allow entry)
+    state_machine_candidate_score: int = 30  # Score to enter CANDIDATE (grid search optimal)
+    state_machine_igniting_score: int = 45  # Score to enter IGNITING (grid search optimal)
+    state_machine_gated_score: int = 60  # Score to enter GATED (grid search optimal)
 
     # Symbols
     watchlist: List[str] = field(default_factory=list)
@@ -376,10 +376,16 @@ class HFTScalper:
 
     @property
     def state_machine(self):
-        """Lazy init momentum state machine"""
+        """Lazy init momentum state machine with config thresholds"""
         if self._state_machine is None:
             from ai.momentum_state_machine import get_state_machine
             self._state_machine = get_state_machine()
+            # Configure thresholds from scalper config
+            self._state_machine.configure(
+                candidate_score=self.config.state_machine_candidate_score,
+                igniting_score=self.config.state_machine_igniting_score,
+                gated_score=self.config.state_machine_gated_score
+            )
         return self._state_machine
 
     @property

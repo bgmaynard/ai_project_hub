@@ -97,9 +97,9 @@
   "low_float_min_volume_ratio": 5.0,
   "low_float_min_rotation": 50.0,
   "use_state_machine": true,
-  "state_machine_attention_score": 40,
-  "state_machine_setup_score": 55,
-  "state_machine_ignition_score": 70,
+  "state_machine_candidate_score": 30,
+  "state_machine_igniting_score": 45,
+  "state_machine_gated_score": 60,
   "watchlist": [
     "AMCI",
     "BGMS",

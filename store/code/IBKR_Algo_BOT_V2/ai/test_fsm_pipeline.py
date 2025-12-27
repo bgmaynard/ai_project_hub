@@ -142,9 +142,9 @@ def test_state_machine():
     else:
         print(f"[FAIL] IDLE -> CANDIDATE")
 
-    # Test 2.2: CANDIDATE -> IGNITING
+    # Test 2.2: CANDIDATE -> IGNITING (score=50: >= 45 but < 60)
     tests_total += 1
-    sm.update_momentum(symbol, 60)
+    sm.update_momentum(symbol, 50)
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.IGNITING:
         tests_passed += 1
@@ -223,11 +223,11 @@ def test_state_machine():
     else:
         print(f"[FAIL] State ownership tracking")
 
-    # Test 2.9: Veto drops state
+    # Test 2.9: Veto drops state (score=50 for IGNITING, then veto drops it)
     tests_total += 1
     symbol2 = "VETO_TEST"
     sm.add_to_candidate(symbol2)
-    sm.update_momentum(symbol2, 60)
+    sm.update_momentum(symbol2, 50)  # 50 >= 45, gets to IGNITING
     state_before = sm.get_state(symbol2).state
     sm.update_momentum(symbol2, 75, vetoed=True, veto_reasons=["SPREAD_WIDE"])
     state_after = sm.get_state(symbol2).state
