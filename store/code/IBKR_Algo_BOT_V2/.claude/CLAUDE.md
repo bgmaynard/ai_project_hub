@@ -1610,3 +1610,95 @@ The gap grader integrates with `premarket_scanner.py` via the `/gap/scan` endpoi
 
 **Auto-Population of Scalper Watchlist:**
 Use `/gap/add-to-scalper` to automatically add the best pre-market gaps to the HFT Scalper's watchlist. Only gap-ups are added (we don't short).
+
+### Overnight Continuation Scanner
+
+Detect after-hours runners that continue into pre-market. Continuations = momentum confirmation.
+
+| File | Purpose |
+|------|---------|
+| `ai/overnight_continuation.py` | AH to PM continuation detection |
+
+**Key Concept:**
+- Stocks that move in after-hours on news often continue pre-market
+- Continuation = confirmation of momentum (high probability)
+- Reversal (AH up, PM down) = warning sign (avoid)
+- Best setups: Strong AH move + PM continuation + volume + catalyst
+
+**Sessions:**
+- After-Hours (AH): 4:00 PM - 8:00 PM ET
+- Pre-Market (PM): 4:00 AM - 9:30 AM ET
+
+**Continuation Patterns:**
+- `ACCELERATION` - PM move > AH move (increasing momentum) - BEST
+- `STRONG_CONTINUATION` - AH up + PM up (same direction, strong)
+- `WEAK_CONTINUATION` - AH up + PM flat (holding gains)
+- `FADE` - PM losing AH gains (exhaustion warning)
+- `REVERSAL` - PM opposite of AH (AVOID)
+
+**Scoring (0-100):**
+- After-hours move size: 0-25 points
+- Pre-market continuation: 0-30 points
+- Volume: 0-20 points
+- Catalyst: 0-25 points
+
+**Strength Levels:**
+- `STRONG` (75+): High probability setup
+- `MODERATE` (50-74): Good setup
+- `WEAK` (25-49): Trade with caution
+- `NONE` (<25): Avoid
+
+**API Endpoints:**
+```
+GET  /api/warrior/overnight/status           - Scanner status
+POST /api/warrior/overnight/record-ah/{sym}  - Record AH move (~8 PM)
+POST /api/warrior/overnight/update-pm/{sym}  - Update PM data (4AM-9:30AM)
+GET  /api/warrior/overnight/{symbol}         - Get overnight mover data
+GET  /api/warrior/overnight/continuations    - All continuation setups
+GET  /api/warrior/overnight/strong           - Strong continuations only
+GET  /api/warrior/overnight/accelerators     - PM accelerating vs AH
+GET  /api/warrior/overnight/reversals        - Reversed stocks (AVOID)
+GET  /api/warrior/overnight/faders           - Stocks fading in PM
+GET  /api/warrior/overnight/bullish          - Bullish continuations (for trading)
+POST /api/warrior/overnight/scan-ah          - Auto-scan AH movers
+POST /api/warrior/overnight/add-to-scalper   - Add to scalper watchlist
+POST /api/warrior/overnight/clear            - Clear (call at EOD)
+```
+
+**Workflow:**
+```bash
+# At ~8 PM: Scan after-hours movers
+curl -X POST http://localhost:9100/api/warrior/overnight/scan-ah
+
+# At 4 AM: Update with pre-market data
+curl -X POST "http://localhost:9100/api/warrior/overnight/update-pm/AAPL?pm_current=155.50&pm_volume=500000"
+
+# Get tradeable continuations
+curl http://localhost:9100/api/warrior/overnight/bullish
+
+# Add to scalper
+curl -X POST http://localhost:9100/api/warrior/overnight/add-to-scalper?min_strength=MODERATE
+```
+
+**Example Response:**
+```json
+{
+  "symbol": "AAPL",
+  "pattern": "STRONG_CONTINUATION",
+  "strength": "STRONG",
+  "continuation_score": 82.5,
+  "after_hours": {"change_pct": 5.2, "volume": 1500000},
+  "premarket": {"change_pct": 2.1, "volume": 800000},
+  "total_overnight_change": 7.3,
+  "entry_price": 154.73,
+  "stop_loss": 151.25,
+  "targets": {"target_1": 158.38, "target_2": 162.03},
+  "warnings": []
+}
+```
+
+**Integration with Gap Grader:**
+The Overnight Continuation Scanner complements the Gap Grader:
+- Gap Grader: Grades the GAP quality (size, float, catalyst)
+- Overnight Scanner: Grades the CONTINUATION quality (AH → PM momentum)
+- Best setups: High gap grade + strong continuation

@@ -1605,3 +1605,372 @@ async def add_graded_gaps_to_scalper(min_grade: str = "B"):
     except Exception as e:
         logger.error(f"Add to scalper error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# OVERNIGHT CONTINUATION SCANNER ENDPOINTS
+# ============================================================================
+
+@router.get("/overnight/status")
+async def get_overnight_status():
+    """Get overnight continuation scanner status"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        return scanner.get_status()
+
+    except Exception as e:
+        logger.error(f"Overnight status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/overnight/record-ah/{symbol}")
+async def record_after_hours_move(
+    symbol: str,
+    regular_close: float,
+    ah_close: float,
+    ah_volume: int,
+    ah_high: float = 0,
+    ah_low: float = 0,
+    avg_daily_volume: int = 0,
+    catalyst: str = ""
+):
+    """Record an after-hours move (call at ~8 PM)"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        mover = scanner.record_after_hours_move(
+            symbol=symbol,
+            regular_close=regular_close,
+            ah_high=ah_high or ah_close,
+            ah_low=ah_low or ah_close,
+            ah_close=ah_close,
+            ah_volume=ah_volume,
+            avg_daily_volume=avg_daily_volume,
+            catalyst=catalyst
+        )
+
+        if mover:
+            return {"success": True, "mover": mover.to_dict()}
+        else:
+            return {"success": False, "message": "Move too small or volume too low"}
+
+    except Exception as e:
+        logger.error(f"Record AH move error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/overnight/update-pm/{symbol}")
+async def update_premarket(
+    symbol: str,
+    pm_current: float,
+    pm_volume: int,
+    pm_open: float = 0,
+    pm_high: float = 0,
+    pm_low: float = 0
+):
+    """Update pre-market data (call during 4AM-9:30AM)"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        mover = scanner.update_premarket(
+            symbol=symbol,
+            pm_open=pm_open or pm_current,
+            pm_high=pm_high or pm_current,
+            pm_low=pm_low or pm_current,
+            pm_current=pm_current,
+            pm_volume=pm_volume
+        )
+
+        if mover:
+            return {"success": True, "mover": mover.to_dict()}
+        else:
+            return {"success": False, "message": "Symbol not tracked from AH session"}
+
+    except Exception as e:
+        logger.error(f"Update PM error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overnight/{symbol}")
+async def get_overnight_mover(symbol: str):
+    """Get overnight mover data for symbol"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        mover = scanner.get_mover(symbol)
+
+        if mover:
+            return mover.to_dict()
+        else:
+            return {"symbol": symbol, "tracked": False, "message": "Not tracked overnight"}
+
+    except Exception as e:
+        logger.error(f"Get overnight mover error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overnight/continuations")
+async def get_continuations(min_strength: str = "WEAK"):
+    """Get all continuation setups"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner, ContinuationStrength
+
+        scanner = get_overnight_scanner()
+        strength = ContinuationStrength[min_strength.upper()]
+        movers = scanner.get_continuations(min_strength=strength)
+
+        return {
+            "continuations": [m.to_dict() for m in movers],
+            "count": len(movers)
+        }
+
+    except KeyError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid strength: {min_strength}. Use STRONG, MODERATE, WEAK, or NONE"
+        )
+    except Exception as e:
+        logger.error(f"Get continuations error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overnight/strong")
+async def get_strong_continuations():
+    """Get only strong continuation setups"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        movers = scanner.get_strong_continuations()
+
+        return {
+            "strong_continuations": [m.to_dict() for m in movers],
+            "count": len(movers)
+        }
+
+    except Exception as e:
+        logger.error(f"Get strong continuations error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overnight/accelerators")
+async def get_accelerators():
+    """Get stocks where PM is accelerating vs AH"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        movers = scanner.get_accelerators()
+
+        return {
+            "accelerators": [m.to_dict() for m in movers],
+            "count": len(movers)
+        }
+
+    except Exception as e:
+        logger.error(f"Get accelerators error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overnight/reversals")
+async def get_reversals():
+    """Get stocks that reversed in PM (for avoidance)"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        movers = scanner.get_reversals()
+
+        return {
+            "reversals": [m.to_dict() for m in movers],
+            "count": len(movers),
+            "warning": "These stocks reversed direction in PM - avoid trading"
+        }
+
+    except Exception as e:
+        logger.error(f"Get reversals error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overnight/faders")
+async def get_faders():
+    """Get stocks fading in PM"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        movers = scanner.get_faders()
+
+        return {
+            "faders": [m.to_dict() for m in movers],
+            "count": len(movers),
+            "warning": "These stocks are losing AH gains - trade with caution"
+        }
+
+    except Exception as e:
+        logger.error(f"Get faders error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overnight/bullish")
+async def get_bullish_continuations():
+    """Get bullish continuations only (for trading)"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        movers = scanner.get_bullish_continuations()
+
+        return {
+            "bullish_continuations": [m.to_dict() for m in movers],
+            "count": len(movers)
+        }
+
+    except Exception as e:
+        logger.error(f"Get bullish continuations error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/overnight/clear")
+async def clear_overnight_movers():
+    """Clear all overnight movers (call at EOD)"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+
+        scanner = get_overnight_scanner()
+        scanner.clear_movers()
+
+        return {"success": True, "message": "Overnight scanner cleared"}
+
+    except Exception as e:
+        logger.error(f"Clear overnight error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/overnight/add-to-scalper")
+async def add_continuations_to_scalper(min_strength: str = "MODERATE"):
+    """Add bullish continuations to HFT Scalper watchlist"""
+    try:
+        from ai.overnight_continuation import get_overnight_scanner, ContinuationStrength
+        from ai.hft_scalper import get_hft_scalper
+
+        scanner = get_overnight_scanner()
+        scalper = get_hft_scalper()
+
+        # Get bullish continuations
+        movers = scanner.get_bullish_continuations()
+
+        # Filter by strength
+        strength = ContinuationStrength[min_strength.upper()]
+        strength_order = {
+            ContinuationStrength.STRONG: 0,
+            ContinuationStrength.MODERATE: 1,
+            ContinuationStrength.WEAK: 2,
+            ContinuationStrength.NONE: 3
+        }
+        min_order = strength_order[strength]
+
+        added = []
+        for mover in movers:
+            if strength_order[mover.strength] <= min_order:
+                scalper.watchlist.add(mover.symbol)
+                added.append({
+                    "symbol": mover.symbol,
+                    "pattern": mover.pattern.value,
+                    "score": mover.continuation_score,
+                    "total_change": mover.total_overnight_change
+                })
+
+        return {
+            "success": True,
+            "added": len(added),
+            "symbols": added,
+            "scalper_watchlist": list(scalper.watchlist)
+        }
+
+    except KeyError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid strength: {min_strength}. Use STRONG, MODERATE, WEAK, or NONE"
+        )
+    except Exception as e:
+        logger.error(f"Add to scalper error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/overnight/scan-ah")
+async def scan_after_hours():
+    """
+    Scan for after-hours movers using Schwab or Yahoo data.
+    Call this at ~8 PM to capture AH movers.
+    """
+    try:
+        from ai.overnight_continuation import get_overnight_scanner
+        import yfinance as yf
+
+        scanner = get_overnight_scanner()
+
+        # Get potential movers from Yahoo Finance (works after hours)
+        # This is a simplified scan - in production would use Schwab API
+        symbols_to_check = [
+            "AAPL", "TSLA", "NVDA", "AMD", "AMZN", "META", "GOOGL", "MSFT",
+            "SPY", "QQQ", "IWM", "COIN", "MARA", "RIOT", "PLUG", "NIO"
+        ]
+
+        scanned = []
+        for symbol in symbols_to_check:
+            try:
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(period="2d", prepost=True)
+
+                if len(hist) < 2:
+                    continue
+
+                # Get regular session close (last row before after-hours)
+                regular_close = hist.iloc[-2]["Close"]
+
+                # Get current/after-hours price
+                ah_close = hist.iloc[-1]["Close"]
+                ah_high = hist.iloc[-1]["High"]
+                ah_low = hist.iloc[-1]["Low"]
+                ah_volume = int(hist.iloc[-1]["Volume"])
+
+                info = ticker.info
+                avg_volume = info.get("averageVolume", 0)
+
+                mover = scanner.record_after_hours_move(
+                    symbol=symbol,
+                    regular_close=regular_close,
+                    ah_high=ah_high,
+                    ah_low=ah_low,
+                    ah_close=ah_close,
+                    ah_volume=ah_volume,
+                    avg_daily_volume=avg_volume
+                )
+
+                if mover:
+                    scanned.append({
+                        "symbol": symbol,
+                        "ah_change": mover.after_hours.change_pct,
+                        "volume": ah_volume
+                    })
+
+            except Exception as e:
+                logger.warning(f"Error scanning {symbol}: {e}")
+                continue
+
+        return {
+            "success": True,
+            "scanned_symbols": len(symbols_to_check),
+            "movers_found": len(scanned),
+            "movers": scanned
+        }
+
+    except Exception as e:
+        logger.error(f"Scan AH error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
