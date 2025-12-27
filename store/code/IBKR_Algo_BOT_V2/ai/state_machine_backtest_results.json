@@ -21,49 +21,49 @@
       "winners": 0,
       "losers": 26
     },
-    "IGNITION (score 85)": {
+    "GATED (score 85)": {
       "count": 2,
       "pnl": 42.954999999999984,
       "winners": 2,
       "losers": 0
     },
-    "ATTENTION only (score 40 < 55)": {
+    "CANDIDATE only (score 40 < 55)": {
       "count": 43,
       "pnl": -44.46499999999999,
       "winners": 0,
       "losers": 43
     },
-    "ATTENTION only (score 50 < 55)": {
+    "CANDIDATE only (score 50 < 55)": {
       "count": 12,
       "pnl": 26.72499999999998,
       "winners": 12,
       "losers": 0
     },
-    "ATTENTION only (score 45 < 55)": {
+    "CANDIDATE only (score 45 < 55)": {
       "count": 7,
       "pnl": 6.155000000000074,
       "winners": 6,
       "losers": 1
     },
-    "IGNITION (score 75)": {
+    "GATED (score 75)": {
       "count": 3,
       "pnl": 16.74000000000003,
       "winners": 3,
       "losers": 0
     },
-    "SETUP only (score 55 < 70)": {
+    "IGNITING only (score 55 < 70)": {
       "count": 2,
       "pnl": 8.469999999999995,
       "winners": 2,
       "losers": 0
     },
-    "SETUP only (score 60 < 70)": {
+    "IGNITING only (score 60 < 70)": {
       "count": 2,
       "pnl": -2.7800000000000025,
       "winners": 0,
       "losers": 2
     },
-    "SETUP only (score 65 < 70)": {
+    "IGNITING only (score 65 < 70)": {
       "count": 2,
       "pnl": 1.7450000000000037,
       "winners": 2,
@@ -75,13 +75,13 @@
       "winners": 0,
       "losers": 8
     },
-    "IGNITION (score 70)": {
+    "GATED (score 70)": {
       "count": 1,
       "pnl": 3.7200000000000033,
       "winners": 1,
       "losers": 0
     },
-    "IGNITION (score 80)": {
+    "GATED (score 80)": {
       "count": 5,
       "pnl": 76.98500000000004,
       "winners": 5,
@@ -123,7 +123,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "RILY",
@@ -133,7 +133,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "RILY",
@@ -163,7 +163,7 @@
       "momentum_score": 45,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 45 < 55)"
+      "skip_reason": "CANDIDATE only (score 45 < 55)"
     },
     {
       "symbol": "ADTX",
@@ -173,7 +173,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "RILY",
@@ -183,7 +183,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -213,7 +213,7 @@
       "momentum_score": 45,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 45 < 55)"
+      "skip_reason": "CANDIDATE only (score 45 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -243,7 +243,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "SOUN",
@@ -253,7 +253,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -283,7 +283,7 @@
       "momentum_score": 55,
       "momentum_grade": "C",
       "would_trade": false,
-      "skip_reason": "SETUP only (score 55 < 70)"
+      "skip_reason": "IGNITING only (score 55 < 70)"
     },
     {
       "symbol": "ISPO",
@@ -293,7 +293,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -303,7 +303,7 @@
       "momentum_score": 60,
       "momentum_grade": "C",
       "would_trade": false,
-      "skip_reason": "SETUP only (score 60 < 70)"
+      "skip_reason": "IGNITING only (score 60 < 70)"
     },
     {
       "symbol": "SOUN",
@@ -313,7 +313,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ISPO",
@@ -323,7 +323,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ADTX",
@@ -333,7 +333,7 @@
       "momentum_score": 65,
       "momentum_grade": "C",
       "would_trade": false,
-      "skip_reason": "SETUP only (score 65 < 70)"
+      "skip_reason": "IGNITING only (score 65 < 70)"
     },
     {
       "symbol": "ADTX",
@@ -353,7 +353,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "ADTX",
@@ -373,7 +373,7 @@
       "momentum_score": 60,
       "momentum_grade": "C",
       "would_trade": false,
-      "skip_reason": "SETUP only (score 60 < 70)"
+      "skip_reason": "IGNITING only (score 60 < 70)"
     },
     {
       "symbol": "BDRX",
@@ -383,7 +383,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -403,7 +403,7 @@
       "momentum_score": 45,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 45 < 55)"
+      "skip_reason": "CANDIDATE only (score 45 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -423,7 +423,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "SOUN",
@@ -433,7 +433,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "RILY",
@@ -443,7 +443,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "SOUN",
@@ -453,7 +453,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ADTX",
@@ -483,7 +483,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "AZI",
@@ -493,7 +493,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "MBRX",
@@ -503,7 +503,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ADTX",
@@ -523,7 +523,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "MBRX",
@@ -533,7 +533,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ADTX",
@@ -553,7 +553,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "MBRX",
@@ -563,7 +563,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "BDRX",
@@ -573,7 +573,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -593,7 +593,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "AMCI",
@@ -603,7 +603,7 @@
       "momentum_score": 45,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 45 < 55)"
+      "skip_reason": "CANDIDATE only (score 45 < 55)"
     },
     {
       "symbol": "AMCI",
@@ -613,7 +613,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "AMCI",
@@ -623,7 +623,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "DJT",
@@ -643,7 +643,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "DJT",
@@ -653,7 +653,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -663,7 +663,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "DJT",
@@ -673,7 +673,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -683,7 +683,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "DJT",
@@ -693,7 +693,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -703,7 +703,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "EVTV",
@@ -783,7 +783,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "KLRS",
@@ -793,7 +793,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -803,7 +803,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ATHA",
@@ -813,7 +813,7 @@
       "momentum_score": 45,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 45 < 55)"
+      "skip_reason": "CANDIDATE only (score 45 < 55)"
     },
     {
       "symbol": "KLRS",
@@ -823,7 +823,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ATHA",
@@ -853,7 +853,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ATHA",
@@ -873,7 +873,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -893,7 +893,7 @@
       "momentum_score": 50,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 50 < 55)"
+      "skip_reason": "CANDIDATE only (score 50 < 55)"
     },
     {
       "symbol": "ATHA",
@@ -903,7 +903,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "INBS",
@@ -913,7 +913,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -923,7 +923,7 @@
       "momentum_score": 45,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 45 < 55)"
+      "skip_reason": "CANDIDATE only (score 45 < 55)"
     },
     {
       "symbol": "PHUN",
@@ -933,7 +933,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "INBS",
@@ -943,7 +943,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "ATHA",
@@ -963,7 +963,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "INBS",
@@ -973,7 +973,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "PHUN",
@@ -983,7 +983,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "INBS",
@@ -993,7 +993,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "PHUN",
@@ -1003,7 +1003,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "LHAI",
@@ -1013,7 +1013,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "LHAI",
@@ -1023,7 +1023,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "PAVS",
@@ -1043,7 +1043,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "PAVS",
@@ -1103,7 +1103,7 @@
       "momentum_score": 45,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 45 < 55)"
+      "skip_reason": "CANDIDATE only (score 45 < 55)"
     },
     {
       "symbol": "PAVS",
@@ -1113,7 +1113,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "PAVS",
@@ -1133,7 +1133,7 @@
       "momentum_score": 55,
       "momentum_grade": "C",
       "would_trade": false,
-      "skip_reason": "SETUP only (score 55 < 70)"
+      "skip_reason": "IGNITING only (score 55 < 70)"
     },
     {
       "symbol": "PAVS",
@@ -1153,7 +1153,7 @@
       "momentum_score": 65,
       "momentum_grade": "C",
       "would_trade": false,
-      "skip_reason": "SETUP only (score 65 < 70)"
+      "skip_reason": "IGNITING only (score 65 < 70)"
     },
     {
       "symbol": "PAVS",
@@ -1173,7 +1173,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     },
     {
       "symbol": "YCBD",
@@ -1233,7 +1233,7 @@
       "momentum_score": 40,
       "momentum_grade": "D",
       "would_trade": false,
-      "skip_reason": "ATTENTION only (score 40 < 55)"
+      "skip_reason": "CANDIDATE only (score 40 < 55)"
     }
   ]
 }

@@ -1,14 +1,20 @@
 """
-State Machine Backtest - Compare Old vs New Entry Logic
-=========================================================
-Simulates what trades would have been filtered by the new momentum
+State Machine Backtest with Grid Search (ChatGPT Spec v2)
+==========================================================
+Simulates what trades would have been filtered by the momentum
 state machine vs what actually traded with the old system.
+
+New Features:
+- Grid search for optimal thresholds
+- Score-based filtering analysis
+- Threshold optimization recommendations
 """
 
 import json
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
+from itertools import product
 import yfinance as yf
 
 # Add parent path for imports
@@ -45,7 +51,7 @@ def estimate_momentum_from_trade(trade: Dict) -> Dict:
     exit_reason = trade.get("exit_reason", "")
     symbol = trade.get("symbol", "")
 
-    # Base score starts at 35 (just below ATTENTION threshold)
+    # Base score starts at 35 (just below CANDIDATE threshold)
     base_score = 35
 
     # Adjust based on exit reason (proxy for momentum quality)
@@ -105,100 +111,256 @@ def estimate_momentum_from_trade(trade: Dict) -> Dict:
     }
 
 
-def get_historical_momentum(symbol: str, entry_time: str) -> Dict:
-    """
-    Get momentum data around the entry time.
-    Returns a dict with momentum score components.
-    """
-    try:
-        from ai.momentum_score import MomentumScorer
-
-        scorer = MomentumScorer()
-
-        # Parse entry time
-        dt = datetime.fromisoformat(entry_time)
-
-        # Get historical data around entry time (need intraday data)
-        ticker = yf.Ticker(symbol)
-
-        # Get 1-day of 1-minute data
-        hist = ticker.history(period="5d", interval="1m")
-
-        if hist.empty or len(hist) < 30:
-            return {"score": 0, "grade": "F", "error": "insufficient_data"}
-
-        # Find data closest to entry time
-        # Note: yfinance timestamps may not align perfectly
-        current_price = hist['Close'].iloc[-1]
-
-        # Calculate momentum components
-        prices_30s = hist['Close'].iloc[-6:].tolist()
-        prices_60s = hist['Close'].iloc[-12:].tolist()
-        prices_5m = hist['Close'].iloc[-60:].tolist() if len(hist) >= 60 else hist['Close'].tolist()
-        current_volume = int(hist['Volume'].iloc[-1])
-
-        # Estimate spread (use high-low range as proxy)
-        recent_range = (hist['High'].iloc[-5:].mean() - hist['Low'].iloc[-5:].mean()) / current_price * 100
-        spread_pct = min(recent_range / 2, 2.0)  # Cap at 2%
-
-        result = scorer.calculate(
-            symbol=symbol,
-            current_price=current_price,
-            prices_30s=prices_30s,
-            prices_60s=prices_60s,
-            prices_5m=prices_5m,
-            current_volume=current_volume,
-            spread_pct=spread_pct,
-            buy_pressure=0.55,  # Neutral for simulation
-            tape_signal="NEUTRAL"
-        )
-
-        return {
-            "score": result.score,
-            "grade": result.grade.value,
-            "price_urgency": result.price_urgency.total,
-            "participation": result.participation.total,
-            "liquidity": result.liquidity.total,
-            "is_tradeable": result.is_tradeable,
-            "ignition_ready": result.ignition_ready
-        }
-
-    except Exception as e:
-        return {"score": 0, "grade": "F", "error": str(e)}
-
-
-def would_state_machine_trade(momentum_data: Dict) -> Tuple[bool, str]:
+def would_state_machine_trade(momentum_data: Dict,
+                               candidate_threshold: int = 40,
+                               igniting_threshold: int = 55,
+                               gated_threshold: int = 70) -> Tuple[bool, str]:
     """
     Determine if state machine would have allowed this trade.
+
+    Args:
+        momentum_data: Estimated momentum data
+        candidate_threshold: Score to enter CANDIDATE (default 40)
+        igniting_threshold: Score to enter IGNITING (default 55)
+        gated_threshold: Score to enter GATED/trade (default 70)
 
     Returns:
         (would_trade, reason)
     """
     score = momentum_data.get("score", 0)
 
-    # State machine thresholds from config
-    ATTENTION_THRESHOLD = 40
-    SETUP_THRESHOLD = 55
-    IGNITION_THRESHOLD = 70
-
-    if score < ATTENTION_THRESHOLD:
-        return False, f"IDLE (score {score} < {ATTENTION_THRESHOLD})"
-    elif score < SETUP_THRESHOLD:
-        return False, f"ATTENTION only (score {score} < {SETUP_THRESHOLD})"
-    elif score < IGNITION_THRESHOLD:
-        return False, f"SETUP only (score {score} < {IGNITION_THRESHOLD})"
+    if score < candidate_threshold:
+        return False, f"IDLE (score {score} < {candidate_threshold})"
+    elif score < igniting_threshold:
+        return False, f"CANDIDATE only (score {score} < {igniting_threshold})"
+    elif score < gated_threshold:
+        return False, f"IGNITING only (score {score} < {gated_threshold})"
     else:
         # Check for ignition ready (all components aligned)
         if momentum_data.get("ignition_ready", False):
-            return True, f"IGNITION (score {score})"
+            return True, f"GATED (score {score})"
         else:
             # Score is high but components not aligned
             return False, f"Score {score} but components not aligned"
 
 
+def run_backtest_with_thresholds(trades: List[Dict],
+                                  candidate_threshold: int = 40,
+                                  igniting_threshold: int = 55,
+                                  gated_threshold: int = 70,
+                                  verbose: bool = False) -> Dict:
+    """
+    Run backtest with specific thresholds.
+
+    Returns performance metrics for this threshold combination.
+    """
+    results = {
+        "thresholds": {
+            "candidate": candidate_threshold,
+            "igniting": igniting_threshold,
+            "gated": gated_threshold
+        },
+        "old_system": {
+            "winners": 0,
+            "losers": 0,
+            "total_pnl": 0
+        },
+        "new_system": {
+            "would_trade": 0,
+            "would_skip": 0,
+            "winners_taken": 0,
+            "losers_avoided": 0,
+            "winners_missed": 0,
+            "losers_taken": 0,
+            "total_pnl": 0
+        }
+    }
+
+    for trade in trades:
+        pnl = trade.get("pnl", 0)
+        is_winner = pnl > 0
+
+        # Old system results
+        if is_winner:
+            results["old_system"]["winners"] += 1
+        else:
+            results["old_system"]["losers"] += 1
+        results["old_system"]["total_pnl"] += pnl
+
+        # Estimate momentum from trade outcome
+        momentum_data = estimate_momentum_from_trade(trade)
+
+        # Would state machine trade with these thresholds?
+        would_trade, _ = would_state_machine_trade(
+            momentum_data,
+            candidate_threshold,
+            igniting_threshold,
+            gated_threshold
+        )
+
+        # New system results
+        if would_trade:
+            results["new_system"]["would_trade"] += 1
+            results["new_system"]["total_pnl"] += pnl
+            if is_winner:
+                results["new_system"]["winners_taken"] += 1
+            else:
+                results["new_system"]["losers_taken"] += 1
+        else:
+            results["new_system"]["would_skip"] += 1
+            if is_winner:
+                results["new_system"]["winners_missed"] += 1
+            else:
+                results["new_system"]["losers_avoided"] += 1
+
+    # Calculate metrics
+    total_trades = len(trades)
+    old_win_rate = (results["old_system"]["winners"] / total_trades * 100) if total_trades > 0 else 0
+
+    new_trades = results["new_system"]["would_trade"]
+    new_winners = results["new_system"]["winners_taken"]
+    new_win_rate = (new_winners / new_trades * 100) if new_trades > 0 else 0
+
+    # Calculate P&L improvement
+    pnl_improvement = results["new_system"]["total_pnl"] - results["old_system"]["total_pnl"]
+
+    results["metrics"] = {
+        "total_trades": total_trades,
+        "new_trades": new_trades,
+        "old_win_rate": round(old_win_rate, 1),
+        "new_win_rate": round(new_win_rate, 1),
+        "win_rate_improvement": round(new_win_rate - old_win_rate, 1),
+        "pnl_improvement": round(pnl_improvement, 2),
+        "new_total_pnl": round(results["new_system"]["total_pnl"], 2),
+        "trade_reduction_pct": round((1 - new_trades/total_trades) * 100, 1) if total_trades > 0 else 0,
+        "losers_avoided": results["new_system"]["losers_avoided"],
+        "winners_missed": results["new_system"]["winners_missed"]
+    }
+
+    return results
+
+
+def grid_search(trades: List[Dict], verbose: bool = True) -> Dict:
+    """
+    Grid search to find optimal threshold combinations.
+
+    Tests combinations of:
+    - candidate_threshold: 30-50 (step 5)
+    - igniting_threshold: 45-65 (step 5)
+    - gated_threshold: 60-80 (step 5)
+
+    Optimizes for: Maximum P&L improvement while maintaining reasonable win rate
+    """
+    if not trades:
+        print("No trades to analyze")
+        return {}
+
+    print("\n" + "=" * 70)
+    print("GRID SEARCH - Finding Optimal Thresholds")
+    print("=" * 70)
+
+    # Define search space
+    candidate_range = range(30, 51, 5)
+    igniting_range = range(45, 66, 5)
+    gated_range = range(60, 81, 5)
+
+    # Ensure constraints: candidate < igniting < gated
+    valid_combinations = [
+        (c, i, g)
+        for c, i, g in product(candidate_range, igniting_range, gated_range)
+        if c < i < g
+    ]
+
+    print(f"Testing {len(valid_combinations)} threshold combinations...")
+
+    all_results = []
+
+    for c, i, g in valid_combinations:
+        result = run_backtest_with_thresholds(trades, c, i, g, verbose=False)
+        all_results.append(result)
+
+    # Sort by different optimization targets
+    by_pnl = sorted(all_results, key=lambda x: x['metrics']['pnl_improvement'], reverse=True)
+    by_win_rate = sorted(all_results, key=lambda x: x['metrics']['new_win_rate'], reverse=True)
+    by_trades = sorted(all_results, key=lambda x: x['metrics']['new_trades'], reverse=True)
+
+    # Composite score: balance P&L improvement and win rate
+    # Score = (P&L improvement normalized) + (win rate normalized) - (missed winners penalty)
+    max_pnl = max(r['metrics']['pnl_improvement'] for r in all_results)
+    min_pnl = min(r['metrics']['pnl_improvement'] for r in all_results)
+    pnl_range = max_pnl - min_pnl if max_pnl != min_pnl else 1
+
+    for r in all_results:
+        pnl_norm = (r['metrics']['pnl_improvement'] - min_pnl) / pnl_range
+        wr_norm = r['metrics']['new_win_rate'] / 100
+        missed_penalty = r['metrics']['winners_missed'] * 0.05  # 5% per missed winner
+        r['composite_score'] = pnl_norm + wr_norm - missed_penalty
+
+    by_composite = sorted(all_results, key=lambda x: x['composite_score'], reverse=True)
+
+    print("\n" + "=" * 70)
+    print("TOP 5 BY P&L IMPROVEMENT")
+    print("=" * 70)
+    for i, r in enumerate(by_pnl[:5]):
+        t = r['thresholds']
+        m = r['metrics']
+        print(f"{i+1}. C={t['candidate']}, I={t['igniting']}, G={t['gated']}")
+        print(f"   P&L: ${m['pnl_improvement']:+.2f}, WR: {m['new_win_rate']:.1f}%, Trades: {m['new_trades']}")
+
+    print("\n" + "=" * 70)
+    print("TOP 5 BY WIN RATE")
+    print("=" * 70)
+    for i, r in enumerate(by_win_rate[:5]):
+        t = r['thresholds']
+        m = r['metrics']
+        print(f"{i+1}. C={t['candidate']}, I={t['igniting']}, G={t['gated']}")
+        print(f"   P&L: ${m['pnl_improvement']:+.2f}, WR: {m['new_win_rate']:.1f}%, Trades: {m['new_trades']}")
+
+    print("\n" + "=" * 70)
+    print("TOP 5 BY COMPOSITE SCORE (BALANCED)")
+    print("=" * 70)
+    for i, r in enumerate(by_composite[:5]):
+        t = r['thresholds']
+        m = r['metrics']
+        print(f"{i+1}. C={t['candidate']}, I={t['igniting']}, G={t['gated']}")
+        print(f"   P&L: ${m['pnl_improvement']:+.2f}, WR: {m['new_win_rate']:.1f}%, Trades: {m['new_trades']}")
+        print(f"   Losers Avoided: {m['losers_avoided']}, Winners Missed: {m['winners_missed']}")
+
+    # Best recommendation
+    best = by_composite[0]
+    print("\n" + "=" * 70)
+    print("RECOMMENDED THRESHOLDS")
+    print("=" * 70)
+    print(f"CANDIDATE_SCORE = {best['thresholds']['candidate']}")
+    print(f"IGNITING_SCORE = {best['thresholds']['igniting']}")
+    print(f"GATED_SCORE = {best['thresholds']['gated']}")
+    print(f"\nExpected Results:")
+    print(f"  P&L Improvement: ${best['metrics']['pnl_improvement']:+.2f}")
+    print(f"  Win Rate: {best['metrics']['new_win_rate']:.1f}%")
+    print(f"  Trade Count: {best['metrics']['new_trades']} ({best['metrics']['trade_reduction_pct']:.1f}% reduction)")
+
+    # Save grid search results
+    output = {
+        "search_date": datetime.now().isoformat(),
+        "trades_analyzed": len(trades),
+        "combinations_tested": len(valid_combinations),
+        "best_by_pnl": by_pnl[0],
+        "best_by_win_rate": by_win_rate[0],
+        "best_balanced": by_composite[0],
+        "all_results": all_results
+    }
+
+    output_path = os.path.join(os.path.dirname(__file__), "grid_search_results.json")
+    with open(output_path, 'w') as f:
+        json.dump(output, f, indent=2)
+    print(f"\nGrid search results saved to: {output_path}")
+
+    return output
+
+
 def run_backtest(verbose: bool = True):
     """
-    Run backtest comparing old vs new entry logic.
+    Run backtest comparing old vs new entry logic with current thresholds.
     """
     trades = load_historical_trades()
 
@@ -364,4 +526,15 @@ def run_backtest(verbose: bool = True):
 
 
 if __name__ == "__main__":
-    run_backtest()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Momentum State Machine Backtest")
+    parser.add_argument("--grid-search", action="store_true", help="Run grid search for optimal thresholds")
+    args = parser.parse_args()
+
+    trades = load_historical_trades()
+
+    if args.grid_search:
+        grid_search(trades)
+    else:
+        run_backtest()

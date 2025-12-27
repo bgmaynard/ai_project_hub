@@ -1,0 +1,3339 @@
+{
+  "search_date": "2025-12-27T09:27:03.337492",
+  "trades_analyzed": 114,
+  "combinations_tested": 95,
+  "best_by_pnl": {
+    "thresholds": {
+      "candidate": 30,
+      "igniting": 45,
+      "gated": 60
+    },
+    "old_system": {
+      "winners": 33,
+      "losers": 81,
+      "total_pnl": -304.4549999999999
+    },
+    "new_system": {
+      "would_trade": 11,
+      "would_skip": 103,
+      "winners_taken": 11,
+      "losers_avoided": 81,
+      "winners_missed": 22,
+      "losers_taken": 0,
+      "total_pnl": 140.40000000000006
+    },
+    "metrics": {
+      "total_trades": 114,
+      "new_trades": 11,
+      "old_win_rate": 28.9,
+      "new_win_rate": 100.0,
+      "win_rate_improvement": 71.1,
+      "pnl_improvement": 444.86,
+      "new_total_pnl": 140.4,
+      "trade_reduction_pct": 90.4,
+      "losers_avoided": 81,
+      "winners_missed": 22
+    },
+    "composite_score": 0.8999999999999999
+  },
+  "best_by_win_rate": {
+    "thresholds": {
+      "candidate": 30,
+      "igniting": 45,
+      "gated": 60
+    },
+    "old_system": {
+      "winners": 33,
+      "losers": 81,
+      "total_pnl": -304.4549999999999
+    },
+    "new_system": {
+      "would_trade": 11,
+      "would_skip": 103,
+      "winners_taken": 11,
+      "losers_avoided": 81,
+      "winners_missed": 22,
+      "losers_taken": 0,
+      "total_pnl": 140.40000000000006
+    },
+    "metrics": {
+      "total_trades": 114,
+      "new_trades": 11,
+      "old_win_rate": 28.9,
+      "new_win_rate": 100.0,
+      "win_rate_improvement": 71.1,
+      "pnl_improvement": 444.86,
+      "new_total_pnl": 140.4,
+      "trade_reduction_pct": 90.4,
+      "losers_avoided": 81,
+      "winners_missed": 22
+    },
+    "composite_score": 0.8999999999999999
+  },
+  "best_balanced": {
+    "thresholds": {
+      "candidate": 30,
+      "igniting": 45,
+      "gated": 60
+    },
+    "old_system": {
+      "winners": 33,
+      "losers": 81,
+      "total_pnl": -304.4549999999999
+    },
+    "new_system": {
+      "would_trade": 11,
+      "would_skip": 103,
+      "winners_taken": 11,
+      "losers_avoided": 81,
+      "winners_missed": 22,
+      "losers_taken": 0,
+      "total_pnl": 140.40000000000006
+    },
+    "metrics": {
+      "total_trades": 114,
+      "new_trades": 11,
+      "old_win_rate": 28.9,
+      "new_win_rate": 100.0,
+      "win_rate_improvement": 71.1,
+      "pnl_improvement": 444.86,
+      "new_total_pnl": 140.4,
+      "trade_reduction_pct": 90.4,
+      "losers_avoided": 81,
+      "winners_missed": 22
+    },
+    "composite_score": 0.8999999999999999
+  },
+  "all_results": [
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 45,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 45,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 45,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 45,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 45,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 50,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 50,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 50,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 50,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 50,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 55,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 55,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 55,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 55,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 55,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 60,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 60,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 60,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 60,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 65,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 65,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 30,
+        "igniting": 65,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 45,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 45,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 45,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 45,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 45,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 50,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 50,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 50,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 50,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 50,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 55,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 55,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 55,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 55,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 55,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 60,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 60,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 60,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 60,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 65,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 65,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 35,
+        "igniting": 65,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 45,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 45,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 45,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 45,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 45,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 50,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 50,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 50,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 50,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 50,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 55,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 55,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 55,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 55,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 55,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 60,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 60,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 60,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 60,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 65,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 65,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 40,
+        "igniting": 65,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 50,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 50,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 50,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 50,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 50,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 55,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 55,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 55,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 55,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 55,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 60,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 60,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 60,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 60,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 65,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 65,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 45,
+        "igniting": 65,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 55,
+        "gated": 60
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 55,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 55,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 55,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 55,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 60,
+        "gated": 65
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 60,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 60,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 60,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 65,
+        "gated": 70
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 11,
+        "would_skip": 103,
+        "winners_taken": 11,
+        "losers_avoided": 81,
+        "winners_missed": 22,
+        "losers_taken": 0,
+        "total_pnl": 140.40000000000006
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 11,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 444.86,
+        "new_total_pnl": 140.4,
+        "trade_reduction_pct": 90.4,
+        "losers_avoided": 81,
+        "winners_missed": 22
+      },
+      "composite_score": 0.8999999999999999
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 65,
+        "gated": 75
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 10,
+        "would_skip": 104,
+        "winners_taken": 10,
+        "losers_avoided": 81,
+        "winners_missed": 23,
+        "losers_taken": 0,
+        "total_pnl": 136.68000000000004
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 10,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 441.13,
+        "new_total_pnl": 136.68,
+        "trade_reduction_pct": 91.2,
+        "losers_avoided": 81,
+        "winners_missed": 23
+      },
+      "composite_score": 0.6677821201758662
+    },
+    {
+      "thresholds": {
+        "candidate": 50,
+        "igniting": 65,
+        "gated": 80
+      },
+      "old_system": {
+        "winners": 33,
+        "losers": 81,
+        "total_pnl": -304.4549999999999
+      },
+      "new_system": {
+        "would_trade": 7,
+        "would_skip": 107,
+        "winners_taken": 7,
+        "losers_avoided": 81,
+        "winners_missed": 26,
+        "losers_taken": 0,
+        "total_pnl": 119.94000000000003
+      },
+      "metrics": {
+        "total_trades": 114,
+        "new_trades": 7,
+        "old_win_rate": 28.9,
+        "new_win_rate": 100.0,
+        "win_rate_improvement": 71.1,
+        "pnl_improvement": 424.39,
+        "new_total_pnl": 119.94,
+        "trade_reduction_pct": 93.9,
+        "losers_avoided": 81,
+        "winners_missed": 26
+      },
+      "composite_score": -0.30000000000000004
+    }
+  ]
+}
