@@ -359,6 +359,15 @@ Pre-market has different characteristics:
 6. ~~Train Qlib model on historical data~~ ✅ DONE Dec 19
 7. ~~Connect news → watchlist → auto-trade pipeline~~ ✅ DONE Dec 19
 
+### Future Upgrades (Post-Testing)
+1. **Real-Time AI Trade Monitor** - Live chart showing trades as they happen
+   - Auto-refresh chart every 5-10 seconds for new trades
+   - Flash/highlight markers when entry or exit occurs
+   - Toast notifications: "ENTERED AAPL @ $185.25" / "EXITED +$12.50"
+   - Dedicated monitor window for watching AI trade in real-time
+2. **Signal-based exit triggers** - Use MACD bearish crossover to exit (100% win rate in backtest)
+3. **Multi-timeframe confirmation** - Require 1M + 5M alignment before entry
+
 ### News Auto-Trader System (Dec 19)
 
 Complete pipeline connecting news detection to automated trade execution.
@@ -959,3 +968,145 @@ DELETE /api/scanner/chronos-exit/{symbol}       - Unregister position
 - [IEEE Breakout & Reversal Strategies](https://ieeexplore.ieee.org/document/10488993/) - RSI divergences signal momentum changes
 - [Wiley Trend Reversal Paper](https://onlinelibrary.wiley.com/doi/10.1002/int.22601) - Directional changes predict reversals
 - [TradingView Ross Cameron Strategy](https://www.tradingview.com/script/TcCkGnoS-Ross-Cameron-Inspired-Day-Trading-Strategy/) - Warrior Trading methodology
+
+## Dec 26, 2024 Session - Warrior Trading Setup Detection System
+
+### Overview
+
+Implemented complete Ross Cameron trading methodology from Warrior Trading PDF analysis. System provides pattern detection, tape reading, setup classification, and LULD halt tracking.
+
+### New Modules
+
+| File | Purpose |
+|------|---------|
+| `ai/tape_analyzer.py` | Tape reading (green/red flow, seller thinning, flush detection, first green print) |
+| `ai/pattern_detector.py` | Pattern detection (Bull Flag, ABCD, Micro Pullback, HOD Break) |
+| `ai/setup_classifier.py` | A/B/C grading with position sizing rules |
+| `ai/warrior_setup_detector.py` | Integration module combining all components |
+| `ai/warrior_routes.py` | REST API endpoints for all features |
+| `ai/hod_momentum_scanner.py` | High of Day momentum scanner with Polygon streaming |
+| `ai/top_gappers_scanner.py` | Top percentage gainers with 5-criteria grading |
+| `docs/WARRIOR_TRADING_STRATEGY_GUIDE.md` | Comprehensive strategy reference document |
+
+### Enhanced Modules
+
+| File | Enhancement |
+|------|-------------|
+| `ai/halt_detector.py` | Added LULD band calculations, 15-second countdown timer, false halt detection (10-12s bounce), resume direction prediction |
+
+### Ross Cameron's 5 Criteria (Stock Grading)
+
+| Criteria | Threshold | Grade Impact |
+|----------|-----------|--------------|
+| Float | < 10 million shares | Required for A/B |
+| Relative Volume | > 5x average | Required for A/B |
+| Change % | > 10% on the day | Required for A/B |
+| Price | $1.00 - $20.00 | Required for A/B |
+| News Catalyst | Breaking news present | Required for A |
+
+**Grading:**
+- **A Grade (5/5)**: Full position (75%)
+- **B Grade (4/5)**: Half position (50%)
+- **C Grade (3/5 or less)**: Scalp only (25%)
+
+### Pattern Detection
+
+| Pattern | Description | Entry |
+|---------|-------------|-------|
+| **Bull Flag** | 10-20% pole + 2-8 candle consolidation < 50% retrace | Break above flag high |
+| **ABCD** | A→B move, C pullback 50-61.8% fib, D = equal move | Break above B after C |
+| **Micro Pullback** | Strong momentum + 1-3 candle dip < 30% retrace | First green candle |
+| **HOD Break** | Consolidation near high of day | Break above HOD |
+
+### Tape Analysis Signals
+
+| Signal | Description | Action |
+|--------|-------------|--------|
+| `FIRST_GREEN_PRINT` | First green after red streak (5+ red) | BUY_NOW |
+| `SELLER_THINNING` | Large seller absorbed (25k→19k→15k→11k→5k) | PREPARE_TO_BUY |
+| `IRRATIONAL_FLUSH` | 3%+ drop in 30 seconds | DIP_BUY |
+| `STRONG_BUY_PRESSURE` | Green ratio > 65% | BUY_SUPPORTED |
+
+### LULD Halt Detection
+
+**Band Calculations by Price Tier:**
+- Tier 1 (S&P 500, Russell 1000): ±5%
+- Tier 2 (Other NMS stocks): ±10%
+- Under $3.00: ±20%
+- Under $0.75: Lesser of $0.15 or 75%
+
+**Halt Rules:**
+- **15 seconds** at band = halt triggered
+- **10-12 seconds** = false halt (price bounces back)
+- **Resume Prediction**:
+  - First up halt → usually continues up
+  - 3+ up halts → buyer exhaustion, fade if flat
+  - Down halt opens flat → potential long
+
+### Warrior Trading API Endpoints
+
+```
+GET  /api/warrior/status              - System status (all components)
+GET  /api/warrior/signal/{symbol}     - Complete trading signal
+POST /api/warrior/analyze             - Analyze multiple symbols
+GET  /api/warrior/patterns/{symbol}   - Pattern detection results
+GET  /api/warrior/tape/{symbol}       - Tape analysis
+GET  /api/warrior/luld/{symbol}       - LULD band status
+POST /api/warrior/luld                - Calculate LULD bands
+GET  /api/warrior/halts               - All current halts and warnings
+GET  /api/warrior/grade/{symbol}      - Ross Cameron A/B/C grade
+GET  /api/warrior/setup-rules/{type}  - Entry rules for setup type
+POST /api/warrior/feed/tape           - Feed trade data to analyzer
+POST /api/warrior/feed/candles        - Feed candle data to detector
+```
+
+### Usage Examples
+
+```bash
+# Get trading signal
+curl http://localhost:9100/api/warrior/signal/AAPL
+
+# Calculate LULD bands
+curl -X POST http://localhost:9100/api/warrior/luld \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"AAPL","reference_price":250.00,"tier":1}'
+
+# Get stock grade
+curl http://localhost:9100/api/warrior/grade/NVDA
+
+# Get setup entry rules
+curl http://localhost:9100/api/warrior/setup-rules/bull_flag
+
+# Analyze multiple symbols
+curl -X POST http://localhost:9100/api/warrior/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"symbols":["AAPL","TSLA","NVDA","AMD"]}'
+```
+
+### Integration with HFT Scalper
+
+```python
+from ai.warrior_setup_detector import get_warrior_detector
+
+detector = get_warrior_detector()
+
+# Get trading signal
+signal = await detector.analyze(symbol, current_price, quote)
+
+if signal.action == "BUY":
+    # Execute with signal parameters
+    entry = signal.entry_price
+    stop = signal.stop_loss
+    target = signal.target_price
+    size_pct = signal.position_size_pct  # Based on grade
+```
+
+### Strategy Guide Reference
+
+Full documentation in `docs/WARRIOR_TRADING_STRATEGY_GUIDE.md` includes:
+- Core trading philosophy
+- All 7 technical setups with if/then logic
+- Position sizing rules
+- Exit strategies (breakout or bailout, failed momentum)
+- Halt trading mechanics
+- Implementation priorities
