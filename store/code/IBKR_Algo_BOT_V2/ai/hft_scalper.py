@@ -151,6 +151,12 @@ class ScalperConfig:
     warrior_max_float: float = 20.0  # Max float in millions (low float = more volatility)
     warrior_min_rvol: float = 2.0  # Minimum relative volume
 
+    # Multi-Timeframe Confirmation (1M + 5M alignment)
+    use_mtf_filter: bool = True  # Require 1M and 5M timeframe alignment
+    mtf_min_confidence: float = 60.0  # Minimum MTF confidence to enter (0-100)
+    mtf_require_vwap_aligned: bool = True  # Both timeframes above VWAP
+    mtf_require_macd_aligned: bool = True  # Both timeframes MACD bullish
+
     # Symbols
     watchlist: List[str] = field(default_factory=list)
     blacklist: List[str] = field(default_factory=list)
@@ -949,6 +955,56 @@ class HFTScalper:
                     logger.debug(f"WARRIOR CHECK: {symbol} - No signal (insufficient data)")
             except Exception as e:
                 logger.warning(f"Warrior filter check failed for {symbol}: {e}")
+
+        # Apply Multi-Timeframe Confirmation filter if enabled
+        if signal and getattr(self.config, 'use_mtf_filter', True):
+            try:
+                from ai.mtf_confirmation import get_mtf_engine, MTFSignal
+
+                engine = get_mtf_engine()
+                mtf_result = engine.analyze(symbol)
+
+                min_conf = getattr(self.config, 'mtf_min_confidence', 60.0)
+
+                # Check MTF confirmation
+                if mtf_result.signal == MTFSignal.CONFIRMED_LONG:
+                    logger.info(f"MTF CONFIRMED: {symbol} - {mtf_result.confidence:.0f}% confidence, {', '.join(mtf_result.reasons[:2])}")
+                    signal['mtf_signal'] = mtf_result.signal.value
+                    signal['mtf_confidence'] = mtf_result.confidence
+                    signal['mtf_trend_aligned'] = mtf_result.trend_aligned
+                    signal['mtf_vwap_aligned'] = mtf_result.vwap_aligned
+                elif mtf_result.signal == MTFSignal.WEAK_LONG:
+                    # Weak long - allow if confidence is high enough
+                    if mtf_result.confidence >= min_conf:
+                        logger.info(f"MTF WEAK LONG: {symbol} - {mtf_result.confidence:.0f}% (>= {min_conf:.0f}%), allowing entry")
+                        signal['mtf_signal'] = mtf_result.signal.value
+                        signal['mtf_confidence'] = mtf_result.confidence
+                    else:
+                        logger.info(f"MTF REJECT: {symbol} - Weak long {mtf_result.confidence:.0f}% < {min_conf:.0f}%")
+                        signal = None
+                elif mtf_result.signal in [MTFSignal.NO_CONFIRMATION, MTFSignal.WEAK_SHORT, MTFSignal.CONFIRMED_SHORT]:
+                    logger.info(f"MTF REJECT: {symbol} - {mtf_result.signal.value}, {', '.join(mtf_result.reasons[:2])}")
+                    signal = None
+                else:
+                    # Unknown signal, check confidence
+                    if mtf_result.confidence < min_conf:
+                        logger.info(f"MTF REJECT: {symbol} - Confidence {mtf_result.confidence:.0f}% < {min_conf:.0f}%")
+                        signal = None
+
+                # Additional checks if still have signal
+                if signal:
+                    require_vwap = getattr(self.config, 'mtf_require_vwap_aligned', True)
+                    require_macd = getattr(self.config, 'mtf_require_macd_aligned', True)
+
+                    if require_vwap and not mtf_result.vwap_aligned:
+                        logger.info(f"MTF REJECT: {symbol} - VWAP not aligned across timeframes")
+                        signal = None
+                    elif require_macd and not mtf_result.macd_aligned:
+                        logger.info(f"MTF REJECT: {symbol} - MACD not aligned across timeframes")
+                        signal = None
+
+            except Exception as e:
+                logger.warning(f"MTF filter check failed for {symbol}: {e}")
 
         if signal and self.on_signal:
             self.on_signal(signal)

@@ -374,3 +374,142 @@ async def get_stock_grade(symbol: str):
     except Exception as e:
         logger.error(f"Grade error for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#                 MULTI-TIMEFRAME CONFIRMATION
+# ═══════════════════════════════════════════════════════════════════════
+
+@router.get("/mtf/{symbol}")
+async def get_mtf_confirmation(symbol: str):
+    """
+    Get multi-timeframe confirmation for a symbol.
+
+    Analyzes 1-minute and 5-minute charts for alignment.
+    Ross Cameron rule: Both timeframes must agree before entry.
+    """
+    try:
+        from ai.mtf_confirmation import get_mtf_engine
+
+        engine = get_mtf_engine()
+        result = engine.analyze(symbol.upper())
+
+        return {
+            "success": True,
+            **result.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"MTF error for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class MTFAnalyzeRequest(BaseModel):
+    """Request to analyze multiple symbols for MTF confirmation"""
+    symbols: List[str]
+
+
+@router.post("/mtf/analyze")
+async def analyze_mtf_batch(request: MTFAnalyzeRequest):
+    """
+    Analyze multi-timeframe confirmation for multiple symbols.
+
+    Returns confirmation status for each symbol.
+    """
+    try:
+        from ai.mtf_confirmation import get_mtf_engine
+
+        engine = get_mtf_engine()
+        results = []
+
+        for symbol in request.symbols[:20]:  # Limit to 20
+            try:
+                result = engine.analyze(symbol.upper())
+                results.append(result.to_dict())
+            except Exception as e:
+                results.append({
+                    "symbol": symbol.upper(),
+                    "error": str(e),
+                    "signal": "ERROR",
+                    "recommendation": "WAIT"
+                })
+
+        return {
+            "success": True,
+            "count": len(results),
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"MTF batch error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/mtf/confirmed")
+async def get_confirmed_symbols():
+    """
+    Get all symbols from watchlist that have confirmed MTF signals.
+
+    Only returns symbols with CONFIRMED_LONG signal.
+    """
+    try:
+        from ai.mtf_confirmation import get_mtf_engine
+        import httpx
+
+        engine = get_mtf_engine()
+
+        # Get watchlist
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:9100/api/worklist")
+            wl_data = response.json()
+
+        symbols = []
+        if wl_data.get("data"):
+            symbols = [s["symbol"] for s in wl_data["data"]]
+        elif wl_data.get("symbols"):
+            symbols = wl_data["symbols"]
+
+        confirmed = []
+        for symbol in symbols[:30]:  # Limit
+            try:
+                result = engine.analyze(symbol)
+                if result.signal.value == "CONFIRMED_LONG":
+                    confirmed.append({
+                        "symbol": symbol,
+                        "confidence": result.confidence,
+                        "reasons": result.reasons
+                    })
+            except:
+                pass
+
+        return {
+            "success": True,
+            "count": len(confirmed),
+            "confirmed": confirmed
+        }
+    except Exception as e:
+        logger.error(f"MTF confirmed error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/mtf/status")
+async def get_mtf_status():
+    """Get MTF confirmation engine status"""
+    try:
+        from ai.mtf_confirmation import get_mtf_engine
+
+        engine = get_mtf_engine()
+
+        return {
+            "success": True,
+            "status": "operational",
+            "cached_symbols": len(engine.cache),
+            "cache_ttl_seconds": engine.cache_ttl,
+            "min_confidence": engine.min_confidence_to_enter,
+            "require_vwap": engine.require_both_above_vwap,
+            "require_macd": engine.require_macd_alignment
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "status": "error",
+            "error": str(e)
+        }
