@@ -100,7 +100,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 // Main App Component
 function App() {
   return (
-    <Router>
+    <Router basename="/ai-control-center">
       <AppLayout>
         <Routes>
           <Route path="/" element={<Navigate to="/warrior" replace />} />

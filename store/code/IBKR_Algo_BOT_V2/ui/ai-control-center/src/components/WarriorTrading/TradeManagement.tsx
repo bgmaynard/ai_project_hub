@@ -39,7 +39,7 @@ const TradeManagement: React.FC = () => {
   const fetchTrades = async () => {
     try {
       const params = filter !== 'all' ? `?status=${filter.toUpperCase()}` : '';
-      const response = await fetch(`http://localhost:9101/api/warrior/trades/history${params}`);
+      const response = await fetch(`/api/warrior/trades/history${params}`);
       const data = await response.json();
 
       if (data.success && data.trades) {

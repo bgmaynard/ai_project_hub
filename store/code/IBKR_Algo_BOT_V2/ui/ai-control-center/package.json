@@ -2,6 +2,7 @@
   "name": "ai-control-center",
   "version": "0.1.0",
   "private": true,
+  "homepage": "/ai-control-center",
   "dependencies": {
     "@headlessui/react": "^2.2.9",
     "@testing-library/dom": "^10.4.1",

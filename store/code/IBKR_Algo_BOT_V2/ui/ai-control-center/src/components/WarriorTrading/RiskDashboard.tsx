@@ -40,7 +40,7 @@ const RiskDashboard: React.FC = () => {
 
   const fetchRiskStatus = async () => {
     try {
-      const response = await fetch('http://localhost:9101/api/warrior/risk/status');
+      const response = await fetch('/api/warrior/risk/status');
       const data = await response.json();
       setRiskStatus(data);
       setIsLoading(false);
@@ -253,7 +253,7 @@ const RiskDashboard: React.FC = () => {
             className="w-full px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors text-sm text-left"
             onClick={() => {
               if (window.confirm('Reset daily statistics? This will clear all today\'s trades.')) {
-                fetch('http://localhost:9101/api/warrior/risk/reset-daily', { method: 'POST' })
+                fetch('/api/warrior/risk/reset-daily', { method: 'POST' })
                   .then(() => fetchRiskStatus())
                   .catch(err => console.error(err));
               }

@@ -17,7 +17,8 @@ class ApiService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = 'http://127.0.0.1:9101';
+    // Use relative URL to work with the same origin (port 9100)
+    this.baseURL = '';
     this.client = axios.create({
       baseURL: this.baseURL,
       timeout: 30000,

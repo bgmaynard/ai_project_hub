@@ -36,7 +36,8 @@ const PatternAlerts: React.FC = () => {
 
   const connectWebSocket = () => {
     try {
-      const ws = new WebSocket('ws://localhost:9101/api/warrior/ws/alerts');
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${wsProtocol}//${window.location.host}/api/warrior/ws/alerts`);
 
       ws.onopen = () => {
         console.log('WebSocket connected');

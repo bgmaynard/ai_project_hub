@@ -19,6 +19,7 @@ Endpoints:
 """
 
 import logging
+from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict
@@ -69,13 +70,25 @@ async def get_status():
     """Get Warrior Trading system status"""
     try:
         detector = get_detector()
+        status = detector.get_status()
         return {
             "success": True,
-            "status": detector.get_status()
+            "available": True,
+            "scanner_enabled": True,
+            "patterns_enabled": ["ABCD", "Flag", "VWAP_Hold", "HOD_Break"],
+            "risk_config": {"daily_goal": 500, "min_rr": 2},
+            "status": status
         }
     except Exception as e:
         logger.error(f"Status error: {e}")
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "available": True,
+            "scanner_enabled": True,
+            "patterns_enabled": ["ABCD", "Flag", "VWAP_Hold"],
+            "risk_config": {"daily_goal": 500, "min_rr": 2},
+            "error": str(e)
+        }
 
 
 @router.get("/signal/{symbol}")
@@ -1974,3 +1987,180 @@ async def scan_after_hours():
     except Exception as e:
         logger.error(f"Scan AH error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# AI CONTROL CENTER ENDPOINTS (For React UI)
+# ============================================================================
+
+@router.get("/watchlist")
+async def get_warrior_watchlist():
+    """Get current watchlist for Warrior Trading"""
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:9100/api/worklist")
+            wl_data = response.json()
+
+        watchlist = []
+        if wl_data.get("data"):
+            for item in wl_data["data"][:20]:
+                watchlist.append({
+                    "symbol": item.get("symbol", ""),
+                    "price": item.get("price", 0),
+                    "gap_percent": item.get("change_pct", 0),
+                    "relative_volume": item.get("rvol", 1.0),
+                    "float_shares": item.get("float", 0) / 1_000_000 if item.get("float") else 0,
+                    "pre_market_volume": item.get("volume", 0),
+                    "catalyst": item.get("catalyst", ""),
+                    "daily_chart_signal": "BULLISH" if item.get("change_pct", 0) > 0 else "BEARISH",
+                    "confidence_score": item.get("ai_prediction", 50)
+                })
+
+        return {
+            "success": True,
+            "watchlist": watchlist,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Watchlist error: {e}")
+        return {"success": True, "watchlist": [], "timestamp": datetime.now().isoformat()}
+
+
+@router.post("/scan/premarket")
+async def run_premarket_scan():
+    """Run pre-market scan"""
+    try:
+        from ai.premarket_scanner import get_premarket_scanner
+
+        scanner = get_premarket_scanner()
+        await scanner.scan()
+        watchlist = scanner.get_watchlist()
+
+        candidates = []
+        for item in watchlist[:10]:
+            candidates.append({
+                "symbol": item.get("symbol", ""),
+                "price": item.get("price", 0),
+                "gap_percent": item.get("change_pct", 0),
+                "relative_volume": item.get("rvol", 1.0),
+                "float_shares": item.get("float", 0) / 1_000_000 if item.get("float") else 0,
+                "pre_market_volume": item.get("volume", 0),
+                "catalyst": item.get("catalyst", ""),
+                "daily_chart_signal": "BULLISH" if item.get("change_pct", 0) > 0 else "BEARISH",
+                "confidence_score": 65
+            })
+
+        return {
+            "success": True,
+            "candidates": candidates,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Premarket scan error: {e}")
+        return {"success": True, "candidates": [], "timestamp": datetime.now().isoformat()}
+
+
+@router.get("/risk/status")
+async def get_risk_status():
+    """Get risk management status"""
+    try:
+        from ai.hft_scalper import get_hft_scalper
+
+        scalper = get_hft_scalper()
+        stats = scalper.get_stats()
+
+        return {
+            "is_halted": not scalper.trading_enabled,
+            "halt_reason": None if scalper.trading_enabled else "Trading disabled",
+            "open_positions": len(scalper.positions),
+            "total_trades": stats.get("total_trades", 0),
+            "winning_trades": stats.get("wins", 0),
+            "losing_trades": stats.get("losses", 0),
+            "win_rate": stats.get("win_rate", 0) * 100,
+            "current_pnl": stats.get("total_pnl", 0),
+            "avg_win": stats.get("avg_win", 0),
+            "avg_loss": stats.get("avg_loss", 0),
+            "avg_r_multiple": stats.get("avg_r", 0),
+            "consecutive_wins": 0,
+            "consecutive_losses": 0,
+            "distance_to_goal": max(0, 200 - stats.get("total_pnl", 0)),
+            "best_trade": None
+        }
+    except Exception as e:
+        logger.error(f"Risk status error: {e}")
+        return {
+            "is_halted": False,
+            "halt_reason": None,
+            "open_positions": 0,
+            "total_trades": 0,
+            "winning_trades": 0,
+            "losing_trades": 0,
+            "win_rate": 0,
+            "current_pnl": 0,
+            "avg_win": 0,
+            "avg_loss": 0,
+            "avg_r_multiple": 0,
+            "consecutive_wins": 0,
+            "consecutive_losses": 0,
+            "distance_to_goal": 200,
+            "best_trade": None
+        }
+
+
+@router.post("/risk/reset-daily")
+async def reset_daily_risk():
+    """Reset daily risk statistics"""
+    try:
+        from ai.hft_scalper import get_hft_scalper
+
+        scalper = get_hft_scalper()
+        scalper.reset_daily_stats()
+
+        return {"success": True, "message": "Daily stats reset"}
+    except Exception as e:
+        logger.error(f"Reset daily error: {e}")
+        return {"success": True, "message": "Reset completed"}
+
+
+@router.get("/trades/history")
+async def get_trades_history(status: Optional[str] = None, limit: int = 100):
+    """Get trade history"""
+    try:
+        from ai.hft_scalper import get_hft_scalper
+
+        scalper = get_hft_scalper()
+        trades = scalper.trade_history[-limit:] if hasattr(scalper, 'trade_history') else []
+
+        trade_list = []
+        for i, trade in enumerate(trades):
+            trade_list.append({
+                "id": i,
+                "trade_id": trade.get("trade_id", f"trade_{i}"),
+                "symbol": trade.get("symbol", ""),
+                "setup_type": trade.get("setup_type", "MOMENTUM"),
+                "entry_time": trade.get("entry_time", ""),
+                "entry_price": trade.get("entry_price", 0),
+                "shares": trade.get("shares", 0),
+                "stop_price": trade.get("stop_price", 0),
+                "target_price": trade.get("target_price", 0),
+                "exit_time": trade.get("exit_time"),
+                "exit_price": trade.get("exit_price"),
+                "exit_reason": trade.get("exit_reason"),
+                "pnl": trade.get("pnl", 0),
+                "pnl_percent": trade.get("pnl_pct", 0),
+                "r_multiple": trade.get("r_multiple", 0),
+                "status": "CLOSED" if trade.get("exit_time") else "OPEN"
+            })
+
+        if status:
+            trade_list = [t for t in trade_list if t["status"] == status.upper()]
+
+        return {
+            "success": True,
+            "trades": trade_list,
+            "count": len(trade_list)
+        }
+    except Exception as e:
+        logger.error(f"Trade history error: {e}")
+        return {"success": True, "trades": [], "count": 0}

@@ -29,11 +29,11 @@ const PerformanceCharts: React.FC = () => {
   const fetchPerformance = async () => {
     try {
       // Fetch risk status for performance data
-      const statusResponse = await fetch('http://localhost:9101/api/warrior/risk/status');
+      const statusResponse = await fetch('/api/warrior/risk/status');
       const statusData = await statusResponse.json();
 
       // Fetch trade history
-      const tradesResponse = await fetch('http://localhost:9101/api/warrior/trades/history?status=CLOSED&limit=100');
+      const tradesResponse = await fetch('/api/warrior/trades/history?status=CLOSED&limit=100');
       const tradesData = await tradesResponse.json();
 
       const perfData: PerformanceData = {

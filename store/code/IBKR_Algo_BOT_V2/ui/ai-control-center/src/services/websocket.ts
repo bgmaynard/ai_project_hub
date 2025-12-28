@@ -212,17 +212,23 @@ export function createWebSocket(url: string, config?: Partial<WebSocketConfig>):
   });
 }
 
+// Get WebSocket URL based on current location
+const getWsUrl = (path: string) => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}${path}`;
+};
+
 // Specific WebSocket connections for different channels
 export const trainingProgressWebSocket = (trainingId: string) =>
-  createWebSocket(`ws://127.0.0.1:9101/api/ai/models/train/progress/${trainingId}`);
+  createWebSocket(getWsUrl(`/api/ai/models/train/progress/${trainingId}`));
 
 export const livePredictionsWebSocket = () =>
-  createWebSocket('ws://127.0.0.1:9101/api/predictions/live');
+  createWebSocket(getWsUrl('/api/predictions/live'));
 
 export const marketDataWebSocket = () =>
-  createWebSocket('ws://127.0.0.1:9101/api/market/live');
+  createWebSocket(getWsUrl('/api/market/live'));
 
 export const alertsWebSocket = () =>
-  createWebSocket('ws://127.0.0.1:9101/api/alerts/live');
+  createWebSocket(getWsUrl('/api/alerts/live'));
 
 export default WebSocketService;

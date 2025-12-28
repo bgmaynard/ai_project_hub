@@ -2540,6 +2540,20 @@ if ui_path.exists():
         """Serve AI control center - all controls in one view"""
         return FileResponse("ui/ai_control_dashboard.html")
 
+    @app.get("/ai-control-center")
+    @app.get("/ai-control-center/")
+    async def ai_control_center():
+        """Serve AI Control Center React app"""
+        ai_cc_index = Path("ui/ai-control-center/build/index.html")
+        if ai_cc_index.exists():
+            return FileResponse(ai_cc_index)
+        return {"error": "AI Control Center not built. Run 'npm run build' in ui/ai-control-center/"}
+
+    # Mount AI Control Center React app
+    ai_cc_path = Path("ui/ai-control-center/build")
+    if ai_cc_path.exists():
+        app.mount("/ai-control-center", StaticFiles(directory="ui/ai-control-center/build", html=True), name="ai-control-center")
+
 
 # ============================================================================
 # STARTUP & SHUTDOWN

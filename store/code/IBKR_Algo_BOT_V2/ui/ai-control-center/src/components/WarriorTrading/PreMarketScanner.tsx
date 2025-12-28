@@ -33,7 +33,7 @@ const PreMarketScanner: React.FC = () => {
 
   const fetchWatchlist = async () => {
     try {
-      const response = await fetch('http://localhost:9101/api/warrior/watchlist');
+      const response = await fetch('/api/warrior/watchlist');
       const data = await response.json();
 
       if (data.watchlist && data.watchlist.length > 0) {
@@ -50,7 +50,7 @@ const PreMarketScanner: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:9101/api/warrior/scan/premarket', {
+      const response = await fetch('/api/warrior/scan/premarket', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
