@@ -247,6 +247,43 @@ async def get_primary_account():
         **account
     }
 
+@app.get("/api/accounts")
+async def get_accounts_list():
+    """Get list of accounts (for OrderEntry dropdown)"""
+    accounts = []
+
+    if HAS_SCHWAB_TRADING:
+        try:
+            if is_schwab_trading_available():
+                schwab = get_schwab_trading()
+                if schwab:
+                    account = schwab.get_account_info()
+                    if account:
+                        accounts.append({
+                            "accountNumber": account.get("account_number", "Unknown"),
+                            "accountType": account.get("type", "CASH")
+                        })
+        except Exception as e:
+            logger.warning(f"Failed to fetch accounts: {e}")
+
+    return {"accounts": accounts}
+
+@app.get("/api/orders")
+async def get_orders():
+    """Get orders from Schwab broker"""
+    orders = []
+
+    if HAS_SCHWAB_TRADING:
+        try:
+            if is_schwab_trading_available():
+                schwab = get_schwab_trading()
+                if schwab:
+                    orders = schwab.get_orders() or []
+        except Exception as e:
+            logger.warning(f"Failed to fetch orders: {e}")
+
+    return {"orders": orders}
+
 
 # Include watchlist router (if available)
 if HAS_WATCHLIST_ROUTES and watchlist_router:
@@ -429,6 +466,26 @@ try:
 except ImportError as e:
     logger.warning(f"Warrior Trading routes not available: {e}")
     HAS_WARRIOR_SETUP = False
+
+# Strategy Policy Engine Routes
+try:
+    from ai.strategy_policy_routes import router as strategy_policy_router
+    app.include_router(strategy_policy_router, tags=["Strategy Policy"])
+    HAS_STRATEGY_POLICY = True
+    logger.info("Strategy Policy Engine routes included")
+except ImportError as e:
+    logger.warning(f"Strategy Policy routes not available: {e}")
+    HAS_STRATEGY_POLICY = False
+
+# Validation & Calibration Routes (Phase: Strategy Policy Validation)
+try:
+    from ai.validation_routes import router as validation_router
+    app.include_router(validation_router, tags=["Validation & Calibration"])
+    HAS_VALIDATION = True
+    logger.info("Validation & Calibration routes included")
+except ImportError as e:
+    logger.warning(f"Validation routes not available: {e}")
+    HAS_VALIDATION = False
 
 # Lightweight Charts API Routes
 try:
@@ -2454,6 +2511,19 @@ if ui_path.exists():
     async def dashboard():
         """Serve main dashboard"""
         return FileResponse("ui/complete_platform.html")
+
+    @app.get("/trading-new")
+    async def trading_ui():
+        """Serve new Golden Layout trading UI"""
+        trading_index = Path("ui/trading/dist/index.html")
+        if trading_index.exists():
+            return FileResponse(trading_index)
+        return {"error": "Trading UI not built. Run 'npm run build' in ui/trading/"}
+
+    # Mount new Trading UI (Golden Layout React app) - AFTER routes to avoid shadowing
+    trading_ui_path = Path("ui/trading/dist")
+    if trading_ui_path.exists():
+        app.mount("/trading-new", StaticFiles(directory="ui/trading/dist", html=True), name="trading-ui")
 
     @app.get("/trading")
     async def trading_dashboard():
