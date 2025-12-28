@@ -754,12 +754,33 @@ class IntelligentWatchlistManager:
             self.on_trade_signal(signal)
 
     def execute_trade(self, symbol: str, action: str = "buy") -> bool:
-        """Execute a trade"""
+        """
+        Execute a trade.
+
+        GATING ENFORCEMENT: All trades MUST go through Signal Gating Engine.
+        """
         entry = self.watchlist.get(symbol)
         if not entry:
             return False
 
         try:
+            # GATING ENFORCEMENT: Route through Signal Gating Engine first
+            from ai.gated_trading import get_gated_trading_manager
+            manager = get_gated_trading_manager()
+
+            approved, exec_request, reason = manager.gate_trade_attempt(
+                symbol=symbol,
+                trigger_type="intelligent_watchlist",
+                quote={"price": entry.current_price}
+            )
+
+            if not approved:
+                logger.info(f"GATING VETOED: {symbol} - {reason}")
+                return False
+
+            gating_token = f"GATED_{symbol}_{datetime.now().strftime('%H%M%S')}"
+            logger.info(f"GATING APPROVED: {symbol} - token={gating_token}")
+
             # Calculate position size
             size = max(1, int(self.max_position_value / entry.current_price))
 
@@ -769,7 +790,8 @@ class IntelligentWatchlistManager:
                 'action': action,
                 'order_type': 'market',
                 'time_in_force': 'day',
-                'extended_hours': True
+                'extended_hours': True,
+                'gating_token': gating_token
             }
 
             r = requests.post(f"{self.api_url}/place-order", json=order, timeout=5)
@@ -782,7 +804,7 @@ class IntelligentWatchlistManager:
                 entry.position_size = size
                 entry.trade_count += 1
 
-                logger.warning(f"TRADE EXECUTED: {action.upper()} {size} {symbol} @ ${entry.current_price:.2f}")
+                logger.warning(f"TRADE EXECUTED (GATED): {action.upper()} {size} {symbol} @ ${entry.current_price:.2f}")
                 return True
             else:
                 logger.error(f"Trade failed: {result}")

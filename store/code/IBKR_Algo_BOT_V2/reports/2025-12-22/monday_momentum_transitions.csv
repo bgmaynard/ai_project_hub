@@ -1,0 +1,8 @@
+from_state,to_state,count
+IDLE,CANDIDATE,0
+CANDIDATE,IGNITING,0
+IGNITING,GATED,0
+GATED,IN_POSITION,0
+IN_POSITION,EXITING,0
+EXITING,COOLDOWN,0
+NOTE: Momentum State Machine transitions not logged on 2025-12-22. FSM v2 not active.

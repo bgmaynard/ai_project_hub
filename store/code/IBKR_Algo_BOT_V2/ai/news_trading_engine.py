@@ -310,22 +310,44 @@ class NewsTradingEngine:
         )
 
     def _execute_trade(self, signal: NewsTradeSignal):
-        """Execute a trade based on signal"""
+        """
+        Execute a trade based on signal.
+
+        GATING ENFORCEMENT: All trades MUST go through Signal Gating Engine.
+        """
         try:
+            # GATING ENFORCEMENT: Route through Signal Gating Engine first
+            from ai.gated_trading import get_gated_trading_manager
+            manager = get_gated_trading_manager()
+
+            approved, exec_request, reason = manager.gate_trade_attempt(
+                symbol=signal.symbol,
+                trigger_type="news_trading_engine",
+                quote={"price": signal.entry_price}
+            )
+
+            if not approved:
+                logger.info(f"GATING VETOED: {signal.symbol} - {reason}")
+                return
+
+            gating_token = f"GATED_{signal.symbol}_{datetime.now().strftime('%H%M%S')}"
+            logger.info(f"GATING APPROVED: {signal.symbol} - token={gating_token}")
+
             order = {
                 'symbol': signal.symbol,
                 'quantity': signal.position_size,
                 'action': 'buy',
                 'order_type': 'market',
                 'time_in_force': 'day',
-                'extended_hours': True
+                'extended_hours': True,
+                'gating_token': gating_token
             }
 
             r = requests.post(f"{self.api_url}/place-order", json=order, timeout=5)
             result = r.json()
 
             if result.get('success'):
-                logger.warning(f"TRADE EXECUTED: Bought {signal.position_size} {signal.symbol}")
+                logger.warning(f"TRADE EXECUTED (GATED): Bought {signal.position_size} {signal.symbol}")
 
                 # Track the trade
                 self.active_trades[signal.symbol] = {
@@ -334,6 +356,7 @@ class NewsTradingEngine:
                     'stop': signal.stop_price,
                     'size': signal.position_size,
                     'signal': signal.to_dict(),
+                    'gating_token': gating_token,
                     'timestamp': datetime.now(self.et_tz).isoformat()
                 }
 

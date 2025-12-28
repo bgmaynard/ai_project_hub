@@ -580,10 +580,31 @@ class NewsAutoTrader:
         return False
 
     async def _execute_trade(self, candidate: NewsTradeCandidate):
-        """Execute trade via HFT scalper"""
+        """
+        Execute trade via Signal Gating Engine.
+
+        GATING ENFORCEMENT: All trades MUST go through gating.
+        """
         symbol = candidate.symbol
 
         try:
+            # GATING ENFORCEMENT: Route through Signal Gating Engine first
+            from ai.gated_trading import get_gated_trading_manager
+            manager = get_gated_trading_manager()
+
+            approved, exec_request, reason = manager.gate_trade_attempt(
+                symbol=symbol,
+                trigger_type="news_triggered",
+                quote={"price": candidate.entry_price or 0}
+            )
+
+            if not approved:
+                candidate.trade_triggered = False
+                candidate.trade_result = f"gating_vetoed: {reason}"
+                logger.info(f"GATING VETOED: {symbol} - {reason}")
+                return
+
+            # Gating approved - now route to scalper
             scalper = self._get_hft_scalper()
             if not scalper:
                 candidate.trade_result = "scalper_not_available"
@@ -597,22 +618,22 @@ class NewsAutoTrader:
             if symbol not in scalper.config.watchlist:
                 scalper.config.watchlist.append(symbol)
 
-            # The scalper will pick up the symbol on next tick
-            # For immediate execution, we can force an entry check
+            gating_token = f"GATED_{symbol}_{datetime.now().strftime('%H%M%S')}"
 
             if self.config.paper_mode:
                 # Paper trade - just log
                 candidate.trade_triggered = True
-                candidate.trade_result = "paper_trade_triggered"
-                logger.warning(f"PAPER TRADE: Would buy {symbol} - {candidate.news_headline[:50]}")
+                candidate.trade_result = f"paper_trade_triggered (gated: {gating_token})"
+                logger.warning(f"PAPER TRADE (GATED): Would buy {symbol} - {candidate.news_headline[:50]}")
             else:
-                # Live trade - force entry via scalper
+                # Live trade - scalper will handle via gated entry
                 candidate.trade_triggered = True
-                candidate.trade_result = "live_trade_queued"
-                logger.warning(f"LIVE TRADE: Queueing {symbol} for scalper entry")
+                candidate.trade_result = f"live_trade_queued (gated: {gating_token})"
+                logger.warning(f"LIVE TRADE (GATED): Queueing {symbol} for scalper entry")
 
-                # Add to scalper's priority queue for immediate entry
-                scalper.priority_symbols.append(symbol)
+                # Add to scalper's watchlist (scalper will verify gating on execute_entry)
+                if symbol not in scalper.config.watchlist:
+                    scalper.config.watchlist.append(symbol)
 
             # Update tracking
             self.daily_trade_count += 1
@@ -625,6 +646,7 @@ class NewsAutoTrader:
                 "symbol": symbol,
                 "timestamp": datetime.now().isoformat(),
                 "paper_mode": self.config.paper_mode,
+                "gating_token": gating_token,
                 "news_catalyst": candidate.news_catalyst,
                 "news_confidence": candidate.news_confidence,
                 "chronos_score": candidate.chronos_score,

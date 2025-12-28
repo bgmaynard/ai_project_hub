@@ -153,7 +153,7 @@ def run_replay(date: str = None, min_change_pct: float = 3.0):
         'C_grade': [],
         'D_grade': [],
         'F_grade': [],
-        'low_float_bypass': [],  # Low-float momentum plays that bypass filters
+        'low_float_momentum': [],  # High-confidence low-float momentum plays
         'no_data': []
     }
 
@@ -173,7 +173,7 @@ def run_replay(date: str = None, min_change_pct: float = 3.0):
         if abs(price_data.get('change_pct', 0)) < min_change_pct:
             continue
 
-        # Check for low-float momentum bypass FIRST
+        # Check for high-confidence low-float momentum FIRST
         lf_analysis = check_low_float_momentum(
             symbol,
             current_price=price_data.get('close'),
@@ -181,8 +181,8 @@ def run_replay(date: str = None, min_change_pct: float = 3.0):
         )
 
         if lf_analysis.signal in [MomentumSignal.STRONG, MomentumSignal.MODERATE]:
-            # This is a low-float momentum play - add to bypass list
-            results['low_float_bypass'].append({
+            # High-confidence low-float momentum signal
+            results['low_float_momentum'].append({
                 'symbol': symbol,
                 'signal': lf_analysis.signal.value,
                 'gap_pct': price_data.get('change_pct', 0),
@@ -219,12 +219,12 @@ def run_replay(date: str = None, min_change_pct: float = 3.0):
                 catalyst_str = f" [{r['catalyst']}]" if r['has_catalyst'] else ""
                 print(f"  {r['symbol']:6s} - Score: {r['score']:3d}, Gap: {r['gap_pct']:+6.1f}%{catalyst_str}")
 
-    # Print low-float momentum bypass results
-    if results['low_float_bypass']:
-        print(f"\nLOW-FLOAT MOMENTUM BYPASS ({len(results['low_float_bypass'])} stocks):")
+    # Print high-confidence low-float momentum results
+    if results['low_float_momentum']:
+        print(f"\nLOW-FLOAT MOMENTUM (HIGH CONFIDENCE) ({len(results['low_float_momentum'])} stocks):")
         # Sort by float rotation descending
-        results['low_float_bypass'].sort(key=lambda x: x['float_rotation'], reverse=True)
-        for r in results['low_float_bypass']:
+        results['low_float_momentum'].sort(key=lambda x: x['float_rotation'], reverse=True)
+        for r in results['low_float_momentum']:
             print(f"  {r['symbol']:6s} - {r['signal']:8s} | Gap {r['gap_pct']:+6.1f}% | "
                   f"Float {r['float_m']:.1f}M | {r['volume_ratio']:.0f}x vol | "
                   f"Rotation {r['float_rotation']:.0f}%")
@@ -232,7 +232,7 @@ def run_replay(date: str = None, min_change_pct: float = 3.0):
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
-    print(f"LOW-FLOAT BYPASS: {len(results['low_float_bypass'])}")
+    print(f"LOW-FLOAT MOMENTUM: {len(results['low_float_momentum'])}")
     print(f"A Grade (tradeable): {len(results['A_grade'])}")
     print(f"B Grade (tradeable): {len(results['B_grade'])}")
     print(f"C Grade (marginal):  {len(results['C_grade'])}")
@@ -242,13 +242,13 @@ def run_replay(date: str = None, min_change_pct: float = 3.0):
 
     # Would-have-traded analysis
     print(f"\n{'='*60}")
-    print("WOULD HAVE TRADED (with current filters + low-float bypass)")
+    print("WOULD HAVE TRADED (with current filters)")
     print(f"{'='*60}")
 
-    # Low-float momentum bypasses ALWAYS trade
-    if results['low_float_bypass']:
-        print("\n  LOW-FLOAT MOMENTUM (bypasses all AI filters):")
-        for r in results['low_float_bypass']:
+    # High-confidence low-float momentum signals (still go through gating)
+    if results['low_float_momentum']:
+        print("\n  LOW-FLOAT MOMENTUM (high confidence → gating):")
+        for r in results['low_float_momentum']:
             print(f"    {r['symbol']:6s} @ ${r['price']:.2f} | {r['signal']} | Gap {r['gap_pct']:+.1f}% | "
                   f"Float {r['float_m']:.1f}M | Rotation {r['float_rotation']:.0f}%")
 
@@ -261,7 +261,7 @@ def run_replay(date: str = None, min_change_pct: float = 3.0):
             catalyst_str = f"[{r['catalyst']}]" if r['has_catalyst'] else "[NO CATALYST]"
             print(f"    {r['symbol']:6s} @ ${r['price']:.2f} | Grade {r['grade']} ({r['score']}/100) | Gap {r['gap_pct']:+.1f}% | {catalyst_str}")
 
-    if not results['low_float_bypass'] and not ab_trades:
+    if not results['low_float_momentum'] and not ab_trades:
         print("  No trades would have triggered")
         print("  (This is expected if no stocks had momentum or news catalysts)")
 

@@ -101,6 +101,11 @@ class GatedTradingManager:
 
         This is the MAIN entry point for gated trading.
 
+        TRADING WINDOW ENFORCEMENT:
+        - All ENTRIES must occur within 07:00-09:30 AM ET
+        - Exits are allowed at any time
+        - No strategy-level overrides permitted
+
         Args:
             symbol: Stock symbol
             trigger_type: Type of trigger (spike, news, breakout, etc.)
@@ -112,6 +117,25 @@ class GatedTradingManager:
         """
         self.total_attempts += 1
         logger.info(f"GATE ATTEMPT #{self.total_attempts}: {symbol} ({trigger_type})")
+
+        # STEP 0: TRADING WINDOW CHECK (MANDATORY - no overrides)
+        # All new entries MUST occur within 07:00-09:30 AM ET
+        try:
+            from ai.time_controls import is_in_warrior_window, VETO_TRADING_WINDOW_CLOSED, get_eastern_time
+
+            if not is_in_warrior_window():
+                self.vetoed_count += 1
+                now = get_eastern_time()
+                reason = f"{VETO_TRADING_WINDOW_CLOSED}: {now.strftime('%H:%M:%S')} ET is outside 07:00-09:30 window"
+                logger.info(f"GATE VETOED (WINDOW): {symbol} - {reason}")
+                return False, None, reason
+
+        except Exception as e:
+            # Fail-closed: if time check fails, reject trade
+            self.vetoed_count += 1
+            reason = f"TRADING_WINDOW_CHECK_ERROR: {e}"
+            logger.error(f"GATE VETOED (ERROR): {symbol} - {reason}")
+            return False, None, reason
 
         # Step 1: Find matching SignalContract
         contracts = self.contract_repo.get_for_symbol(symbol)

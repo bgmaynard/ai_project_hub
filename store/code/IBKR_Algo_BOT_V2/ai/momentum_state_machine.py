@@ -530,9 +530,12 @@ class MomentumStateMachine:
                 logger.error(f"Gating error for {symbol}: {e}")
                 return {'approved': False, 'reason': str(e)}
         else:
-            # No gating manager - auto-approve
-            self._fire_callback('on_gating_approved', symbol, state)
-            return {'approved': True, 'reason': 'No gating manager - auto-approved'}
+            # No gating manager - FAIL-CLOSED (reject trade)
+            logger.warning(f"GATING REJECTED (fail-closed): {symbol} - Gating manager unavailable")
+            self._fire_callback('on_gating_rejected', symbol, state)
+            self.transition(symbol, MomentumState.IGNITING, TransitionReason.GATING_REJECTED,
+                            {'reason': 'Gating manager unavailable'})
+            return {'approved': False, 'reason': 'Gating manager unavailable - fail-closed'}
 
     def enter_position(self, symbol: str, entry_price: float, shares: int,
                        stop_price: float = 0, target_price: float = 0,

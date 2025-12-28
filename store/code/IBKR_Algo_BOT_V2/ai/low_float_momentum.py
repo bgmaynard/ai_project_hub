@@ -1,12 +1,16 @@
 """
 Low-Float Momentum Detector
 ===========================
-Detects low-float momentum plays that should bypass normal AI filters.
+Detects low-float momentum plays and provides CONFIDENCE INPUT for gating.
+
+IMPORTANT: This module provides confidence signals ONLY.
+All trades MUST still go through the Signal Gating Engine.
+NO BYPASS PATHS are allowed.
 
 These setups behave differently than normal stocks:
 - Extreme gaps are GOOD (shows conviction)
 - High volatility is EXPECTED
-- AI models incorrectly predict reversal
+- Signal strength is used as CONFIDENCE INPUT to gating
 
 Criteria for LOW_FLOAT_MOMENTUM:
 - Float < 10M shares (tight supply)
@@ -14,6 +18,8 @@ Criteria for LOW_FLOAT_MOMENTUM:
 - Gap > 10% (momentum)
 - Price $1-$20 (scalp range)
 - Float rotation > 50% (real interest)
+
+Output: Signal strength (STRONG/MODERATE/WEAK/NONE) as confidence input.
 """
 
 import yfinance as yf
@@ -23,10 +29,10 @@ from enum import Enum
 
 
 class MomentumSignal(Enum):
-    """Momentum signal strength"""
-    STRONG = "STRONG"          # All criteria met - bypass all filters
-    MODERATE = "MODERATE"      # Most criteria met - bypass some filters
-    WEAK = "WEAK"             # Some criteria - use normal filters
+    """Momentum signal strength (CONFIDENCE INPUT - NO BYPASS)"""
+    STRONG = "STRONG"          # All criteria met - high confidence input
+    MODERATE = "MODERATE"      # Most criteria met - moderate confidence input
+    WEAK = "WEAK"             # Some criteria - low confidence input
     NONE = "NONE"             # Not a low-float momentum play
 
 
@@ -52,10 +58,8 @@ class LowFloatAnalysis:
     has_float_rotation: bool
     is_in_price_range: bool
 
-    # Recommendation
-    bypass_gap_grader: bool
-    bypass_chronos: bool
-    bypass_qlib: bool
+    # Confidence outputs (NO BYPASS - inputs to gating engine)
+    confidence_score: float  # 0.0-1.0 confidence for gating
     reason: str
 
     def to_dict(self):
@@ -74,15 +78,13 @@ class LowFloatAnalysis:
             'has_large_gap': self.has_large_gap,
             'has_float_rotation': self.has_float_rotation,
             'is_in_price_range': self.is_in_price_range,
-            'bypass_gap_grader': self.bypass_gap_grader,
-            'bypass_chronos': self.bypass_chronos,
-            'bypass_qlib': self.bypass_qlib,
+            'confidence_score': round(self.confidence_score, 2),
             'reason': self.reason
         }
 
 
 class LowFloatMomentumDetector:
-    """Detects low-float momentum setups that should bypass AI filters"""
+    """Detects low-float momentum setups and provides CONFIDENCE INPUT for gating (NO BYPASS)"""
 
     # Thresholds
     MAX_FLOAT = 10_000_000      # 10M shares max
@@ -92,7 +94,7 @@ class LowFloatMomentumDetector:
     MIN_PRICE = 1.0
     MAX_PRICE = 20.0
 
-    # Strong signal thresholds (all bypasses)
+    # Strong signal thresholds (high confidence input to gating)
     STRONG_MIN_FLOAT_ROTATION = 100.0   # Float traded 1x
     STRONG_MIN_VOLUME_RATIO = 10.0      # 10x average volume
 
@@ -148,10 +150,13 @@ class LowFloatMomentumDetector:
                 volume_ratio, float_rotation
             )
 
-            # Determine bypasses based on signal
-            bypass_gap_grader = signal in [MomentumSignal.STRONG, MomentumSignal.MODERATE]
-            bypass_chronos = signal == MomentumSignal.STRONG
-            bypass_qlib = signal == MomentumSignal.STRONG
+            # Calculate confidence score based on signal strength (NO BYPASS - input to gating)
+            confidence_score = {
+                MomentumSignal.STRONG: 1.0,
+                MomentumSignal.MODERATE: 0.7,
+                MomentumSignal.WEAK: 0.3,
+                MomentumSignal.NONE: 0.0
+            }.get(signal, 0.0)
 
             # Build reason
             reason = self._build_reason(signal, float_shares, volume_ratio, gap_percent, float_rotation)
@@ -171,9 +176,7 @@ class LowFloatMomentumDetector:
                 has_large_gap=has_large_gap,
                 has_float_rotation=has_float_rotation,
                 is_in_price_range=is_in_price_range,
-                bypass_gap_grader=bypass_gap_grader,
-                bypass_chronos=bypass_chronos,
-                bypass_qlib=bypass_qlib,
+                confidence_score=confidence_score,
                 reason=reason
             )
 
@@ -211,23 +214,23 @@ class LowFloatMomentumDetector:
 
     def _build_reason(self, signal: MomentumSignal, float_shares: float,
                       volume_ratio: float, gap_percent: float, float_rotation: float) -> str:
-        """Build explanation for the signal"""
+        """Build explanation for the signal (CONFIDENCE INPUT - NO BYPASS)"""
 
         if signal == MomentumSignal.STRONG:
             return (f"LOW-FLOAT MOMENTUM: Float {float_shares/1e6:.1f}M, "
                    f"Vol {volume_ratio:.0f}x avg, Gap {gap_percent:+.0f}%, "
-                   f"Rotation {float_rotation:.0f}% - BYPASS ALL FILTERS")
+                   f"Rotation {float_rotation:.0f}% - HIGH CONFIDENCE (1.0)")
 
         elif signal == MomentumSignal.MODERATE:
             return (f"Moderate momentum: Float {float_shares/1e6:.1f}M, "
-                   f"Vol {volume_ratio:.0f}x avg, Gap {gap_percent:+.0f}% - Bypass Gap Grader")
+                   f"Vol {volume_ratio:.0f}x avg, Gap {gap_percent:+.0f}% - MODERATE CONFIDENCE (0.7)")
 
         elif signal == MomentumSignal.WEAK:
             return (f"Weak momentum: Vol {volume_ratio:.0f}x avg, "
-                   f"Gap {gap_percent:+.0f}% - Use normal filters")
+                   f"Gap {gap_percent:+.0f}% - LOW CONFIDENCE (0.3)")
 
         else:
-            return "Not a low-float momentum setup"
+            return "Not a low-float momentum setup (confidence: 0.0)"
 
     def _empty_analysis(self, symbol: str, reason: str) -> LowFloatAnalysis:
         """Return empty analysis for error cases"""
@@ -246,9 +249,7 @@ class LowFloatMomentumDetector:
             has_large_gap=False,
             has_float_rotation=False,
             is_in_price_range=False,
-            bypass_gap_grader=False,
-            bypass_chronos=False,
-            bypass_qlib=False,
+            confidence_score=0.0,
             reason=reason
         )
 
@@ -266,7 +267,7 @@ def get_low_float_detector() -> LowFloatMomentumDetector:
 
 
 def check_low_float_momentum(symbol: str, **kwargs) -> LowFloatAnalysis:
-    """Quick check for low-float momentum bypass"""
+    """Quick check for low-float momentum (CONFIDENCE INPUT for gating - NO BYPASS)"""
     return get_low_float_detector().analyze(symbol, **kwargs)
 
 
@@ -282,7 +283,5 @@ if __name__ == "__main__":
         print(f"  Volume: {result.volume_ratio:.1f}x avg")
         print(f"  Gap: {result.gap_percent:+.1f}%")
         print(f"  Float Rotation: {result.float_rotation:.0f}%")
-        print(f"  Bypass Gap Grader: {result.bypass_gap_grader}")
-        print(f"  Bypass Chronos: {result.bypass_chronos}")
-        print(f"  Bypass Qlib: {result.bypass_qlib}")
+        print(f"  Confidence Score: {result.confidence_score}")
         print(f"  {result.reason}")

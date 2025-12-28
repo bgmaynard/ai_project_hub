@@ -92,14 +92,11 @@
   "use_overnight_filter": true,
   "overnight_min_strength": "MODERATE",
   "overnight_block_reversals": true,
-  "use_low_float_bypass": true,
+  "use_low_float_analysis": true,
+  "require_gating_approval": true,
   "low_float_max_shares": 10.0,
   "low_float_min_volume_ratio": 5.0,
   "low_float_min_rotation": 50.0,
-  "use_state_machine": true,
-  "state_machine_candidate_score": 30,
-  "state_machine_igniting_score": 45,
-  "state_machine_gated_score": 60,
   "watchlist": [
     "AMCI",
     "BGMS",
@@ -120,7 +117,8 @@
     "SOPA",
     "ECDA",
     "JFBR",
-    "BENF"
+    "BENF",
+    "TSLA"
   ],
   "blacklist": [
     "PAVS",

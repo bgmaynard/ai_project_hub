@@ -564,14 +564,61 @@ class AIWatchlistTrader:
         return False
 
     def _execute_trade(self, opp: TradeOpportunity) -> Dict:
-        """Execute a trade from an opportunity"""
+        """
+        Execute a trade from an opportunity.
+
+        GATING ENFORCEMENT: All trades MUST go through Signal Gating Engine.
+        """
         logger.info(f"[AI TRADER] Executing: {opp.signal} {opp.symbol} x{opp.position_size}")
 
+        # GATING ENFORCEMENT: Route through Signal Gating Engine first
+        try:
+            from ai.gated_trading import get_gated_trading_manager
+            manager = get_gated_trading_manager()
+
+            approved, exec_request, reason = manager.gate_trade_attempt(
+                symbol=opp.symbol,
+                trigger_type="ai_watchlist",
+                quote={"price": opp.entry_price}
+            )
+
+            if not approved:
+                logger.info(f"[AI TRADER] GATING VETOED: {opp.symbol} - {reason}")
+                result = {
+                    "success": False,
+                    "gating_vetoed": True,
+                    "reason": reason,
+                    "symbol": opp.symbol,
+                    "timestamp": datetime.now().isoformat()
+                }
+                self.execution_log.append(result)
+                self._save_state()
+                return result
+
+            gating_token = f"GATED_{opp.symbol}_{datetime.now().strftime('%H%M%S')}"
+            logger.info(f"[AI TRADER] GATING APPROVED: {opp.symbol} - token={gating_token}")
+
+        except Exception as e:
+            # Fail-closed: on gating error, reject trade
+            logger.error(f"[AI TRADER] GATING ERROR (fail-closed): {opp.symbol} - {e}")
+            result = {
+                "success": False,
+                "gating_error": True,
+                "error": str(e),
+                "symbol": opp.symbol,
+                "timestamp": datetime.now().isoformat()
+            }
+            self.execution_log.append(result)
+            self._save_state()
+            return result
+
+        # Gating approved - proceed with execution
         if self.config["paper_mode"]:
             # Paper trading - simulate execution
             result = {
                 "success": True,
                 "paper_trade": True,
+                "gating_token": gating_token,
                 "symbol": opp.symbol,
                 "action": "BUY" if "BUY" in opp.signal else "SELL",
                 "quantity": opp.position_size,
@@ -597,6 +644,7 @@ class AIWatchlistTrader:
                 result = {
                     "success": True,
                     "paper_trade": False,
+                    "gating_token": gating_token,
                     "symbol": opp.symbol,
                     "action": action,
                     "quantity": opp.position_size,
@@ -609,6 +657,7 @@ class AIWatchlistTrader:
                 logger.error(f"[AI TRADER] Execution failed: {e}")
                 result = {
                     "success": False,
+                    "gating_token": gating_token,
                     "error": str(e),
                     "symbol": opp.symbol,
                     "timestamp": datetime.now().isoformat()

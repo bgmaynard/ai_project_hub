@@ -1,0 +1,155 @@
+{
+  "metadata": {
+    "date": "2025-12-22",
+    "day_of_week": "Monday",
+    "mode": "PAPER",
+    "trading_window": "07:00-09:30 AM ET",
+    "report_generated": "2025-12-27T12:00:00Z",
+    "data_collection_status": "INCOMPLETE - New gating/policy systems not active"
+  },
+  "critical_finding": {
+    "status": "ANOMALY_DETECTED",
+    "description": "ZERO trades occurred within the 07:00-09:30 ET trading window on Monday. ALL trades occurred OUTSIDE the window.",
+    "trades_in_window": 0,
+    "trades_outside_window": 11
+  },
+  "veto_histogram": {
+    "CONTRACT_EXPIRED": 0,
+    "REGIME_MISMATCH": 0,
+    "INVALID_REGIME": 0,
+    "CONFIDENCE_LOW": 0,
+    "COOLDOWN_ACTIVE": 0,
+    "RISK_LIMIT_EXCEEDED": 0,
+    "TRADING_WINDOW_CLOSED": 0,
+    "total": 0,
+    "note": "Signal Gating Engine was not active on 2025-12-22. Veto logging not enabled."
+  },
+  "exit_histogram": {
+    "REGIME_SHIFT": 0,
+    "MOMENTUM_DECAY": 0,
+    "TIME_STOP": 0,
+    "VOLATILITY_SPIKE": 0,
+    "STOP_LOSS": 0,
+    "PROFIT_TARGET": 0,
+    "TRAILING_STOP": 0,
+    "MAX_HOLD_TIME": 11,
+    "REVERSAL_DETECTED": 0,
+    "note": "All 11 exits were MAX_HOLD_TIME - trades from OVERNIGHT session (03:00 AM) and POST-MARKET (12:42 PM)"
+  },
+  "strategy_events": [],
+  "momentum_transition_counts": {
+    "IDLE_to_CANDIDATE": 0,
+    "CANDIDATE_to_IGNITING": 0,
+    "IGNITING_to_GATED": 0,
+    "GATED_to_IN_POSITION": 0,
+    "IN_POSITION_to_EXITING": 0,
+    "EXITING_to_COOLDOWN": 0,
+    "note": "Momentum State Machine v2 not active. Transitions not logged."
+  },
+  "gating_statistics": {
+    "total_trade_attempts": 0,
+    "total_approved": 0,
+    "total_vetoed": 0,
+    "gated_not_to_position_count": 0,
+    "avg_time_in_gated_seconds": 0,
+    "note": "Gating system not active on 2025-12-22"
+  },
+  "trade_summary": {
+    "total_trades": 11,
+    "trades_in_warrior_window": 0,
+    "trades_outside_window": 11,
+    "breakdown": {
+      "overnight_03AM": {
+        "count": 5,
+        "symbol": "DJT",
+        "total_pnl": 4.1,
+        "exit_reasons": ["MAX_HOLD_TIME x5"]
+      },
+      "post_market_12PM": {
+        "count": 6,
+        "symbols": ["MULN", "XXII", "DJT"],
+        "total_pnl": -13.11,
+        "exit_reasons": ["MAX_HOLD_TIME x6"]
+      }
+    },
+    "win_count": 4,
+    "loss_count": 7,
+    "win_rate": 0.364,
+    "total_pnl": -9.01,
+    "avg_trade_duration_seconds": 182,
+    "mfe_avg_percent": 0.53,
+    "mae_avg_percent": -0.31
+  },
+  "trades_detail": [
+    {
+      "trade_id": "DJT_20251222_030056",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:00:56",
+      "entry_price": 16.46,
+      "exit_time": "2025-12-22T03:03:59",
+      "exit_price": 16.43,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -0.90,
+      "window_violation": "OVERNIGHT (03:00 AM) - Outside 07:00-09:30 window"
+    },
+    {
+      "trade_id": "DJT_20251222_030505",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:05:05",
+      "entry_price": 16.43,
+      "exit_time": "2025-12-22T03:08:06",
+      "exit_price": 16.56,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": 3.90,
+      "window_violation": "OVERNIGHT (03:05 AM) - Outside 07:00-09:30 window"
+    },
+    {
+      "trade_id": "DJT_20251222_030812",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:08:12",
+      "entry_price": 16.60,
+      "exit_time": "2025-12-22T03:11:15",
+      "exit_price": 16.58,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -0.60,
+      "window_violation": "OVERNIGHT (03:08 AM) - Outside 07:00-09:30 window"
+    },
+    {
+      "trade_id": "DJT_20251222_031219",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:12:19",
+      "entry_price": 16.59,
+      "exit_time": "2025-12-22T03:15:21",
+      "exit_price": 16.65,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": 1.80,
+      "window_violation": "OVERNIGHT (03:12 AM) - Outside 07:00-09:30 window"
+    },
+    {
+      "trade_id": "DJT_20251222_031527",
+      "symbol": "DJT",
+      "entry_time": "2025-12-22T03:15:27",
+      "entry_price": 16.66,
+      "exit_time": "2025-12-22T03:18:28",
+      "exit_price": 16.64,
+      "exit_reason": "MAX_HOLD_TIME",
+      "pnl": -0.60,
+      "window_violation": "OVERNIGHT (03:15 AM) - Outside 07:00-09:30 window"
+    }
+  ],
+  "notes": [
+    "CRITICAL: Trading Window Enforcement was NOT active on 2025-12-22",
+    "100% of trades occurred OUTSIDE the 07:00-09:30 AM ET warrior window",
+    "Signal Gating Engine was not integrated with HFT Scalper on this date",
+    "Strategy Policy Engine was not active",
+    "Momentum State Machine v2 (FSM) was not logging transitions",
+    "This baseline data shows the system behavior BEFORE safety fixes were applied",
+    "The trading window enforcement fix (gated_trading.py STEP 0) was implemented 2025-12-27"
+  ],
+  "reconciliation": {
+    "entries_in_window": 0,
+    "gated_approvals": 0,
+    "exits_in_window": 0,
+    "status": "N/A - No trades within window to reconcile"
+  }
+}

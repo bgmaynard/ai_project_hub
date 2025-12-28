@@ -119,20 +119,55 @@ class AutoTrader:
         return result
     
     def execute_trade(self, symbol: str) -> Dict[str, Any]:
-        """Execute trade if conditions are met"""
+        """
+        Execute trade if conditions are met.
+
+        GATING ENFORCEMENT: All trades MUST go through Signal Gating Engine.
+        """
         decision = self.should_trade(symbol)
-        
+
         if not decision['should_trade']:
             return {
                 "executed": False,
                 "reason": decision['reason'],
                 "timestamp": datetime.utcnow().isoformat()
             }
-        
-        # Calculate limit price (current price + small buffer)
+
+        # GATING ENFORCEMENT: Route through Signal Gating Engine first
+        try:
+            from ai.gated_trading import get_gated_trading_manager
+            manager = get_gated_trading_manager()
+
+            current_price = decision['prediction'].get('current_price', 0)
+            approved, exec_request, reason = manager.gate_trade_attempt(
+                symbol=symbol,
+                trigger_type="auto_trader",
+                quote={"price": current_price}
+            )
+
+            if not approved:
+                return {
+                    "executed": False,
+                    "gating_vetoed": True,
+                    "reason": f"GATING VETOED: {reason}",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+
+            gating_token = f"GATED_{symbol}_{datetime.utcnow().strftime('%H%M%S')}"
+
+        except Exception as e:
+            # Fail-closed: on gating error, reject trade
+            return {
+                "executed": False,
+                "gating_error": True,
+                "reason": f"GATING ERROR (fail-closed): {e}",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+
+        # Gating approved - proceed with execution
         current_price = decision['prediction'].get('current_price', 0)
         limit_price = current_price * 1.01  # 1% above current
-        
+
         # Place order
         try:
             order_result = self.adapter.place_limit_order_sync(
@@ -141,7 +176,7 @@ class AutoTrader:
                 price=limit_price,
                 action=decision['action']
             )
-            
+
             # Log the trade
             trade_log = {
                 "timestamp": datetime.utcnow().isoformat(),
@@ -151,22 +186,25 @@ class AutoTrader:
                 "limit_price": limit_price,
                 "current_price": current_price,
                 "order_id": order_result.get('orderId'),
+                "gating_token": gating_token,
                 "prediction": decision['prediction'],
                 "reason": decision['reason'],
                 "pnl": 0  # Will update later when closed
             }
             self.logger.log_trade(trade_log)
-            
+
             return {
                 "executed": True,
+                "gating_token": gating_token,
                 "order": order_result,
                 "trade_log": trade_log,
                 "timestamp": datetime.utcnow().isoformat()
             }
-            
+
         except Exception as e:
             return {
                 "executed": False,
+                "gating_token": gating_token,
                 "reason": f"Order failed: {e}",
                 "timestamp": datetime.utcnow().isoformat()
             }

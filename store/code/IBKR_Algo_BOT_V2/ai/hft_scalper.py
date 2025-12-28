@@ -191,11 +191,14 @@ class ScalperConfig:
     overnight_min_strength: str = 'MODERATE'  # Minimum continuation strength
     overnight_block_reversals: bool = True  # Block if PM reversed AH direction
 
-    # Low-Float Momentum Bypass
-    use_low_float_bypass: bool = True  # Bypass AI filters for low-float momentum plays
+    # Low-Float Momentum Analysis (NO BYPASS - confidence input only)
+    use_low_float_analysis: bool = True  # Use low-float analysis as confidence input (NO BYPASS)
     low_float_max_shares: float = 10.0  # Max float in millions to qualify
     low_float_min_volume_ratio: float = 5.0  # Min volume vs avg to qualify
     low_float_min_rotation: float = 50.0  # Min float rotation % to qualify
+
+    # GATING ENFORCEMENT (Signal Gating Engine integration)
+    require_gating_approval: bool = True  # ALL trades MUST go through Signal Gating Engine
 
     # Momentum State Machine v2 (ChatGPT FSM Spec)
     use_state_machine: bool = True  # Use state machine for entry decisions
@@ -676,15 +679,18 @@ class HFTScalper:
         return result
 
     async def check_entry_signal(self, symbol: str, quote: Dict,
-                                  priority: bool = False) -> Optional[Dict]:
+                                  news_triggered: bool = False) -> Optional[Dict]:
         """
         Check if there's an entry signal for a symbol.
+
+        ALL entries go through Signal Gating Engine - no bypasses allowed.
 
         Args:
             symbol: Stock symbol
             quote: Price quote dict
-            priority: If True, this is a news-triggered priority entry
-                     (skip momentum detection, already passed news filters)
+            news_triggered: If True, this is a news-triggered entry
+                           (skip momentum detection, already passed news filters)
+                           NOTE: Still goes through gating - no safety checks bypassed
 
         Returns signal dict if entry opportunity detected, None otherwise.
         """
@@ -697,22 +703,21 @@ class HFTScalper:
         if not price or price < self.config.min_price or price > self.config.max_price:
             return None
 
-        # Check spread - slightly relaxed for priority entries (news-triggered)
-        max_spread = self.config.max_spread_percent * (1.5 if priority else 1.0)
+        # Check spread - NO RELAXATION for any entry type (gating enforced)
+        max_spread = self.config.max_spread_percent
         if bid and ask and price > 0:
             spread_pct = (ask - bid) / price * 100
             if spread_pct > max_spread:
-                if priority:
-                    logger.info(f"PRIORITY REJECT: {symbol} spread {spread_pct:.1f}% > {max_spread:.1f}%")
+                logger.debug(f"SPREAD REJECT: {symbol} spread {spread_pct:.1f}% > {max_spread:.1f}%")
                 return None
 
         # Skip if already in position
         if symbol in self.open_positions:
             return None
 
-        # Skip if on cooldown after loss (shorter cooldown for priority)
+        # Skip if on cooldown after loss - NO REDUCTION for any entry type
         if self.last_loss_time:
-            cooldown = self.config.cooldown_after_loss / (2 if priority else 1)
+            cooldown = self.config.cooldown_after_loss
             cooldown_end = self.last_loss_time + timedelta(seconds=cooldown)
             if datetime.now() < cooldown_end:
                 return None
@@ -785,18 +790,12 @@ class HFTScalper:
                 symbol_state = self.state_machine.get_state(symbol)
                 if symbol_state:
                     if symbol_state.state != MomentumState.GATED:
-                        # Not in GATED - log but allow priority entries to bypass
-                        if not priority:
-                            logger.debug(
-                                f"STATE MACHINE: {symbol} in {symbol_state.state.value} "
-                                f"(score {momentum_score_result.score}/100) - waiting for GATED"
-                            )
-                            return None
-                        else:
-                            logger.info(
-                                f"STATE MACHINE BYPASS: {symbol} - Priority entry bypassing state "
-                                f"(current: {symbol_state.state.value}, score: {momentum_score_result.score})"
-                            )
+                        # Not in GATED - NO BYPASS ALLOWED (gating enforced)
+                        logger.debug(
+                            f"STATE MACHINE: {symbol} in {symbol_state.state.value} "
+                            f"(score {momentum_score_result.score}/100) - waiting for GATED"
+                        )
+                        return None
                     else:
                         logger.info(
                             f"STATE MACHINE GATED: {symbol} ready for entry "
@@ -824,19 +823,20 @@ class HFTScalper:
         # Keep only last 60 data points
         self.price_history[symbol] = self.price_history[symbol][-60:]
 
-        # For priority entries (news-triggered), skip momentum detection
-        # They already passed news confidence/urgency filters
-        if priority:
+        # For news-triggered entries, skip momentum detection
+        # (already passed news confidence/urgency filters)
+        # NOTE: Still goes through gating - no safety checks bypassed
+        if news_triggered:
             signal = {
                 "type": "news_triggered",
                 "symbol": symbol,
                 "price": price,
                 "change_percent": change_pct,
                 "volume": volume,
-                "priority": True,
+                "news_triggered": True,
                 "timestamp": datetime.now().isoformat()
             }
-            logger.info(f"PRIORITY ENTRY: {symbol} @ ${price:.2f} (news-triggered)")
+            logger.info(f"NEWS SIGNAL: {symbol} @ ${price:.2f} (news-triggered, gating required)")
         else:
             # Need at least 5 data points for momentum detection
             if len(self.price_history[symbol]) < 5:
@@ -1262,10 +1262,9 @@ class HFTScalper:
             except Exception as e:
                 logger.warning(f"Depth analysis check failed for {symbol}: {e}")
 
-        # Check for low-float momentum bypass BEFORE applying AI filters
-        # Low-float momentum plays behave differently and AI models incorrectly predict reversal
-        low_float_bypass = False
-        if signal and getattr(self.config, 'use_low_float_bypass', True):
+        # Low-float momentum analysis (CONFIDENCE INPUT ONLY - NO BYPASS)
+        # Adds confidence information but ALL trades still go through Signal Gating Engine
+        if signal and getattr(self.config, 'use_low_float_analysis', True):
             try:
                 from ai.low_float_momentum import check_low_float_momentum, MomentumSignal
 
@@ -1275,27 +1274,28 @@ class HFTScalper:
                     gap_percent=signal.get('spike_pct', 0)
                 )
 
-                if lf_analysis.signal in [MomentumSignal.STRONG, MomentumSignal.MODERATE]:
-                    low_float_bypass = True
-                    signal['low_float_momentum'] = True
-                    signal['low_float_signal'] = lf_analysis.signal.value
-                    signal['float_shares_m'] = lf_analysis.float_shares / 1e6
-                    signal['float_rotation_pct'] = lf_analysis.float_rotation
-                    signal['volume_ratio'] = lf_analysis.volume_ratio
+                # Add low-float metrics as CONFIDENCE INPUT (not bypass)
+                signal['low_float_momentum'] = lf_analysis.signal in [MomentumSignal.STRONG, MomentumSignal.MODERATE]
+                signal['low_float_signal'] = lf_analysis.signal.value
+                signal['low_float_confidence'] = 1.0 if lf_analysis.signal == MomentumSignal.STRONG else 0.7 if lf_analysis.signal == MomentumSignal.MODERATE else 0.3
+                signal['float_shares_m'] = lf_analysis.float_shares / 1e6
+                signal['float_rotation_pct'] = lf_analysis.float_rotation
+                signal['volume_ratio'] = lf_analysis.volume_ratio
 
+                if lf_analysis.signal in [MomentumSignal.STRONG, MomentumSignal.MODERATE]:
                     logger.info(
-                        f"LOW-FLOAT MOMENTUM: {symbol} - {lf_analysis.signal.value} "
+                        f"LOW-FLOAT ANALYSIS: {symbol} - {lf_analysis.signal.value} "
                         f"(Float: {lf_analysis.float_shares/1e6:.1f}M, "
                         f"Vol: {lf_analysis.volume_ratio:.0f}x, "
                         f"Rotation: {lf_analysis.float_rotation:.0f}%) - "
-                        f"BYPASSING AI FILTERS"
+                        f"CONFIDENCE INPUT (no bypass)"
                     )
             except Exception as e:
                 logger.warning(f"Low-float momentum check failed for {symbol}: {e}")
 
         # Apply Gap Grader filter if enabled (Ross Cameron gap quality scoring)
-        # SKIP if low-float momentum bypass is active
-        if signal and getattr(self.config, 'use_gap_grader_filter', True) and not low_float_bypass:
+        # ALL signals go through gating - no bypass paths
+        if signal and getattr(self.config, 'use_gap_grader_filter', True):
             try:
                 from ai.gap_grader import get_gap_grader, GapGrade
 
@@ -1345,8 +1345,8 @@ class HFTScalper:
                 logger.warning(f"Gap grader check failed for {symbol}: {e}")
 
         # Apply Overnight Continuation filter if enabled
-        # SKIP if low-float momentum bypass is active
-        if signal and getattr(self.config, 'use_overnight_filter', True) and not low_float_bypass:
+        # ALL signals go through gating - no bypass paths
+        if signal and getattr(self.config, 'use_overnight_filter', True):
             try:
                 from ai.overnight_continuation import get_overnight_scanner, ContinuationPattern, ContinuationStrength
 
@@ -1668,8 +1668,13 @@ class HFTScalper:
 
         return exit_signal
 
-    async def execute_entry(self, symbol: str, signal: Dict, quote: Dict = None) -> Optional[ScalpTrade]:
-        """Execute an entry trade"""
+    async def execute_entry(self, symbol: str, signal: Dict, quote: Dict = None, gating_token: str = None) -> Optional[ScalpTrade]:
+        """
+        Execute an entry trade.
+
+        GATING ENFORCEMENT: All trades MUST go through Signal Gating Engine.
+        The gating_token proves this trade was approved by gating.
+        """
         if not self.config.enabled:
             logger.info(f"Scalper disabled - would have entered {symbol}")
             return None
@@ -1677,6 +1682,34 @@ class HFTScalper:
         price = signal.get('price', 0)
         if not price:
             return None
+
+        # GATING ENFORCEMENT: Verify trade was approved by Signal Gating Engine
+        if getattr(self.config, 'require_gating_approval', True):
+            if not gating_token:
+                # Must go through gating first
+                try:
+                    from ai.gated_trading import get_gated_trading_manager
+                    manager = get_gated_trading_manager()
+
+                    trigger_type = signal.get('type', 'momentum_spike')
+                    approved, exec_request, reason = manager.gate_trade_attempt(
+                        symbol=symbol,
+                        trigger_type=trigger_type,
+                        quote=quote
+                    )
+
+                    if not approved:
+                        logger.info(f"GATING VETOED: {symbol} - {reason}")
+                        return None
+
+                    # Trade approved - set token to prove gating passed
+                    gating_token = f"GATED_{symbol}_{datetime.now().strftime('%H%M%S')}"
+                    logger.info(f"GATING APPROVED: {symbol} - token={gating_token}")
+
+                except Exception as e:
+                    # Fail-closed: on gating error, reject trade
+                    logger.error(f"GATING ERROR (fail-closed): {symbol} - {e}")
+                    return None
 
         # Calculate position size using risk-based sizing
         shares, position_value, risk_amount = self.config.calculate_position_size(price)
@@ -2003,7 +2036,7 @@ class HFTScalper:
                     except Exception as e:
                         logger.debug(f"Worklist sync: {e}")
 
-                    # Process priority symbols FIRST (news-triggered)
+                    # Process news-triggered symbols FIRST (still goes through gating)
                     while self.priority_symbols and self.config.enabled:
                         symbol = self.priority_symbols.pop(0)
 
@@ -2019,16 +2052,16 @@ class HFTScalper:
                             )
                             if response.status_code == 200:
                                 quote = response.json()
-                                # Priority symbols get fast-tracked entry
-                                # They already passed news filters, just check price/spread
+                                # News-triggered symbols skip momentum detection
+                                # but STILL go through gating - no safety bypasses
                                 entry_signal = await self.check_entry_signal(
-                                    symbol, quote, priority=True
+                                    symbol, quote, news_triggered=True
                                 )
                                 if entry_signal:
-                                    logger.warning(f"NEWS-TRIGGERED ENTRY: {symbol}")
+                                    logger.warning(f"NEWS-TRIGGERED ENTRY: {symbol} (gating enforced)")
                                     await self.execute_entry(symbol, entry_signal, quote)
                         except Exception as e:
-                            logger.debug(f"Error on priority {symbol}: {e}")
+                            logger.debug(f"Error on news-triggered {symbol}: {e}")
 
                     # Check each symbol on regular watchlist
                     for symbol in self.config.watchlist[:20]:  # Limit to 20
