@@ -12,8 +12,15 @@ interface Props {
   status: GlobalStatusType;
 }
 
+const POSTURE_LABELS: Record<string, string> = {
+  NO_TRADE: 'NO TRADE (BY DESIGN)',
+  DEFENSIVE: 'DEFENSIVE',
+  ACTIVE: 'ACTIVE',
+  LOCKED: 'LOCKED (KILL SWITCH)',
+};
+
 export const GlobalStatus: React.FC<Props> = ({ status }) => {
-  const { mode, tradingWindow, windowTime, aiState, killSwitch } = status;
+  const { mode, tradingWindow, windowTime, aiPosture, aiPostureReason, killSwitch } = status;
 
   return (
     <div className="bg-ibkr-surface rounded-lg border border-ibkr-border p-4">
@@ -50,16 +57,23 @@ export const GlobalStatus: React.FC<Props> = ({ status }) => {
           </div>
         </div>
 
-        {/* AI State */}
+        {/* AI Posture */}
         <div className="flex justify-between items-center">
-          <span className="text-sm text-ibkr-text-secondary">AI State</span>
+          <span className="text-sm text-ibkr-text-secondary">AI Posture</span>
           <span
             className="text-sm font-semibold"
-            style={{ color: getStatusColor(aiState) }}
+            style={{ color: getStatusColor(aiPosture) }}
           >
-            {aiState}
+            {POSTURE_LABELS[aiPosture] || aiPosture}
           </span>
         </div>
+
+        {/* AI Posture Reason */}
+        {aiPostureReason && (
+          <div className="text-xs text-ibkr-text-secondary italic pl-2 border-l-2 border-ibkr-border">
+            {aiPostureReason}
+          </div>
+        )}
 
         {/* Kill Switch */}
         <div

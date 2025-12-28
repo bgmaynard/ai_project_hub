@@ -1,18 +1,26 @@
 /**
  * SystemHealth Component
  *
- * Displays health indicators in a compact grid.
+ * Displays system safety status and health indicators in a compact grid.
  */
 
 import React from 'react';
-import type { HealthIndicator } from '../../types/governor';
-import { getStatusColor } from '../../types/governor';
+import type { SystemHealth as SystemHealthType } from '../../types/governor';
+import { getStatusColor, GOVERNOR_COLORS } from '../../types/governor';
 
 interface Props {
-  indicators: HealthIndicator[];
+  indicators: SystemHealthType;
 }
 
+const SAFETY_COLORS: Record<string, string> = {
+  SAFE: GOVERNOR_COLORS.success,
+  DEGRADED: GOVERNOR_COLORS.warning,
+  HALTED: GOVERNOR_COLORS.error,
+};
+
 export const SystemHealth: React.FC<Props> = ({ indicators }) => {
+  const { safetyStatus, indicators: healthIndicators } = indicators;
+
   const getStatusDot = (status: string) => {
     const color = getStatusColor(status);
     const isAnimated = status === 'HEALTHY' || status === 'CONNECTED';
@@ -34,8 +42,21 @@ export const SystemHealth: React.FC<Props> = ({ indicators }) => {
       </div>
 
       <div className="p-4">
+        {/* System Safety Status - Top Line */}
+        <div
+          className="mb-4 p-3 rounded text-center font-bold uppercase"
+          style={{
+            backgroundColor: `${SAFETY_COLORS[safetyStatus]}22`,
+            color: SAFETY_COLORS[safetyStatus],
+            border: `1px solid ${SAFETY_COLORS[safetyStatus]}`,
+          }}
+        >
+          SYSTEM SAFETY STATUS: {safetyStatus}
+        </div>
+
+        {/* Health Indicators Grid */}
         <div className="grid grid-cols-2 gap-3">
-          {indicators.map((indicator) => (
+          {healthIndicators.map((indicator) => (
             <div
               key={indicator.name}
               className="flex items-center justify-between p-2 rounded bg-ibkr-bg"

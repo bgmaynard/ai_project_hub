@@ -11,7 +11,13 @@
 
 export type TradingMode = 'PAPER' | 'LIVE';
 export type TradingWindow = 'OPEN' | 'CLOSED' | 'PRE_MARKET' | 'AFTER_HOURS';
-export type AIState = 'ENABLED' | 'DISABLED' | 'PAUSED';
+
+// AI Posture - explicit system stance
+export type AIPosture =
+  | 'NO_TRADE'    // Outside trading window (by design)
+  | 'DEFENSIVE'   // Cautious mode (high volatility, degraded health)
+  | 'ACTIVE'      // Normal trading operations
+  | 'LOCKED';     // Kill switch engaged
 
 export interface KillSwitchStatus {
   active: boolean;
@@ -23,7 +29,8 @@ export interface GlobalStatus {
   mode: TradingMode;
   tradingWindow: TradingWindow;
   windowTime: string;
-  aiState: AIState;
+  aiPosture: AIPosture;
+  aiPostureReason: string;  // Plain English explanation
   killSwitch: KillSwitchStatus;
 }
 
@@ -45,6 +52,7 @@ export interface MarketContext {
   dataAge: number;
   dataFreshness: DataFreshness;
   lastUpdate: string;
+  aiInterpretation: string;  // Plain English policy-generated reason for posture
 }
 
 // ============================================
@@ -66,8 +74,8 @@ export interface StrategyPolicy {
 // AI Decisions
 // ============================================
 
-export type DecisionAction = 'APPROVED' | 'VETOED' | 'EXIT';
-export type DecisionType = 'entry' | 'exit';
+export type DecisionAction = 'APPROVED' | 'VETOED' | 'EXIT' | 'NO_ACTION';
+export type DecisionType = 'entry' | 'exit' | 'passive';
 
 export interface AIDecision {
   timestamp: string;
@@ -83,11 +91,17 @@ export interface AIDecision {
 // ============================================
 
 export type HealthStatus = 'HEALTHY' | 'DEGRADED' | 'ERROR' | 'OFFLINE';
+export type SystemSafetyStatus = 'SAFE' | 'DEGRADED' | 'HALTED';
 
 export interface HealthIndicator {
   name: string;
   status: HealthStatus;
   detail: string;
+}
+
+export interface SystemHealth {
+  safetyStatus: SystemSafetyStatus;
+  indicators: HealthIndicator[];
 }
 
 // ============================================
@@ -99,7 +113,7 @@ export interface GovernorData {
   marketContext: MarketContext;
   policies: StrategyPolicy[];
   decisions: AIDecision[];
-  health: HealthIndicator[];
+  health: SystemHealth;
   lastFetch: string;
 }
 
@@ -140,6 +154,8 @@ export function getStatusColor(status: string): string {
     case 'ONLINE':
     case 'READY':
     case 'FRESH':
+    case 'SAFE':
+    case 'ACTIVE':
       return GOVERNOR_COLORS.success;
 
     case 'DEGRADED':
@@ -147,6 +163,8 @@ export function getStatusColor(status: string): string {
     case 'WARNING':
     case 'STALE':
     case 'ARMED':
+    case 'DEFENSIVE':
+    case 'NO_ACTION':
       return GOVERNOR_COLORS.warning;
 
     case 'ERROR':
@@ -154,9 +172,11 @@ export function getStatusColor(status: string): string {
     case 'VETOED':
     case 'OFFLINE':
     case 'EXIT':
+    case 'HALTED':
+    case 'LOCKED':
+    case 'NO_TRADE':
       return GOVERNOR_COLORS.error;
 
-    case 'ACTIVE':
     case 'PROCESSING':
       return GOVERNOR_COLORS.active;
 

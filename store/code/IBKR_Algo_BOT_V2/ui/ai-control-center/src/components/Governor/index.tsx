@@ -104,7 +104,7 @@ export const Governor: React.FC = () => {
             {' | '}
             Window: <span className={data.globalStatus.tradingWindow === 'OPEN' ? 'text-ibkr-success' : 'text-ibkr-warning'}>{data.globalStatus.tradingWindow}</span>
             {' | '}
-            AI: <span style={{ color: data.globalStatus.aiState === 'ENABLED' ? '#4ec9b0' : '#f48771' }}>{data.globalStatus.aiState}</span>
+            AI: <span style={{ color: data.globalStatus.aiPosture === 'ACTIVE' ? '#4ec9b0' : data.globalStatus.aiPosture === 'LOCKED' ? '#f48771' : '#dcdcaa' }}>{data.globalStatus.aiPosture}</span>
           </span>
         </div>
       </footer>

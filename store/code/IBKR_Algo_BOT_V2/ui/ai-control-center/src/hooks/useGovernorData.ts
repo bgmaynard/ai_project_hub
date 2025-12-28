@@ -13,8 +13,11 @@ import type {
   StrategyPolicy,
   AIDecision,
   HealthIndicator,
+  SystemHealth,
   TradingWindow,
   DataFreshness,
+  AIPosture,
+  SystemSafetyStatus,
 } from '../types/governor';
 import { POLL_INTERVALS } from '../types/governor';
 
@@ -26,7 +29,8 @@ const DEFAULT_GLOBAL_STATUS: GlobalStatus = {
   mode: 'PAPER',
   tradingWindow: 'CLOSED',
   windowTime: '--:-- - --:--',
-  aiState: 'DISABLED',
+  aiPosture: 'NO_TRADE',
+  aiPostureReason: 'Market closed',
   killSwitch: {
     active: false,
     reason: null,
@@ -43,6 +47,7 @@ const DEFAULT_MARKET_CONTEXT: MarketContext = {
   dataAge: 999,
   dataFreshness: 'OFFLINE',
   lastUpdate: new Date().toISOString(),
+  aiInterpretation: 'Waiting for market data...',
 };
 
 // ============================================
@@ -81,6 +86,40 @@ function getDataFreshness(ageSeconds: number): DataFreshness {
 // API Fetchers
 // ============================================
 
+function deriveAIPosture(
+  tradingWindow: TradingWindow,
+  killSwitchActive: boolean,
+  isRunning: boolean,
+  volatilityLevel?: string,
+  healthDegraded?: boolean
+): { posture: AIPosture; reason: string } {
+  // Priority 1: Kill switch
+  if (killSwitchActive) {
+    return { posture: 'LOCKED', reason: 'Kill switch engaged - all trading halted' };
+  }
+
+  // Priority 2: Outside trading window
+  if (tradingWindow === 'CLOSED') {
+    return { posture: 'NO_TRADE', reason: 'Market closed - by design' };
+  }
+
+  // Priority 3: Defensive conditions
+  if (volatilityLevel === 'EXTREME' || volatilityLevel === 'HIGH') {
+    return { posture: 'DEFENSIVE', reason: `High volatility (${volatilityLevel}) - cautious mode` };
+  }
+  if (healthDegraded) {
+    return { posture: 'DEFENSIVE', reason: 'System health degraded - cautious mode' };
+  }
+
+  // Priority 4: Active or not running
+  if (isRunning) {
+    return { posture: 'ACTIVE', reason: 'Normal trading operations' };
+  }
+
+  // Default: NO_TRADE when not running but market open
+  return { posture: 'NO_TRADE', reason: tradingWindow === 'PRE_MARKET' ? 'Pre-market monitoring' : 'Trading not started' };
+}
+
 async function fetchGlobalStatus(): Promise<GlobalStatus> {
   try {
     const [safeRes, scalpRes] = await Promise.all([
@@ -92,22 +131,64 @@ async function fetchGlobalStatus(): Promise<GlobalStatus> {
     const scalpData = scalpRes?.ok ? await scalpRes.json() : {};
 
     const { window: tradingWindow, time: windowTime } = getTradingWindow();
+    const killSwitchActive = safeData.kill_switch_active || false;
+    const isRunning = scalpData.running || false;
+
+    const { posture, reason } = deriveAIPosture(
+      tradingWindow,
+      killSwitchActive,
+      isRunning,
+      safeData.volatility_level,
+      safeData.health_degraded
+    );
 
     return {
       mode: scalpData.paper_mode !== false ? 'PAPER' : 'LIVE',
       tradingWindow,
       windowTime,
-      aiState: scalpData.running ? 'ENABLED' : (safeData.trading_allowed === false ? 'DISABLED' : 'PAUSED'),
+      aiPosture: posture,
+      aiPostureReason: reason,
       killSwitch: {
-        active: safeData.kill_switch_active || false,
+        active: killSwitchActive,
         reason: safeData.kill_switch_reason || null,
         cooldownSeconds: safeData.kill_switch_cooldown_remaining_seconds || 0,
       },
     };
   } catch {
     const { window: tradingWindow, time: windowTime } = getTradingWindow();
-    return { ...DEFAULT_GLOBAL_STATUS, tradingWindow, windowTime };
+    const { posture, reason } = deriveAIPosture(tradingWindow, false, false);
+    return { ...DEFAULT_GLOBAL_STATUS, tradingWindow, windowTime, aiPosture: posture, aiPostureReason: reason };
   }
+}
+
+function generateAIInterpretation(
+  regime: string,
+  confidence: number,
+  volatility: string,
+  liquidity: string
+): string {
+  const regimeLabel = regime.replace('_', ' ').toLowerCase();
+  const confPct = Math.round(confidence * 100);
+
+  if (volatility === 'EXTREME') {
+    return `Extreme volatility detected - defensive posture recommended regardless of ${regimeLabel} regime`;
+  }
+  if (volatility === 'HIGH') {
+    return `High volatility with ${regimeLabel} regime (${confPct}% confidence) - proceed with caution`;
+  }
+  if (regime === 'TRENDING_UP' && confidence > 0.7) {
+    return `Strong uptrend (${confPct}% confidence) - favorable for momentum entries`;
+  }
+  if (regime === 'TRENDING_DOWN') {
+    return `Downtrend detected (${confPct}% confidence) - avoid long entries`;
+  }
+  if (regime === 'VOLATILE') {
+    return `Choppy/volatile market - reduce position sizes`;
+  }
+  if (regime === 'RANGING' && liquidity === 'ADEQUATE') {
+    return `Range-bound market with adequate liquidity - scalp opportunities may exist`;
+  }
+  return `Market ${regimeLabel} (${confPct}% confidence) - normal operations`;
 }
 
 async function fetchMarketContext(): Promise<MarketContext> {
@@ -121,10 +202,11 @@ async function fetchMarketContext(): Promise<MarketContext> {
     const policyData = policyRes?.ok ? await policyRes.json() : {};
 
     // Extract regime info from policy or momentum data
-    const regime = policyData.overall_regime || momentumData.regime || 'RANGING';
+    const regime = (policyData.overall_regime || momentumData.regime || 'RANGING').toUpperCase().replace(' ', '_');
     const confidence = policyData.regime_confidence || momentumData.confidence || 0;
     const volatility = policyData.volatility_level || 'NORMAL';
     const volatilityPct = policyData.volatility_pct || 0;
+    const liquidity = policyData.liquidity_level || 'ADEQUATE';
 
     // Calculate data age
     const lastUpdateTime = momentumData.last_update || policyData.last_update;
@@ -133,14 +215,15 @@ async function fetchMarketContext(): Promise<MarketContext> {
       : 999;
 
     return {
-      regime: regime.toUpperCase().replace(' ', '_'),
+      regime,
       regimeConfidence: Math.round(confidence * 100) / 100,
       volatility,
       volatilityPct: Math.round(volatilityPct * 100) / 100,
-      liquidity: 'ADEQUATE',
+      liquidity,
       dataAge,
       dataFreshness: getDataFreshness(dataAge),
       lastUpdate: new Date().toISOString(),
+      aiInterpretation: generateAIInterpretation(regime, confidence, volatility, liquidity),
     };
   } catch {
     return { ...DEFAULT_MARKET_CONTEXT, lastUpdate: new Date().toISOString() };
@@ -185,6 +268,16 @@ function formatPolicyName(id: string): string {
   return names[id] || id.charAt(0).toUpperCase() + id.slice(1);
 }
 
+function generatePassiveDecision(reason: string): AIDecision {
+  return {
+    timestamp: new Date().toISOString(),
+    action: 'NO_ACTION',
+    symbol: '--',
+    type: 'passive',
+    reasons: [reason],
+  };
+}
+
 async function fetchDecisions(): Promise<AIDecision[]> {
   try {
     const [auditRes, exitRes] = await Promise.all([
@@ -225,15 +318,54 @@ async function fetchDecisions(): Promise<AIDecision[]> {
     }
 
     // Sort by timestamp descending and take top 10
-    return decisions
+    const sorted = decisions
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 10);
+
+    // If no decisions, generate passive NO_ACTION entries
+    if (sorted.length === 0) {
+      const { window: tradingWindow } = getTradingWindow();
+      if (tradingWindow === 'CLOSED') {
+        return [generatePassiveDecision('Market closed - monitoring suspended')];
+      }
+      if (tradingWindow === 'PRE_MARKET') {
+        return [generatePassiveDecision('Pre-market scanning - no triggers yet')];
+      }
+      return [generatePassiveDecision('Monitoring active - awaiting trade triggers')];
+    }
+
+    return sorted;
   } catch {
-    return [];
+    return [generatePassiveDecision('Unable to fetch decision history')];
   }
 }
 
-async function fetchHealth(): Promise<HealthIndicator[]> {
+function deriveSafetyStatus(indicators: HealthIndicator[], killSwitchActive: boolean): SystemSafetyStatus {
+  // HALTED if kill switch is active
+  if (killSwitchActive) {
+    return 'HALTED';
+  }
+
+  // Count unhealthy indicators
+  const unhealthyCount = indicators.filter(
+    i => i.status === 'ERROR' || i.status === 'OFFLINE'
+  ).length;
+  const degradedCount = indicators.filter(i => i.status === 'DEGRADED').length;
+
+  // HALTED if critical systems down (>50% offline)
+  if (unhealthyCount > indicators.length / 2) {
+    return 'HALTED';
+  }
+
+  // DEGRADED if any system is unhealthy or degraded
+  if (unhealthyCount > 0 || degradedCount > 0) {
+    return 'DEGRADED';
+  }
+
+  return 'SAFE';
+}
+
+async function fetchHealth(): Promise<SystemHealth> {
   try {
     const [healthRes, summaryRes] = await Promise.all([
       fetch('/api/health').catch(() => null),
@@ -242,6 +374,8 @@ async function fetchHealth(): Promise<HealthIndicator[]> {
 
     const healthData = healthRes?.ok ? await healthRes.json() : {};
     const summaryData = summaryRes?.ok ? await summaryRes.json() : {};
+
+    const killSwitchActive = summaryData.safe_activation?.kill_switch_active || false;
 
     const indicators: HealthIndicator[] = [
       {
@@ -276,8 +410,8 @@ async function fetchHealth(): Promise<HealthIndicator[]> {
       },
       {
         name: 'Kill Switch',
-        status: summaryData.safe_activation?.kill_switch_active ? 'ERROR' : 'HEALTHY',
-        detail: summaryData.safe_activation?.kill_switch_active ? 'ARMED' : 'Ready',
+        status: killSwitchActive ? 'ERROR' : 'HEALTHY',
+        detail: killSwitchActive ? 'ARMED' : 'Ready',
       },
       {
         name: 'Circuit Breaker',
@@ -286,9 +420,12 @@ async function fetchHealth(): Promise<HealthIndicator[]> {
       },
     ];
 
-    return indicators;
+    return {
+      safetyStatus: deriveSafetyStatus(indicators, killSwitchActive),
+      indicators,
+    };
   } catch {
-    return [
+    const offlineIndicators: HealthIndicator[] = [
       { name: 'Data Feed', status: 'OFFLINE', detail: 'Cannot connect' },
       { name: 'Broker API', status: 'OFFLINE', detail: 'Cannot connect' },
       { name: 'WebSocket', status: 'OFFLINE', detail: 'Cannot connect' },
@@ -298,6 +435,10 @@ async function fetchHealth(): Promise<HealthIndicator[]> {
       { name: 'Kill Switch', status: 'OFFLINE', detail: 'Cannot connect' },
       { name: 'Circuit Breaker', status: 'OFFLINE', detail: 'Cannot connect' },
     ];
+    return {
+      safetyStatus: 'HALTED',
+      indicators: offlineIndicators,
+    };
   }
 }
 
@@ -305,13 +446,18 @@ async function fetchHealth(): Promise<HealthIndicator[]> {
 // Main Hook
 // ============================================
 
+const DEFAULT_HEALTH: SystemHealth = {
+  safetyStatus: 'DEGRADED',
+  indicators: [],
+};
+
 export function useGovernorData() {
   const [data, setData] = useState<GovernorData>({
     globalStatus: DEFAULT_GLOBAL_STATUS,
     marketContext: DEFAULT_MARKET_CONTEXT,
     policies: [],
     decisions: [],
-    health: [],
+    health: DEFAULT_HEALTH,
     lastFetch: new Date().toISOString(),
   });
 

@@ -22,6 +22,7 @@ export const MarketContext: React.FC<Props> = ({ context }) => {
     dataAge,
     dataFreshness,
     lastUpdate,
+    aiInterpretation,
   } = context;
 
   const formatTime = (isoString: string) => {
@@ -112,6 +113,16 @@ export const MarketContext: React.FC<Props> = ({ context }) => {
             </span>
           </div>
         </div>
+
+        {/* AI Interpretation */}
+        {aiInterpretation && (
+          <div className="pt-3 mt-3 border-t border-ibkr-border">
+            <div className="text-xs text-ibkr-text-secondary mb-1">AI Interpretation:</div>
+            <div className="text-sm text-ibkr-text italic">
+              {aiInterpretation}
+            </div>
+          </div>
+        )}
 
         {/* Last Update */}
         <div className="pt-2 border-t border-ibkr-border">

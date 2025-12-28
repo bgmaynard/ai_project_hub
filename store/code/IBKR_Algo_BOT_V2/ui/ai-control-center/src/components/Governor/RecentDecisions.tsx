@@ -23,6 +23,7 @@ export const RecentDecisions: React.FC<Props> = ({ decisions }) => {
       case 'APPROVED': return '+';
       case 'VETOED': return 'X';
       case 'EXIT': return '-';
+      case 'NO_ACTION': return '~';
       default: return '?';
     }
   };
