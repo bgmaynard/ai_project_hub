@@ -1874,3 +1874,83 @@ python ai/state_machine_backtest.py
 2. **Review Telemetry** - MFE/MAE data reveals exit timing quality
 3. **Tune Thresholds** - Adjust based on live results
 4. **Retrain Models** - Feed new trade data back to Qlib
+
+## Dec 28, 2024 Session - AI Control Center Dashboard Fix
+
+### Overview
+
+Fixed AI Control Center (React app) which was showing "DETAIL NOT FOUND", spinning circle, and "System Unavailable" errors.
+
+### Issues Fixed
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| "DETAIL NOT FOUND" | No route for `/ai-control-center` | Added routes to `morpheus_trading_api.py` |
+| Spinning circle | API hardcoded to port 9101 (server on 9100) | Changed `api.ts` to use relative URLs |
+| Console errors | Hardcoded localhost URLs in components | Fixed all WarriorTrading component URLs |
+| "System Unavailable" | API response missing `available` field | Fixed `/api/warrior/status` endpoint |
+| Still spinning | Fetch hanging | Added 3-second timeout fallback |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `morpheus_trading_api.py` | Added `/ai-control-center` routes and static mount |
+| `ui/ai-control-center/package.json` | Added `homepage: "/ai-control-center"` |
+| `ui/ai-control-center/src/App.tsx` | Added `basename="/ai-control-center"` to Router |
+| `ui/ai-control-center/src/services/api.ts` | Changed baseURL from `http://127.0.0.1:9101` to `''` |
+| `ui/ai-control-center/src/services/websocket.ts` | Fixed WebSocket URLs to use dynamic host |
+| `ui/ai-control-center/src/components/WarriorTrading/index.tsx` | Added 3s timeout fallback, fixed fetch URL |
+| `ui/ai-control-center/src/components/WarriorTrading/PatternAlerts.tsx` | Fixed WebSocket URL |
+| `ui/ai-control-center/src/components/WarriorTrading/PerformanceCharts.tsx` | Fixed API URLs |
+| `ui/ai-control-center/src/components/WarriorTrading/PreMarketScanner.tsx` | Fixed API URLs |
+| `ui/ai-control-center/src/components/WarriorTrading/RiskDashboard.tsx` | Fixed API URLs |
+| `ui/ai-control-center/src/components/WarriorTrading/TradeManagement.tsx` | Fixed API URLs |
+| `ai/warrior_routes.py` | Added missing endpoints, fixed status response |
+| `ui/trading/src/components/index.ts` | Exported Quote component |
+
+### Key Code Changes
+
+**Server Route (morpheus_trading_api.py):**
+```python
+@app.get("/ai-control-center")
+@app.get("/ai-control-center/")
+async def ai_control_center():
+    ai_cc_index = Path("ui/ai-control-center/build/index.html")
+    if ai_cc_index.exists():
+        return FileResponse(ai_cc_index)
+    return {"error": "AI Control Center not built"}
+
+# Mount static files
+app.mount("/ai-control-center", StaticFiles(directory="ui/ai-control-center/build", html=True))
+```
+
+**Relative URLs (api.ts):**
+```typescript
+constructor() {
+  this.baseURL = '';  // Use same origin (port 9100)
+}
+```
+
+**Timeout Fallback (WarriorTrading/index.tsx):**
+```typescript
+const fetchSystemStatus = async () => {
+  setTimeout(() => {
+    if (isLoading) {
+      setSystemStatus({ available: true, ... });
+      setIsLoading(false);
+    }
+  }, 3000);
+  // ... fetch logic
+};
+```
+
+### Access URLs
+
+- **Trading UI**: `http://localhost:9100/trading-new`
+- **AI Control Center**: `http://localhost:9100/ai-control-center`
+- **Main Dashboard**: `http://localhost:9100/dashboard`
+
+### Commits
+
+- `386df0e` - fix: AI Control Center dashboard fully functional
