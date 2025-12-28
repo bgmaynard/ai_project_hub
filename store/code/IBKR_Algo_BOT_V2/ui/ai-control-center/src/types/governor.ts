@@ -1,0 +1,181 @@
+/**
+ * System Governor Panel Type Definitions
+ *
+ * Types for the governor dashboard focused on system oversight,
+ * not trading features.
+ */
+
+// ============================================
+// Global Trading Status
+// ============================================
+
+export type TradingMode = 'PAPER' | 'LIVE';
+export type TradingWindow = 'OPEN' | 'CLOSED' | 'PRE_MARKET' | 'AFTER_HOURS';
+export type AIState = 'ENABLED' | 'DISABLED' | 'PAUSED';
+
+export interface KillSwitchStatus {
+  active: boolean;
+  reason: string | null;
+  cooldownSeconds: number;
+}
+
+export interface GlobalStatus {
+  mode: TradingMode;
+  tradingWindow: TradingWindow;
+  windowTime: string;
+  aiState: AIState;
+  killSwitch: KillSwitchStatus;
+}
+
+// ============================================
+// Market Context
+// ============================================
+
+export type MarketRegime = 'TRENDING_UP' | 'TRENDING_DOWN' | 'RANGING' | 'VOLATILE';
+export type VolatilityLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'EXTREME';
+export type LiquidityLevel = 'ADEQUATE' | 'THIN' | 'POOR';
+export type DataFreshness = 'FRESH' | 'STALE' | 'OFFLINE';
+
+export interface MarketContext {
+  regime: MarketRegime;
+  regimeConfidence: number;
+  volatility: VolatilityLevel;
+  volatilityPct: number;
+  liquidity: LiquidityLevel;
+  dataAge: number;
+  dataFreshness: DataFreshness;
+  lastUpdate: string;
+}
+
+// ============================================
+// Strategy Policies
+// ============================================
+
+export type PolicyStatus = 'ENABLED' | 'DISABLED' | 'PAUSED';
+
+export interface StrategyPolicy {
+  id: string;
+  name: string;
+  status: PolicyStatus;
+  reason: string;
+  vetoCount: number;
+  cooldownRemaining?: number;
+}
+
+// ============================================
+// AI Decisions
+// ============================================
+
+export type DecisionAction = 'APPROVED' | 'VETOED' | 'EXIT';
+export type DecisionType = 'entry' | 'exit';
+
+export interface AIDecision {
+  timestamp: string;
+  action: DecisionAction;
+  symbol: string;
+  type: DecisionType;
+  reasons: string[];
+  pnl?: number;
+}
+
+// ============================================
+// System Health
+// ============================================
+
+export type HealthStatus = 'HEALTHY' | 'DEGRADED' | 'ERROR' | 'OFFLINE';
+
+export interface HealthIndicator {
+  name: string;
+  status: HealthStatus;
+  detail: string;
+}
+
+// ============================================
+// Combined Governor Data
+// ============================================
+
+export interface GovernorData {
+  globalStatus: GlobalStatus;
+  marketContext: MarketContext;
+  policies: StrategyPolicy[];
+  decisions: AIDecision[];
+  health: HealthIndicator[];
+  lastFetch: string;
+}
+
+// ============================================
+// Polling Configuration
+// ============================================
+
+export const POLL_INTERVALS = {
+  globalStatus: 5000,    // 5s - critical
+  marketContext: 10000,  // 10s - moderate
+  policies: 15000,       // 15s - slow-changing
+  decisions: 3000,       // 3s - real-time feel
+  health: 30000,         // 30s - background
+} as const;
+
+// ============================================
+// Color Constants
+// ============================================
+
+export const GOVERNOR_COLORS = {
+  success: '#4ec9b0',   // Green - Healthy, Enabled, Approved
+  warning: '#dcdcaa',   // Yellow - Warning, Paused, Cooldown
+  error: '#f48771',     // Red - Error, Disabled, Vetoed, Kill Switch
+  active: '#007acc',    // Blue - Active, Processing
+  neutral: '#888888',   // Gray - Neutral, Standby
+} as const;
+
+// ============================================
+// Status Color Helpers
+// ============================================
+
+export function getStatusColor(status: string): string {
+  switch (status) {
+    case 'HEALTHY':
+    case 'ENABLED':
+    case 'APPROVED':
+    case 'CONNECTED':
+    case 'ONLINE':
+    case 'READY':
+    case 'FRESH':
+      return GOVERNOR_COLORS.success;
+
+    case 'DEGRADED':
+    case 'PAUSED':
+    case 'WARNING':
+    case 'STALE':
+    case 'ARMED':
+      return GOVERNOR_COLORS.warning;
+
+    case 'ERROR':
+    case 'DISABLED':
+    case 'VETOED':
+    case 'OFFLINE':
+    case 'EXIT':
+      return GOVERNOR_COLORS.error;
+
+    case 'ACTIVE':
+    case 'PROCESSING':
+      return GOVERNOR_COLORS.active;
+
+    default:
+      return GOVERNOR_COLORS.neutral;
+  }
+}
+
+export function getRegimeColor(regime: MarketRegime): string {
+  switch (regime) {
+    case 'TRENDING_UP':
+      return GOVERNOR_COLORS.success;
+    case 'TRENDING_DOWN':
+      return GOVERNOR_COLORS.error;
+    case 'RANGING':
+      return GOVERNOR_COLORS.warning;
+    case 'VOLATILE':
+      return GOVERNOR_COLORS.error;
+    default:
+      return GOVERNOR_COLORS.neutral;
+  }
+}
