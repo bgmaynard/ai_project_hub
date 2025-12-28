@@ -26,20 +26,23 @@ export default function ScannerPanel() {
         case 'gainers':
           data = await api.getGainersScanner()
           break
+        case 'premarket':
+          data = await api.getPreMarketScanner()
+          break
       }
 
       if (data) {
-        const items = data.alerts || data.results || data.movers || []
+        const items = data.alerts || data.results || data.movers || data.watchlist || []
         const mapped: ScannerResult[] = items.slice(0, 20).map((item: any) => ({
           symbol: item.symbol,
           price: item.price || item.current_price || 0,
           changePercent: item.change_percent || item.pct_change || 0,
           direction:
             item.direction ||
-            (item.change_percent > 0 ? 'UP' : 'DOWN'),
+            (item.change_percent > 0 ? 'UP' : item.change_percent < 0 ? 'DOWN' : 'UP'),
           volume: item.volume || 0,
           float: item.float || 0,
-          lastNews: item.last_news || item.catalyst || '',
+          lastNews: item.last_news || item.catalyst || item.headline || '',
           grade: item.grade,
           score: item.score,
         }))
@@ -94,7 +97,7 @@ export default function ScannerPanel() {
     <div className="h-full flex flex-col bg-sterling-panel text-xs">
       {/* Header with Tabs */}
       <div className="flex items-center gap-1 px-2 py-1 bg-sterling-header border-b border-sterling-border">
-        {(['hod', 'gappers', 'gainers'] as ScannerType[]).map((scanner) => (
+        {(['hod', 'gappers', 'gainers', 'premarket'] as ScannerType[]).map((scanner) => (
           <button
             key={scanner}
             onClick={() => setActiveScanner(scanner)}
@@ -104,7 +107,7 @@ export default function ScannerPanel() {
                 : 'bg-sterling-bg text-sterling-muted hover:bg-sterling-highlight'
             }`}
           >
-            {scanner === 'hod' ? 'HOD' : scanner === 'gappers' ? 'Gappers' : 'Gainers'}
+            {scanner === 'hod' ? 'HOD' : scanner === 'gappers' ? 'Gap' : scanner === 'premarket' ? 'Pre' : 'Gain'}
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2">

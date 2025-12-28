@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSymbolStore } from '../stores/symbolStore'
 import api from '../services/api'
 
@@ -12,74 +12,87 @@ interface Trade {
 export default function TimeSales() {
   const { activeSymbol } = useSymbolStore()
   const [trades, setTrades] = useState<Trade[]>([])
-  const [prevPrice, setPrevPrice] = useState<number>(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [lastSymbol, setLastSymbol] = useState('')
+  const prevPriceRef = useRef<number>(0)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const fetchTrades = useCallback(async () => {
+    if (!activeSymbol) return
+    setIsLoading(true)
+
+    try {
+      // Try Polygon streaming first, fallback to API
+      let data: any
+      try {
+        const response = await fetch(`/api/polygon/stream/trades/${activeSymbol}`)
+        data = await response.json()
+      } catch {
+        data = await api.getTimeSales(activeSymbol)
+      }
+
+      if (data?.trades || Array.isArray(data)) {
+        const tradesArray = data.trades || data
+        const mapped: Trade[] = tradesArray.slice(0, 100).map((t: any) => {
+          const price = t.price || t.p || 0
+          const side: 'B' | 'S' | 'N' =
+            t.side ||
+            (price > prevPriceRef.current ? 'B' : price < prevPriceRef.current ? 'S' : 'N')
+
+          // Format time
+          let timeStr = ''
+          if (t.time) {
+            timeStr = t.time
+          } else if (t.timestamp) {
+            const date = new Date(t.timestamp)
+            timeStr = date.toLocaleTimeString('en-US', {
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })
+          } else {
+            timeStr = new Date().toLocaleTimeString('en-US', {
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })
+          }
+
+          return {
+            time: timeStr,
+            price,
+            size: t.size || t.s || t.volume || 0,
+            side,
+          }
+        })
+
+        if (mapped.length > 0) {
+          prevPriceRef.current = mapped[0].price
+        }
+        setTrades(mapped)
+      }
+    } catch (err) {
+      console.error('Failed to load T&S:', err)
+    }
+    setIsLoading(false)
+  }, [activeSymbol])
 
   useEffect(() => {
     if (!activeSymbol) return
 
-    const fetchTrades = async () => {
-      try {
-        // Try Polygon streaming first, fallback to API
-        let data: any
-        try {
-          const response = await fetch(`/api/polygon/stream/trades/${activeSymbol}`)
-          data = await response.json()
-        } catch {
-          data = await api.getTimeSales(activeSymbol)
-        }
-
-        if (data?.trades || Array.isArray(data)) {
-          const tradesArray = data.trades || data
-          const mapped: Trade[] = tradesArray.slice(0, 100).map((t: any) => {
-            const price = t.price || t.p || 0
-            const side: 'B' | 'S' | 'N' =
-              t.side ||
-              (price > prevPrice ? 'B' : price < prevPrice ? 'S' : 'N')
-
-            // Format time
-            let timeStr = ''
-            if (t.time) {
-              timeStr = t.time
-            } else if (t.timestamp) {
-              const date = new Date(t.timestamp)
-              timeStr = date.toLocaleTimeString('en-US', {
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-              })
-            } else {
-              timeStr = new Date().toLocaleTimeString('en-US', {
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-              })
-            }
-
-            return {
-              time: timeStr,
-              price,
-              size: t.size || t.s || t.volume || 0,
-              side,
-            }
-          })
-
-          if (mapped.length > 0) {
-            setPrevPrice(mapped[0].price)
-          }
-          setTrades(mapped)
-        }
-      } catch (err) {
-        console.error('Failed to load T&S:', err)
-      }
+    // Clear trades when symbol changes
+    if (activeSymbol !== lastSymbol) {
+      setTrades([])
+      setLastSymbol(activeSymbol)
+      prevPriceRef.current = 0
     }
 
     fetchTrades()
-    const interval = setInterval(fetchTrades, 50) // Fast refresh for real-time tape
+    const interval = setInterval(fetchTrades, 1000) // Refresh every 1 second
     return () => clearInterval(interval)
-  }, [activeSymbol, prevPrice])
+  }, [activeSymbol, fetchTrades, lastSymbol])
 
   const isLargePrint = (size: number) => size >= 1000
 
@@ -121,8 +134,14 @@ export default function TimeSales() {
       <div ref={containerRef} className="flex-1 overflow-y-auto">
         {trades.length === 0 ? (
           <div className="text-center py-8 text-[#555] italic text-[15px]">
-            <div>Time & Sales requires tick data</div>
-            <div className="text-[12px] mt-2">Polygon subscription required</div>
+            {isLoading ? (
+              <div>Loading {activeSymbol}...</div>
+            ) : (
+              <>
+                <div>No T&S data (market closed)</div>
+                <div className="text-[12px] mt-2">Polygon subscription required</div>
+              </>
+            )}
           </div>
         ) : (
           trades.map((trade, i) => (

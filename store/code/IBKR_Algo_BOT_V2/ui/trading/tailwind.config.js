@@ -34,7 +34,10 @@ export default {
         mono: ['Consolas', 'Monaco', 'monospace'],
       },
       fontSize: {
-        'xxs': '0.65rem',
+        'xxs': '0.75rem',   // was 0.65rem
+        'xs': '0.875rem',   // was 0.75rem
+        'sm': '1rem',       // was 0.875rem
+        'base': '1.125rem', // was 1rem
       }
     },
   },

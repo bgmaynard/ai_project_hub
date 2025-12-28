@@ -6,13 +6,16 @@ const channel = typeof window !== 'undefined' ? new BroadcastChannel('morpheus_t
 interface SymbolState {
   activeSymbol: string
   symbolHistory: string[]
+  newsFilterSymbol: string | null  // Filter Breaking News to this symbol
   setActiveSymbol: (symbol: string) => void
   addToHistory: (symbol: string) => void
+  setNewsFilter: (symbol: string | null) => void
 }
 
 export const useSymbolStore = create<SymbolState>((set, get) => ({
   activeSymbol: 'TSLA',
   symbolHistory: [],
+  newsFilterSymbol: null,
 
   setActiveSymbol: (symbol: string) => {
     const upperSymbol = symbol.toUpperCase()
@@ -28,6 +31,10 @@ export const useSymbolStore = create<SymbolState>((set, get) => ({
       const filtered = state.symbolHistory.filter((s) => s !== symbol)
       return { symbolHistory: [symbol, ...filtered].slice(0, 20) }
     })
+  },
+
+  setNewsFilter: (symbol: string | null) => {
+    set({ newsFilterSymbol: symbol })
   },
 }))
 

@@ -12,7 +12,7 @@ export interface ScannerResult {
   score?: number
 }
 
-export type ScannerType = 'hod' | 'gappers' | 'gainers'
+export type ScannerType = 'hod' | 'gappers' | 'gainers' | 'premarket'
 
 interface ScannerState {
   activeScanner: ScannerType
@@ -31,16 +31,19 @@ export const useScannerStore = create<ScannerState>((set) => ({
     hod: [],
     gappers: [],
     gainers: [],
+    premarket: [],
   },
   isLoading: {
     hod: false,
     gappers: false,
     gainers: false,
+    premarket: false,
   },
   lastUpdated: {
     hod: null,
     gappers: null,
     gainers: null,
+    premarket: null,
   },
 
   setActiveScanner: (scanner) => set({ activeScanner: scanner }),

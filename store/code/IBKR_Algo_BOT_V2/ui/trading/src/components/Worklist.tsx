@@ -1,48 +1,39 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useWatchlistStore, WatchlistItem } from '../stores/watchlistStore'
 import { useSymbolStore } from '../stores/symbolStore'
 
+type SortField = 'symbol' | 'price' | 'changePercent' | 'rvol' | 'float' | 'aiScore' | 'volume'
+type SortDir = 'asc' | 'desc'
+
 export default function Worklist() {
   const { items, setItems, removeItem, setLoading } = useWatchlistStore()
-  const { setActiveSymbol } = useSymbolStore()
+  const { setActiveSymbol, setNewsFilter } = useSymbolStore()
   const [newSymbol, setNewSymbol] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [error, setError] = useState('')
+  const [sortField, setSortField] = useState<SortField>('changePercent')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const fetchWorklist = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch('/api/worklist')
-      const data = await response.json()
+      const json = await response.json()
 
-      if (data?.symbols && Array.isArray(data.symbols)) {
-        const mapped: WatchlistItem[] = data.symbols.map((s: any) => ({
-          symbol: s.symbol,
-          price: s.price || 0,
-          change: s.change || 0,
-          changePercent: s.change_percent || 0,
-          volume: s.volume || 0,
-          rvol: s.rvol || 1.0,
-          float: s.float || 0,
-          momentum: s.momentum || 'FLAT',
-          aiScore: s.ai_score || s.ensemble_score || 50,
-          hasNews: s.has_news || false,
-          lastNews: s.last_news || '',
-          fsmState: s.fsm_state || '',
-        }))
-        setItems(mapped)
-      } else if (Array.isArray(data)) {
-        // Handle case where API returns array directly
-        const mapped: WatchlistItem[] = data.map((s: any) => ({
+      // API returns { success: true, data: [...], count: N }
+      const items = json?.data || json?.symbols || (Array.isArray(json) ? json : [])
+
+      if (Array.isArray(items)) {
+        const mapped: WatchlistItem[] = items.map((s: any) => ({
           symbol: s.symbol || s,
           price: s.price || 0,
           change: s.change || 0,
           changePercent: s.change_percent || s.changePercent || 0,
           volume: s.volume || 0,
-          rvol: s.rvol || 1.0,
+          rvol: s.rel_volume || s.rvol || 1.0,
           float: s.float || 0,
-          momentum: s.momentum || 'FLAT',
-          aiScore: s.ai_score || s.ensemble_score || 50,
+          momentum: s.momentum || (s.change_percent > 0 ? 'UP' : s.change_percent < 0 ? 'DOWN' : 'FLAT'),
+          aiScore: s.ai_confidence || s.ai_score || s.ensemble_score || 50,
           hasNews: s.has_news || false,
           lastNews: s.last_news || '',
           fsmState: s.fsm_state || '',
@@ -57,9 +48,45 @@ export default function Worklist() {
 
   useEffect(() => {
     fetchWorklist()
-    const interval = setInterval(fetchWorklist, 5000)
+    const interval = setInterval(fetchWorklist, 2000)  // Faster updates
     return () => clearInterval(interval)
   }, [fetchWorklist])
+
+  // Sort handler
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('desc')
+    }
+  }
+
+  // Sorted items
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      let aVal = a[sortField]
+      let bVal = b[sortField]
+
+      // Handle string comparison for symbol
+      if (sortField === 'symbol') {
+        return sortDir === 'asc'
+          ? String(aVal).localeCompare(String(bVal))
+          : String(bVal).localeCompare(String(aVal))
+      }
+
+      // Numeric comparison
+      const aNum = Number(aVal) || 0
+      const bNum = Number(bVal) || 0
+      return sortDir === 'asc' ? aNum - bNum : bNum - aNum
+    })
+  }, [items, sortField, sortDir])
+
+  // Sort indicator
+  const SortIndicator = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <span className="text-sterling-muted/30 ml-0.5">↕</span>
+    return <span className="text-accent-primary ml-0.5">{sortDir === 'asc' ? '↑' : '↓'}</span>
+  }
 
   const handleAddSymbol = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -169,19 +196,49 @@ export default function Worklist() {
         <table className="w-full">
           <thead className="sticky top-0 bg-sterling-header">
             <tr className="text-sterling-muted text-xxs">
-              <th className="px-1 py-1 text-left">Sym</th>
-              <th className="px-1 py-1 text-right">Price</th>
-              <th className="px-1 py-1 text-right">%Chg</th>
-              <th className="px-1 py-1 text-right">RVol</th>
-              <th className="px-1 py-1 text-right">Float</th>
+              <th
+                className="px-1 py-1 text-left cursor-pointer hover:text-white select-none"
+                onClick={() => handleSort('symbol')}
+              >
+                Sym<SortIndicator field="symbol" />
+              </th>
+              <th
+                className="px-1 py-1 text-right cursor-pointer hover:text-white select-none"
+                onClick={() => handleSort('price')}
+              >
+                Price<SortIndicator field="price" />
+              </th>
+              <th
+                className="px-1 py-1 text-right cursor-pointer hover:text-white select-none"
+                onClick={() => handleSort('changePercent')}
+              >
+                %Chg<SortIndicator field="changePercent" />
+              </th>
+              <th
+                className="px-1 py-1 text-right cursor-pointer hover:text-white select-none"
+                onClick={() => handleSort('rvol')}
+              >
+                RVol<SortIndicator field="rvol" />
+              </th>
+              <th
+                className="px-1 py-1 text-right cursor-pointer hover:text-white select-none"
+                onClick={() => handleSort('float')}
+              >
+                Float<SortIndicator field="float" />
+              </th>
               <th className="px-1 py-1 text-center">Mom</th>
-              <th className="px-1 py-1 text-center">AI</th>
+              <th
+                className="px-1 py-1 text-center cursor-pointer hover:text-white select-none"
+                onClick={() => handleSort('aiScore')}
+              >
+                AI<SortIndicator field="aiScore" />
+              </th>
               <th className="px-1 py-1 text-center">News</th>
               <th className="px-1 py-1 text-center w-6">X</th>
             </tr>
           </thead>
           <tbody>
-            {items.length === 0 ? (
+            {sortedItems.length === 0 ? (
               <tr>
                 <td colSpan={9} className="text-center py-8 text-sterling-muted">
                   <div className="mb-2">No symbols in worklist</div>
@@ -189,7 +246,7 @@ export default function Worklist() {
                 </td>
               </tr>
             ) : (
-              items.map((item) => (
+              sortedItems.map((item) => (
                 <tr
                   key={item.symbol}
                   className="hover:bg-sterling-highlight cursor-pointer border-b border-sterling-border"
@@ -236,8 +293,12 @@ export default function Worklist() {
                   <td className="px-1 py-1 text-center">
                     {item.hasNews ? (
                       <span
-                        className="text-warning cursor-pointer"
-                        title={item.lastNews}
+                        className="text-warning cursor-pointer hover:text-white"
+                        title={`Click to filter news: ${item.lastNews}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setNewsFilter(item.symbol)
+                        }}
                       >
                         📰
                       </span>

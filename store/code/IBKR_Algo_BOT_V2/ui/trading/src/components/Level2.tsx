@@ -36,11 +36,21 @@ export default function Level2() {
   const [asks, setAsks] = useState<Level2Entry[]>([])
   const [luldUpper, setLuldUpper] = useState<number | null>(null)
   const [luldLower, setLuldLower] = useState<number | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [lastSymbol, setLastSymbol] = useState('')
 
   useEffect(() => {
     if (!activeSymbol) return
 
+    // Clear data immediately when symbol changes
+    if (activeSymbol !== lastSymbol) {
+      setBids([])
+      setAsks([])
+      setLastSymbol(activeSymbol)
+    }
+
     const fetchLevel2 = async () => {
+      setIsLoading(true)
       try {
         const data = (await api.getLevel2(activeSymbol)) as any
         if (data) {
@@ -87,12 +97,13 @@ export default function Level2() {
       } catch (err) {
         console.error('Failed to load L2:', err)
       }
+      setIsLoading(false)
     }
 
     fetchLevel2()
     const interval = setInterval(fetchLevel2, 2000)
     return () => clearInterval(interval)
-  }, [activeSymbol, setQuote, quote])
+  }, [activeSymbol, setQuote, lastSymbol])
 
   const setOrderPrice = (price: number, _side: 'BUY' | 'SELL') => {
     // This would communicate with OrderEntry component
@@ -136,7 +147,9 @@ export default function Level2() {
           {/* Bid Rows */}
           <div className="flex-1 overflow-y-auto">
             {bids.length === 0 ? (
-              <div className="text-center py-4 text-[#555] italic">Level 2 data unavailable</div>
+              <div className="text-center py-4 text-[#555] italic">
+                {isLoading ? 'Loading...' : 'No L2 data (market closed)'}
+              </div>
             ) : (
               bids.map((bid, i) => (
                 <div
@@ -178,7 +191,9 @@ export default function Level2() {
           {/* Ask Rows */}
           <div className="flex-1 overflow-y-auto">
             {asks.length === 0 ? (
-              <div className="text-center py-4 text-[#555] italic">Level 2 data unavailable</div>
+              <div className="text-center py-4 text-[#555] italic">
+                {isLoading ? 'Loading...' : 'No L2 data (market closed)'}
+              </div>
             ) : (
               asks.map((ask, i) => (
                 <div

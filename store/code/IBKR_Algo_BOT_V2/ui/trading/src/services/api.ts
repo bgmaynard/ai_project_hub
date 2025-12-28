@@ -81,6 +81,10 @@ class ApiService {
     return this.fetch('/market/movers?direction=up')
   }
 
+  async getPreMarketScanner() {
+    return this.fetch('/scanner/premarket/watchlist')
+  }
+
   // News
   async getBreakingNews() {
     return this.fetch('/news-log/today')

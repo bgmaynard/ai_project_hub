@@ -4,6 +4,7 @@ import { useSymbolStore } from '../stores/symbolStore'
 interface NewsItem {
   id: string
   time: string
+  releaseTime: string  // Original release time from source
   symbol: string
   headline: string
   source?: string
@@ -12,9 +13,12 @@ interface NewsItem {
 }
 
 export default function BreakingNews() {
-  const { setActiveSymbol } = useSymbolStore()
+  const { setActiveSymbol, newsFilterSymbol, setNewsFilter } = useSymbolStore()
   const [news, setNews] = useState<NewsItem[]>([])
-  const [filter, setFilter] = useState<string>('') // Symbol filter
+  const [localFilter, setLocalFilter] = useState<string>('') // Local text filter
+
+  // Use store filter if set, otherwise use local filter
+  const activeFilter = newsFilterSymbol || localFilter
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -22,17 +26,51 @@ export default function BreakingNews() {
         const response = await fetch('/api/news-log/today')
         const data = await response.json()
 
-        if (data?.entries || Array.isArray(data)) {
-          const entries = data.entries || data
-          const mapped: NewsItem[] = entries.slice(0, 100).map((n: any, i: number) => ({
-            id: n.id || `news-${i}`,
-            time: n.time || n.timestamp || new Date().toLocaleTimeString(),
-            symbol: n.symbol || '',
-            headline: n.headline || n.synopsis || n.title || '',
-            source: n.source || '',
-            sentiment: n.sentiment || 'neutral',
-            urgency: n.urgency || 'medium',
-          }))
+        // API returns { success: true, news: [...], count: N }
+        const entries = data?.news || data?.entries || (Array.isArray(data) ? data : [])
+        if (entries.length > 0) {
+          const mapped: NewsItem[] = entries.slice(0, 100).map((n: any, i: number) => {
+            // Parse release time from various API formats
+            // Priority: published_at (original release) > time_str > time
+            let releaseTime = ''
+            if (n.published_at) {
+              try {
+                const date = new Date(n.published_at)
+                releaseTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              } catch {
+                // If it's already a formatted string like "12:26 PM"
+                releaseTime = n.published_at
+              }
+            } else if (n.time_str) {
+              // Already formatted time string
+              releaseTime = n.time_str
+            } else if (n.time) {
+              // Fallback to time field - may be formatted already or ISO
+              try {
+                if (n.time.includes('T') || n.time.includes('-')) {
+                  const date = new Date(n.time)
+                  releaseTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                } else {
+                  releaseTime = n.time
+                }
+              } catch {
+                releaseTime = n.time
+              }
+            } else {
+              releaseTime = n.timestamp || ''
+            }
+
+            return {
+              id: n.id || `news-${i}`,
+              time: n.time_str || n.time || n.timestamp || new Date().toLocaleTimeString(),
+              releaseTime: releaseTime,
+              symbol: n.symbol || '',
+              headline: n.headline || n.synopsis || n.title || '',
+              source: n.source || '',
+              sentiment: n.sentiment || 'neutral',
+              urgency: n.urgency || 'medium',
+            }
+          })
           setNews(mapped)
         }
       } catch (err) {
@@ -45,8 +83,8 @@ export default function BreakingNews() {
     return () => clearInterval(interval)
   }, [])
 
-  const filteredNews = filter
-    ? news.filter((n) => n.symbol.toUpperCase().includes(filter.toUpperCase()))
+  const filteredNews = activeFilter
+    ? news.filter((n) => n.symbol.toUpperCase().includes(activeFilter.toUpperCase()))
     : news
 
   const handleNewsClick = (item: NewsItem) => {
@@ -81,11 +119,25 @@ export default function BreakingNews() {
     <div className="h-full flex flex-col bg-sterling-panel text-xs">
       {/* Header */}
       <div className="flex items-center justify-between px-2 py-1 bg-sterling-header border-b border-sterling-border">
-        <span className="font-bold text-sterling-text">BREAKING NEWS</span>
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sterling-text">BREAKING NEWS</span>
+          {newsFilterSymbol && (
+            <span className="px-1.5 py-0.5 bg-accent-primary text-white text-xxs rounded flex items-center gap-1">
+              ${newsFilterSymbol}
+              <button
+                onClick={() => setNewsFilter(null)}
+                className="hover:text-down ml-1"
+                title="Clear filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+        </div>
         <input
           type="text"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          value={localFilter}
+          onChange={(e) => setLocalFilter(e.target.value)}
           placeholder="Filter..."
           className="w-16 px-1 py-0.5 bg-sterling-bg border border-sterling-border text-xxs rounded"
         />
@@ -107,7 +159,9 @@ export default function BreakingNews() {
               )} hover:bg-sterling-highlight cursor-pointer`}
             >
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-sterling-muted text-xxs">{item.time}</span>
+                <span className="text-sterling-muted text-xxs" title="Release time">
+                  {item.releaseTime || item.time}
+                </span>
                 {item.symbol && (
                   <span className="text-accent-primary font-bold">
                     ${item.symbol}
