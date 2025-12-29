@@ -1,0 +1,75 @@
+MONDAY MORNING RUNBOOK
+=====================
+
+THIS IS A CHECKLIST. FOLLOW IN ORDER.
+
+--------------------------------------------------
+BEFORE 7:00 AM ET
+--------------------------------------------------
+
+- Start system
+- Confirm PAPER MODE or REDUCED SIZE LIVE MODE
+- Verify Strategy Policy Engine is running
+- Verify NO_TRADE allowed
+- Verify kill-switch works
+
+If anything fails → DO NOT TRADE
+
+--------------------------------------------------
+7:00–8:30 AM ET (PRIMARY WINDOW)
+--------------------------------------------------
+
+Focus:
+- Clean momentum only
+- Few trades
+- Fast exits
+
+Watch:
+- Policy enable/disable events
+- Momentum_state transitions
+- Veto reasons
+
+Expected:
+- Many vetoes (GOOD)
+- Few CONFIRMED entries
+- Fast exits on failures
+
+--------------------------------------------------
+8:30–9:15 AM ET
+--------------------------------------------------
+
+- Be more selective
+- Avoid late chasers
+- Prefer A+ setups only
+- Reduce aggression
+
+--------------------------------------------------
+9:15–9:30 AM ET
+--------------------------------------------------
+
+- No new aggressive entries
+- Manage existing trades
+- Let volatility normalize
+
+--------------------------------------------------
+AFTER 9:30 AM ET
+--------------------------------------------------
+
+- NO NEW TRADES
+- Exit management only
+- System goes IDLE
+
+--------------------------------------------------
+POST-SESSION REVIEW (5 MINUTES)
+--------------------------------------------------
+
+Answer YES / NO:
+
+- Did system refuse bad trades?
+- Did exits fire early?
+- Did strategy disable itself if failing?
+- Did anything feel reckless?
+
+If ANY NO → stay reduced size or paper.
+
+END OF RUNBOOK

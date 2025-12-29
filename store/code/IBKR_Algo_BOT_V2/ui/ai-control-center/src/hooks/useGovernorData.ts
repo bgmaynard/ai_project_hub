@@ -18,6 +18,7 @@ import type {
   DataFreshness,
   AIPosture,
   SystemSafetyStatus,
+  SystemState,
 } from '../types/governor';
 import { POLL_INTERVALS } from '../types/governor';
 
@@ -36,6 +37,8 @@ const DEFAULT_GLOBAL_STATUS: GlobalStatus = {
     reason: null,
     cooldownSeconds: 0,
   },
+  systemState: 'SERVICE_NOT_RUNNING',
+  systemStateReason: 'Connecting to services...',
 };
 
 const DEFAULT_MARKET_CONTEXT: MarketContext = {
@@ -122,13 +125,15 @@ function deriveAIPosture(
 
 async function fetchGlobalStatus(): Promise<GlobalStatus> {
   try {
-    const [safeRes, scalpRes] = await Promise.all([
+    const [safeRes, scalpRes, connectivityRes] = await Promise.all([
       fetch('/api/validation/safe/status').catch(() => null),
       fetch('/api/scalp/status').catch(() => null),
+      fetch('/api/validation/connectivity/status').catch(() => null),
     ]);
 
     const safeData = safeRes?.ok ? await safeRes.json() : {};
     const scalpData = scalpRes?.ok ? await scalpRes.json() : {};
+    const connectivityData = connectivityRes?.ok ? await connectivityRes.json() : {};
 
     const { window: tradingWindow, time: windowTime } = getTradingWindow();
     const killSwitchActive = safeData.kill_switch_active || false;
@@ -142,6 +147,19 @@ async function fetchGlobalStatus(): Promise<GlobalStatus> {
       safeData.health_degraded
     );
 
+    // Determine system state from connectivity manager
+    let systemState: SystemState = connectivityData.system_state || 'READY';
+    let systemStateReason = connectivityData.system_state_reason || 'System ready';
+
+    // Override system state if we have more specific info
+    if (!connectivityRes?.ok) {
+      systemState = 'SERVICE_NOT_RUNNING';
+      systemStateReason = 'Cannot connect to API';
+    } else if (isRunning && tradingWindow === 'OPEN') {
+      systemState = 'ACTIVE';
+      systemStateReason = 'All systems go, trading enabled';
+    }
+
     return {
       mode: scalpData.paper_mode !== false ? 'PAPER' : 'LIVE',
       tradingWindow,
@@ -153,11 +171,21 @@ async function fetchGlobalStatus(): Promise<GlobalStatus> {
         reason: safeData.kill_switch_reason || null,
         cooldownSeconds: safeData.kill_switch_cooldown_remaining_seconds || 0,
       },
+      systemState,
+      systemStateReason,
     };
   } catch {
     const { window: tradingWindow, time: windowTime } = getTradingWindow();
     const { posture, reason } = deriveAIPosture(tradingWindow, false, false);
-    return { ...DEFAULT_GLOBAL_STATUS, tradingWindow, windowTime, aiPosture: posture, aiPostureReason: reason };
+    return {
+      ...DEFAULT_GLOBAL_STATUS,
+      tradingWindow,
+      windowTime,
+      aiPosture: posture,
+      aiPostureReason: reason,
+      systemState: 'SERVICE_NOT_RUNNING',
+      systemStateReason: 'Cannot connect to services',
+    };
   }
 }
 
@@ -193,37 +221,45 @@ function generateAIInterpretation(
 
 async function fetchMarketContext(): Promise<MarketContext> {
   try {
-    const [momentumRes, policyRes] = await Promise.all([
+    const [momentumRes, policyRes, polygonRes] = await Promise.all([
       fetch('/api/validation/momentum/states').catch(() => null),
       fetch('/api/strategy/policy').catch(() => null),
+      fetch('/api/polygon/stream/status').catch(() => null),
     ]);
 
     const momentumData = momentumRes?.ok ? await momentumRes.json() : {};
     const policyData = policyRes?.ok ? await policyRes.json() : {};
+    const polygonData = polygonRes?.ok ? await polygonRes.json() : {};
 
-    // Extract regime info from policy or momentum data
-    const regime = (policyData.overall_regime || momentumData.regime || 'RANGING').toUpperCase().replace(' ', '_');
-    const confidence = policyData.regime_confidence || momentumData.confidence || 0;
+    // Extract regime info from policy or safe_activation data
+    const regime = (policyData.overall_regime || 'RANGING').toUpperCase().replace(' ', '_');
+    const confidence = policyData.regime_confidence || 0;
     const volatility = policyData.volatility_level || 'NORMAL';
     const volatilityPct = policyData.volatility_pct || 0;
     const liquidity = policyData.liquidity_level || 'ADEQUATE';
 
-    // Calculate data age
-    const lastUpdateTime = momentumData.last_update || policyData.last_update;
-    const dataAge = lastUpdateTime
-      ? Math.round((Date.now() - new Date(lastUpdateTime).getTime()) / 1000)
-      : 999;
+    // Calculate data age from Polygon stream's last_message (most reliable)
+    let dataAge = 999;
+    if (polygonData.last_message) {
+      dataAge = Math.round((Date.now() - new Date(polygonData.last_message).getTime()) / 1000);
+    } else if (policyData.last_updated) {
+      dataAge = Math.round((Date.now() - new Date(policyData.last_updated).getTime()) / 1000);
+    }
+
+    // Determine liquidity based on subscriptions and data flow
+    const subsCount = (polygonData.trade_subscriptions?.length || 0);
+    const actualLiquidity = subsCount > 5 ? 'ADEQUATE' : subsCount > 0 ? 'THIN' : 'POOR';
 
     return {
       regime,
       regimeConfidence: Math.round(confidence * 100) / 100,
       volatility,
       volatilityPct: Math.round(volatilityPct * 100) / 100,
-      liquidity,
+      liquidity: actualLiquidity,
       dataAge,
       dataFreshness: getDataFreshness(dataAge),
       lastUpdate: new Date().toISOString(),
-      aiInterpretation: generateAIInterpretation(regime, confidence, volatility, liquidity),
+      aiInterpretation: generateAIInterpretation(regime, confidence, volatility, actualLiquidity),
     };
   } catch {
     return { ...DEFAULT_MARKET_CONTEXT, lastUpdate: new Date().toISOString() };
@@ -367,21 +403,38 @@ function deriveSafetyStatus(indicators: HealthIndicator[], killSwitchActive: boo
 
 async function fetchHealth(): Promise<SystemHealth> {
   try {
-    const [healthRes, summaryRes] = await Promise.all([
+    const [healthRes, summaryRes, polygonRes] = await Promise.all([
       fetch('/api/health').catch(() => null),
       fetch('/api/validation/export/summary').catch(() => null),
+      fetch('/api/polygon/stream/status').catch(() => null),
     ]);
 
     const healthData = healthRes?.ok ? await healthRes.json() : {};
     const summaryData = summaryRes?.ok ? await summaryRes.json() : {};
+    const polygonData = polygonRes?.ok ? await polygonRes.json() : {};
 
     const killSwitchActive = summaryData.safe_activation?.kill_switch_active || false;
+
+    // Data Feed: check "healthy" status (API returns "healthy" not "ok")
+    const dataFeedHealthy = healthData.status === 'healthy';
+
+    // WebSocket: use Polygon stream status
+    const websocketConnected = polygonData.connected === true;
+    const websocketSubs = (polygonData.trade_subscriptions?.length || 0) + (polygonData.quote_subscriptions?.length || 0);
+
+    // Chronos/Momentum: check total_symbols > 0 (API returns total_symbols, not active)
+    const momentumActive = (summaryData.momentum?.total_symbols || 0) > 0;
+    const momentumSymbols = summaryData.momentum?.total_symbols || 0;
+
+    // Policy Engine: check if policies object exists and has entries
+    const policyActive = summaryData.policy?.policies && Object.keys(summaryData.policy.policies).length > 0;
+    const vetoCount = Object.values(summaryData.policy?.veto_counts || {}).reduce((a: number, b: any) => a + (b || 0), 0);
 
     const indicators: HealthIndicator[] = [
       {
         name: 'Data Feed',
-        status: healthData.status === 'ok' ? 'HEALTHY' : 'ERROR',
-        detail: healthData.status === 'ok' ? 'Connected' : 'Disconnected',
+        status: dataFeedHealthy ? 'HEALTHY' : 'ERROR',
+        detail: dataFeedHealthy ? 'Connected' : 'Disconnected',
       },
       {
         name: 'Broker API',
@@ -390,23 +443,23 @@ async function fetchHealth(): Promise<SystemHealth> {
       },
       {
         name: 'WebSocket',
-        status: healthData.websocket?.connected ? 'HEALTHY' : 'OFFLINE',
-        detail: healthData.websocket?.connected ? 'Connected' : 'Disconnected',
+        status: websocketConnected ? 'HEALTHY' : 'OFFLINE',
+        detail: websocketConnected ? `Polygon (${websocketSubs} subs)` : 'Disconnected',
       },
       {
         name: 'Chronos',
-        status: summaryData.momentum?.active ? 'HEALTHY' : 'OFFLINE',
-        detail: summaryData.momentum?.active ? 'Online' : 'Offline',
+        status: momentumActive ? 'HEALTHY' : 'OFFLINE',
+        detail: momentumActive ? `${momentumSymbols} symbols` : 'No data',
       },
       {
         name: 'Gating Engine',
         status: 'HEALTHY',
-        detail: `${summaryData.policy?.total_vetoes || 0} vetoes`,
+        detail: `${vetoCount} vetoes`,
       },
       {
         name: 'Policy Engine',
-        status: summaryData.policy?.active ? 'HEALTHY' : 'DEGRADED',
-        detail: summaryData.policy?.active ? 'Active' : 'Degraded',
+        status: policyActive ? 'HEALTHY' : 'DEGRADED',
+        detail: policyActive ? 'Active' : 'Degraded',
       },
       {
         name: 'Kill Switch',

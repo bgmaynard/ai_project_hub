@@ -390,6 +390,32 @@ class ApiService {
     const response = await this.client.post('/api/scanner/ibkr/add-to-worklist', data);
     return response.data;
   }
+
+  // Connectivity / Governor APIs
+  async getConnectivityStatus(): Promise<ApiResponse<any>> {
+    const response = await this.client.get('/api/validation/connectivity/status');
+    return response.data;
+  }
+
+  async runConnectivitySelfTest(): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/api/validation/connectivity/self-test');
+    return response.data;
+  }
+
+  async reconnectFeeds(paperMode: boolean = true): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/api/validation/connectivity/reconnect', { paper_mode: paperMode });
+    return response.data;
+  }
+
+  async getConnectivityReport(): Promise<ApiResponse<any>> {
+    const response = await this.client.get('/api/validation/connectivity/report');
+    return response.data;
+  }
+
+  async getTimeStatus(): Promise<ApiResponse<any>> {
+    const response = await this.client.get('/api/validation/time/status');
+    return response.data;
+  }
 }
 
 // Export singleton instance

@@ -162,42 +162,43 @@ class PreMarketScanner:
 
         try:
             async with httpx.AsyncClient(timeout=30) as client:
-                # Get gap scanner results
+                # Get gap scanner results via warrior scanner
                 try:
-                    resp = await client.get(f"{API_BASE}/api/scanner/gaps")
+                    resp = await client.get(f"{API_BASE}/api/scanner/warrior/gaps")
                     if resp.status_code == 200:
                         data = resp.json()
-                        for stock in data.get('gaps', []):
-                            if abs(stock.get('gap_percent', 0)) >= 5:
+                        for stock in data.get('setups', data.get('gaps', [])):
+                            if abs(stock.get('gap_percent', stock.get('change_percent', 0))) >= 5:
                                 movers.append({
                                     'symbol': stock.get('symbol'),
                                     'price': stock.get('price'),
-                                    'gap_percent': stock.get('gap_percent'),
+                                    'gap_percent': stock.get('gap_percent', stock.get('change_percent', 0)),
                                     'volume': stock.get('volume'),
                                     'source': 'gap_scanner'
                                 })
                 except Exception as e:
                     logger.debug(f"Gap scanner: {e}")
 
-                # Get momentum scanner results
+                # Get movers from current worklist (already filtered)
                 try:
-                    resp = await client.get(f"{API_BASE}/api/scanner/momentum")
+                    resp = await client.get(f"{API_BASE}/api/worklist")
                     if resp.status_code == 200:
                         data = resp.json()
-                        for stock in data.get('movers', data.get('results', [])):
+                        items = data.get('data', data.get('symbols', []))
+                        for stock in items:
                             symbol = stock.get('symbol')
                             if symbol and symbol not in [m['symbol'] for m in movers]:
-                                change = stock.get('change_percent', stock.get('change', 0))
+                                change = stock.get('change_percent', 0)
                                 if abs(change) >= 5:
                                     movers.append({
                                         'symbol': symbol,
                                         'price': stock.get('price'),
                                         'change_percent': change,
                                         'volume': stock.get('volume'),
-                                        'source': 'momentum_scanner'
+                                        'source': 'worklist_mover'
                                     })
                 except Exception as e:
-                    logger.debug(f"Momentum scanner: {e}")
+                    logger.debug(f"Worklist movers: {e}")
 
                 # Check Benzinga news for pre-market catalysts
                 try:

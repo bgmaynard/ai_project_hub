@@ -80,7 +80,7 @@ class NewsItem:
     def to_dict(self) -> Dict:
         return {
             **asdict(self),
-            'published_at': self.published_at.isoformat(),
+            'published_at': self.published_at.isoformat() if self.published_at else None,
             'category': self.category.value,
             'sentiment': self.sentiment.value,
             'impact': self.impact.value
@@ -413,7 +413,7 @@ class NewsFeedMonitor:
             logger.warning("Benzinga API key not configured, using mock data")
             return self._get_mock_news(symbols, limit)
 
-        headers = {"accept": "application/json"}
+        # Benzinga API returns XML by default, we need to parse it
         params = {
             "token": self.benzinga_api_key,
             "pageSize": limit,
@@ -425,11 +425,16 @@ class NewsFeedMonitor:
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(self.base_url, headers=headers,
-                                      params=params, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                async with session.get(self.base_url,
+                                      params=params, timeout=aiohttp.ClientTimeout(total=15)) as response:
                     if response.status == 200:
-                        data = await response.json()
-                        return self._parse_benzinga_news(data)
+                        text = await response.text()
+                        # Check if response is XML or JSON
+                        if text.strip().startswith('<?xml') or text.strip().startswith('<result'):
+                            return self._parse_benzinga_xml(text)
+                        else:
+                            data = await response.json()
+                            return self._parse_benzinga_news(data)
                     else:
                         error = await response.text()
                         logger.error(f"Benzinga API error: {response.status} - {error}")
@@ -437,6 +442,77 @@ class NewsFeedMonitor:
         except Exception as e:
             logger.error(f"Error fetching news: {e}")
             return self._get_mock_news(symbols, limit)
+
+    def _parse_benzinga_xml(self, xml_text: str) -> List[NewsItem]:
+        """Parse Benzinga XML response into NewsItem objects"""
+        import xml.etree.ElementTree as ET
+        items = []
+
+        try:
+            root = ET.fromstring(xml_text)
+
+            for item_elem in root.findall('.//item'):
+                try:
+                    headline = item_elem.findtext('title', '')
+                    url = item_elem.findtext('url', '')
+                    created = item_elem.findtext('created', '')
+                    teaser = item_elem.findtext('teaser', '')
+                    body = item_elem.findtext('body', '')
+                    news_id = item_elem.findtext('id', '')
+
+                    # Extract symbols from stocks
+                    symbols = []
+                    stocks_elem = item_elem.find('stocks')
+                    if stocks_elem is not None:
+                        for stock in stocks_elem.findall('item'):
+                            name = stock.findtext('name', '')
+                            if name:
+                                symbols.append(name)
+
+                    summary = teaser or body[:200] if body else ''
+                    full_text = f"{headline} {summary}"
+
+                    category = self._detect_category(full_text)
+                    sentiment, score = self._analyze_sentiment(full_text)
+                    keywords = self._extract_keywords(full_text)
+                    impact = self._assess_impact(category, score, keywords)
+
+                    # Parse published time
+                    published_at = None
+                    if created:
+                        try:
+                            # Format: "Mon, 29 Dec 2025 07:26:02 -0400"
+                            from email.utils import parsedate_to_datetime
+                            published_at = parsedate_to_datetime(created)
+                        except Exception:
+                            pass
+
+                    news_item = NewsItem(
+                        id=news_id or f"bz_{hash(headline)}",
+                        headline=headline,
+                        summary=summary,
+                        source="Benzinga",
+                        url=url,
+                        published_at=published_at,
+                        symbols=symbols,
+                        category=category,
+                        sentiment=sentiment,
+                        sentiment_score=score,
+                        impact=impact,
+                        keywords=keywords
+                    )
+                    items.append(news_item)
+                    logger.debug(f"Parsed news: {symbols} - {headline[:50]}")
+
+                except Exception as e:
+                    logger.error(f"Error parsing XML news item: {e}")
+                    continue
+
+        except ET.ParseError as e:
+            logger.error(f"XML parse error: {e}")
+
+        logger.info(f"Parsed {len(items)} news items from Benzinga XML")
+        return items
 
     def _parse_benzinga_news(self, data: dict) -> List[NewsItem]:
         """Parse Benzinga API response into NewsItem objects"""

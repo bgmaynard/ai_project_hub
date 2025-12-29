@@ -23,11 +23,23 @@ export default function BreakingNews() {
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        const response = await fetch('/api/news-log/today')
-        const data = await response.json()
+        // Try news-log first, then fall back to Benzinga feed
+        let entries: any[] = []
 
-        // API returns { success: true, news: [...], count: N }
-        const entries = data?.news || data?.entries || (Array.isArray(data) ? data : [])
+        // Try news-log/today
+        try {
+          const logRes = await fetch('/api/news-log/today')
+          const logData = await logRes.json()
+          entries = logData?.news || logData?.entries || []
+        } catch {}
+
+        // If no news-log entries, fetch directly from Benzinga
+        if (entries.length === 0) {
+          const feedRes = await fetch('/api/news/fetch?limit=50')
+          const feedData = await feedRes.json()
+          entries = feedData?.news || []
+        }
+
         if (entries.length > 0) {
           const mapped: NewsItem[] = entries.slice(0, 100).map((n: any, i: number) => {
             // Parse release time from various API formats

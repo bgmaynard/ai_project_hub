@@ -315,8 +315,11 @@ export default function Chart() {
 
     const fetchData = async () => {
       try {
+        // Convert timeframe to multiplier for Polygon API
+        // timeframe is '1', '5', '15', '60' - API expects multiplier in minutes
+        const multiplier = timeframe === '60' ? 60 : parseInt(timeframe)
         const response = await fetch(
-          `/api/polygon/bars/${activeSymbol}?timeframe=${timeframe}&limit=200`
+          `/api/polygon/bars/${activeSymbol}?multiplier=${multiplier}&days=5`
         )
         const data = await response.json()
 
@@ -427,9 +430,148 @@ export default function Chart() {
     }
 
     fetchData()
-    const interval = setInterval(fetchData, 30000) // Refresh every 30 seconds
+    const interval = setInterval(fetchData, 10000) // Refresh every 10 seconds for faster updates
     return () => clearInterval(interval)
   }, [activeSymbol, timeframe, showIndicators])
+
+  // Real-time WebSocket updates - tick-by-tick chart updates
+  useEffect(() => {
+    if (!activeSymbol || !seriesRef.current) return
+
+    let ws: WebSocket | null = null
+    let lastBarTime: Time | null = null
+    let currentBar: { open: number; high: number; low: number; close: number } | null = null
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
+
+    const connect = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      ws = new WebSocket(`${protocol}//${window.location.host}/ws/market`)
+
+      ws.onopen = () => {
+        // Subscribe to trades for this symbol
+        ws?.send(JSON.stringify({
+          action: 'subscribe',
+          symbols: [activeSymbol],
+          types: ['trades']
+        }))
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+
+          // Handle trade updates
+          if (data.type === 'trade' && data.symbol === activeSymbol) {
+            const price = data.price || data.p
+            if (!price || !seriesRef.current) return
+
+            // Get current bar timestamp based on timeframe
+            const now = Math.floor(Date.now() / 1000)
+            const multiplier = timeframe === '60' ? 60 : parseInt(timeframe)
+            const barTime = (Math.floor(now / (multiplier * 60)) * (multiplier * 60)) as Time
+
+            if (lastBarTime !== barTime) {
+              // New bar started
+              lastBarTime = barTime
+              currentBar = { open: price, high: price, low: price, close: price }
+            } else if (currentBar) {
+              // Update current bar with new tick
+              currentBar.high = Math.max(currentBar.high, price)
+              currentBar.low = Math.min(currentBar.low, price)
+              currentBar.close = price
+            }
+
+            if (currentBar && lastBarTime) {
+              seriesRef.current?.update({
+                time: lastBarTime,
+                open: currentBar.open,
+                high: currentBar.high,
+                low: currentBar.low,
+                close: currentBar.close,
+              })
+            }
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      ws.onclose = () => {
+        // Reconnect after 2 seconds
+        reconnectTimeout = setTimeout(connect, 2000)
+      }
+
+      ws.onerror = () => {
+        ws?.close()
+      }
+    }
+
+    // Also subscribe via Polygon HTTP for symbols not in Schwab
+    fetch('/api/polygon/stream/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol: activeSymbol, data_type: 'trades' })
+    }).catch(() => {})
+
+    connect()
+
+    // Fast HTTP poll for Polygon data - uses lightweight price endpoint
+    let lastTradeTime = 0
+    const pollPolygon = async () => {
+      try {
+        // Use fast price endpoint - minimal JSON for speed
+        const response = await fetch(`/api/polygon/stream/price/${activeSymbol}`)
+        const data = await response.json()
+
+        if (data?.p && data.p > 0) {
+          const price = data.p
+          const tradeTime = data.t || Date.now()
+
+          // Only process if newer than last seen
+          if (tradeTime > lastTradeTime) {
+            lastTradeTime = tradeTime
+            if (seriesRef.current) {
+              const now = Math.floor(Date.now() / 1000)
+              const multiplier = timeframe === '60' ? 60 : parseInt(timeframe)
+              const barTime = (Math.floor(now / (multiplier * 60)) * (multiplier * 60)) as Time
+
+              if (lastBarTime !== barTime) {
+                lastBarTime = barTime
+                currentBar = { open: price, high: price, low: price, close: price }
+              } else if (currentBar) {
+                currentBar.high = Math.max(currentBar.high, price)
+                currentBar.low = Math.min(currentBar.low, price)
+                currentBar.close = price
+              }
+
+              if (currentBar && lastBarTime) {
+                seriesRef.current?.update({
+                  time: lastBarTime,
+                  open: currentBar.open,
+                  high: currentBar.high,
+                  low: currentBar.low,
+                  close: currentBar.close,
+                })
+              }
+            }
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    const pollInterval = setInterval(pollPolygon, 100) // 100ms = 10 updates/sec (server optimized)
+
+    return () => {
+      clearInterval(pollInterval)
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      if (ws) {
+        ws.onclose = null // Prevent reconnect on intentional close
+        ws.close()
+      }
+    }
+  }, [activeSymbol, timeframe])
 
   const toggleIndicator = (key: keyof typeof showIndicators) => {
     setShowIndicators(prev => ({ ...prev, [key]: !prev[key] }))

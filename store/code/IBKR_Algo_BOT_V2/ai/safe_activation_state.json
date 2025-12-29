@@ -1,0 +1,25 @@
+{
+  "config": {
+    "enabled": true,
+    "mode": "SAFE",
+    "position_size_multiplier": 0.25,
+    "max_position_size_usd": 500,
+    "max_concurrent_strategies": 1,
+    "active_strategy": "",
+    "symbol_whitelist": [],
+    "veto_spike_threshold": 20,
+    "max_forced_exits": 5,
+    "max_daily_loss_usd": 100,
+    "data_stale_seconds": 30,
+    "kill_switch_cooldown_seconds": 1800
+  },
+  "metrics": {
+    "daily_pnl": 0,
+    "trade_count": 0,
+    "veto_count_total": 0,
+    "exit_count_total": 0
+  },
+  "kill_switch_active": false,
+  "kill_switch_reason": null,
+  "last_updated": "2025-12-29T13:08:55.029802"
+}

@@ -1,0 +1,131 @@
+{
+  "report_generated": "2025-12-29T09:40:00",
+  "overall_status": "PASS",
+  "tests": {
+    "test_1_market_data": {
+      "status": "PASS",
+      "description": "Market Data Ingestion",
+      "details": {
+        "prices_updating": true,
+        "schwab_connected": true,
+        "polygon_connected": true,
+        "data_channels": 5,
+        "trades_received": 52048,
+        "quotes_received": 33007
+      }
+    },
+    "test_2_websocket": {
+      "status": "PASS",
+      "description": "WebSocket/Streaming Connectivity",
+      "details": {
+        "polygon_stream_connected": true,
+        "trade_subscriptions": ["BNAI", "AAPL"],
+        "quote_subscriptions": ["BNAI", "AAPL"],
+        "reconnects": 0,
+        "throughput": {
+          "trades_per_minute": 3308,
+          "quotes_per_minute": 2208
+        }
+      }
+    },
+    "test_3_chronos": {
+      "status": "PASS",
+      "description": "Chronos/Scheduler Service",
+      "details": {
+        "response_time_seconds": 1.3,
+        "confidence": 0.9944,
+        "symbols_tracked": 20,
+        "model": "amazon/chronos-t5-small"
+      }
+    },
+    "test_4_scanners": {
+      "status": "PASS",
+      "description": "Scanners (News, Gap, Premarket)",
+      "details": {
+        "news_trader": {
+          "enabled": true,
+          "is_running": false,
+          "paper_mode": true,
+          "scalper_running": true
+        },
+        "hft_scalper": {
+          "is_running": true,
+          "enabled": false,
+          "paper_mode": true,
+          "watchlist_count": 25
+        },
+        "premarket_scanner": {
+          "is_running": false,
+          "news_today": 623
+        },
+        "gating_engine": {
+          "mode": "DISABLED",
+          "kill_switch_active": false,
+          "veto_count": 0
+        }
+      }
+    },
+    "test_5_governor": {
+      "status": "PASS",
+      "description": "Governor Reflection in AI Control Center",
+      "details": {
+        "safe_activation": {
+          "activated": false,
+          "mode": "DISABLED",
+          "trading_allowed": false,
+          "kill_switch_active": false
+        },
+        "momentum_states": {
+          "total_symbols": 20,
+          "ignition": 0,
+          "confirmed": 0,
+          "decay": 0,
+          "dead": 20
+        },
+        "strategy_policy": {
+          "audit_enabled": true,
+          "position_multiplier": 1.0
+        },
+        "health": {
+          "status": "healthy",
+          "broker_connected": true,
+          "api_operational": true,
+          "market_data": "schwab_active",
+          "claude_available": true
+        }
+      }
+    }
+  },
+  "endpoints_validated": [
+    "/api/status",
+    "/api/health",
+    "/api/polygon/stream/status",
+    "/api/polygon/stream/trades/{symbol}",
+    "/api/polygon/stream/price/{symbol}",
+    "/api/scanner/news-trader/status",
+    "/api/scanner/scalper/status",
+    "/api/scanner/premarket/status",
+    "/api/scanner/results",
+    "/api/validation/safe/status",
+    "/api/validation/momentum/states",
+    "/api/validation/export/summary",
+    "/api/strategy/policy",
+    "/api/strategy/policy/audit",
+    "/api/validation/exit/log",
+    "/api/news/info",
+    "/api/news-log/today",
+    "/api/worklist"
+  ],
+  "broker": {
+    "type": "schwab",
+    "connected": true,
+    "paper_trading": false,
+    "accounts": 2
+  },
+  "recommendations": [
+    "All connectivity tests passed",
+    "System ready for trading when market opens",
+    "Momentum states show DEAD (normal for market closed)",
+    "Consider enabling Safe Activation mode before live trading"
+  ]
+}

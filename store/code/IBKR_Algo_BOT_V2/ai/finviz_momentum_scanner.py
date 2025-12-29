@@ -20,7 +20,13 @@ import json
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional, Any
+from pathlib import Path
 import aiohttp
+
+# Load .env file
+from dotenv import load_dotenv
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +126,11 @@ class FinVizMomentumScanner:
             return []
 
         try:
-            # Build filter for penny stock movers
-            # cap_small = Small Cap, ta_change_u5 = Up > 5%
-            filters = f"cap_small,sh_avgvol_o100,sh_price_u{int(max_price)},ta_change_u{int(min_change)}"
+            # Build filter for momentum movers - include micro caps!
+            # cap_microover = Micro cap and above (catches low float runners)
+            # sh_price_o1 = Over $1 (avoid sub-penny)
+            # ta_change_u5 = Up > 5%
+            filters = f"cap_microover,sh_price_o1,sh_price_u{int(max_price)},ta_change_u{int(min_change)}"
             url = f"{self.base_url}/export.ashx?v=152&f={filters}&auth={self.token}"
 
             candidates = []
@@ -417,6 +425,8 @@ class FinVizMomentumScanner:
 
 # Singleton instance
 _scanner_instance: Optional[FinVizMomentumScanner] = None
+_scanner_task: Optional[asyncio.Task] = None
+_scanner_running: bool = False
 
 
 def get_finviz_scanner() -> FinVizMomentumScanner:
@@ -425,3 +435,92 @@ def get_finviz_scanner() -> FinVizMomentumScanner:
     if _scanner_instance is None:
         _scanner_instance = FinVizMomentumScanner()
     return _scanner_instance
+
+
+async def _auto_scan_loop(interval: int = 60, min_change: float = 10.0, auto_add: bool = True):
+    """
+    Background scanning loop that auto-adds movers to worklist.
+
+    Args:
+        interval: Seconds between scans (default 60s)
+        min_change: Minimum % change to consider (default 10%)
+        auto_add: Auto-add to worklist (default True)
+    """
+    global _scanner_running
+    scanner = get_finviz_scanner()
+
+    logger.info(f"FinViz auto-scanner started (interval={interval}s, min_change={min_change}%)")
+
+    while _scanner_running:
+        try:
+            # Scan for movers
+            movers = await scanner.scan_movers(min_change=min_change, max_price=20.0)
+
+            if movers and auto_add:
+                # Auto-add top movers to worklist via API
+                added_count = 0
+                for m in sorted(movers, key=lambda x: x.change_pct, reverse=True)[:10]:
+                    try:
+                        async with aiohttp.ClientSession() as session:
+                            async with session.post(
+                                "http://localhost:9100/api/worklist/add",
+                                json={"symbol": m.symbol},
+                                timeout=aiohttp.ClientTimeout(total=5)
+                            ) as resp:
+                                if resp.status == 200:
+                                    result = await resp.json()
+                                    if result.get("success"):
+                                        added_count += 1
+                                        logger.info(f"Auto-added {m.symbol} ({m.change_pct:+.1f}%) to worklist")
+                    except Exception as e:
+                        pass
+
+                if added_count > 0:
+                    logger.info(f"FinViz scan complete: {len(movers)} movers found, {added_count} added to worklist")
+
+            await asyncio.sleep(interval)
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"FinViz auto-scan error: {e}")
+            await asyncio.sleep(interval)
+
+    logger.info("FinViz auto-scanner stopped")
+
+
+def start_finviz_scanner(interval: int = 60, min_change: float = 10.0, auto_add: bool = True):
+    """Start the FinViz background scanner"""
+    global _scanner_task, _scanner_running
+
+    if _scanner_running:
+        logger.warning("FinViz scanner already running")
+        return False
+
+    _scanner_running = True
+
+    # Create async task
+    loop = asyncio.get_event_loop()
+    _scanner_task = loop.create_task(_auto_scan_loop(interval, min_change, auto_add))
+
+    logger.info(f"FinViz scanner started (interval={interval}s)")
+    return True
+
+
+def stop_finviz_scanner():
+    """Stop the FinViz background scanner"""
+    global _scanner_task, _scanner_running
+
+    _scanner_running = False
+
+    if _scanner_task:
+        _scanner_task.cancel()
+        _scanner_task = None
+
+    logger.info("FinViz scanner stopped")
+    return True
+
+
+def is_finviz_scanner_running() -> bool:
+    """Check if scanner is running"""
+    return _scanner_running

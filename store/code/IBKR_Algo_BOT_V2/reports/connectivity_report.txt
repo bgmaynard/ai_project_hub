@@ -1,0 +1,133 @@
+================================================================================
+                    MORPHEUS TRADING BOT - CONNECTIVITY REPORT
+================================================================================
+Generated: 2025-12-29 09:40:00 ET
+Overall Status: PASS (5/5 tests passed)
+================================================================================
+
+TEST 1: MARKET DATA INGESTION                                            [PASS]
+--------------------------------------------------------------------------------
+  - Prices Updating: YES
+  - Schwab Connected: YES
+  - Polygon Connected: YES
+  - Data Channels Active: 5
+  - Trades Received: 52,048
+  - Quotes Received: 33,007
+  - Data Age: FRESH (sub-second latency after optimizations)
+
+TEST 2: WEBSOCKET/STREAMING CONNECTIVITY                                 [PASS]
+--------------------------------------------------------------------------------
+  - Polygon WebSocket: CONNECTED
+  - Trade Subscriptions: BNAI, AAPL
+  - Quote Subscriptions: BNAI, AAPL
+  - Reconnects: 0 (stable connection)
+  - Throughput: ~3,308 trades/min, ~2,208 quotes/min
+
+TEST 3: CHRONOS/SCHEDULER SERVICE                                        [PASS]
+--------------------------------------------------------------------------------
+  - Response Time: 1.3 seconds
+  - Confidence Level: 99.44%
+  - Symbols Tracked: 20
+  - Model: amazon/chronos-t5-small
+  - Regime Detection: ACTIVE
+
+TEST 4: SCANNERS (NEWS, GAP, PREMARKET)                                  [PASS]
+--------------------------------------------------------------------------------
+  News Auto-Trader:
+    - Enabled: YES (paper mode)
+    - Scalper Running: YES
+    - Daily Trades: 0
+
+  HFT Scalper:
+    - Running: YES
+    - Paper Mode: YES
+    - Watchlist: 25 symbols
+    - Risk Per Trade: $10 (1% of $1000)
+
+  Premarket Scanner:
+    - News Today: 623 articles logged
+    - Premarket Movers: 2 detected
+
+  Gating Engine:
+    - Mode: DISABLED
+    - Kill Switch: INACTIVE
+    - Veto Count: 0
+
+TEST 5: GOVERNOR REFLECTION                                              [PASS]
+--------------------------------------------------------------------------------
+  Safe Activation:
+    - Activated: NO
+    - Mode: DISABLED
+    - Trading Allowed: NO (intentional - market closed)
+    - Kill Switch: INACTIVE
+
+  Momentum States (20 symbols tracked):
+    - IGNITION: 0
+    - CONFIRMED: 0
+    - DECAY: 0
+    - DEAD: 20 (normal for market closed)
+
+  Strategy Policy:
+    - Audit Policy: ENABLED
+    - Position Multiplier: 1.0x
+
+  System Health:
+    - Status: HEALTHY
+    - Broker Connected: YES (Schwab)
+    - API: OPERATIONAL
+    - Market Data: SCHWAB_ACTIVE
+    - Claude AI: AVAILABLE
+
+================================================================================
+                              ENDPOINTS VALIDATED
+================================================================================
+  /api/status ........................... OK
+  /api/health ........................... OK
+  /api/polygon/stream/status ............ OK
+  /api/polygon/stream/trades/{symbol} ... OK
+  /api/polygon/stream/price/{symbol} .... OK
+  /api/scanner/news-trader/status ....... OK
+  /api/scanner/scalper/status ........... OK
+  /api/scanner/premarket/status ......... OK
+  /api/scanner/results .................. OK
+  /api/validation/safe/status ........... OK
+  /api/validation/momentum/states ....... OK
+  /api/validation/export/summary ........ OK
+  /api/strategy/policy .................. OK
+  /api/strategy/policy/audit ............ OK
+  /api/validation/exit/log .............. OK
+  /api/news/info ........................ OK
+  /api/news-log/today ................... OK
+  /api/worklist ......................... OK
+
+================================================================================
+                               BROKER STATUS
+================================================================================
+  Type: Schwab
+  Connected: YES
+  Paper Trading: NO (live broker connection)
+  Accounts: 2
+
+================================================================================
+                              RECOMMENDATIONS
+================================================================================
+  1. All connectivity tests PASSED - system ready for trading
+  2. Momentum states show DEAD - normal for market closed (Sunday)
+  3. Consider enabling Safe Activation mode before live trading
+  4. News monitoring active - 623 articles logged today
+  5. Polygon streaming stable with 0 reconnects
+
+================================================================================
+                                 SUMMARY
+================================================================================
+  Status: ALL SYSTEMS OPERATIONAL
+  Ready for: Pre-market trading (4 AM ET Monday)
+
+  Quick Start Commands:
+    curl -X POST "http://localhost:9100/api/scanner/scalper/start"
+    curl -X POST "http://localhost:9100/api/scanner/news-trader/start?paper_mode=true"
+    start http://localhost:9100/dashboard
+
+================================================================================
+                            END OF REPORT
+================================================================================

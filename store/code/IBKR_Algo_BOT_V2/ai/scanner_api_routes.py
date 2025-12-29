@@ -15,6 +15,7 @@ from .claude_stock_scanner import get_stock_scanner, ClaudeStockScanner
 from .claude_watchlist_manager import get_watchlist_manager
 from .penny_momentum_scanner import get_penny_scanner, start_penny_scanner, stop_penny_scanner
 from .warrior_momentum_scanner import get_warrior_scanner, start_warrior_scanner, stop_warrior_scanner
+from .finviz_momentum_scanner import get_finviz_scanner, start_finviz_scanner, stop_finviz_scanner, is_finviz_scanner_running
 
 # Alpaca Momentum Scanner (uses Alpaca API directly)
 try:
@@ -2640,4 +2641,121 @@ async def add_gappers_to_watchlist(grade: str = "A"):
         return {"success": False, "error": str(e)}
 
 
-logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader, MACD Analyzer, Two-Phase Strategy, Phase 2 Manager, Chronos Exit Manager, HOD Momentum Scanner, Top Gappers Scanner)")
+# ============ FinViz Elite Scanner ============
+
+@router.get("/finviz/status")
+async def finviz_status():
+    """Get FinViz scanner status"""
+    scanner = get_finviz_scanner()
+    return {
+        "configured": bool(scanner.token),
+        "running": is_finviz_scanner_running(),
+        "last_scan": scanner.last_scan.isoformat() if scanner.last_scan else None,
+        "candidates_count": len(scanner.candidates)
+    }
+
+
+@router.post("/finviz/start")
+async def finviz_start(interval: int = 60, min_change: float = 10.0, auto_add: bool = True):
+    """Start FinViz auto-scanner that auto-adds movers to worklist"""
+    scanner = get_finviz_scanner()
+    if not scanner.token:
+        return {"success": False, "error": "FinViz Elite token not configured"}
+
+    success = start_finviz_scanner(interval=interval, min_change=min_change, auto_add=auto_add)
+    return {
+        "success": success,
+        "message": f"FinViz scanner started (interval={interval}s, min_change={min_change}%, auto_add={auto_add})" if success else "Scanner already running",
+        "status": {
+            "running": is_finviz_scanner_running(),
+            "interval": interval,
+            "min_change": min_change,
+            "auto_add": auto_add
+        }
+    }
+
+
+@router.post("/finviz/stop")
+async def finviz_stop():
+    """Stop FinViz auto-scanner"""
+    success = stop_finviz_scanner()
+    return {
+        "success": success,
+        "message": "FinViz scanner stopped",
+        "running": is_finviz_scanner_running()
+    }
+
+
+@router.get("/finviz/movers")
+async def finviz_movers(min_change: float = 5.0, max_price: float = 20.0):
+    """Scan FinViz for momentum movers"""
+    scanner = get_finviz_scanner()
+    if not scanner.token:
+        return {"error": "FinViz Elite token not configured", "candidates": []}
+
+    try:
+        movers = await scanner.scan_movers(min_change=min_change, max_price=max_price)
+        return {
+            "success": True,
+            "count": len(movers),
+            "results": [m.to_dict() for m in movers]
+        }
+    except Exception as e:
+        logger.error(f"FinViz movers scan error: {e}")
+        return {"success": False, "error": str(e), "results": []}
+
+
+@router.get("/finviz/gappers")
+async def finviz_gappers(min_gap: float = 5.0, max_price: float = 20.0):
+    """Scan FinViz for gap plays"""
+    scanner = get_finviz_scanner()
+    if not scanner.token:
+        return {"error": "FinViz Elite token not configured", "gappers": []}
+
+    try:
+        gappers = await scanner.scan_gappers(min_gap=min_gap, max_price=max_price)
+        return {
+            "success": True,
+            "count": len(gappers),
+            "results": [g.to_dict() for g in gappers]
+        }
+    except Exception as e:
+        logger.error(f"FinViz gappers scan error: {e}")
+        return {"success": False, "error": str(e), "results": []}
+
+
+@router.get("/finviz/top-plays")
+async def finviz_top_plays(limit: int = 10):
+    """Get top momentum plays with news enrichment"""
+    scanner = get_finviz_scanner()
+    if not scanner.token:
+        return {"error": "FinViz Elite token not configured", "plays": []}
+
+    try:
+        plays = await scanner.get_top_plays(limit=limit)
+        return {
+            "success": True,
+            "count": len(plays),
+            "results": [p.to_dict() for p in plays]
+        }
+    except Exception as e:
+        logger.error(f"FinViz top plays error: {e}")
+        return {"success": False, "error": str(e), "results": []}
+
+
+@router.post("/finviz/sync-to-worklist")
+async def finviz_sync_to_worklist(min_score: float = 15.0, max_add: int = 5):
+    """Sync top FinViz plays to scalper watchlist"""
+    scanner = get_finviz_scanner()
+    if not scanner.token:
+        return {"error": "FinViz Elite token not configured"}
+
+    try:
+        result = await scanner.sync_to_scalper_watchlist(min_score=min_score, max_add=max_add)
+        return {"success": True, **result}
+    except Exception as e:
+        logger.error(f"FinViz sync error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader, MACD Analyzer, Two-Phase Strategy, Phase 2 Manager, Chronos Exit Manager, HOD Momentum Scanner, Top Gappers Scanner, FinViz Elite)")

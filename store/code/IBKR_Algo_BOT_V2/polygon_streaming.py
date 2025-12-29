@@ -62,6 +62,8 @@ class PolygonStream:
         self.running = False
         self._thread: Optional[threading.Thread] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._recv_lock: Optional[asyncio.Lock] = None  # Lock for recv() calls
+        self._connecting = False  # Flag to prevent concurrent connections
 
         # Subscriptions
         self.trade_symbols: Set[str] = set()
@@ -169,10 +171,16 @@ class PolygonStream:
 
     async def _connect(self):
         """Connect to Polygon WebSocket"""
+        if self._connecting:
+            print("[PolygonStream] Already connecting, skipping")
+            return
+
+        self._connecting = True
         print(f"[PolygonStream] _connect() called, api_key len: {len(self.api_key)}")
         if not self.api_key:
             logger.error("Polygon API key not configured")
             print("[PolygonStream] No API key in _connect!")
+            self._connecting = False
             return
 
         try:
@@ -193,7 +201,8 @@ class PolygonStream:
             authenticated = False
             for _ in range(3):  # Check up to 3 messages for auth
                 try:
-                    response = await asyncio.wait_for(self.ws.recv(), timeout=5)
+                    async with self._recv_lock:
+                        response = await asyncio.wait_for(self.ws.recv(), timeout=5)
                     data = json.loads(response)
 
                     if isinstance(data, list):
@@ -207,6 +216,7 @@ class PolygonStream:
                                 authenticated = True
                             elif status == "auth_failed":
                                 logger.error(f"Polygon auth failed: {msg.get('message')}")
+                                self._connecting = False
                                 return
 
                     if authenticated:
@@ -224,6 +234,8 @@ class PolygonStream:
         except Exception as e:
             logger.error(f"Polygon connection error: {e}")
             self.stats['connected'] = False
+        finally:
+            self._connecting = False
 
     async def _send_subscriptions(self):
         """Send subscription messages"""
@@ -349,21 +361,20 @@ class PolygonStream:
         while self.running:
             try:
                 if not self.ws or self.ws.close_code is not None:
+                    if self._connecting:
+                        await asyncio.sleep(1)
+                        continue
                     print("[PolygonStream] WS not connected, calling _connect()")
                     await self._connect()
                     if not self.ws:
                         await asyncio.sleep(5)
                         continue
 
-                print(f"[PolygonStream] Waiting for recv()... (count so far: {msg_count})")
-                message = await asyncio.wait_for(self.ws.recv(), timeout=30)
+                # Use lock to prevent concurrent recv() calls
+                async with self._recv_lock:
+                    message = await asyncio.wait_for(self.ws.recv(), timeout=30)
                 msg_count += 1
                 data = json.loads(message)
-                print(f"[PolygonStream] Got message, total: {msg_count}")
-
-                # Debug first few messages
-                if msg_count <= 5:
-                    print(f"[PolygonStream] Received msg #{msg_count}: {str(data)[:200]}")
 
                 # Handle array of messages
                 if isinstance(data, list):
@@ -400,6 +411,7 @@ class PolygonStream:
         """Run the async event loop in a thread"""
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
+        self._recv_lock = asyncio.Lock()  # Initialize lock in the event loop
         self._loop.run_until_complete(self._message_loop())
 
     def start(self):

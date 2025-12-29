@@ -53,6 +53,12 @@ class ChronosAdapter:
         self.volatility_threshold = 1.5  # 1.5x avg = VOLATILE regime
         self.trend_adx_threshold = 25    # ADX > 25 = trending
 
+        # Observability tracking
+        self.last_inference_time: Optional[datetime] = None
+        self.symbols_tracked: set = set()
+        self.inference_count: int = 0
+        self.model_name = "amazon/chronos-t5-small"
+
         logger.info("ChronosAdapter initialized (context-only mode)")
 
     def _init_chronos(self):
@@ -122,6 +128,12 @@ class ChronosAdapter:
             context.regime_confidence = 0.0
 
         context.computed_at = datetime.now().isoformat()
+
+        # Track for observability
+        self.last_inference_time = datetime.now()
+        self.symbols_tracked.add(symbol)
+        self.inference_count += 1
+
         return context
 
     def _enhance_with_technicals(
@@ -263,6 +275,30 @@ class ChronosAdapter:
             "forecast": {
                 "prob_up": f"{context.prob_up:.1%}",
                 "expected_return": f"{context.expected_return_5d:.2%}"
+            }
+        }
+
+    def get_status(self) -> Dict[str, Any]:
+        """
+        Get Chronos service status for observability.
+
+        Returns status including:
+        - Model availability
+        - Model name
+        - Last inference time
+        - Symbols tracked
+        - Inference count
+        """
+        return {
+            "available": self.available,
+            "model_name": self.model_name if self.available else "unavailable",
+            "last_inference_time": self.last_inference_time.isoformat() if self.last_inference_time else None,
+            "symbols_tracked": len(self.symbols_tracked),
+            "symbols_list": list(self.symbols_tracked)[:20],  # Limit to 20 for display
+            "inference_count": self.inference_count,
+            "regime_thresholds": {
+                "volatility": self.volatility_threshold,
+                "trend_adx": self.trend_adx_threshold
             }
         }
 

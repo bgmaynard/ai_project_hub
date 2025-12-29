@@ -47,6 +47,14 @@ class ActivationMode(Enum):
     NORMAL = "NORMAL"               # Full trading (not implemented here)
 
 
+class GovernorHealthState(Enum):
+    """Governor system health states for dashboard display"""
+    OFFLINE = "OFFLINE"             # System not running or critical failure
+    STANDBY = "STANDBY"             # Healthy but waiting (market closed)
+    CONNECTED = "CONNECTED"         # All services connected, not yet active
+    ACTIVE = "ACTIVE"               # Fully operational and trading enabled
+
+
 class KillSwitchReason(Enum):
     """Reasons for kill-switch activation"""
     VETO_SPIKE = "VETO_SPIKE"
@@ -605,11 +613,53 @@ class SafeActivationMode:
 
             return csv_content
 
+    def get_governor_health_state(self, market_open: bool = None, services_healthy: bool = True) -> GovernorHealthState:
+        """
+        Determine current Governor health state for dashboard display.
+
+        Args:
+            market_open: Whether market is currently open (None = auto-detect)
+            services_healthy: Whether all backend services are connected
+
+        Returns:
+            GovernorHealthState enum value
+        """
+        # Auto-detect market hours if not provided
+        if market_open is None:
+            from datetime import datetime
+            now = datetime.now()
+            # Market hours: 9:30 AM - 4:00 PM ET (simplified check)
+            hour = now.hour
+            minute = now.minute
+            time_val = hour * 100 + minute
+            # Include pre-market (4:00 AM - 9:30 AM) as "market accessible"
+            market_open = 400 <= time_val <= 1600 and now.weekday() < 5
+
+        # Check states in priority order
+        if self._kill_switch_active:
+            return GovernorHealthState.OFFLINE
+
+        if not services_healthy:
+            return GovernorHealthState.OFFLINE
+
+        if not market_open:
+            # Services healthy but market closed
+            return GovernorHealthState.STANDBY
+
+        if not self.config.enabled:
+            # Market open, services healthy, but trading not enabled
+            return GovernorHealthState.CONNECTED
+
+        # All systems go
+        return GovernorHealthState.ACTIVE
+
     def get_status(self) -> Dict:
         """Get current status summary"""
+        health_state = self.get_governor_health_state()
         return {
             'activated': self.config.enabled,
             'mode': self.config.mode.value,
+            'health_state': health_state.value,
             'trading_allowed': self.is_active(),
             'kill_switch_active': self._kill_switch_active,
             'kill_switch_reason': self._kill_switch_reason.value if self._kill_switch_reason else None,

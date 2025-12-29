@@ -1,0 +1,86 @@
+================================================================================
+                     STARTUP SEQUENCE LOG
+                     Full Validation Phase
+================================================================================
+Started: 2025-12-29T18:30:22Z
+Completed: 2025-12-29T18:31:30Z
+
+STARTUP ORDER (Expected):
+  1. Market Time Service (ET reference)
+  2. Broker connectivity (Schwab)
+  3. Market data ingestion
+  4. WebSocket / streaming layer
+  5. Chronos / scheduler
+  6. Scanners (news, gap, premarket)
+  7. Strategy registry (disabled)
+  8. Gating engine
+  9. Governor / Safe Activation
+  10. UI
+
+================================================================================
+STARTUP LOG:
+================================================================================
+
+[18:30:22Z] API Server starting...
+[18:30:42Z] Server operational
+
+[1] Market Time Service (ET reference):
+    Status: OK
+    ET Time: 01:31 PM ET
+    Market: OPEN
+
+[2] Broker connectivity (Schwab):
+    Status: OK
+    Broker: schwab
+    Connected: True
+
+[3] Market data ingestion:
+    Status: OK
+    Market Data: schwab_active
+    Primary Source: schwab
+
+[4] WebSocket / streaming layer:
+    Status: OK
+    API Key Configured: True
+    Available: True
+
+[5] Chronos / scheduler:
+    Status: UP
+    Detail: Model: amazon/chronos-t5-small
+
+[6] Scanners (news, gap, premarket):
+    News Trader: DOWN (not started)
+    Premarket Scanner: UP
+    Scalper: DOWN (not started)
+
+[7] Strategy registry (disabled):
+    Policies: 0 registered
+    Auto-enable after: 24 hours
+
+[8] Gating engine:
+    Status: NOT_CONFIGURED
+    Detail: Awaiting configuration
+
+[9] Governor / Safe Activation:
+    Activated: False
+    Mode: DISABLED
+    Trading Allowed: False
+    Kill Switch: False
+
+[10] UI:
+    Status: OK
+    HTTP Code: 200
+    AI Control Center: Accessible
+
+================================================================================
+STARTUP SUMMARY:
+================================================================================
+
+System State: READY
+Reason: All systems connected, trading not enabled
+Services UP: 5/8
+Services DOWN: 2 (scanners not started - expected)
+Startup Complete: True
+
+VERDICT: PASS - All critical services initialized in correct order.
+         Trading is DISABLED (as expected after cold start).

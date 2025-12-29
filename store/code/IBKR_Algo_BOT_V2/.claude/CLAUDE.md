@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Morpheus Trading Bot - automated trading platform using **Schwab** as the primary broker (Alpaca removed). Dashboard runs at `http://localhost:9100/dashboard`.
+Morpheus Trading Bot - automated trading platform using **Schwab** as the primary broker (Alpaca removed).
+
+**Dashboards:**
+- Trading UI: `http://localhost:9100/trading-new` (primary)
+- AI Control Center: `http://localhost:9100/ai-control-center` (system oversight)
+- Legacy Dashboard: `http://localhost:9100/dashboard` (deprecated)
 
 ## Architecture
 
@@ -43,8 +48,9 @@ curl http://localhost:9100/api/status
 curl http://localhost:9100/api/news/info
 curl http://localhost:9100/api/scanner/results
 
-# Open dashboard
-start http://localhost:9100/dashboard
+# Open dashboards
+start http://localhost:9100/trading-new
+start http://localhost:9100/ai-control-center
 ```
 
 ## Key Files
@@ -57,7 +63,8 @@ start http://localhost:9100/dashboard
 | `schwab_trading.py` | Schwab API integration |
 | `schwab_market_data.py` | Schwab streaming data |
 | `compatibility_routes.py` | API route compatibility layer |
-| `ui/complete_platform.html` | Main trading dashboard |
+| `ui/trading/` | React trading dashboard (/trading-new) |
+| `ui/ai-control-center/` | React AI Control Center |
 
 ## AI Components
 
@@ -582,8 +589,9 @@ curl -X POST "http://localhost:9100/api/scanner/news-trader/start?paper_mode=tru
 # Check status
 curl http://localhost:9100/api/scanner/news-trader/status
 
-# Open dashboard
-start http://localhost:9100/dashboard
+# Open dashboards
+start http://localhost:9100/trading-new
+start http://localhost:9100/ai-control-center
 ```
 
 ## Dec 20, 2024 Session - Signal Contract & Gating Architecture
@@ -813,7 +821,7 @@ START_4AM_PREMARKET.bat
 
 # Monitor
 python monitor.py
-start http://localhost:9100/dashboard
+start http://localhost:9100/trading-new
 ```
 
 ### Current Model Accuracies
@@ -1947,9 +1955,9 @@ const fetchSystemStatus = async () => {
 
 ### Access URLs
 
-- **Trading UI**: `http://localhost:9100/trading-new`
+- **Trading UI**: `http://localhost:9100/trading-new` (primary)
 - **AI Control Center**: `http://localhost:9100/ai-control-center`
-- **Main Dashboard**: `http://localhost:9100/dashboard`
+- **Legacy Dashboard**: `http://localhost:9100/dashboard` (deprecated)
 
 ### Commits
 

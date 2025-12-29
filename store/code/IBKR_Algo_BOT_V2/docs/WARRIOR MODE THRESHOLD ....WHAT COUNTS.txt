@@ -1,0 +1,84 @@
+WARRIOR MOMENTUM DEFINITION
+==========================
+
+This defines WHEN a trade is allowed.
+If these are not met → DO NOT TRADE.
+
+--------------------------------------------------
+MOMENTUM STATES
+--------------------------------------------------
+
+IGNITION
+--------
+Setup forming, NOT tradable yet.
+
+Conditions:
+- Relative volume spike vs premarket baseline
+- Price breaks premarket high or key whole/half dollar
+- Spread acceptable (not widening)
+- Tape speed increasing
+
+IGNITION alone = NO TRADE
+
+--------------------------------------------------
+CONFIRMED (REQUIRED FOR ENTRY)
+--------------------------------------------------
+
+ALL must be TRUE:
+
+- Holds above VWAP OR clean VWAP reclaim
+- Higher highs and higher lows on micro timeframe
+- Follow-through within 30–90 seconds
+- Volume does NOT collapse after breakout
+
+CONFIRMED = ENTRY ALLOWED
+
+--------------------------------------------------
+DECAY
+--------------------------------------------------
+
+Momentum weakening.
+
+Triggers:
+- Volume fades
+- Failed VWAP reclaim
+- Lower high after breakout
+- Tape slows noticeably
+
+DECAY = EXIT OR NO ENTRY
+
+--------------------------------------------------
+DEAD
+--------------------------------------------------
+
+Momentum invalid.
+
+Triggers:
+- No follow-through
+- Liquidity dries up
+- Multiple failed attempts
+
+DEAD = FORCED EXIT OR NO_TRADE
+
+--------------------------------------------------
+TIME STOPS (NON-NEGOTIABLE)
+--------------------------------------------------
+
+- Scalps: 30–60 seconds
+- Quick momentum: 2–3 minutes max
+
+No progress = EXIT
+Even if position is green.
+
+--------------------------------------------------
+STRATEGY DISABLE RULE
+--------------------------------------------------
+
+If a strategy has:
+- 2 failed CONFIRMED trades
+  OR
+- >60% veto rate in 10–15 minutes
+
+→ Disable strategy for cooldown (15–30 minutes)
+
+END OF MOMENTUM RULES

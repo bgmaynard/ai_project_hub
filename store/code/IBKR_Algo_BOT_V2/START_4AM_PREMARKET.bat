@@ -54,7 +54,23 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [2/6] Running pre-market scanner...
+echo [2/8] Starting Polygon WebSocket stream...
+curl -s -X POST "http://localhost:9100/api/polygon/stream/start"
+echo       Waiting 3 seconds for connection...
+timeout /t 3 /nobreak > nul
+
+echo.
+echo [3/8] Subscribing core symbols to Polygon...
+REM Subscribe core symbols for data feed - SPY first to establish connection
+curl -s -X POST "http://localhost:9100/api/polygon/stream/subscribe" -H "Content-Type: application/json" -d "{\"symbol\":\"SPY\",\"data_type\":\"trades\"}"
+curl -s -X POST "http://localhost:9100/api/polygon/stream/subscribe" -H "Content-Type: application/json" -d "{\"symbol\":\"QQQ\",\"data_type\":\"trades\"}"
+curl -s -X POST "http://localhost:9100/api/polygon/stream/subscribe" -H "Content-Type: application/json" -d "{\"symbol\":\"AAPL\",\"data_type\":\"trades\"}"
+curl -s -X POST "http://localhost:9100/api/polygon/stream/subscribe" -H "Content-Type: application/json" -d "{\"symbol\":\"TSLA\",\"data_type\":\"trades\"}"
+curl -s -X POST "http://localhost:9100/api/polygon/stream/subscribe" -H "Content-Type: application/json" -d "{\"symbol\":\"NVDA\",\"data_type\":\"trades\"}"
+echo       Core symbols subscribed - OK
+
+echo.
+echo [4/9] Running pre-market scanner...
 echo       Building fresh daily watchlist...
 echo.
 
@@ -62,23 +78,47 @@ REM Run the new pre-market scanner
 python -c "import asyncio; from ai.premarket_scanner import run_4am_scan; asyncio.run(run_4am_scan())"
 
 echo.
-echo [3/6] Starting news monitor...
+echo [5/9] Running FinViz Elite scanner...
+REM Scan FinViz for additional momentum plays and add to watchlist
+python -c "import asyncio; from ai.finviz_momentum_scanner import get_finviz_scanner; scanner = get_finviz_scanner(); asyncio.run(scanner.sync_to_scalper_watchlist(min_score=15.0, max_add=5))"
+echo       FinViz scan complete
+
+echo.
+echo [6/9] Subscribing scanned symbols to Polygon...
+REM Use Python to reliably subscribe all worklist symbols to Polygon
+python -c "import requests; import json; worklist = requests.get('http://localhost:9100/api/worklist').json(); symbols = [item.get('symbol') for item in worklist if item.get('symbol')]; [requests.post('http://localhost:9100/api/polygon/stream/subscribe', json={'symbol': s, 'data_type': 'trades'}) for s in symbols[:20]]; print(f'       Subscribed {min(len(symbols), 20)} symbols to Polygon')"
+
+echo.
+echo [7/9] Starting news monitor with symbols...
+REM Start news monitor - will sync symbols from worklist
 curl -s -X POST "http://localhost:9100/api/scanner/premarket/news-monitor/start"
+REM Also start general news monitor with worklist symbols
+python -c "import requests; worklist = requests.get('http://localhost:9100/api/worklist').json(); symbols = [item.get('symbol') for item in worklist if item.get('symbol')][:15]; requests.post('http://localhost:9100/api/news/monitor/start', json={'symbols': symbols}) if symbols else None; print(f'       News monitor started with {len(symbols)} symbols')"
 
 echo.
-echo [4/6] Starting scalper (paper mode)...
+echo [8/10] Starting FinViz auto-scanner (scans every 60s, auto-adds to worklist)...
+curl -s -X POST "http://localhost:9100/api/scanner/finviz/start?interval=60&min_change=10&auto_add=true"
+echo.
+
+echo.
+echo [9/10] Starting scalper and news pipeline...
 curl -s -X POST "http://localhost:9100/api/scanner/scalper/start"
-
-echo.
-echo [5/6] Starting news pipeline...
 curl -s -X POST "http://localhost:9100/api/news-pipeline/start"
 curl -s -X POST "http://localhost:9100/api/scanner/news-trader/start?paper_mode=true"
 
 echo.
-echo [6/6] Verifying all systems...
+echo [10/10] Verifying all systems...
+echo.
+echo --- POLYGON STREAM STATUS ---
+curl -s http://localhost:9100/api/polygon/stream/status
+echo.
 echo.
 echo --- SCALPER STATUS ---
 curl -s http://localhost:9100/api/scanner/scalper/status
+echo.
+echo.
+echo --- NEWS MONITOR STATUS ---
+curl -s http://localhost:9100/api/news/info
 echo.
 echo.
 echo --- PRE-MARKET STATUS ---
@@ -105,6 +145,6 @@ echo ============================================================
 echo.
 
 REM Keep window open to see output
-echo Press any key to open dashboard...
+echo Press any key to open trading dashboard...
 pause > nul
-start http://localhost:9100/dashboard
+start http://localhost:9100/trading-new

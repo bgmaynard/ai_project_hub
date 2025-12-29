@@ -8,8 +8,9 @@
  * Optimized for instant clarity and trust.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useGovernorData } from '../../hooks/useGovernorData';
+import { apiService } from '../../services/api';
 import GlobalStatus from './GlobalStatus';
 import MarketContext from './MarketContext';
 import StrategyPolicies from './StrategyPolicies';
@@ -18,6 +19,33 @@ import SystemHealth from './SystemHealth';
 
 export const Governor: React.FC = () => {
   const { data, isLoading, error, refresh } = useGovernorData();
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [reconnectMessage, setReconnectMessage] = useState<string | null>(null);
+
+  const handleReconnect = async () => {
+    if (data.globalStatus.mode !== 'PAPER') {
+      setReconnectMessage('Reconnect only available in PAPER mode');
+      setTimeout(() => setReconnectMessage(null), 3000);
+      return;
+    }
+
+    setIsReconnecting(true);
+    setReconnectMessage(null);
+    try {
+      const response = await apiService.reconnectFeeds(true);
+      if (response.success) {
+        setReconnectMessage('Feeds reconnected successfully');
+        refresh(); // Refresh all data
+      } else {
+        setReconnectMessage(response.error || 'Reconnect failed');
+      }
+    } catch (err: any) {
+      setReconnectMessage(err.message || 'Reconnect failed');
+    } finally {
+      setIsReconnecting(false);
+      setTimeout(() => setReconnectMessage(null), 5000);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -59,6 +87,31 @@ export const Governor: React.FC = () => {
             >
               Refresh
             </button>
+
+            {/* Reconnect Button - Paper Mode Only */}
+            {data.globalStatus.mode === 'PAPER' && (
+              <button
+                onClick={handleReconnect}
+                disabled={isReconnecting}
+                className={`text-xs px-3 py-1.5 rounded border transition-colors ${
+                  isReconnecting
+                    ? 'bg-ibkr-warning/20 text-ibkr-warning border-ibkr-warning cursor-wait'
+                    : 'bg-ibkr-bg text-ibkr-text-secondary hover:text-ibkr-text border-ibkr-border hover:border-ibkr-warning'
+                }`}
+                title="Reconnect/Restart data feeds (Paper mode only)"
+              >
+                {isReconnecting ? 'Reconnecting...' : 'Reconnect Feeds'}
+              </button>
+            )}
+
+            {/* Reconnect Message */}
+            {reconnectMessage && (
+              <span className={`text-xs px-2 py-1 rounded ${
+                reconnectMessage.includes('success') ? 'bg-ibkr-success/20 text-ibkr-success' : 'bg-ibkr-error/20 text-ibkr-error'
+              }`}>
+                {reconnectMessage}
+              </span>
+            )}
 
             {/* Trading UI Link */}
             <a

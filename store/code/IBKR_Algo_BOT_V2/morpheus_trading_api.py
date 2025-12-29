@@ -3037,6 +3037,52 @@ async def start_periodic_broadcasts():
         logger.info("Started periodic risk broadcast task")
 
 
+@app.on_event("startup")
+async def run_startup_connectivity_test():
+    """
+    Run connectivity self-test at startup.
+
+    Waits 5 seconds for services to initialize, then tests:
+    1. Chronos scheduler
+    2. Market data connection
+    3. WebSocket broadcaster
+    4. Scanner jobs
+
+    Logs results and saves connectivity report.
+    """
+    async def delayed_test():
+        await asyncio.sleep(5)  # Wait for services to initialize
+
+        try:
+            from ai.connectivity_manager import get_connectivity_manager
+            manager = get_connectivity_manager()
+
+            logger.info("=" * 60)
+            logger.info("RUNNING STARTUP CONNECTIVITY SELF-TEST")
+            logger.info("=" * 60)
+
+            results = await manager.run_startup_self_test()
+
+            # Log summary
+            passed = sum(1 for t in results.get("tests", []) if t.get("passed"))
+            total = len(results.get("tests", []))
+            status = "PASSED" if results.get("all_passed") else "NEEDS ATTENTION"
+
+            logger.info(f"CONNECTIVITY SELF-TEST: {status} ({passed}/{total} services)")
+
+            # Log first tick status
+            if manager.first_tick_received:
+                logger.info(f"First tick: {manager.first_tick_symbol} at {manager.first_tick_received}")
+            else:
+                logger.info("First tick: Not yet received")
+
+        except Exception as e:
+            logger.error(f"Startup connectivity test failed: {e}")
+
+    asyncio.create_task(delayed_test())
+    logger.info("Scheduled startup connectivity self-test (5s delay)")
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -3054,5 +3100,6 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=9100,
-        log_level="info"
+        log_level="warning",  # Reduced from 'info' for faster response times
+        access_log=False      # Disable access logging - was causing 2-3s latency!
     )

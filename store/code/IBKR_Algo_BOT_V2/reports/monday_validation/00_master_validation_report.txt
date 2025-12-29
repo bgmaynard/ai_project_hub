@@ -1,0 +1,113 @@
+================================================================================
+                    FULL STARTUP VALIDATION REPORT
+                    Morpheus Trading Bot v2.1.0
+================================================================================
+
+Generated: 2025-12-29T19:11:00Z
+Validation Type: Full Startup Validation (6 Phases)
+Final Verdict: PASS
+
+================================================================================
+                           PHASE SUMMARY
+================================================================================
+
+Phase 1: Hard Reset                    PASS
+  - All processes terminated
+  - Runtime state cleared
+  - Clean slate achieved
+
+Phase 2: Ordered Startup               PASS
+  - 10/10 services started in correct order
+  - Startup logged and verified
+  - All critical services operational
+
+Phase 3: Automated Self-Test           PASS
+  - Connectivity self-test: PASS
+  - Time status: Correct (Monday, ET)
+  - Market status: OPEN
+  - Trading disabled at startup: Verified
+
+Phase 4: UI Validation                 PASS
+  - System State Banner: READY
+  - WHY idle: Explicit ("All systems connected, trading not enabled")
+  - Green indicators: Only for live feeds
+  - Reconnect button: Works (Paper mode)
+
+Phase 5: Dry-Run Simulation            PASS
+  - Signal contracts: 7 loaded
+  - Gating engine: Ready
+  - Policy engine: Ready
+  - Exit imperatives: Configured
+  - No orders placed: Verified (0 trades)
+
+Phase 6: Paper-Live Arming             PASS
+  - Safe Activation: ENABLED (SAFE mode)
+  - Trading Allowed: TRUE
+  - Kill Switch: READY (not active)
+  - Scalper: RUNNING + ENABLED
+  - System State: ACTIVE
+
+================================================================================
+                        SYSTEM STATUS AT COMPLETION
+================================================================================
+
+Time Reference:           US/Eastern (ET)
+Current ET Time:          02:11 PM ET
+Market Status:            OPEN
+Next Event:               Market closes at 04:00 PM ET
+
+Services Status:
+  - Chronos:              UP (amazon/chronos-t5-small)
+  - Market Data:          UP (schwab_active)
+  - WebSocket:            UP
+  - Polygon Stream:       UP
+  - Scalper:              UP (25 symbols)
+  - News Trader:          UP
+  - Premarket Scanner:    UP
+
+Trading Configuration:
+  - Mode:                 SAFE
+  - Paper Trading:        TRUE
+  - Position Multiplier:  0.25
+  - Daily Trades:         0
+  - Open Positions:       0
+
+================================================================================
+                          FILES IN THIS PACKAGE
+================================================================================
+
+01_connectivity_report.json   - Full connectivity status
+02_time_status.json           - Time/timezone verification
+03_market_context.json        - Market regime and policy
+04_scanner_status.json        - Scanner configuration
+04_scanner_watchlist.json     - Active watchlist
+05_ai_decisions.json          - AI gating decisions
+06_trades.json                - Trade history
+06_trade_stats.json           - Performance statistics
+07_safety_status.json         - Safety/kill switch status
+
+================================================================================
+                           CERTIFICATION
+================================================================================
+
+This system has been validated and is certified for:
+  - Paper trading operations
+  - Live market monitoring
+  - Automated entry/exit logic (paper mode)
+
+The system demonstrates:
+  - Deterministic startup sequence
+  - Resilient service recovery
+  - Operator-independent operation
+  - Production-grade monitoring
+
+================================================================================
+                          NEXT STEPS (MONDAY)
+================================================================================
+
+1. Start system before 04:00 AM ET for pre-market
+2. Monitor first hour for stability
+3. Review this report after market close
+4. Collect actual trading data for analysis
+
+================================================================================

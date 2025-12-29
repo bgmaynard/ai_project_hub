@@ -19,6 +19,16 @@ export type AIPosture =
   | 'ACTIVE'      // Normal trading operations
   | 'LOCKED';     // Kill switch engaged
 
+// System State - for clear UI display of WHY system is idle
+export type SystemState =
+  | 'ACTIVE'              // All systems go, trading enabled
+  | 'READY'               // All connected, trading disabled
+  | 'MARKET_CLOSED'       // Calendar: market not open
+  | 'DATA_OFFLINE'        // Market open but no data feed
+  | 'SERVICE_NOT_RUNNING' // Service process not started
+  | 'DISCONNECTED'        // Service started but connection lost
+  | 'PARTIAL';            // Some services up, some down
+
 export interface KillSwitchStatus {
   active: boolean;
   reason: string | null;
@@ -32,6 +42,8 @@ export interface GlobalStatus {
   aiPosture: AIPosture;
   aiPostureReason: string;  // Plain English explanation
   killSwitch: KillSwitchStatus;
+  systemState: SystemState;  // Clear indicator of WHY system is idle
+  systemStateReason: string; // Human-readable reason
 }
 
 // ============================================
@@ -156,6 +168,7 @@ export function getStatusColor(status: string): string {
     case 'FRESH':
     case 'SAFE':
     case 'ACTIVE':
+    case 'UP':
       return GOVERNOR_COLORS.success;
 
     case 'DEGRADED':
@@ -165,6 +178,8 @@ export function getStatusColor(status: string): string {
     case 'ARMED':
     case 'DEFENSIVE':
     case 'NO_ACTION':
+    case 'PARTIAL':
+    case 'MARKET_CLOSED':
       return GOVERNOR_COLORS.warning;
 
     case 'ERROR':
@@ -175,6 +190,10 @@ export function getStatusColor(status: string): string {
     case 'HALTED':
     case 'LOCKED':
     case 'NO_TRADE':
+    case 'DATA_OFFLINE':
+    case 'SERVICE_NOT_RUNNING':
+    case 'DISCONNECTED':
+    case 'DOWN':
       return GOVERNOR_COLORS.error;
 
     case 'PROCESSING':

@@ -154,6 +154,22 @@ async def get_trades(symbol: str, limit: int = 50):
     }
 
 
+@router.get("/price/{symbol}")
+async def get_fast_price(symbol: str):
+    """Ultra-fast endpoint - just latest price for chart updates"""
+    if not HAS_POLYGON_STREAM:
+        return {"p": 0}
+
+    stream = get_polygon_stream()
+    trades = stream.get_trades(symbol.upper(), 1)
+
+    if trades:
+        t = trades[-1]
+        # Minimal response for speed
+        return {"p": t.get("price", t.get("p", 0)), "t": t.get("timestamp", t.get("t", 0))}
+    return {"p": 0}
+
+
 @router.get("/quote/{symbol}")
 async def get_quote(symbol: str):
     """Get latest quote for a symbol"""

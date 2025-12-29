@@ -68,20 +68,29 @@ class ApiService {
     return this.fetch(`/worklist/${symbol}`, { method: 'DELETE' })
   }
 
-  // Scanners
+  // Scanners - pull from external sources (FinViz, Benzinga, Schwab)
   async getHODScanner() {
-    return this.fetch('/scanner/hod/alerts')
+    // Use FinViz Elite for momentum movers
+    return this.fetch('/scanner/finviz/movers')
   }
 
   async getGappersScanner() {
-    return this.fetch('/scanner/gappers/results')
+    // Use FinViz for gappers, fallback to warrior scanner
+    try {
+      const finviz = await this.fetch<any>('/scanner/finviz/gappers')
+      if (finviz.results?.length > 0) return finviz
+    } catch {}
+    // Fallback to warrior scanner setups
+    return this.fetch('/scanner/warrior/setups')
   }
 
   async getGainersScanner() {
-    return this.fetch('/market/movers?direction=up')
+    // Use FinViz top plays (movers + news enriched)
+    return this.fetch('/scanner/finviz/top-plays?limit=15')
   }
 
   async getPreMarketScanner() {
+    // Use premarket scanner with news catalysts
     return this.fetch('/scanner/premarket/watchlist')
   }
 

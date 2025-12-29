@@ -348,6 +348,7 @@ class HFTScalper:
         self.daily_pnl = 0.0
         self.daily_trades = 0
         self.last_loss_time: Optional[datetime] = None
+        self.last_scan_time: Optional[datetime] = None  # For observability
 
         # Filter stats
         self.fade_filter_rejects = 0
@@ -2076,6 +2077,20 @@ class HFTScalper:
                             if response.status_code == 200:
                                 quote = response.json()
 
+                                # Feed price to momentum tracker for Chronos/Governor
+                                try:
+                                    await client.post(
+                                        "http://localhost:9100/api/validation/momentum/price",
+                                        json={
+                                            "symbol": symbol,
+                                            "price": quote.get('price', 0),
+                                            "volume": quote.get('volume', 0)
+                                        },
+                                        timeout=1.0
+                                    )
+                                except Exception:
+                                    pass  # Non-critical, don't block on failure
+
                                 # Check for exit signals first
                                 if symbol in self.open_positions:
                                     exit_signal = await self.check_exit_signal(symbol, quote)
@@ -2090,6 +2105,9 @@ class HFTScalper:
                             logger.debug(f"Error checking {symbol}: {e}")
 
                         await asyncio.sleep(0.1)  # Small delay between symbols
+
+                # Update last scan time for observability
+                self.last_scan_time = datetime.now()
 
                 await asyncio.sleep(0.5)  # 500ms between full scans
 
@@ -2117,6 +2135,7 @@ class HFTScalper:
             "open_positions": len(self.open_positions),
             "daily_trades": self.daily_trades,
             "daily_pnl": round(self.daily_pnl, 2),
+            "last_scan_time": self.last_scan_time.isoformat() if self.last_scan_time else None,
             "risk_management": {
                 "account_size": self.config.account_size,
                 "risk_percent": self.config.risk_percent,

@@ -3,6 +3,20 @@ import { create } from 'zustand'
 // BroadcastChannel for cross-window sync
 const channel = typeof window !== 'undefined' ? new BroadcastChannel('morpheus_trading') : null
 
+// Auto-subscribe to Polygon when symbol changes
+async function subscribeToPolygon(symbol: string) {
+  try {
+    await fetch('/api/polygon/stream/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, data_type: 'trades' })
+    })
+    console.log(`[SymbolStore] Subscribed ${symbol} to Polygon`)
+  } catch (err) {
+    console.warn(`[SymbolStore] Failed to subscribe ${symbol} to Polygon:`, err)
+  }
+}
+
 interface SymbolState {
   activeSymbol: string
   symbolHistory: string[]
@@ -13,7 +27,7 @@ interface SymbolState {
 }
 
 export const useSymbolStore = create<SymbolState>((set, get) => ({
-  activeSymbol: 'TSLA',
+  activeSymbol: '',  // Start empty, let user select
   symbolHistory: [],
   newsFilterSymbol: null,
 
@@ -21,6 +35,9 @@ export const useSymbolStore = create<SymbolState>((set, get) => ({
     const upperSymbol = symbol.toUpperCase()
     set({ activeSymbol: upperSymbol })
     get().addToHistory(upperSymbol)
+
+    // Auto-subscribe to Polygon for real-time T/S data
+    subscribeToPolygon(upperSymbol)
 
     // Broadcast to other windows
     channel?.postMessage({ type: 'SYMBOL_CHANGE', symbol: upperSymbol })

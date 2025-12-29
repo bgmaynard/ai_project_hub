@@ -1,7 +1,8 @@
 /**
  * GlobalStatus Component
  *
- * Displays trading mode, window, AI state, and kill switch status.
+ * Displays trading mode, window, AI state, system state, and kill switch status.
+ * Clearly shows WHY the system is idle (no ambiguity).
  */
 
 import React from 'react';
@@ -19,8 +20,37 @@ const POSTURE_LABELS: Record<string, string> = {
   LOCKED: 'LOCKED (KILL SWITCH)',
 };
 
+const SYSTEM_STATE_LABELS: Record<string, string> = {
+  ACTIVE: 'ACTIVE - Trading Enabled',
+  READY: 'READY - Enable Trading to Activate',
+  MARKET_CLOSED: 'MARKET CLOSED - Calendar',
+  DATA_OFFLINE: 'DATA OFFLINE - Market Open',
+  SERVICE_NOT_RUNNING: 'SERVICE NOT RUNNING',
+  DISCONNECTED: 'DISCONNECTED - Connection Lost',
+  PARTIAL: 'PARTIAL - Some Services Down',
+};
+
+const SYSTEM_STATE_ICONS: Record<string, string> = {
+  ACTIVE: '🟢',
+  READY: '🟡',
+  MARKET_CLOSED: '⏸️',
+  DATA_OFFLINE: '🔴',
+  SERVICE_NOT_RUNNING: '⚫',
+  DISCONNECTED: '🔴',
+  PARTIAL: '🟠',
+};
+
 export const GlobalStatus: React.FC<Props> = ({ status }) => {
-  const { mode, tradingWindow, windowTime, aiPosture, aiPostureReason, killSwitch } = status;
+  const {
+    mode,
+    tradingWindow,
+    windowTime,
+    aiPosture,
+    aiPostureReason,
+    killSwitch,
+    systemState,
+    systemStateReason
+  } = status;
 
   return (
     <div className="bg-ibkr-surface rounded-lg border border-ibkr-border p-4">
@@ -29,6 +59,27 @@ export const GlobalStatus: React.FC<Props> = ({ status }) => {
       </h2>
 
       <div className="space-y-3">
+        {/* System State Banner - Most Important */}
+        <div
+          className="p-3 rounded border text-center mb-4"
+          style={{
+            backgroundColor: getStatusColor(systemState || 'READY') + '22',
+            borderColor: getStatusColor(systemState || 'READY'),
+          }}
+        >
+          <div
+            className="text-lg font-bold"
+            style={{ color: getStatusColor(systemState || 'READY') }}
+          >
+            {SYSTEM_STATE_ICONS[systemState] || '⚪'} {SYSTEM_STATE_LABELS[systemState] || systemState}
+          </div>
+          {systemStateReason && (
+            <div className="text-xs mt-1 text-ibkr-text-secondary">
+              {systemStateReason}
+            </div>
+          )}
+        </div>
+
         {/* Mode */}
         <div className="flex justify-between items-center">
           <span className="text-sm text-ibkr-text-secondary">Mode</span>
@@ -51,7 +102,7 @@ export const GlobalStatus: React.FC<Props> = ({ status }) => {
               className="text-sm font-semibold"
               style={{ color: getStatusColor(tradingWindow === 'OPEN' ? 'HEALTHY' : 'WARNING') }}
             >
-              {tradingWindow.replace('_', ' ')}
+              {tradingWindow?.replace('_', ' ') || 'UNKNOWN'}
             </span>
             <div className="text-xs text-ibkr-text-secondary">{windowTime}</div>
           </div>
@@ -79,22 +130,22 @@ export const GlobalStatus: React.FC<Props> = ({ status }) => {
         <div
           className="mt-4 p-3 rounded border text-center"
           style={{
-            backgroundColor: killSwitch.active ? '#f4877122' : '#4ec9b022',
-            borderColor: killSwitch.active ? GOVERNOR_COLORS.error : GOVERNOR_COLORS.success,
+            backgroundColor: killSwitch?.active ? '#f4877122' : '#4ec9b022',
+            borderColor: killSwitch?.active ? GOVERNOR_COLORS.error : GOVERNOR_COLORS.success,
           }}
         >
           <div
             className="text-sm font-bold uppercase"
-            style={{ color: killSwitch.active ? GOVERNOR_COLORS.error : GOVERNOR_COLORS.success }}
+            style={{ color: killSwitch?.active ? GOVERNOR_COLORS.error : GOVERNOR_COLORS.success }}
           >
-            Kill Switch: {killSwitch.active ? 'ACTIVE' : 'OFF'}
+            Kill Switch: {killSwitch?.active ? 'ACTIVE' : 'OFF'}
           </div>
-          {killSwitch.active && killSwitch.reason && (
+          {killSwitch?.active && killSwitch?.reason && (
             <div className="text-xs mt-1" style={{ color: GOVERNOR_COLORS.error }}>
               {killSwitch.reason}
             </div>
           )}
-          {killSwitch.cooldownSeconds > 0 && (
+          {killSwitch?.cooldownSeconds > 0 && (
             <div className="text-xs mt-1 text-ibkr-text-secondary">
               Cooldown: {Math.floor(killSwitch.cooldownSeconds / 60)}:{String(Math.floor(killSwitch.cooldownSeconds % 60)).padStart(2, '0')}
             </div>

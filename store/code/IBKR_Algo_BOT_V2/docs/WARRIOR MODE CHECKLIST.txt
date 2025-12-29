@@ -1,0 +1,64 @@
+WARRIOR MODE – TRADING CONFIGURATION
+===================================
+
+TRADING WINDOW
+--------------
+ACTIVE TRADING HOURS:
+- START: 07:00 AM ET
+- END:   09:30 AM ET
+
+Outside this window:
+- Strategy Policy Engine forces NO_TRADE
+- No new entries allowed
+- Exit management only
+
+--------------------------------------------------
+RISK & SIZE SETTINGS
+--------------------------------------------------
+
+MODE: REDUCED RISK (DEFAULT)
+
+- Position size multiplier: 0.25 – 0.50
+- Max active strategies: 1
+- Max symbols traded concurrently: 1–2
+- Daily loss limit: STRICT (no override)
+
+--------------------------------------------------
+PREMARKET RULES (7:00–9:15 AM ET)
+--------------------------------------------------
+
+- Higher confidence required
+- Smaller position size
+- Avoid thin liquidity symbols
+- Prefer:
+  - News catalysts
+  - Gappers
+  - Recent halts
+- No chasing without volume confirmation
+
+--------------------------------------------------
+OPEN TRANSITION (9:15–9:30 AM ET)
+--------------------------------------------------
+
+- Reduce activity
+- Avoid first-minute opening spikes
+- Let spreads normalize
+- No new aggressive entries after 9:25
+
+--------------------------------------------------
+AFTER 9:30 AM ET
+--------------------------------------------------
+
+- NO NEW ENTRIES
+- Manage exits only
+- System transitions to IDLE state
+
+--------------------------------------------------
+FAIL-SAFE RULES
+--------------------------------------------------
+
+- On error → NO_TRADE
+- On missing data → NO_TRADE
+- On policy uncertainty → NO_TRADE
+
+END OF CONFIG
