@@ -32,6 +32,66 @@ logger = logging.getLogger(__name__)
 # Eastern timezone for market hours
 ET = ZoneInfo('America/New_York')
 
+# Entry window log file for validation
+ENTRY_WINDOW_LOG_PATH = Path("reports/entry_window_log.json")
+
+
+def _log_entry_window(symbol: str, data: Dict) -> None:
+    """
+    Log ENTRY_WINDOW events for morning validation.
+
+    This captures every time a symbol reaches ENTRY_WINDOW state
+    so you can review actual market behavior vs expected.
+    """
+    try:
+        ENTRY_WINDOW_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+        # Load existing log
+        events = []
+        if ENTRY_WINDOW_LOG_PATH.exists():
+            with open(ENTRY_WINDOW_LOG_PATH, 'r') as f:
+                log_data = json.load(f)
+                events = log_data.get("events", [])
+
+        # Add new event
+        et_now = datetime.now(timezone.utc).astimezone(ET)
+        event = {
+            "timestamp": et_now.isoformat(),
+            "time_et": et_now.strftime("%H:%M:%S"),
+            "symbol": symbol,
+            **data
+        }
+        events.append(event)
+
+        # Keep last 200 events
+        if len(events) > 200:
+            events = events[-200:]
+
+        # Count by symbol
+        symbol_counts = {}
+        for e in events:
+            s = e.get("symbol", "?")
+            symbol_counts[s] = symbol_counts.get(s, 0) + 1
+
+        # Save
+        with open(ENTRY_WINDOW_LOG_PATH, 'w') as f:
+            json.dump({
+                "last_updated": et_now.isoformat(),
+                "total_events": len(events),
+                "symbol_counts": symbol_counts,
+                "events": events
+            }, f, indent=2)
+
+        logger.warning(
+            f"[ENTRY_WINDOW] {symbol} logged | "
+            f"price=${data.get('price', 0):.2f} | "
+            f"hod=${data.get('hod_price', 0):.2f} | "
+            f"pullback={data.get('pullback_pct', 0):.1f}%"
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to log entry window: {e}")
+
 
 def get_rel_vol_floor(now: Optional[datetime] = None) -> float:
     """
@@ -84,6 +144,20 @@ class ExclusionReason(Enum):
     MANUAL_EXCLUSION = "MANUAL_EXCLUSION"
 
 
+class PullbackState(Enum):
+    """
+    Warrior Trading First Pullback State Machine.
+
+    Tracks setup readiness for Ross Cameron's first pullback strategy.
+    Does NOT place trades - only classifies current state.
+    """
+    NONE = "NONE"                    # No setup detected
+    EXPANSION = "EXPANSION"          # At HOD with volume - momentum confirmed
+    FIRST_PULLBACK = "FIRST_PULLBACK"  # Healthy pullback in progress (2-6%)
+    ENTRY_WINDOW = "ENTRY_WINDOW"    # Pullback stabilizing/reclaiming - ready for entry
+    INVALIDATED = "INVALIDATED"      # Setup failed (deep pullback or vol died)
+
+
 @dataclass
 class RankedSymbol:
     """A symbol with its current metrics and rank"""
@@ -119,6 +193,12 @@ class RankedSymbol:
     # Data quality
     has_valid_rel_vol: bool = False
     has_valid_price: bool = False
+
+    # === Warrior Trading First Pullback State Machine ===
+    pullback_state: PullbackState = PullbackState.NONE
+    pullback_start_hod: Optional[float] = None  # HOD when expansion started
+    pullback_pct: float = 0.0                   # Current pullback depth
+    pullback_confirmed: bool = False            # True when ENTRY_WINDOW reached
 
     def compute_dominance_score(self) -> float:
         """
@@ -187,7 +267,12 @@ class RankedSymbol:
             "last_evaluated": self.last_evaluated.isoformat() if self.last_evaluated else None,
             "session_date": self.session_date.isoformat() if self.session_date else None,
             "has_valid_rel_vol": self.has_valid_rel_vol,
-            "has_valid_price": self.has_valid_price
+            "has_valid_price": self.has_valid_price,
+            # Warrior Trading First Pullback
+            "pullback_state": self.pullback_state.value,
+            "pullback_start_hod": self.pullback_start_hod,
+            "pullback_pct": self.pullback_pct,
+            "pullback_confirmed": self.pullback_confirmed
         }
 
 
@@ -417,6 +502,10 @@ class MomentumWatchlist:
         self._all_candidates = {s.symbol: s for s in evaluated}
         self._last_recompute = now
 
+        # === WARRIOR TRADING: Update pullback state for all active symbols ===
+        for sym in active:
+            self._update_pullback_state(sym)
+
         # Get current rel_vol floor for reporting
         current_rel_vol_floor = self.config.get_current_rel_vol_floor()
 
@@ -516,6 +605,102 @@ class MomentumWatchlist:
                 summary[reason] = 0
             summary[reason] += 1
         return summary
+
+    # =========================================================================
+    # WARRIOR TRADING FIRST PULLBACK STATE MACHINE
+    # =========================================================================
+
+    def _update_pullback_state(self, sym: RankedSymbol) -> None:
+        """
+        Warrior Trading First Pullback state machine.
+
+        Based on Ross Cameron's strategy:
+        1. EXPANSION: Stock making new HOD with strong volume
+        2. FIRST_PULLBACK: Healthy 2-6% pullback from HOD
+        3. ENTRY_WINDOW: Price stabilizing/reclaiming - ready for entry
+        4. INVALIDATED: Deep pullback (>8%) or volume died
+
+        This does NOT place trades.
+        It only classifies setup readiness.
+        """
+        # Get current rel_vol floor
+        rel_vol_floor = self.config.get_current_rel_vol_floor()
+
+        # === INVALIDATION (highest priority) ===
+        if sym.rel_vol_daily is None or sym.rel_vol_daily < rel_vol_floor:
+            if sym.pullback_state != PullbackState.NONE:
+                logger.debug(
+                    f"[PULLBACK] {sym.symbol} INVALIDATED: "
+                    f"rel_vol={sym.rel_vol_daily} < floor={rel_vol_floor}"
+                )
+            sym.pullback_state = PullbackState.INVALIDATED
+            return
+
+        # === EXPANSION: At HOD with volume ===
+        if sym.at_hod and sym.rel_vol_daily >= rel_vol_floor:
+            if sym.pullback_state != PullbackState.EXPANSION:
+                logger.info(
+                    f"[PULLBACK] {sym.symbol} EXPANSION: "
+                    f"at HOD ${sym.hod_price:.2f}, rel_vol={sym.rel_vol_daily:.2f}"
+                )
+            sym.pullback_state = PullbackState.EXPANSION
+            sym.pullback_start_hod = sym.hod_price
+            sym.pullback_confirmed = False
+            sym.pullback_pct = 0.0
+            return
+
+        # === FIRST PULLBACK DETECTION: 2-6% from HOD ===
+        if sym.pullback_state == PullbackState.EXPANSION:
+            if -6.0 <= sym.pct_from_hod <= -2.0:
+                sym.pullback_state = PullbackState.FIRST_PULLBACK
+                sym.pullback_pct = abs(sym.pct_from_hod)
+                logger.info(
+                    f"[PULLBACK] {sym.symbol} FIRST_PULLBACK: "
+                    f"pct_from_hod={sym.pct_from_hod:.2f}%, watching for reclaim"
+                )
+                return
+
+        # === ENTRY WINDOW: Pullback stabilizing or reclaiming ===
+        if sym.pullback_state == PullbackState.FIRST_PULLBACK:
+            # Price stabilizing or reclaiming (within 2% of HOD)
+            if sym.pct_from_hod > -2.0:
+                sym.pullback_state = PullbackState.ENTRY_WINDOW
+                sym.pullback_confirmed = True
+
+                # === LOG FOR VALIDATION ===
+                _log_entry_window(sym.symbol, {
+                    "price": sym.price,
+                    "hod_price": sym.hod_price,
+                    "pullback_start_hod": sym.pullback_start_hod,
+                    "pullback_pct": sym.pullback_pct,
+                    "pct_from_hod": sym.pct_from_hod,
+                    "rel_vol": sym.rel_vol_daily,
+                    "gap_pct": sym.gap_pct,
+                    "dominance_score": sym.dominance_score,
+                    "rank": sym.rank
+                })
+                return
+
+            # Deep pullback = invalidated (>8%)
+            if sym.pct_from_hod < -8.0:
+                sym.pullback_state = PullbackState.INVALIDATED
+                logger.info(
+                    f"[PULLBACK] {sym.symbol} INVALIDATED: "
+                    f"deep pullback {sym.pct_from_hod:.2f}% > 8%"
+                )
+                return
+
+            # Still in pullback, update depth
+            sym.pullback_pct = abs(sym.pct_from_hod)
+
+        # Log state for debugging
+        if sym.pullback_state not in (PullbackState.NONE, PullbackState.INVALIDATED):
+            logger.debug(
+                f"[PULLBACK] {sym.symbol} | "
+                f"state={sym.pullback_state.value} | "
+                f"pct_from_hod={sym.pct_from_hod:.2f} | "
+                f"rel_vol={sym.rel_vol_daily:.2f}"
+            )
 
     def get_active_watchlist(self) -> List[Dict]:
         """Get current active watchlist with full transparency"""

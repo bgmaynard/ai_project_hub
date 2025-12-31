@@ -429,3 +429,65 @@ async def get_exclusion_summary():
             status_code=500,
             detail=f"Failed to read exclusions: {e}"
         )
+
+
+@router.get("/entry-windows")
+async def get_entry_window_log(limit: int = 50):
+    """
+    Get ENTRY_WINDOW events log for validation.
+
+    This shows every time a symbol reached the ENTRY_WINDOW state
+    (first pullback reclaim). Use this to validate the state machine
+    against actual market behavior.
+
+    Returns:
+        - Total events
+        - Symbol counts
+        - Recent events (most recent first)
+    """
+    log_path = Path("reports/entry_window_log.json")
+
+    if not log_path.exists():
+        return {
+            "message": "No entry window events yet",
+            "total_events": 0,
+            "events": []
+        }
+
+    try:
+        with open(log_path, 'r') as f:
+            log_data = json.load(f)
+
+        events = log_data.get("events", [])
+        # Return most recent first
+        events_reversed = list(reversed(events))[:limit]
+
+        return {
+            "last_updated": log_data.get("last_updated"),
+            "total_events": log_data.get("total_events", 0),
+            "symbol_counts": log_data.get("symbol_counts", {}),
+            "events": events_reversed
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read entry window log: {e}"
+        )
+
+
+@router.delete("/entry-windows")
+async def clear_entry_window_log():
+    """
+    Clear the entry window log.
+    Use at start of session for clean validation.
+    """
+    log_path = Path("reports/entry_window_log.json")
+
+    if log_path.exists():
+        log_path.unlink()
+
+    return {
+        "status": "success",
+        "message": "Entry window log cleared"
+    }
