@@ -64,6 +64,7 @@ class PolygonStream:
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._recv_lock: Optional[asyncio.Lock] = None  # Lock for recv() calls
         self._connecting = False  # Flag to prevent concurrent connections
+        self._start_lock = threading.Lock()  # Thread-safe lock for start/stop
 
         # Subscriptions
         self.trade_symbols: Set[str] = set()
@@ -415,33 +416,60 @@ class PolygonStream:
         self._loop.run_until_complete(self._message_loop())
 
     def start(self):
-        """Start the streaming connection"""
-        if self.running:
-            logger.warning("PolygonStream already running")
-            print("[PolygonStream] Already running")
-            return
+        """Start the streaming connection (thread-safe)"""
+        with self._start_lock:
+            # Check both running flag AND if thread is alive
+            if self.running and self._thread and self._thread.is_alive():
+                logger.warning("PolygonStream already running (thread alive)")
+                print("[PolygonStream] Already running - thread is alive")
+                return
 
-        if not self.api_key:
-            logger.error("Cannot start - Polygon API key not configured")
-            print(f"[PolygonStream] No API key! Key length: {len(self.api_key)}")
-            return
+            # If running flag is True but thread is dead, clean up first
+            if self.running and (not self._thread or not self._thread.is_alive()):
+                logger.warning("PolygonStream was marked running but thread died - cleaning up")
+                print("[PolygonStream] Cleaning up dead thread before restart")
+                self.running = False
+                self._thread = None
+                self._loop = None
 
-        print(f"[PolygonStream] Starting with API key: {self.api_key[:5]}...")
-        self.running = True
-        self._thread = threading.Thread(target=self._run_loop, daemon=True)
-        self._thread.start()
-        logger.info("PolygonStream started")
-        print("[PolygonStream] Thread started")
+            if not self.api_key:
+                logger.error("Cannot start - Polygon API key not configured")
+                print(f"[PolygonStream] No API key! Key length: {len(self.api_key) if self.api_key else 0}")
+                return
+
+            print(f"[PolygonStream] Starting with API key: {self.api_key[:5]}...")
+            self.running = True
+            self._thread = threading.Thread(target=self._run_loop, daemon=True, name="PolygonStreamThread")
+            self._thread.start()
+            logger.info("PolygonStream started (thread ID: %s)", self._thread.ident)
+            print(f"[PolygonStream] Thread started (ID: {self._thread.ident})")
 
     def stop(self):
-        """Stop the streaming connection"""
-        self.running = False
-        if self._loop:
-            self._loop.call_soon_threadsafe(self._loop.stop)
-        if self._thread:
-            self._thread.join(timeout=2)
-        self.stats['connected'] = False
-        logger.info("PolygonStream stopped")
+        """Stop the streaming connection (thread-safe)"""
+        with self._start_lock:
+            logger.info("PolygonStream stopping...")
+            print("[PolygonStream] Stopping...")
+            self.running = False
+
+            if self._loop:
+                try:
+                    self._loop.call_soon_threadsafe(self._loop.stop)
+                except Exception as e:
+                    logger.warning(f"Error stopping event loop: {e}")
+
+            if self._thread and self._thread.is_alive():
+                self._thread.join(timeout=3)
+                if self._thread.is_alive():
+                    logger.warning("Thread did not stop cleanly within timeout")
+                    print("[PolygonStream] Warning: Thread did not stop cleanly")
+                else:
+                    print("[PolygonStream] Thread stopped cleanly")
+
+            self._thread = None
+            self._loop = None
+            self.stats['connected'] = False
+            logger.info("PolygonStream stopped")
+            print("[PolygonStream] Stopped")
 
     def get_trades(self, symbol: str, limit: int = 50) -> List[dict]:
         """Get recent trades for symbol"""
@@ -547,10 +575,33 @@ class PolygonStream:
             logger.debug(f"Error building minute bars for {symbol}: {e}")
             return None
 
+    def restart(self):
+        """Restart the streaming connection cleanly"""
+        logger.info("PolygonStream restarting...")
+        print("[PolygonStream] Restarting...")
+        self.stop()
+        import time
+        time.sleep(1)  # Brief pause between stop and start
+        self.start()
+        logger.info("PolygonStream restart complete")
+        print("[PolygonStream] Restart complete")
+
+    def is_healthy(self) -> bool:
+        """Check if the stream is healthy (connected and thread alive)"""
+        thread_alive = self._thread is not None and self._thread.is_alive()
+        return self.running and thread_alive and self.stats['connected']
+
     def get_status(self) -> dict:
-        """Get stream status"""
+        """Get stream status with thread health info"""
+        thread_alive = self._thread is not None and self._thread.is_alive()
+        thread_id = self._thread.ident if self._thread else None
+
         return {
             "connected": self.stats['connected'],
+            "running": self.running,
+            "thread_alive": thread_alive,
+            "thread_id": thread_id,
+            "healthy": self.is_healthy(),
             "api_key_configured": bool(self.api_key),
             "trade_subscriptions": list(self.trade_symbols),
             "quote_subscriptions": list(self.quote_symbols),

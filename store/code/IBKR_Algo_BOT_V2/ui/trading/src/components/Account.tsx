@@ -1,10 +1,37 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { usePortfolioStore } from '../stores/portfolioStore'
 import api from '../services/api'
 
+interface AccountInfo {
+  accountNumber: string
+  accountType: string
+  selected?: boolean
+}
+
 export default function Account() {
   const { account, setAccount, positions } = usePortfolioStore()
+  const [accounts, setAccounts] = useState<AccountInfo[]>([])
+  const [isChanging, setIsChanging] = useState(false)
 
+  // Fetch list of all accounts
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const data = await api.getAccounts()
+        if (data.accounts) {
+          setAccounts(data.accounts)
+        }
+      } catch (err) {
+        console.error('Failed to load accounts list:', err)
+      }
+    }
+    fetchAccounts()
+    // Refresh accounts list every 30s
+    const interval = setInterval(fetchAccounts, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Fetch current account details
   useEffect(() => {
     const fetchAccount = async () => {
       try {
@@ -36,6 +63,41 @@ export default function Account() {
     return () => clearInterval(interval)
   }, [setAccount])
 
+  const handleAccountChange = async (accountNumber: string) => {
+    if (accountNumber === account?.accountId) return
+    setIsChanging(true)
+    try {
+      const result = await api.selectAccount(accountNumber)
+      if (result.success) {
+        // Refresh account data after switch
+        const data = await api.getAccount() as any
+        const s = data?.summary || {}
+        const d = data || {}
+        setAccount({
+          accountId: s.account_id || d.account_number || d.accountNumber || '',
+          accountType: s.account_type || d.type || d.accountType || 'Unknown',
+          netLiquidation: s.net_liquidation || d.market_value || d.equity || d.netLiquidation || 0,
+          buyingPower: s.buying_power || d.buying_power || d.buyingPower || 0,
+          cashBalance: s.total_cash || d.cash || d.totalCash || 0,
+          settledCash: d.cash_available_for_trading || d.cashAvailableForTrading ||
+                       s.settled_cash || d.available_funds || s.total_cash || d.cash || 0,
+          marginUsed: d.margin_balance || s.maintenance_margin ||
+                      ((s.net_liquidation || d.market_value || 0) - (s.total_cash || d.cash || 0)),
+          dayPnl: d.daily_pl || d.dailyPnL || s.daily_pnl || 0,
+          totalPnl: d.unrealized_pnl || d.unrealizedPnL || s.unrealized_pnl || 0,
+        })
+        // Refresh accounts list to update selected state
+        const accountsData = await api.getAccounts()
+        if (accountsData.accounts) {
+          setAccounts(accountsData.accounts)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to switch account:', err)
+    }
+    setIsChanging(false)
+  }
+
   const formatCurrency = (value: number | undefined) =>
     `$${(value ?? 0).toLocaleString('en-US', {
       minimumFractionDigits: 2,
@@ -60,11 +122,28 @@ export default function Account() {
         <span className="font-bold text-sterling-text text-xxs">ACCOUNT</span>
         <div className="flex items-center gap-2">
           <span className={`text-xxs font-bold px-1 rounded ${isMarginAccount ? 'bg-[#1e3a5f] text-accent-primary' : 'bg-[#134e4a] text-up'}`}>
-            {isMarginAccount ? 'MARGIN' : 'CASH'}
+            {isMarginAccount ? 'MARGIN' : accountType.includes('IRA') ? 'IRA' : 'CASH'}
           </span>
-          <span className="text-sterling-muted text-xxs">
-            {account?.accountId ?? '--'}
-          </span>
+          {/* Account Selector Dropdown */}
+          {accounts.length > 1 ? (
+            <select
+              value={account?.accountId || ''}
+              onChange={(e) => handleAccountChange(e.target.value)}
+              disabled={isChanging}
+              className="bg-sterling-bg text-sterling-text text-xxs px-1 py-0.5 rounded border border-sterling-border cursor-pointer hover:bg-sterling-highlight disabled:opacity-50"
+              title="Switch Account"
+            >
+              {accounts.map((acc) => (
+                <option key={acc.accountNumber} value={acc.accountNumber}>
+                  {acc.accountNumber.slice(-4)} ({acc.accountType})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-sterling-muted text-xxs">
+              {account?.accountId ? `...${account.accountId.slice(-4)}` : '--'}
+            </span>
+          )}
         </div>
       </div>
 

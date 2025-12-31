@@ -86,6 +86,38 @@ function getDataFreshness(ageSeconds: number): DataFreshness {
 }
 
 // ============================================
+// Fetch with Timeout Helper
+// ============================================
+
+const FETCH_TIMEOUT = 3000; // 3 second timeout for faster feedback
+
+// Cache last successful responses to show during failures
+const responseCache: Record<string, any> = {};
+
+async function fetchWithTimeout(url: string, timeout: number = FETCH_TIMEOUT): Promise<Response | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    // Only log timeouts, not expected aborts
+    if (error instanceof Error && error.name !== 'AbortError') {
+      console.warn(`Fetch error for ${url}:`, error);
+    }
+    return null;
+  }
+}
+
+// Helper to get cached data or default
+function getCachedOrDefault<T>(key: string, defaultValue: T): T {
+  return responseCache[key] || defaultValue;
+}
+
+// ============================================
 // API Fetchers
 // ============================================
 
@@ -126,14 +158,20 @@ function deriveAIPosture(
 async function fetchGlobalStatus(): Promise<GlobalStatus> {
   try {
     const [safeRes, scalpRes, connectivityRes] = await Promise.all([
-      fetch('/api/validation/safe/status').catch(() => null),
-      fetch('/api/scalp/status').catch(() => null),
-      fetch('/api/validation/connectivity/status').catch(() => null),
+      fetchWithTimeout('/api/validation/safe/status'),
+      fetchWithTimeout('/api/scalp/status'),
+      fetchWithTimeout('/api/validation/connectivity/status'),
     ]);
 
-    const safeData = safeRes?.ok ? await safeRes.json() : {};
-    const scalpData = scalpRes?.ok ? await scalpRes.json() : {};
-    const connectivityData = connectivityRes?.ok ? await connectivityRes.json() : {};
+    // Use cached data if individual requests fail (partial failure resilience)
+    const safeData = safeRes?.ok ? await safeRes.json() : (responseCache['safe'] || {});
+    const scalpData = scalpRes?.ok ? await scalpRes.json() : (responseCache['scalp'] || {});
+    const connectivityData = connectivityRes?.ok ? await connectivityRes.json() : (responseCache['connectivity'] || {});
+
+    // Cache successful responses
+    if (safeRes?.ok) responseCache['safe'] = safeData;
+    if (scalpRes?.ok) responseCache['scalp'] = scalpData;
+    if (connectivityRes?.ok) responseCache['connectivity'] = connectivityData;
 
     const { window: tradingWindow, time: windowTime } = getTradingWindow();
     const killSwitchActive = safeData.kill_switch_active || false;
@@ -151,10 +189,16 @@ async function fetchGlobalStatus(): Promise<GlobalStatus> {
     let systemState: SystemState = connectivityData.system_state || 'READY';
     let systemStateReason = connectivityData.system_state_reason || 'System ready';
 
-    // Override system state if we have more specific info
-    if (!connectivityRes?.ok) {
+    // Count successful responses - only show SERVICE_NOT_RUNNING if ALL fail
+    const successCount = [safeRes?.ok, scalpRes?.ok, connectivityRes?.ok].filter(Boolean).length;
+
+    if (successCount === 0) {
       systemState = 'SERVICE_NOT_RUNNING';
       systemStateReason = 'Cannot connect to API';
+    } else if (successCount < 3) {
+      // Partial failure - show degraded but not down
+      systemState = 'PARTIAL';
+      systemStateReason = `${successCount}/3 services responding`;
     } else if (isRunning && tradingWindow === 'OPEN') {
       systemState = 'ACTIVE';
       systemStateReason = 'All systems go, trading enabled';
@@ -175,7 +219,25 @@ async function fetchGlobalStatus(): Promise<GlobalStatus> {
       systemStateReason,
     };
   } catch {
+    // Total failure - try to use cached data
     const { window: tradingWindow, time: windowTime } = getTradingWindow();
+    const cachedConnectivity = responseCache['connectivity'];
+
+    if (cachedConnectivity) {
+      // We have cached data - show partial/degraded instead of down
+      const { posture, reason } = deriveAIPosture(tradingWindow, false, responseCache['scalp']?.running || false);
+      return {
+        ...DEFAULT_GLOBAL_STATUS,
+        tradingWindow,
+        windowTime,
+        aiPosture: posture,
+        aiPostureReason: reason,
+        systemState: 'PARTIAL',
+        systemStateReason: 'Using cached data - reconnecting...',
+      };
+    }
+
+    // No cache - show service not running
     const { posture, reason } = deriveAIPosture(tradingWindow, false, false);
     return {
       ...DEFAULT_GLOBAL_STATUS,
@@ -222,14 +284,20 @@ function generateAIInterpretation(
 async function fetchMarketContext(): Promise<MarketContext> {
   try {
     const [momentumRes, policyRes, polygonRes] = await Promise.all([
-      fetch('/api/validation/momentum/states').catch(() => null),
-      fetch('/api/strategy/policy').catch(() => null),
-      fetch('/api/polygon/stream/status').catch(() => null),
+      fetchWithTimeout('/api/validation/momentum/states'),
+      fetchWithTimeout('/api/strategy/policy'),
+      fetchWithTimeout('/api/polygon/stream/status'),
     ]);
 
-    const momentumData = momentumRes?.ok ? await momentumRes.json() : {};
-    const policyData = policyRes?.ok ? await policyRes.json() : {};
-    const polygonData = polygonRes?.ok ? await polygonRes.json() : {};
+    // Use cached data on partial failures
+    const momentumData = momentumRes?.ok ? await momentumRes.json() : (responseCache['momentum'] || {});
+    const policyData = policyRes?.ok ? await policyRes.json() : (responseCache['policy'] || {});
+    const polygonData = polygonRes?.ok ? await polygonRes.json() : (responseCache['polygon'] || {});
+
+    // Cache successful responses
+    if (momentumRes?.ok) responseCache['momentum'] = momentumData;
+    if (policyRes?.ok) responseCache['policy'] = policyData;
+    if (polygonRes?.ok) responseCache['polygon'] = polygonData;
 
     // Extract regime info from policy or safe_activation data
     const regime = (policyData.overall_regime || 'RANGING').toUpperCase().replace(' ', '_');
@@ -240,8 +308,13 @@ async function fetchMarketContext(): Promise<MarketContext> {
 
     // Calculate data age from Polygon stream's last_message (most reliable)
     let dataAge = 999;
+    let dataFreshnessNote = '';
     if (polygonData.last_message) {
       dataAge = Math.round((Date.now() - new Date(polygonData.last_message).getTime()) / 1000);
+      // If using cached polygon data and age > 60s, note it
+      if (!polygonRes?.ok && dataAge > 60) {
+        dataFreshnessNote = ' (cached)';
+      }
     } else if (policyData.last_updated) {
       dataAge = Math.round((Date.now() - new Date(policyData.last_updated).getTime()) / 1000);
     }
@@ -268,8 +341,8 @@ async function fetchMarketContext(): Promise<MarketContext> {
 
 async function fetchPolicies(): Promise<StrategyPolicy[]> {
   try {
-    const res = await fetch('/api/strategy/policy');
-    if (!res.ok) throw new Error('Failed to fetch policies');
+    const res = await fetchWithTimeout('/api/strategy/policy');
+    if (!res?.ok) throw new Error('Failed to fetch policies');
 
     const data = await res.json();
     const policies = data.policies || {};
@@ -317,8 +390,8 @@ function generatePassiveDecision(reason: string): AIDecision {
 async function fetchDecisions(): Promise<AIDecision[]> {
   try {
     const [auditRes, exitRes] = await Promise.all([
-      fetch('/api/strategy/policy/audit?limit=10').catch(() => null),
-      fetch('/api/validation/exit/log?limit=10').catch(() => null),
+      fetchWithTimeout('/api/strategy/policy/audit?limit=10'),
+      fetchWithTimeout('/api/validation/exit/log?limit=10'),
     ]);
 
     const auditData = auditRes?.ok ? await auditRes.json() : [];
@@ -404,9 +477,9 @@ function deriveSafetyStatus(indicators: HealthIndicator[], killSwitchActive: boo
 async function fetchHealth(): Promise<SystemHealth> {
   try {
     const [healthRes, summaryRes, polygonRes] = await Promise.all([
-      fetch('/api/health').catch(() => null),
-      fetch('/api/validation/export/summary').catch(() => null),
-      fetch('/api/polygon/stream/status').catch(() => null),
+      fetchWithTimeout('/api/health'),
+      fetchWithTimeout('/api/validation/export/summary'),
+      fetchWithTimeout('/api/polygon/stream/status'),
     ]);
 
     const healthData = healthRes?.ok ? await healthRes.json() : {};

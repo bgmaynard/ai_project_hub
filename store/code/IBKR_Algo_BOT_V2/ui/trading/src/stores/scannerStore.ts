@@ -6,10 +6,14 @@ export interface ScannerResult {
   changePercent: number
   direction: 'BREAKING' | 'TESTING' | 'REJECTING' | 'UP' | 'DOWN'
   volume: number
+  relVol?: number      // Relative volume (e.g., 2.5x = 250% of avg)
+  dayHigh?: number     // HOD scanner
+  gapPct?: number      // Gap scanner
   float?: number
   lastNews?: string
   grade?: 'A' | 'B' | 'C'
   score?: number
+  scanner?: 'GAPPER' | 'GAINER' | 'HOD'  // Source scanner
 }
 
 export type ScannerType = 'hod' | 'gappers' | 'gainers' | 'premarket'

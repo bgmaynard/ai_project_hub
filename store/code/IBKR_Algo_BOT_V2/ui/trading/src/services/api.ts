@@ -27,8 +27,12 @@ class ApiService {
     return this.fetch('/account')
   }
 
-  async getAccounts(): Promise<{ accounts: Array<{ accountNumber: string; accountType: string }> }> {
+  async getAccounts(): Promise<{ accounts: Array<{ accountNumber: string; accountType: string; selected?: boolean }>; selected?: string }> {
     return this.fetch('/accounts')
+  }
+
+  async selectAccount(accountNumber: string): Promise<{ success: boolean; selected?: string; error?: string }> {
+    return this.fetch(`/accounts/select/${accountNumber}`, { method: 'POST' })
   }
 
   async getPositions() {
@@ -104,30 +108,87 @@ class ApiService {
     return this.fetch('/task-queue/status')
   }
 
-  // Scanners - pull from external sources (FinViz, Benzinga, Schwab)
+  // =========================================================================
+  // WARRIOR TRADING SCANNERS (Schwab-only, time-based)
+  // =========================================================================
+
+  async getScannerStatus() {
+    return this.fetch('/scanners/status')
+  }
+
+  async getScannerConfig() {
+    return this.fetch('/scanners/config')
+  }
+
   async getHODScanner() {
-    // Use FinViz Elite for momentum movers
-    return this.fetch('/scanner/finviz/movers')
+    // HOD scanner - active 09:15+ ET
+    return this.fetch('/scanners/candidates/hod')
   }
 
   async getGappersScanner() {
-    // Use FinViz for gappers, fallback to warrior scanner
-    try {
-      const finviz = await this.fetch<any>('/scanner/finviz/gappers')
-      if (finviz.results?.length > 0) return finviz
-    } catch {}
-    // Fallback to warrior scanner setups
-    return this.fetch('/scanner/warrior/setups')
+    // Gap scanner - active 04:00-09:15 ET
+    return this.fetch('/scanners/candidates/gap')
   }
 
   async getGainersScanner() {
-    // Use FinViz top plays (movers + news enriched)
-    return this.fetch('/scanner/finviz/top-plays?limit=15')
+    // Gainer scanner - active 07:00-09:30 ET
+    return this.fetch('/scanners/candidates/gainer')
   }
 
   async getPreMarketScanner() {
-    // Use premarket scanner with news catalysts
+    // Use premarket scanner with news catalysts (fallback)
     return this.fetch('/scanner/premarket/watchlist')
+  }
+
+  async getAllScannerCandidates() {
+    return this.fetch('/scanners/candidates')
+  }
+
+  async runScannerScan(symbols: string[]) {
+    return this.fetch('/scanners/scan', {
+      method: 'POST',
+      body: JSON.stringify({ symbols }),
+    })
+  }
+
+  async feedScannersToWatchlist() {
+    return this.fetch('/scanners/feed-watchlist', { method: 'POST' })
+  }
+
+  async discoverCandidates() {
+    // Auto-discover from Schwab movers
+    return this.fetch('/scanners/discover')
+  }
+
+  async discoverAndScan() {
+    // Discover movers and add to watchlist
+    return this.fetch('/scanners/discover/scan', { method: 'POST' })
+  }
+
+  // =========================================================================
+  // FINVIZ SCANNER (Free backup when Schwab empty)
+  // =========================================================================
+
+  async getFinvizGainers(minChange = 5, maxPrice = 20) {
+    return this.fetch(`/scanner/finviz/gainers?min_change=${minChange}&max_price=${maxPrice}`)
+  }
+
+  async getFinvizLowFloat(maxFloat = 20) {
+    return this.fetch(`/scanner/finviz/low-float?max_float=${maxFloat}`)
+  }
+
+  async getFinvizBreakouts() {
+    return this.fetch('/scanner/finviz/breakouts')
+  }
+
+  async getFinvizAll() {
+    return this.fetch('/scanner/finviz/scan-all')
+  }
+
+  async syncFinvizToWatchlist(minChange = 5, maxCount = 10) {
+    return this.fetch(`/scanner/finviz/sync-to-watchlist?min_change=${minChange}&max_count=${maxCount}`, {
+      method: 'POST'
+    })
   }
 
   // News

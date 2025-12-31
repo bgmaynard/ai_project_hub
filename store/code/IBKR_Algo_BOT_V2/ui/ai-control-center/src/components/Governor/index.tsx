@@ -8,8 +8,9 @@
  * Optimized for instant clarity and trust.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGovernorData } from '../../hooks/useGovernorData';
+import { useGovernorWebSocket } from '../../hooks/useGovernorWebSocket';
 import { apiService } from '../../services/api';
 import GlobalStatus from './GlobalStatus';
 import MarketContext from './MarketContext';
@@ -19,8 +20,21 @@ import SystemHealth from './SystemHealth';
 
 export const Governor: React.FC = () => {
   const { data, isLoading, error, refresh } = useGovernorData();
+  const { connectionState, alerts, reconnectFeeds, clearAlerts } = useGovernorWebSocket();
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [reconnectMessage, setReconnectMessage] = useState<string | null>(null);
+
+  // Show alert when WebSocket disconnects
+  useEffect(() => {
+    if (!connectionState.connected && !connectionState.reconnecting) {
+      setReconnectMessage('WebSocket disconnected');
+    } else if (connectionState.reconnecting) {
+      setReconnectMessage(`Reconnecting... (attempt ${connectionState.attempts})`);
+    } else if (connectionState.connected && reconnectMessage?.includes('Reconnect')) {
+      setReconnectMessage('Connected');
+      setTimeout(() => setReconnectMessage(null), 2000);
+    }
+  }, [connectionState.connected, connectionState.reconnecting, connectionState.attempts]);
 
   const handleReconnect = async () => {
     if (data.globalStatus.mode !== 'PAPER') {
@@ -121,14 +135,57 @@ export const Governor: React.FC = () => {
               Trading UI
             </a>
 
-            {/* API Status */}
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-ibkr-success animate-pulse"></span>
-              <span className="text-xs text-ibkr-text-secondary">API</span>
+            {/* WebSocket Connection Status */}
+            <div className="flex items-center gap-2" title={connectionState.connected ? 'WebSocket connected - real-time updates active' : connectionState.reconnecting ? `Reconnecting (attempt ${connectionState.attempts})` : 'WebSocket disconnected'}>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  connectionState.connected
+                    ? 'bg-ibkr-success animate-pulse'
+                    : connectionState.reconnecting
+                    ? 'bg-ibkr-warning animate-ping'
+                    : 'bg-ibkr-error'
+                }`}
+              />
+              <span className="text-xs text-ibkr-text-secondary">
+                {connectionState.connected ? 'LIVE' : connectionState.reconnecting ? 'RECONNECTING' : 'OFFLINE'}
+              </span>
             </div>
+
+            {/* Manual Reconnect Button - shown when disconnected */}
+            {!connectionState.connected && !connectionState.reconnecting && (
+              <button
+                onClick={reconnectFeeds}
+                className="text-xs px-2 py-1 bg-ibkr-error/20 text-ibkr-error rounded border border-ibkr-error hover:bg-ibkr-error/30"
+              >
+                Reconnect
+              </button>
+            )}
           </div>
         </div>
       </header>
+
+      {/* Alert Banner - shown when there are alerts */}
+      {alerts.length > 0 && (
+        <div className="bg-ibkr-warning/10 border-b border-ibkr-warning px-6 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-ibkr-warning">
+                {alerts[0].level === 'error' ? '⚠️' : alerts[0].level === 'warning' ? '⚡' : 'ℹ️'}
+              </span>
+              <span className="text-sm text-ibkr-warning">{alerts[0].message}</span>
+              <span className="text-xs text-ibkr-text-secondary">
+                {alerts[0].timestamp.toLocaleTimeString()}
+              </span>
+            </div>
+            <button
+              onClick={clearAlerts}
+              className="text-xs text-ibkr-text-secondary hover:text-ibkr-text"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="p-6 space-y-6">

@@ -249,24 +249,59 @@ async def get_primary_account():
 
 @app.get("/api/accounts")
 async def get_accounts_list():
-    """Get list of accounts (for OrderEntry dropdown)"""
+    """Get list of ALL available Schwab accounts"""
     accounts = []
+    selected_account = None
 
     if HAS_SCHWAB_TRADING:
         try:
             if is_schwab_trading_available():
                 schwab = get_schwab_trading()
                 if schwab:
-                    account = schwab.get_account_info()
-                    if account:
+                    # Get ALL accounts, not just the selected one
+                    all_accounts = schwab.get_accounts()
+                    selected_account = schwab.get_selected_account()
+
+                    for acc in all_accounts:
+                        acc_num = acc.get("account_number")
+                        # Get account type by fetching info for each
                         accounts.append({
-                            "accountNumber": account.get("account_number", "Unknown"),
-                            "accountType": account.get("type", "CASH")
+                            "accountNumber": acc_num,
+                            "accountType": acc.get("type", "UNKNOWN"),
+                            "selected": acc_num == selected_account
                         })
         except Exception as e:
             logger.warning(f"Failed to fetch accounts: {e}")
 
-    return {"accounts": accounts}
+    return {"accounts": accounts, "selected": selected_account}
+
+
+@app.post("/api/accounts/select/{account_number}")
+async def select_account(account_number: str):
+    """Select a Schwab account for trading"""
+    if not HAS_SCHWAB_TRADING:
+        return {"success": False, "error": "Schwab trading not available"}
+
+    try:
+        if is_schwab_trading_available():
+            schwab = get_schwab_trading()
+            if schwab:
+                success = schwab.select_account(account_number)
+                if success:
+                    # Get the new account info
+                    account_info = schwab.get_account_info()
+                    return {
+                        "success": True,
+                        "selected": account_number,
+                        "account_type": account_info.get("type") if account_info else "UNKNOWN"
+                    }
+                else:
+                    return {"success": False, "error": f"Account {account_number} not found"}
+    except Exception as e:
+        logger.error(f"Error selecting account: {e}")
+        return {"success": False, "error": str(e)}
+
+    return {"success": False, "error": "Unknown error"}
 
 @app.get("/api/orders")
 async def get_orders():
@@ -367,6 +402,14 @@ try:
 except ImportError as e:
     logger.warning(f"Stock Scanner not available: {e}")
     HAS_SCANNER = False
+
+# Finviz Scanner (free supplemental data source)
+try:
+    from ai.finviz_routes import router as finviz_router
+    app.include_router(finviz_router, tags=["Finviz Scanner"])
+    logger.info("Finviz Scanner router included")
+except ImportError as e:
+    logger.warning(f"Finviz Scanner not available: {e}")
 
 # Momentum Scorer API
 try:
@@ -516,6 +559,16 @@ try:
 except ImportError as e:
     logger.warning(f"Charts routes not available: {e}")
     HAS_CHARTS_API = False
+
+# Warrior Trading Scanners
+try:
+    from scanners.scanner_routes import router as scanner_router
+    app.include_router(scanner_router, tags=["Warrior Scanners"])
+    HAS_WARRIOR_SCANNERS = True
+    logger.info("Warrior Trading Scanner routes included")
+except ImportError as e:
+    logger.warning(f"Warrior Scanners not available: {e}")
+    HAS_WARRIOR_SCANNERS = False
 
 
 # ============================================================================
@@ -667,6 +720,43 @@ async def health_check():
 async def health_check_simple():
     """Simple health check endpoint (alias for /api/health)"""
     return await health_check()
+
+
+@app.get("/api/health/connections")
+async def get_connection_health():
+    """
+    Get detailed connection health status with auto-recovery monitoring.
+
+    Returns status of all data connections:
+    - Schwab broker
+    - Schwab market data
+    - Polygon WebSocket stream
+    - Auto-recovery status
+    """
+    try:
+        from ai.connection_health_monitor import get_health_monitor
+        monitor = get_health_monitor()
+        return monitor.get_status()
+    except Exception as e:
+        return {
+            "healthy": False,
+            "error": str(e),
+            "connections": {}
+        }
+
+
+@app.get("/api/health/history")
+async def get_connection_health_history(minutes: int = 30):
+    """Get connection health history for trend analysis"""
+    try:
+        from ai.connection_health_monitor import get_health_monitor
+        monitor = get_health_monitor()
+        return {
+            "history": monitor.get_health_history(minutes),
+            "minutes": minutes
+        }
+    except Exception as e:
+        return {"error": str(e), "history": []}
 
 
 @app.get("/api/config")
@@ -1508,6 +1598,233 @@ async def websocket_market_stream(websocket: WebSocket):
     finally:
         manager.unregister_client(client_id)
         logger.info(f"[WS] Client cleanup: {client_id}")
+
+
+# ============================================================================
+# GOVERNOR WEBSOCKET - Real-time health monitoring with auto-reconnect
+# ============================================================================
+
+# Track connected governor clients
+governor_clients: Dict[str, WebSocket] = {}
+
+@app.websocket("/ws/governor")
+async def websocket_governor(websocket: WebSocket):
+    """
+    WebSocket endpoint for Governor UI real-time health monitoring.
+
+    Features:
+    - Heartbeat every 3 seconds
+    - System status updates in real-time
+    - Auto-reconnect support on client side
+    - Trade-safe: monitors connection health to prevent slippage
+
+    Messages sent:
+    - heartbeat: {type: "heartbeat", timestamp: ..., seq: ...}
+    - status: {type: "status", data: {...system status...}}
+    - alert: {type: "alert", level: "warning|error", message: ...}
+    """
+    await websocket.accept()
+    client_id = str(uuid.uuid4())[:8]
+    governor_clients[client_id] = websocket
+    logger.info(f"[Governor WS] Client connected: {client_id}")
+
+    # Send welcome message with initial status
+    try:
+        initial_status = await get_governor_status()
+        await websocket.send_json({
+            "type": "connected",
+            "client_id": client_id,
+            "timestamp": datetime.now().isoformat(),
+            "status": initial_status
+        })
+    except Exception as e:
+        logger.error(f"[Governor WS] Error sending welcome: {e}")
+
+    heartbeat_seq = 0
+    last_status = None
+
+    async def send_heartbeat():
+        """Send heartbeat every 3 seconds"""
+        nonlocal heartbeat_seq
+        while True:
+            try:
+                heartbeat_seq += 1
+                await websocket.send_json({
+                    "type": "heartbeat",
+                    "seq": heartbeat_seq,
+                    "timestamp": datetime.now().isoformat(),
+                    "server_time": datetime.now().strftime("%H:%M:%S")
+                })
+                await asyncio.sleep(3)
+            except Exception:
+                break
+
+    async def send_status_updates():
+        """Send status updates when things change (every 5 seconds)"""
+        nonlocal last_status
+        while True:
+            try:
+                current_status = await get_governor_status()
+
+                # Only send if status changed or every 5th iteration
+                status_json = str(current_status)
+                if status_json != last_status:
+                    await websocket.send_json({
+                        "type": "status",
+                        "timestamp": datetime.now().isoformat(),
+                        "data": current_status
+                    })
+                    last_status = status_json
+
+                await asyncio.sleep(5)
+            except Exception:
+                break
+
+    async def receive_commands():
+        """Handle commands from client"""
+        while True:
+            try:
+                data = await websocket.receive_json()
+                command = data.get("command")
+
+                if command == "ping":
+                    await websocket.send_json({
+                        "type": "pong",
+                        "timestamp": datetime.now().isoformat(),
+                        "client_seq": data.get("seq", 0)
+                    })
+                elif command == "status":
+                    status = await get_governor_status()
+                    await websocket.send_json({
+                        "type": "status",
+                        "timestamp": datetime.now().isoformat(),
+                        "data": status
+                    })
+                elif command == "reconnect_feeds":
+                    # Trigger feed reconnection
+                    try:
+                        from polygon_streaming import get_polygon_stream
+                        stream = get_polygon_stream()
+                        if stream:
+                            stream.restart()
+                            await websocket.send_json({
+                                "type": "alert",
+                                "level": "info",
+                                "message": "Feeds reconnecting..."
+                            })
+                    except Exception as e:
+                        await websocket.send_json({
+                            "type": "alert",
+                            "level": "error",
+                            "message": f"Reconnect failed: {str(e)}"
+                        })
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                logger.error(f"[Governor WS] Command error: {e}")
+                break
+
+    try:
+        # Run heartbeat, status updates, and command receiver concurrently
+        await asyncio.gather(
+            send_heartbeat(),
+            send_status_updates(),
+            receive_commands()
+        )
+    except WebSocketDisconnect:
+        logger.info(f"[Governor WS] Client disconnected: {client_id}")
+    except Exception as e:
+        logger.error(f"[Governor WS] Error: {e}")
+    finally:
+        if client_id in governor_clients:
+            del governor_clients[client_id]
+        logger.info(f"[Governor WS] Client cleanup: {client_id}")
+
+
+async def get_governor_status() -> dict:
+    """Get current system status for Governor WebSocket"""
+    try:
+        # Get safe activation status
+        safe_status = {}
+        try:
+            from ai.safe_activation import get_safe_activation
+            safe = get_safe_activation()
+            safe_status = safe.get_status()
+        except:
+            pass
+
+        # Get scalp assistant status
+        scalp_running = False
+        try:
+            from ai.scalp_assistant import get_scalp_assistant
+            assistant = get_scalp_assistant()
+            scalp_running = assistant.running if assistant else False
+        except:
+            pass
+
+        # Get polygon stream status
+        polygon_status = {"connected": False, "healthy": False}
+        try:
+            from polygon_streaming import get_polygon_stream
+            stream = get_polygon_stream()
+            if stream:
+                polygon_status = stream.get_status()
+        except:
+            pass
+
+        # Get connectivity status
+        connectivity = {"system_state": "UNKNOWN"}
+        try:
+            from ai.connectivity_manager import get_connectivity_manager
+            cm = get_connectivity_manager()
+            if cm:
+                connectivity = cm.get_status()
+        except:
+            pass
+
+        return {
+            "safe_activation": safe_status,
+            "scalp_running": scalp_running,
+            "polygon": polygon_status,
+            "connectivity": connectivity,
+            "server_time": datetime.now().isoformat(),
+            "trading_window": get_trading_window_status()
+        }
+    except Exception as e:
+        logger.error(f"Error getting governor status: {e}")
+        return {"error": str(e)}
+
+
+def get_trading_window_status() -> dict:
+    """Get current trading window status"""
+    from datetime import time
+    import pytz
+
+    try:
+        et_tz = pytz.timezone('US/Eastern')
+        now_et = datetime.now(et_tz)
+        current_time = now_et.time()
+
+        if time(4, 0) <= current_time < time(9, 30):
+            window = "PRE_MARKET"
+            detail = "Pre-market (4:00 AM - 9:30 AM ET)"
+        elif time(9, 30) <= current_time < time(16, 0):
+            window = "OPEN"
+            detail = "Market open (9:30 AM - 4:00 PM ET)"
+        elif time(16, 0) <= current_time < time(20, 0):
+            window = "AFTER_HOURS"
+            detail = "After hours (4:00 PM - 8:00 PM ET)"
+        else:
+            window = "CLOSED"
+            detail = "Market closed"
+
+        return {
+            "window": window,
+            "detail": detail,
+            "time_et": now_et.strftime("%H:%M:%S ET")
+        }
+    except:
+        return {"window": "UNKNOWN", "detail": "Cannot determine", "time_et": ""}
 
 
 # ============================================================================
@@ -2742,9 +3059,20 @@ async def startup_event():
     if not schwab_realtime_started:
         logger.info("[INFO] Schwab real-time data not available (using on-demand HTTP)")
 
+    # Initialize Connection Health Monitor
+    try:
+        from ai.connection_health_monitor import start_health_monitor
+        health_monitor = start_health_monitor()
+        logger.info("[OK] Connection Health Monitor Started")
+        logger.info("     - Auto-recovery: ENABLED")
+        logger.info("     - Check interval: 10 seconds")
+    except Exception as e:
+        logger.warning(f"[WARN] Health monitor error: {e}")
+
     logger.info("="*80)
     logger.info("Server ready on http://localhost:9100")
     logger.info("Trading Dashboard: http://localhost:9100/trading-new")
+    logger.info("AI Control Center: http://localhost:9100/ai-control-center")
     logger.info("API Docs: http://localhost:9100/docs")
     logger.info("="*80)
 
@@ -2753,6 +3081,15 @@ async def startup_event():
 async def shutdown_event():
     """Application shutdown"""
     logger.info("Shutting down AI Trading Hub...")
+
+    # Stop Connection Health Monitor
+    try:
+        from ai.connection_health_monitor import get_health_monitor
+        monitor = get_health_monitor()
+        monitor.stop()
+        logger.info("Connection health monitor stopped")
+    except Exception as e:
+        logger.warning(f"Error stopping health monitor: {e}")
 
     # Stop Schwab streaming
     if HAS_SCHWAB_STREAMING:

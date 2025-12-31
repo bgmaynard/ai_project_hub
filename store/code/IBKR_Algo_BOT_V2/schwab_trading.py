@@ -161,18 +161,33 @@ class SchwabTrading:
             logger.error(f"Error loading Schwab accounts: {e}")
 
     def get_accounts(self) -> List[Dict]:
-        """Get list of available accounts"""
+        """Get list of available accounts with their types"""
         if not self._accounts:
             self._load_accounts()
 
-        # Return account info without sensitive hash
-        return [
-            {
-                "account_number": acc.get('accountNumber'),
-                "selected": acc.get('accountNumber') == self._selected_account
-            }
-            for acc in self._accounts
-        ]
+        # Return account info with type (fetched from account details)
+        result = []
+        for acc in self._accounts:
+            acc_num = acc.get('accountNumber')
+            acc_hash = acc.get('hashValue')
+            acc_type = "UNKNOWN"
+
+            # Try to get account type from cached info or fetch it
+            try:
+                data = _make_trading_request("GET", f"/accounts/{acc_hash}")
+                if data:
+                    securities_account = data.get('securitiesAccount', {})
+                    acc_type = securities_account.get('type', 'UNKNOWN')
+            except Exception as e:
+                logger.debug(f"Could not fetch type for account {acc_num}: {e}")
+
+            result.append({
+                "account_number": acc_num,
+                "type": acc_type,
+                "selected": acc_num == self._selected_account
+            })
+
+        return result
 
     def select_account(self, account_number: str) -> bool:
         """Select an account for trading"""

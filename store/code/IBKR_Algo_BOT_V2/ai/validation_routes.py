@@ -280,6 +280,20 @@ async def get_safe_status():
     return safe.get_status()
 
 
+@router.get("/safe/posture")
+async def get_ai_posture():
+    """Get AI trading posture for Governor UI"""
+    safe = get_safe_activation()
+    return safe.get_ai_posture()
+
+
+@router.get("/safe/trading-window")
+async def get_trading_window():
+    """Get current trading window status"""
+    safe = get_safe_activation()
+    return safe.get_trading_window_status()
+
+
 @router.post("/safe/activate")
 async def activate_safe_mode(data: SafeActivateRequest):
     """Activate safe trading mode"""

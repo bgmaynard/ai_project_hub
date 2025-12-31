@@ -27,8 +27,9 @@ import json
 import csv
 import os
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from typing import Dict, List, Optional, Any, Set
+import pytz
 from enum import Enum
 from collections import defaultdict
 import threading
@@ -295,7 +296,112 @@ class SafeActivationMode:
         """Check if trading is active"""
         return (self.config.enabled and
                 self.config.mode != ActivationMode.DISABLED and
-                not self._kill_switch_active)
+                not self._kill_switch_active and
+                self.is_trading_window())
+
+    def is_trading_window(self) -> bool:
+        """
+        Check if we're in a valid trading window.
+
+        Pre-market: 7:00 AM - 9:30 AM ET -> Trading allowed
+        Market hours: 9:30 AM - 4:00 PM ET -> Trading allowed
+        After hours: 4:00 PM - 8:00 PM ET -> Trading allowed (configurable)
+        Outside hours: No trading
+        """
+        try:
+            et_tz = pytz.timezone('US/Eastern')
+            now_et = datetime.now(et_tz).time()
+
+            # Pre-market window: 7:00 AM - 9:30 AM ET
+            if time(7, 0) <= now_et < time(9, 30):
+                return True
+
+            # Regular market hours: 9:30 AM - 4:00 PM ET
+            if time(9, 30) <= now_et < time(16, 0):
+                return True
+
+            # Extended hours (after market): 4:00 PM - 8:00 PM ET
+            if time(16, 0) <= now_et < time(20, 0):
+                return True
+
+            # Outside trading hours
+            return False
+
+        except Exception as e:
+            logger.error(f"Error checking trading window: {e}")
+            # Fail safe: don't trade if we can't determine time
+            return False
+
+    def get_trading_window_status(self) -> dict:
+        """Get current trading window status for UI display"""
+        try:
+            et_tz = pytz.timezone('US/Eastern')
+            now_et = datetime.now(et_tz)
+            now_time = now_et.time()
+
+            if time(7, 0) <= now_time < time(9, 30):
+                window = "PRE_MARKET"
+                window_detail = "Pre-market trading (7:00 AM - 9:30 AM ET)"
+            elif time(9, 30) <= now_time < time(16, 0):
+                window = "MARKET_HOURS"
+                window_detail = "Regular market hours (9:30 AM - 4:00 PM ET)"
+            elif time(16, 0) <= now_time < time(20, 0):
+                window = "AFTER_HOURS"
+                window_detail = "After hours trading (4:00 PM - 8:00 PM ET)"
+            else:
+                window = "CLOSED"
+                window_detail = "Outside trading hours"
+
+            return {
+                'current_et_time': now_et.strftime('%I:%M %p ET'),
+                'window': window,
+                'window_detail': window_detail,
+                'trading_allowed': self.is_trading_window(),
+                'is_active': self.is_active()
+            }
+        except Exception as e:
+            return {
+                'error': str(e),
+                'trading_allowed': False,
+                'is_active': False
+            }
+
+    def get_ai_posture(self) -> dict:
+        """
+        Get current AI trading posture for Governor UI.
+
+        Posture reflects: mode + time window + system health
+        """
+        window_status = self.get_trading_window_status()
+
+        # Determine posture
+        if not self.config.enabled:
+            posture = "DISABLED"
+            posture_detail = "Trading disabled by configuration"
+        elif self._kill_switch_active:
+            posture = "KILLED"
+            posture_detail = f"Kill switch active: {self._kill_switch_reason.value if self._kill_switch_reason else 'unknown'}"
+        elif not window_status.get('trading_allowed', False):
+            posture = "OUTSIDE_HOURS"
+            posture_detail = window_status.get('window_detail', 'Outside trading hours')
+        elif self.config.mode == ActivationMode.SAFE:
+            posture = "LIVE_PAPER"
+            posture_detail = "Paper trading active (SAFE mode)"
+        elif self.config.mode == ActivationMode.NORMAL:
+            posture = "LIVE_REAL"
+            posture_detail = "Live trading active (NORMAL mode)"
+        else:
+            posture = "STANDBY"
+            posture_detail = "System ready, awaiting activation"
+
+        return {
+            'posture': posture,
+            'posture_detail': posture_detail,
+            'mode': self.config.mode.value,
+            'trading_window': window_status,
+            'can_trade': self.is_active(),
+            'kill_switch_active': self._kill_switch_active
+        }
 
     # ==================== Trade Gating ====================
 
