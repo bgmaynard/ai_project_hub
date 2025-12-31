@@ -487,6 +487,26 @@ except ImportError as e:
     logger.warning(f"Validation routes not available: {e}")
     HAS_VALIDATION = False
 
+# Task Queue Routes (HOD Momentum Bot Pipeline)
+try:
+    from ai.task_queue_routes import router as task_queue_router
+    app.include_router(task_queue_router, tags=["Task Queue"])
+    HAS_TASK_QUEUE = True
+    logger.info("Task Queue routes included (HOD Momentum Pipeline)")
+except ImportError as e:
+    logger.warning(f"Task Queue routes not available: {e}")
+    HAS_TASK_QUEUE = False
+
+# Momentum Watchlist Operator Controls
+try:
+    from ai.momentum_watchlist_routes import router as momentum_watchlist_router
+    app.include_router(momentum_watchlist_router, tags=["Watchlist Operator"])
+    HAS_MOMENTUM_WATCHLIST = True
+    logger.info("Momentum Watchlist operator control routes included")
+except ImportError as e:
+    logger.warning(f"Momentum Watchlist routes not available: {e}")
+    HAS_MOMENTUM_WATCHLIST = False
+
 # Lightweight Charts API Routes
 try:
     from charts_routes import router as charts_router
