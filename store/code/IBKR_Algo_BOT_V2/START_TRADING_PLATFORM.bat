@@ -135,12 +135,12 @@ if errorlevel 1 (
 :: STEP 8: Open Dashboard in Browser
 :: ============================================================================
 echo.
-echo [8/8] Opening dashboard...
+echo [8/8] Opening trading dashboard...
 
 timeout /t 2 /nobreak >nul
-start http://127.0.0.1:9100/dashboard
+start http://127.0.0.1:9100/trading-new
 
-echo       [OK] Dashboard opened
+echo       [OK] Trading dashboard opened
 
 :: ============================================================================
 :: FINAL STATUS
@@ -151,7 +151,7 @@ echo              PLATFORM STARTED SUCCESSFULLY
 echo ================================================================
 echo.
 echo   Services Running:
-echo     - Dashboard API      : http://127.0.0.1:9100/dashboard
+echo     - Trading Dashboard  : http://127.0.0.1:9100/trading-new
 echo     - Position Guardian  : Active (trailing stops)
 echo     - News Evaluator     : Active (auto-watchlist)
 echo     - News WebSocket     : Active (instant alerts)

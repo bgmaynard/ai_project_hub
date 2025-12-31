@@ -2529,8 +2529,9 @@ if ui_path.exists():
 
     @app.get("/dashboard")
     async def dashboard():
-        """Serve main dashboard"""
-        return FileResponse("ui/complete_platform.html")
+        """DEPRECATED: Redirect to /trading-new"""
+        from starlette.responses import RedirectResponse
+        return RedirectResponse(url="/trading-new", status_code=302)
 
     @app.get("/trading-new")
     async def trading_ui():
@@ -2743,7 +2744,7 @@ async def startup_event():
 
     logger.info("="*80)
     logger.info("Server ready on http://localhost:9100")
-    logger.info("Dashboard: http://localhost:9100/dashboard")
+    logger.info("Trading Dashboard: http://localhost:9100/trading-new")
     logger.info("API Docs: http://localhost:9100/docs")
     logger.info("="*80)
 
@@ -3112,7 +3113,7 @@ if __name__ == "__main__":
     print("MORPHEUS TRADING BOT")
     print("="*80)
     print("Starting server on http://localhost:9100")
-    print("Dashboard: http://localhost:9100/dashboard")
+    print("Trading Dashboard: http://localhost:9100/trading-new")
     print("API Docs: http://localhost:9100/docs")
     print("="*80 + "\n")
 

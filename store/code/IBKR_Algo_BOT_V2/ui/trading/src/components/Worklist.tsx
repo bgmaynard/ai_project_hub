@@ -1,9 +1,29 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useWatchlistStore, WatchlistItem } from '../stores/watchlistStore'
 import { useSymbolStore } from '../stores/symbolStore'
+import api from '../services/api'
 
 type SortField = 'symbol' | 'price' | 'changePercent' | 'rvol' | 'float' | 'aiScore' | 'volume'
 type SortDir = 'asc' | 'desc'
+
+interface WatchlistStatus {
+  session_date: string
+  cycle_count: number
+  active_count: number
+  total_candidates: number
+  config: {
+    current_rel_vol_floor: number
+    max_active_symbols: number
+  }
+  active_watchlist: Array<{
+    symbol: string
+    rank: number
+    dominance_score: number
+    gap_pct: number
+    rel_vol_daily: number
+    price: number
+  }>
+}
 
 export default function Worklist() {
   const { items, setItems, removeItem, setLoading } = useWatchlistStore()
@@ -13,6 +33,12 @@ export default function Worklist() {
   const [error, setError] = useState('')
   const [sortField, setSortField] = useState<SortField>('changePercent')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  // Momentum watchlist state
+  const [watchlistStatus, setWatchlistStatus] = useState<WatchlistStatus | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isPurging, setIsPurging] = useState(false)
+  const [isRunningDiscovery, setIsRunningDiscovery] = useState(false)
 
   const fetchWorklist = useCallback(async () => {
     setLoading(true)
@@ -46,11 +72,94 @@ export default function Worklist() {
     setLoading(false)
   }, [setItems, setLoading])
 
+  // Fetch momentum watchlist status
+  const fetchWatchlistStatus = useCallback(async () => {
+    try {
+      const status = await api.getWatchlistStatus() as WatchlistStatus
+      setWatchlistStatus(status)
+      console.log('[Worklist] Fetched watchlist status:', status)
+    } catch (err) {
+      console.error('[Worklist] Failed to fetch watchlist status:', err)
+    }
+  }, [])
+
+  // Refresh momentum watchlist
+  const handleRefreshWatchlist = async () => {
+    setIsRefreshing(true)
+    setError('')
+    try {
+      const result = await api.refreshWatchlist()
+      console.log('[Worklist] Refresh result:', result)
+      await fetchWatchlistStatus()
+      await fetchWorklist()
+    } catch (err) {
+      console.error('[Worklist] Refresh failed:', err)
+      setError('Refresh failed')
+      setTimeout(() => setError(''), 3000)
+    }
+    setIsRefreshing(false)
+  }
+
+  // Purge momentum watchlist
+  const handlePurgeWatchlist = async () => {
+    if (!confirm('Purge ALL symbols from momentum watchlist?')) return
+    setIsPurging(true)
+    setError('')
+    try {
+      const result = await api.purgeWatchlist()
+      console.log('[Worklist] Purge result:', result)
+      await fetchWatchlistStatus()
+      await fetchWorklist()
+    } catch (err) {
+      console.error('[Worklist] Purge failed:', err)
+      setError('Purge failed')
+      setTimeout(() => setError(''), 3000)
+    }
+    setIsPurging(false)
+  }
+
+  // Run discovery pipeline
+  const handleRunDiscovery = async () => {
+    setIsRunningDiscovery(true)
+    setError('')
+    try {
+      const result = await api.runDiscovery()
+      console.log('[Worklist] Discovery result:', result)
+      // Wait a moment for pipeline to process
+      setTimeout(async () => {
+        await fetchWatchlistStatus()
+        await fetchWorklist()
+        setIsRunningDiscovery(false)
+      }, 2000)
+    } catch (err) {
+      console.error('[Worklist] Discovery failed:', err)
+      setError('Discovery failed')
+      setTimeout(() => setError(''), 3000)
+      setIsRunningDiscovery(false)
+    }
+  }
+
+  // Delete symbol from momentum watchlist
+  const handleDeleteFromMomentumWatchlist = async (symbol: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await api.deleteWatchlistSymbol(symbol)
+      console.log(`[Worklist] Deleted ${symbol} from momentum watchlist`)
+      await fetchWatchlistStatus()
+    } catch (err) {
+      console.error(`[Worklist] Failed to delete ${symbol}:`, err)
+    }
+  }
+
   useEffect(() => {
     fetchWorklist()
-    const interval = setInterval(fetchWorklist, 2000)  // Faster updates
+    fetchWatchlistStatus()
+    const interval = setInterval(() => {
+      fetchWorklist()
+      fetchWatchlistStatus()
+    }, 5000)  // Poll every 5s
     return () => clearInterval(interval)
-  }, [fetchWorklist])
+  }, [fetchWorklist, fetchWatchlistStatus])
 
   // Sort handler
   const handleSort = (field: SortField) => {
@@ -149,7 +258,7 @@ export default function Worklist() {
 
   return (
     <div className="h-full flex flex-col bg-sterling-panel text-xs">
-      {/* Header with Add Symbol and Refresh */}
+      {/* Header with Add Symbol */}
       <div className="flex items-center justify-between px-2 py-1 bg-sterling-header border-b border-sterling-border gap-2">
         <span className="font-bold text-sterling-text whitespace-nowrap">WORKLIST</span>
 
@@ -171,17 +280,54 @@ export default function Worklist() {
           </button>
         </form>
 
-        {/* Refresh and Count */}
-        <div className="flex items-center gap-2">
+        <span className="text-sterling-muted text-xxs whitespace-nowrap">{items.length}</span>
+      </div>
+
+      {/* Momentum Watchlist Controls */}
+      <div className="flex items-center justify-between px-2 py-1 bg-[#1a1a2e] border-b border-sterling-border gap-1">
+        {/* Control Buttons */}
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => fetchWorklist()}
-            className="px-2 py-0.5 bg-[#1e3a5f] text-accent-primary text-xs rounded-sm hover:brightness-110"
-            title="Refresh worklist"
+            onClick={handleRunDiscovery}
+            disabled={isRunningDiscovery}
+            className={`px-2 py-0.5 text-xs rounded-sm hover:brightness-110 disabled:opacity-50 ${
+              isRunningDiscovery ? 'bg-warning text-black animate-pulse' : 'bg-[#166534] text-up'
+            }`}
+            title="Run Discovery Pipeline (POST /api/task-queue/run)"
           >
-            🔄
+            {isRunningDiscovery ? '⏳' : '🚀'} Discovery
           </button>
-          <span className="text-sterling-muted text-xxs whitespace-nowrap">{items.length}</span>
+          <button
+            onClick={handleRefreshWatchlist}
+            disabled={isRefreshing}
+            className={`px-2 py-0.5 text-xs rounded-sm hover:brightness-110 disabled:opacity-50 ${
+              isRefreshing ? 'bg-accent-primary text-black animate-pulse' : 'bg-[#1e3a5f] text-accent-primary'
+            }`}
+            title="Refresh Watchlist (POST /api/watchlist/refresh)"
+          >
+            {isRefreshing ? '⏳' : '🔄'} Refresh
+          </button>
+          <button
+            onClick={handlePurgeWatchlist}
+            disabled={isPurging}
+            className={`px-2 py-0.5 text-xs rounded-sm hover:brightness-110 disabled:opacity-50 ${
+              isPurging ? 'bg-down text-white animate-pulse' : 'bg-[#7f1d1d] text-down'
+            }`}
+            title="Purge ALL Watchlist (POST /api/watchlist/purge)"
+          >
+            {isPurging ? '⏳' : '🗑️'} Purge
+          </button>
         </div>
+
+        {/* Status Display */}
+        {watchlistStatus && (
+          <div className="flex items-center gap-2 text-xxs text-sterling-muted">
+            <span title="Session Date">📅 {watchlistStatus.session_date}</span>
+            <span title="Current Rel Vol Floor">RVol≥{watchlistStatus.config?.current_rel_vol_floor?.toFixed(1) || '?'}</span>
+            <span title="Active Symbols" className="text-up">{watchlistStatus.active_count || 0} active</span>
+            <span title="Cycle Count">C{watchlistStatus.cycle_count || 0}</span>
+          </div>
+        )}
       </div>
 
       {/* Error display */}
@@ -234,7 +380,7 @@ export default function Worklist() {
                 AI<SortIndicator field="aiScore" />
               </th>
               <th className="px-1 py-1 text-center">News</th>
-              <th className="px-1 py-1 text-center w-6">X</th>
+              <th className="px-1 py-1 text-center w-12" title="Delete from worklist / momentum watchlist">Del</th>
             </tr>
           </thead>
           <tbody>
@@ -307,13 +453,22 @@ export default function Worklist() {
                     )}
                   </td>
                   <td className="px-1 py-1 text-center">
-                    <button
-                      onClick={(e) => handleRemove(item.symbol, e)}
-                      className="text-down hover:text-white text-xxs"
-                      title="Remove from worklist"
-                    >
-                      ✕
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={(e) => handleRemove(item.symbol, e)}
+                        className="text-down hover:text-white text-xxs"
+                        title="Remove from worklist (DELETE /api/worklist/{symbol})"
+                      >
+                        ✕
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteFromMomentumWatchlist(item.symbol, e)}
+                        className="text-warning hover:text-white text-xxs"
+                        title="Delete from momentum watchlist (DELETE /api/watchlist/{symbol})"
+                      >
+                        ⊘
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

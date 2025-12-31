@@ -133,7 +133,7 @@ echo ============================================================
 echo   4AM PRE-MARKET SCAN COMPLETE
 echo ============================================================
 echo.
-echo   Dashboard:     http://localhost:9100/dashboard
+echo   Trading UI:    http://localhost:9100/trading-new
 echo   News Log:      curl http://localhost:9100/api/news-log
 echo   Watchlist:     curl http://localhost:9100/api/scanner/premarket/watchlist
 echo   Scalper:       curl http://localhost:9100/api/scanner/scalper/status

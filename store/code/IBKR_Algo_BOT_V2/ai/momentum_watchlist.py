@@ -25,12 +25,12 @@ from typing import Dict, List, Optional, Tuple
 from enum import Enum
 import json
 from pathlib import Path
-import pytz
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
 # Eastern timezone for market hours
-ET = pytz.timezone('US/Eastern')
+ET = ZoneInfo('America/New_York')
 
 
 def get_rel_vol_floor(now: Optional[datetime] = None) -> float:
@@ -197,9 +197,17 @@ class WatchlistConfig:
     # Top N cutoff - HARD CAP at 10
     max_active_symbols: int = 10
 
-    # Relative volume floor - NOW DYNAMIC (see get_rel_vol_floor)
-    # This static value is IGNORED - dynamic floor is used
-    min_rel_vol_floor: float = 1.5  # Fallback only
+    # Relative volume schedule: (hour_start, hour_end, floor)
+    # Times are ET. End hour is exclusive.
+    rel_vol_schedule: Tuple[Tuple[int, int, float], ...] = (
+        (4, 9, 5.0),    # 04:00-09:00 → rel_vol >= 5.0
+        (9, 10, 3.0),   # 09:00-10:00 → rel_vol >= 3.0
+        (10, 12, 2.0),  # 10:00-12:00 → rel_vol >= 2.0
+        (12, 20, 1.5),  # 12:00-20:00 → rel_vol >= 1.5
+    )
+
+    # Fallback floor if no schedule matches
+    min_rel_vol_floor: float = 1.5
 
     # Use dynamic rel_vol floor based on time of day
     use_dynamic_rel_vol: bool = True
@@ -214,19 +222,44 @@ class WatchlistConfig:
     # Session boundary
     enforce_session_boundary: bool = True
 
-    def get_current_rel_vol_floor(self) -> float:
-        """Get the current rel_vol floor (dynamic or static)"""
-        if self.use_dynamic_rel_vol:
-            return get_rel_vol_floor()
+    def current_rel_vol_floor(self, now: Optional[datetime] = None) -> float:
+        """
+        Get the current rel_vol floor from schedule.
+
+        Uses rel_vol_schedule tuple to determine floor based on ET hour.
+        Falls back to min_rel_vol_floor if no schedule matches.
+        """
+        if not self.use_dynamic_rel_vol:
+            return self.min_rel_vol_floor
+
+        if now is None:
+            now = datetime.now(timezone.utc)
+
+        # Convert to Eastern time
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        et_now = now.astimezone(ET)
+        current_hour = et_now.hour
+
+        # Find matching schedule entry
+        for start_hr, end_hr, floor in self.rel_vol_schedule:
+            if start_hr <= current_hour < end_hr:
+                return floor
+
         return self.min_rel_vol_floor
 
+    def get_current_rel_vol_floor(self) -> float:
+        """Get the current rel_vol floor (backward compatible wrapper)"""
+        return self.current_rel_vol_floor()
+
     def to_dict(self) -> Dict:
-        current_floor = self.get_current_rel_vol_floor()
+        current_floor = self.current_rel_vol_floor()
         return {
             "max_active_symbols": self.max_active_symbols,
             "min_rel_vol_floor": self.min_rel_vol_floor,
             "current_rel_vol_floor": current_floor,
             "use_dynamic_rel_vol": self.use_dynamic_rel_vol,
+            "rel_vol_schedule": self.rel_vol_schedule,
             "min_price": self.min_price,
             "max_price": self.max_price,
             "min_gap_pct": self.min_gap_pct,
@@ -256,9 +289,11 @@ class MomentumWatchlist:
 
     @property
     def session_date(self) -> date:
-        """Current trading session date"""
+        """Current trading session date (Eastern Time)"""
         if self._current_session is None:
-            self._current_session = date.today()
+            # Use ET date to properly handle session boundary
+            et_now = datetime.now(timezone.utc).astimezone(ET)
+            self._current_session = et_now.date()
         return self._current_session
 
     @property
@@ -267,8 +302,9 @@ class MomentumWatchlist:
         return [s.symbol for s in self._active_watchlist]
 
     def _enforce_session_boundary(self):
-        """Check if we've crossed into a new trading day"""
-        today = date.today()
+        """Check if we've crossed into a new trading day (ET)"""
+        et_now = datetime.now(timezone.utc).astimezone(ET)
+        today = et_now.date()
         if self._current_session != today:
             logger.info(f"Session boundary crossed: {self._current_session} -> {today}")
             # Archive all current candidates

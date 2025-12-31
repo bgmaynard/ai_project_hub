@@ -68,6 +68,42 @@ class ApiService {
     return this.fetch(`/worklist/${symbol}`, { method: 'DELETE' })
   }
 
+  // =========================================================================
+  // MOMENTUM WATCHLIST (Session-scoped, ranked view)
+  // =========================================================================
+
+  async getWatchlistStatus() {
+    return this.fetch('/watchlist/status')
+  }
+
+  async refreshWatchlist() {
+    return this.fetch('/watchlist/refresh', { method: 'POST' })
+  }
+
+  async purgeWatchlist() {
+    return this.fetch('/watchlist/purge', { method: 'POST' })
+  }
+
+  async deleteWatchlistSymbol(symbol: string) {
+    return this.fetch(`/watchlist/${symbol}`, { method: 'DELETE' })
+  }
+
+  async getWatchlistConfig() {
+    return this.fetch('/watchlist/config')
+  }
+
+  // =========================================================================
+  // TASK QUEUE (Discovery Pipeline)
+  // =========================================================================
+
+  async runDiscovery() {
+    return this.fetch('/task-queue/run', { method: 'POST' })
+  }
+
+  async getTaskQueueStatus() {
+    return this.fetch('/task-queue/status')
+  }
+
   // Scanners - pull from external sources (FinViz, Benzinga, Schwab)
   async getHODScanner() {
     // Use FinViz Elite for momentum movers

@@ -23,7 +23,7 @@ $ProjectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PythonPath = "python"
 $Port = 9100
 $MCPPort = 9101
-$DashboardUrl = "http://localhost:$Port/dashboard"
+$DashboardUrl = "http://localhost:$Port/trading-new"
 $LogFile = Join-Path $ProjectDir "startup.log"
 
 # Colors for output

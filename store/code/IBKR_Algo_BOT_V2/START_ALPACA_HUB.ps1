@@ -148,7 +148,7 @@ function Start-AlpacaDashboard {
     Write-Status "Starting Alpaca Dashboard API Server..."
     Write-Host ""
     Write-Host "  Dashboard will be available at:" -ForegroundColor Yellow
-    Write-Host "  📊 http://localhost:9100/dashboard" -ForegroundColor Cyan
+    Write-Host "  📊 http://localhost:9100/trading-new" -ForegroundColor Cyan
     Write-Host "  📚 http://localhost:9100/docs (API Documentation)" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "  Press Ctrl+C to stop the server" -ForegroundColor Gray
