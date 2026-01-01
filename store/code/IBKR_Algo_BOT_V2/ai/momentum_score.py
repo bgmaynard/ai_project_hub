@@ -24,20 +24,21 @@ Hard Vetoes (score=0):
 - regime is unfavorable
 """
 
-import logging
 import json
-import os
+import logging
 import math
+import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class MomentumGrade(Enum):
     """Momentum grade based on score"""
+
     A = "A"  # 80-100: Strong ignition candidate
     B = "B"  # 65-79: Good setup, watch for ignition
     C = "C"  # 50-64: Marginal, needs more confirmation
@@ -47,6 +48,7 @@ class MomentumGrade(Enum):
 
 class VetoReason(Enum):
     """Hard veto reasons that block entry"""
+
     SPREAD_WIDE = "SPREAD_WIDE"
     SELL_PRESSURE = "SELL_PRESSURE"
     BELOW_VWAP = "BELOW_VWAP"
@@ -61,60 +63,64 @@ class VetoReason(Enum):
 @dataclass
 class PriceUrgencyScore:
     """Price/Urgency component (0-40 points)"""
+
     # Raw metrics
-    r_5s: float = 0.0          # Rate of change last 5 seconds
-    r_15s: float = 0.0         # Rate of change last 15 seconds
-    r_30s: float = 0.0         # Rate of change last 30 seconds
-    accel: float = 0.0         # Acceleration (r_15s - r_30s/2)
-    range_30s: float = 0.0     # (high-low)/price over 30s
+    r_5s: float = 0.0  # Rate of change last 5 seconds
+    r_15s: float = 0.0  # Rate of change last 15 seconds
+    r_30s: float = 0.0  # Rate of change last 30 seconds
+    accel: float = 0.0  # Acceleration (r_15s - r_30s/2)
+    range_30s: float = 0.0  # (high-low)/price over 30s
     hod_distance_pct: float = 0.0  # Distance from high of day
-    hod_break: bool = False    # Just broke HOD
+    hod_break: bool = False  # Just broke HOD
 
     # VWAP context
     vwap_position: str = "BELOW"  # ABOVE, AT, BELOW
     vwap_extension_pct: float = 0.0  # How far above/below VWAP
 
     # Scores
-    roc_score: int = 0         # 0-15: Speed of move
-    accel_score: int = 0       # 0-10: Acceleration
-    range_score: int = 0       # 0-10: Range expansion
-    hod_score: int = 0         # 0-5: HOD proximity/break
+    roc_score: int = 0  # 0-15: Speed of move
+    accel_score: int = 0  # 0-10: Acceleration
+    range_score: int = 0  # 0-10: Range expansion
+    hod_score: int = 0  # 0-5: HOD proximity/break
 
     @property
     def total(self) -> int:
-        return min(40, self.roc_score + self.accel_score + self.range_score + self.hod_score)
+        return min(
+            40, self.roc_score + self.accel_score + self.range_score + self.hod_score
+        )
 
     def to_dict(self) -> Dict:
         return {
-            'r_5s': round(self.r_5s, 4),
-            'r_15s': round(self.r_15s, 4),
-            'r_30s': round(self.r_30s, 4),
-            'accel': round(self.accel, 4),
-            'range_30s': round(self.range_30s, 4),
-            'hod_distance_pct': round(self.hod_distance_pct, 2),
-            'hod_break': self.hod_break,
-            'vwap_position': self.vwap_position,
-            'vwap_extension_pct': round(self.vwap_extension_pct, 2),
-            'roc_score': self.roc_score,
-            'accel_score': self.accel_score,
-            'range_score': self.range_score,
-            'hod_score': self.hod_score,
-            'total': self.total
+            "r_5s": round(self.r_5s, 4),
+            "r_15s": round(self.r_15s, 4),
+            "r_30s": round(self.r_30s, 4),
+            "accel": round(self.accel, 4),
+            "range_30s": round(self.range_30s, 4),
+            "hod_distance_pct": round(self.hod_distance_pct, 2),
+            "hod_break": self.hod_break,
+            "vwap_position": self.vwap_position,
+            "vwap_extension_pct": round(self.vwap_extension_pct, 2),
+            "roc_score": self.roc_score,
+            "accel_score": self.accel_score,
+            "range_score": self.range_score,
+            "hod_score": self.hod_score,
+            "total": self.total,
         }
 
 
 @dataclass
 class ParticipationScore:
     """Participation component (0-35 points)"""
-    volume_surge: float = 0.0      # Current volume vs average
-    vol_rate_30s: float = 0.0      # Volume rate vs 30s baseline
-    relative_volume: float = 0.0   # RVol for the day
+
+    volume_surge: float = 0.0  # Current volume vs average
+    vol_rate_30s: float = 0.0  # Volume rate vs 30s baseline
+    relative_volume: float = 0.0  # RVol for the day
     float_rotation_pct: float = 0.0  # % of float traded
 
     # Scores
-    surge_score: int = 0       # 0-15: Volume surge
-    vol_rate_score: int = 0    # 0-10: Volume rate
-    rotation_score: int = 0    # 0-10: Float rotation
+    surge_score: int = 0  # 0-15: Volume surge
+    vol_rate_score: int = 0  # 0-10: Volume rate
+    rotation_score: int = 0  # 0-10: Float rotation
 
     @property
     def total(self) -> int:
@@ -122,33 +128,34 @@ class ParticipationScore:
 
     def to_dict(self) -> Dict:
         return {
-            'volume_surge': round(self.volume_surge, 2),
-            'vol_rate_30s': round(self.vol_rate_30s, 2),
-            'relative_volume': round(self.relative_volume, 2),
-            'float_rotation_pct': round(self.float_rotation_pct, 2),
-            'surge_score': self.surge_score,
-            'vol_rate_score': self.vol_rate_score,
-            'rotation_score': self.rotation_score,
-            'total': self.total
+            "volume_surge": round(self.volume_surge, 2),
+            "vol_rate_30s": round(self.vol_rate_30s, 2),
+            "relative_volume": round(self.relative_volume, 2),
+            "float_rotation_pct": round(self.float_rotation_pct, 2),
+            "surge_score": self.surge_score,
+            "vol_rate_score": self.vol_rate_score,
+            "rotation_score": self.rotation_score,
+            "total": self.total,
         }
 
 
 @dataclass
 class LiquidityScore:
     """Liquidity/Confirmation component (0-25 points)"""
-    spread_pct: float = 0.0        # Bid-ask spread %
-    buy_pressure: float = 0.0      # Order flow buy pressure
-    imbalance_ratio: float = 0.0   # Bid vs ask imbalance
-    tape_signal: str = "NEUTRAL"   # BULLISH, NEUTRAL, BEARISH
+
+    spread_pct: float = 0.0  # Bid-ask spread %
+    buy_pressure: float = 0.0  # Order flow buy pressure
+    imbalance_ratio: float = 0.0  # Bid vs ask imbalance
+    tape_signal: str = "NEUTRAL"  # BULLISH, NEUTRAL, BEARISH
 
     # Context flags
-    mtf_aligned: bool = False      # Multi-timeframe confirmation
-    chronos_ok: bool = False       # Chronos regime favorable
+    mtf_aligned: bool = False  # Multi-timeframe confirmation
+    chronos_ok: bool = False  # Chronos regime favorable
 
     # Scores
-    spread_score: int = 0      # 0-10: Tight spread = good
-    flow_score: int = 0        # 0-10: Buy pressure
-    context_score: int = 0     # 0-5: MTF + Chronos
+    spread_score: int = 0  # 0-10: Tight spread = good
+    flow_score: int = 0  # 0-10: Buy pressure
+    context_score: int = 0  # 0-5: MTF + Chronos
 
     @property
     def total(self) -> int:
@@ -156,25 +163,26 @@ class LiquidityScore:
 
     def to_dict(self) -> Dict:
         return {
-            'spread_pct': round(self.spread_pct, 3),
-            'buy_pressure': round(self.buy_pressure, 3),
-            'imbalance_ratio': round(self.imbalance_ratio, 2),
-            'tape_signal': self.tape_signal,
-            'mtf_aligned': self.mtf_aligned,
-            'chronos_ok': self.chronos_ok,
-            'spread_score': self.spread_score,
-            'flow_score': self.flow_score,
-            'context_score': self.context_score,
-            'total': self.total
+            "spread_pct": round(self.spread_pct, 3),
+            "buy_pressure": round(self.buy_pressure, 3),
+            "imbalance_ratio": round(self.imbalance_ratio, 2),
+            "tape_signal": self.tape_signal,
+            "mtf_aligned": self.mtf_aligned,
+            "chronos_ok": self.chronos_ok,
+            "spread_score": self.spread_score,
+            "flow_score": self.flow_score,
+            "context_score": self.context_score,
+            "total": self.total,
         }
 
 
 @dataclass
 class MomentumResult:
     """Complete momentum analysis result"""
+
     symbol: str
     timestamp: datetime
-    score: int                 # 0-100 total score
+    score: int  # 0-100 total score
     grade: MomentumGrade
 
     # Component scores
@@ -183,12 +191,12 @@ class MomentumResult:
     liquidity: LiquidityScore
 
     # Veto system
-    vetoed: bool = False           # True if any hard veto triggered
+    vetoed: bool = False  # True if any hard veto triggered
     veto_reasons: List[VetoReason] = field(default_factory=list)
 
     # Flags
-    is_tradeable: bool = False     # Score >= threshold AND not vetoed
-    ignition_ready: bool = False   # All components aligned
+    is_tradeable: bool = False  # Score >= threshold AND not vetoed
+    ignition_ready: bool = False  # All components aligned
     reasons: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
@@ -197,71 +205,74 @@ class MomentumResult:
 
     def to_dict(self) -> Dict:
         return {
-            'symbol': self.symbol,
-            'timestamp': self.timestamp.isoformat(),
-            'score': self.score,
-            'grade': self.grade.value,
-            'price_urgency': self.price_urgency.to_dict(),
-            'participation': self.participation.to_dict(),
-            'liquidity': self.liquidity.to_dict(),
-            'vetoed': self.vetoed,
-            'veto_reasons': [v.value for v in self.veto_reasons],
-            'is_tradeable': self.is_tradeable,
-            'ignition_ready': self.ignition_ready,
-            'reasons': self.reasons,
-            'warnings': self.warnings,
-            'debug': self.debug
+            "symbol": self.symbol,
+            "timestamp": self.timestamp.isoformat(),
+            "score": self.score,
+            "grade": self.grade.value,
+            "price_urgency": self.price_urgency.to_dict(),
+            "participation": self.participation.to_dict(),
+            "liquidity": self.liquidity.to_dict(),
+            "vetoed": self.vetoed,
+            "veto_reasons": [v.value for v in self.veto_reasons],
+            "is_tradeable": self.is_tradeable,
+            "ignition_ready": self.ignition_ready,
+            "reasons": self.reasons,
+            "warnings": self.warnings,
+            "debug": self.debug,
         }
 
 
 @dataclass
 class MomentumConfig:
     """Configurable thresholds for momentum scoring"""
+
     # Entry threshold
     momentum_score_threshold_enter: int = 70
 
     # ROC thresholds
-    r_5s_min: float = 0.1      # 0.1% in 5 seconds
-    r_15s_min: float = 0.2     # 0.2% in 15 seconds
-    r_30s_min: float = 0.3     # 0.3% in 30 seconds
-    accel_min: float = 0.05    # Minimum acceleration
+    r_5s_min: float = 0.1  # 0.1% in 5 seconds
+    r_15s_min: float = 0.2  # 0.2% in 15 seconds
+    r_30s_min: float = 0.3  # 0.3% in 30 seconds
+    accel_min: float = 0.05  # Minimum acceleration
 
     # Volume thresholds
     vol_rate_min: float = 2.0  # 2x normal volume rate
-    surge_min: float = 3.0     # 3x surge minimum
+    surge_min: float = 3.0  # 3x surge minimum
 
     # Hard veto thresholds
-    max_spread_pct: float = 1.0        # Max 1% spread
-    min_buy_pressure: float = 0.55     # Min 55% buy pressure
+    max_spread_pct: float = 1.0  # Max 1% spread
+    min_buy_pressure: float = 0.55  # Min 55% buy pressure
     vwap_max_extension_pct: float = 3.0  # Max 3% above VWAP
 
     # Component minimums for ignition
-    min_price_urgency: int = 20        # 20/40
-    min_participation: int = 15        # 15/35
-    min_liquidity: int = 10            # 10/25
+    min_price_urgency: int = 20  # 20/40
+    min_participation: int = 15  # 15/35
+    min_liquidity: int = 10  # 10/25
 
     @classmethod
-    def from_scalper_config(cls) -> 'MomentumConfig':
+    def from_scalper_config(cls) -> "MomentumConfig":
         """Load config from scalper_config.json if available"""
         config_path = os.path.join(os.path.dirname(__file__), "scalper_config.json")
         if os.path.exists(config_path):
             try:
-                with open(config_path, 'r') as f:
+                with open(config_path, "r") as f:
                     data = json.load(f)
                 return cls(
-                    momentum_score_threshold_enter=data.get('momentum_score_threshold_enter', 70),
-                    r_5s_min=data.get('r_5s_min', 0.1),
-                    r_15s_min=data.get('r_15s_min', 0.2),
-                    r_30s_min=data.get('r_30s_min', 0.3),
-                    accel_min=data.get('accel_min', 0.05),
-                    vol_rate_min=data.get('vol_rate_min', 2.0),
-                    surge_min=data.get('surge_min', 3.0),
-                    max_spread_pct=data.get('max_spread_percent', 1.0),
-                    min_buy_pressure=data.get('min_buy_pressure', 0.55),
-                    vwap_max_extension_pct=data.get('vwap_max_extension_pct', 3.0),
-                    min_price_urgency=data.get('min_price_urgency', 20),
-                    min_participation=data.get('min_participation', 15),
-                    min_liquidity=data.get('min_liquidity', 10)
+                    momentum_score_threshold_enter=data.get(
+                        "momentum_score_threshold_enter", 70
+                    ),
+                    r_5s_min=data.get("r_5s_min", 0.1),
+                    r_15s_min=data.get("r_15s_min", 0.2),
+                    r_30s_min=data.get("r_30s_min", 0.3),
+                    accel_min=data.get("accel_min", 0.05),
+                    vol_rate_min=data.get("vol_rate_min", 2.0),
+                    surge_min=data.get("surge_min", 3.0),
+                    max_spread_pct=data.get("max_spread_percent", 1.0),
+                    min_buy_pressure=data.get("min_buy_pressure", 0.55),
+                    vwap_max_extension_pct=data.get("vwap_max_extension_pct", 3.0),
+                    min_price_urgency=data.get("min_price_urgency", 20),
+                    min_participation=data.get("min_participation", 15),
+                    min_liquidity=data.get("min_liquidity", 10),
                 )
             except Exception as e:
                 logger.warning(f"Failed to load config: {e}")
@@ -295,6 +306,7 @@ class MomentumScorer:
         if self._vwap_manager is None:
             try:
                 from ai.vwap_manager import get_vwap_manager
+
                 self._vwap_manager = get_vwap_manager()
             except Exception as e:
                 logger.debug(f"VWAP manager not available: {e}")
@@ -306,33 +318,36 @@ class MomentumScorer:
         if self._chronos_adapter is None:
             try:
                 from ai.chronos_adapter import get_chronos_adapter
+
                 self._chronos_adapter = get_chronos_adapter()
             except Exception as e:
                 logger.debug(f"Chronos adapter not available: {e}")
         return self._chronos_adapter
 
-    def calculate(self,
-                  symbol: str,
-                  current_price: float,
-                  prices_5s: List[float] = None,
-                  prices_15s: List[float] = None,
-                  prices_30s: List[float] = None,
-                  high_30s: float = 0,
-                  low_30s: float = 0,
-                  high_of_day: float = 0,
-                  vwap: float = 0,
-                  current_volume: int = 0,
-                  volume_30s_baseline: int = 0,
-                  avg_volume: int = 0,
-                  float_shares: int = 0,
-                  day_volume: int = 0,
-                  spread_pct: float = 0,
-                  buy_pressure: float = 0.5,
-                  imbalance_ratio: float = 1.0,
-                  tape_signal: str = "NEUTRAL",
-                  mtf_aligned: bool = None,
-                  chronos_regime: str = None,
-                  chronos_confidence: float = None) -> MomentumResult:
+    def calculate(
+        self,
+        symbol: str,
+        current_price: float,
+        prices_5s: List[float] = None,
+        prices_15s: List[float] = None,
+        prices_30s: List[float] = None,
+        high_30s: float = 0,
+        low_30s: float = 0,
+        high_of_day: float = 0,
+        vwap: float = 0,
+        current_volume: int = 0,
+        volume_30s_baseline: int = 0,
+        avg_volume: int = 0,
+        float_shares: int = 0,
+        day_volume: int = 0,
+        spread_pct: float = 0,
+        buy_pressure: float = 0.5,
+        imbalance_ratio: float = 1.0,
+        tape_signal: str = "NEUTRAL",
+        mtf_aligned: bool = None,
+        chronos_regime: str = None,
+        chronos_confidence: float = None,
+    ) -> MomentumResult:
         """
         Calculate momentum score with full integration.
 
@@ -372,16 +387,16 @@ class MomentumScorer:
                 if vwap_data:
                     vwap = vwap_data.vwap
             except Exception as e:
-                debug['vwap_fetch_error'] = str(e)
+                debug["vwap_fetch_error"] = str(e)
 
         if chronos_regime is None and self.chronos_adapter:
             try:
                 context = self.chronos_adapter.get_context(symbol)
                 if context:
-                    chronos_regime = context.get('market_regime', 'UNKNOWN')
-                    chronos_confidence = context.get('regime_confidence', 0.5)
+                    chronos_regime = context.get("market_regime", "UNKNOWN")
+                    chronos_confidence = context.get("regime_confidence", 0.5)
             except Exception as e:
-                debug['chronos_fetch_error'] = str(e)
+                debug["chronos_fetch_error"] = str(e)
 
         # Calculate Price/Urgency Score
         price_urgency = self._calc_price_urgency(
@@ -396,7 +411,7 @@ class MomentumScorer:
             reasons=reasons,
             warnings=warnings,
             veto_reasons=veto_reasons,
-            debug=debug
+            debug=debug,
         )
 
         # Calculate Participation Score
@@ -408,7 +423,7 @@ class MomentumScorer:
             day_volume=day_volume,
             reasons=reasons,
             warnings=warnings,
-            debug=debug
+            debug=debug,
         )
 
         # Calculate Liquidity Score
@@ -423,7 +438,7 @@ class MomentumScorer:
             reasons=reasons,
             warnings=warnings,
             veto_reasons=veto_reasons,
-            debug=debug
+            debug=debug,
         )
 
         # Calculate raw score
@@ -441,27 +456,29 @@ class MomentumScorer:
         grade = self._get_grade(final_score)
 
         # Tradeable check (not vetoed and score >= threshold)
-        is_tradeable = not vetoed and final_score >= self.config.momentum_score_threshold_enter
+        is_tradeable = (
+            not vetoed and final_score >= self.config.momentum_score_threshold_enter
+        )
 
         # Ignition ready check (all components must meet minimums)
         ignition_ready = (
-            not vetoed and
-            final_score >= self.config.momentum_score_threshold_enter and
-            price_urgency.total >= self.config.min_price_urgency and
-            participation.total >= self.config.min_participation and
-            liquidity.total >= self.config.min_liquidity
+            not vetoed
+            and final_score >= self.config.momentum_score_threshold_enter
+            and price_urgency.total >= self.config.min_price_urgency
+            and participation.total >= self.config.min_participation
+            and liquidity.total >= self.config.min_liquidity
         )
 
         if ignition_ready:
             reasons.append("IGNITION READY - All components aligned, no vetoes")
 
         # Store debug info
-        debug['raw_score'] = raw_score
-        debug['final_score'] = final_score
-        debug['config'] = {
-            'threshold': self.config.momentum_score_threshold_enter,
-            'max_spread': self.config.max_spread_pct,
-            'min_buy_pressure': self.config.min_buy_pressure
+        debug["raw_score"] = raw_score
+        debug["final_score"] = final_score
+        debug["config"] = {
+            "threshold": self.config.momentum_score_threshold_enter,
+            "max_spread": self.config.max_spread_pct,
+            "min_buy_pressure": self.config.min_buy_pressure,
         }
 
         result = MomentumResult(
@@ -478,7 +495,7 @@ class MomentumScorer:
             ignition_ready=ignition_ready,
             reasons=reasons,
             warnings=warnings,
-            debug=debug
+            debug=debug,
         )
 
         # Cache result
@@ -486,19 +503,21 @@ class MomentumScorer:
 
         return result
 
-    def _calc_price_urgency(self,
-                            current_price: float,
-                            prices_5s: List[float],
-                            prices_15s: List[float],
-                            prices_30s: List[float],
-                            high_30s: float,
-                            low_30s: float,
-                            high_of_day: float,
-                            vwap: float,
-                            reasons: List[str],
-                            warnings: List[str],
-                            veto_reasons: List[VetoReason],
-                            debug: Dict) -> PriceUrgencyScore:
+    def _calc_price_urgency(
+        self,
+        current_price: float,
+        prices_5s: List[float],
+        prices_15s: List[float],
+        prices_30s: List[float],
+        high_30s: float,
+        low_30s: float,
+        high_of_day: float,
+        vwap: float,
+        reasons: List[str],
+        warnings: List[str],
+        veto_reasons: List[VetoReason],
+        debug: Dict,
+    ) -> PriceUrgencyScore:
         """Calculate price urgency with r_5s, r_15s, r_30s, accel"""
         score = PriceUrgencyScore()
 
@@ -513,11 +532,11 @@ class MomentumScorer:
         # Acceleration (r_15s - r_30s/2)
         score.accel = score.r_15s - (score.r_30s / 2) if score.r_30s != 0 else 0
 
-        debug['roc'] = {
-            'r_5s': round(score.r_5s, 4),
-            'r_15s': round(score.r_15s, 4),
-            'r_30s': round(score.r_30s, 4),
-            'accel': round(score.accel, 4)
+        debug["roc"] = {
+            "r_5s": round(score.r_5s, 4),
+            "r_15s": round(score.r_15s, 4),
+            "r_30s": round(score.r_30s, 4),
+            "accel": round(score.accel, 4),
         }
 
         # Range 30s
@@ -571,7 +590,9 @@ class MomentumScorer:
 
         # HOD proximity (0-5)
         if high_of_day > 0 and current_price > 0:
-            score.hod_distance_pct = ((high_of_day - current_price) / current_price) * 100
+            score.hod_distance_pct = (
+                (high_of_day - current_price) / current_price
+            ) * 100
             score.hod_break = current_price >= high_of_day * 0.999
 
             if score.hod_break:
@@ -594,7 +615,9 @@ class MomentumScorer:
                 score.vwap_position = "ABOVE"
                 # Check if too extended
                 if score.vwap_extension_pct > self.config.vwap_max_extension_pct:
-                    warnings.append(f"Extended {score.vwap_extension_pct:.1f}% above VWAP")
+                    warnings.append(
+                        f"Extended {score.vwap_extension_pct:.1f}% above VWAP"
+                    )
                     veto_reasons.append(VetoReason.VWAP_EXTENDED)
             elif current_price >= vwap * 0.995:
                 score.vwap_position = "AT"
@@ -605,15 +628,17 @@ class MomentumScorer:
 
         return score
 
-    def _calc_participation(self,
-                            current_volume: int,
-                            volume_30s_baseline: int,
-                            avg_volume: int,
-                            float_shares: int,
-                            day_volume: int,
-                            reasons: List[str],
-                            warnings: List[str],
-                            debug: Dict) -> ParticipationScore:
+    def _calc_participation(
+        self,
+        current_volume: int,
+        volume_30s_baseline: int,
+        avg_volume: int,
+        float_shares: int,
+        day_volume: int,
+        reasons: List[str],
+        warnings: List[str],
+        debug: Dict,
+    ) -> ParticipationScore:
         """Calculate participation score"""
         score = ParticipationScore()
 
@@ -685,26 +710,28 @@ class MomentumScorer:
             else:
                 score.rotation_score = 0
 
-        debug['participation'] = {
-            'volume_surge': round(score.volume_surge, 2),
-            'vol_rate_30s': round(score.vol_rate_30s, 2),
-            'float_rotation': round(score.float_rotation_pct, 2)
+        debug["participation"] = {
+            "volume_surge": round(score.volume_surge, 2),
+            "vol_rate_30s": round(score.vol_rate_30s, 2),
+            "float_rotation": round(score.float_rotation_pct, 2),
         }
 
         return score
 
-    def _calc_liquidity(self,
-                        spread_pct: float,
-                        buy_pressure: float,
-                        imbalance_ratio: float,
-                        tape_signal: str,
-                        mtf_aligned: bool,
-                        chronos_regime: str,
-                        chronos_confidence: float,
-                        reasons: List[str],
-                        warnings: List[str],
-                        veto_reasons: List[VetoReason],
-                        debug: Dict) -> LiquidityScore:
+    def _calc_liquidity(
+        self,
+        spread_pct: float,
+        buy_pressure: float,
+        imbalance_ratio: float,
+        tape_signal: str,
+        mtf_aligned: bool,
+        chronos_regime: str,
+        chronos_confidence: float,
+        reasons: List[str],
+        warnings: List[str],
+        veto_reasons: List[VetoReason],
+        debug: Dict,
+    ) -> LiquidityScore:
         """Calculate liquidity score with vetoes"""
         score = LiquidityScore()
         score.spread_pct = spread_pct
@@ -756,8 +783,8 @@ class MomentumScorer:
 
         # Chronos regime
         if chronos_regime:
-            favorable_regimes = ['TRENDING_UP', 'RANGING']
-            bad_regimes = ['TRENDING_DOWN', 'VOLATILE']
+            favorable_regimes = ["TRENDING_UP", "RANGING"]
+            bad_regimes = ["TRENDING_DOWN", "VOLATILE"]
 
             if chronos_regime in favorable_regimes:
                 score.chronos_ok = True
@@ -770,12 +797,12 @@ class MomentumScorer:
 
         score.context_score = min(5, context_points)
 
-        debug['liquidity'] = {
-            'spread_pct': spread_pct,
-            'buy_pressure': buy_pressure,
-            'mtf_aligned': mtf_aligned,
-            'chronos_regime': chronos_regime,
-            'chronos_confidence': chronos_confidence
+        debug["liquidity"] = {
+            "spread_pct": spread_pct,
+            "buy_pressure": buy_pressure,
+            "mtf_aligned": mtf_aligned,
+            "chronos_regime": chronos_regime,
+            "chronos_confidence": chronos_confidence,
         }
 
         return score
@@ -856,15 +883,19 @@ if __name__ == "__main__":
         buy_pressure=0.65,
         mtf_aligned=True,
         chronos_regime="TRENDING_UP",
-        chronos_confidence=0.7
+        chronos_confidence=0.7,
     )
 
     print(f"\n--- TEST 1: Good Momentum (no vetoes) ---")
     print(f"Score: {result.score}/100 (Grade {result.grade.value})")
     print(f"Vetoed: {result.vetoed}")
     print(f"Ignition Ready: {result.ignition_ready}")
-    print(f"Components: P={result.price_urgency.total}/40, V={result.participation.total}/35, L={result.liquidity.total}/25")
-    print(f"ROC: r_5s={result.price_urgency.r_5s:.2f}%, r_15s={result.price_urgency.r_15s:.2f}%, r_30s={result.price_urgency.r_30s:.2f}%")
+    print(
+        f"Components: P={result.price_urgency.total}/40, V={result.participation.total}/35, L={result.liquidity.total}/25"
+    )
+    print(
+        f"ROC: r_5s={result.price_urgency.r_5s:.2f}%, r_15s={result.price_urgency.r_15s:.2f}%, r_30s={result.price_urgency.r_30s:.2f}%"
+    )
     print(f"Accel: {result.price_urgency.accel:.3f}")
     print(f"Reasons: {result.reasons}")
     if result.warnings:
@@ -980,5 +1011,7 @@ if __name__ == "__main__":
         status = "PASS" if r.vetoed == expected_veto else "FAIL"
         if r.vetoed == expected_veto:
             passed += 1
-        print(f"[{status}] {name}: Score={r.score}, Vetoed={r.vetoed} (expected {expected_veto})")
+        print(
+            f"[{status}] {name}: Score={r.score}, Vetoed={r.vetoed} (expected {expected_veto})"
+        )
     print(f"\nPassed: {passed}/{len(tests)}")

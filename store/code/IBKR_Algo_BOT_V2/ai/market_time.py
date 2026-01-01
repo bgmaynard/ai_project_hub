@@ -13,12 +13,13 @@ Market Hours (ET):
 """
 
 import logging
-from datetime import datetime, date, timedelta
-from typing import Dict, Optional, Tuple
+from datetime import date, datetime, timedelta
 from enum import Enum
+from typing import Dict, Optional, Tuple
 
 try:
     import pytz
+
     HAS_PYTZ = True
 except ImportError:
     HAS_PYTZ = False
@@ -26,12 +27,13 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Timezone definitions
-ET = pytz.timezone('US/Eastern') if HAS_PYTZ else None
+ET = pytz.timezone("US/Eastern") if HAS_PYTZ else None
 UTC = pytz.UTC if HAS_PYTZ else None
 
 
 class MarketStatus(Enum):
     """Market status enum"""
+
     CLOSED = "CLOSED"
     PRE_MARKET = "PRE_MARKET"
     OPEN = "OPEN"
@@ -40,21 +42,21 @@ class MarketStatus(Enum):
 
 # 2025 US Market Holidays (NYSE/NASDAQ)
 MARKET_HOLIDAYS_2025 = [
-    date(2025, 1, 1),    # New Year's Day
-    date(2025, 1, 20),   # MLK Day
-    date(2025, 2, 17),   # Presidents Day
-    date(2025, 4, 18),   # Good Friday
-    date(2025, 5, 26),   # Memorial Day
-    date(2025, 6, 19),   # Juneteenth
-    date(2025, 7, 4),    # Independence Day
-    date(2025, 9, 1),    # Labor Day
+    date(2025, 1, 1),  # New Year's Day
+    date(2025, 1, 20),  # MLK Day
+    date(2025, 2, 17),  # Presidents Day
+    date(2025, 4, 18),  # Good Friday
+    date(2025, 5, 26),  # Memorial Day
+    date(2025, 6, 19),  # Juneteenth
+    date(2025, 7, 4),  # Independence Day
+    date(2025, 9, 1),  # Labor Day
     date(2025, 11, 27),  # Thanksgiving
     date(2025, 12, 25),  # Christmas
 ]
 
 # Early close days (1:00 PM ET)
 EARLY_CLOSE_2025 = [
-    date(2025, 7, 3),    # Day before Independence Day
+    date(2025, 7, 3),  # Day before Independence Day
     date(2025, 11, 28),  # Day after Thanksgiving
     date(2025, 12, 24),  # Christmas Eve
 ]
@@ -169,7 +171,11 @@ def is_extended_hours() -> bool:
 def is_market_accessible() -> bool:
     """Check if market is accessible for trading (includes extended hours)."""
     status, _ = get_market_status()
-    return status in [MarketStatus.OPEN, MarketStatus.PRE_MARKET, MarketStatus.AFTER_HOURS]
+    return status in [
+        MarketStatus.OPEN,
+        MarketStatus.PRE_MARKET,
+        MarketStatus.AFTER_HOURS,
+    ]
 
 
 def get_next_market_event() -> Tuple[str, datetime]:
@@ -205,27 +211,41 @@ def get_next_market_event() -> Tuple[str, datetime]:
     # Determine next event
     if weekday >= 5 or is_market_holiday(today):
         # Next event is pre-market open on next trading day
-        event_time = ET.localize(datetime.combine(next_trading_day, datetime.min.time().replace(hour=4)))
+        event_time = ET.localize(
+            datetime.combine(next_trading_day, datetime.min.time().replace(hour=4))
+        )
         return f"Pre-market opens", event_time
     elif time_val < 400:
-        event_time = ET.localize(datetime.combine(today, datetime.min.time().replace(hour=4)))
+        event_time = ET.localize(
+            datetime.combine(today, datetime.min.time().replace(hour=4))
+        )
         return "Pre-market opens", event_time
     elif time_val < 930:
-        event_time = ET.localize(datetime.combine(today, datetime.min.time().replace(hour=9, minute=30)))
+        event_time = ET.localize(
+            datetime.combine(today, datetime.min.time().replace(hour=9, minute=30))
+        )
         return "Market opens", event_time
     elif time_val < close_time:
         close_hour = close_time // 100
         close_min = close_time % 100
-        event_time = ET.localize(datetime.combine(today, datetime.min.time().replace(hour=close_hour, minute=close_min)))
+        event_time = ET.localize(
+            datetime.combine(
+                today, datetime.min.time().replace(hour=close_hour, minute=close_min)
+            )
+        )
         suffix = " (early close)" if is_early_close(today) else ""
         return f"Market closes{suffix}", event_time
     elif time_val < 2000:
-        event_time = ET.localize(datetime.combine(today, datetime.min.time().replace(hour=20)))
+        event_time = ET.localize(
+            datetime.combine(today, datetime.min.time().replace(hour=20))
+        )
         return "After-hours closes", event_time
     else:
         # Next pre-market
         next_day = today + timedelta(days=1)
-        event_time = ET.localize(datetime.combine(next_day, datetime.min.time().replace(hour=4)))
+        event_time = ET.localize(
+            datetime.combine(next_day, datetime.min.time().replace(hour=4))
+        )
         return "Pre-market opens", event_time
 
 
@@ -268,13 +288,15 @@ def get_time_status() -> Dict:
         "is_early_close": is_early_close(),
         "market_close_time": f"{get_market_close_time() // 100}:{get_market_close_time() % 100:02d} ET",
         "next_event": next_event,
-        "next_event_time": next_event_time.strftime("%I:%M %p ET") if next_event_time else None,
+        "next_event_time": (
+            next_event_time.strftime("%I:%M %p ET") if next_event_time else None
+        ),
         "time_until_next_event": time_until_str,
         "trading_windows": {
             "pre_market": "4:00 AM - 9:30 AM ET",
             "regular": "9:30 AM - 4:00 PM ET",
-            "after_hours": "4:00 PM - 8:00 PM ET"
-        }
+            "after_hours": "4:00 PM - 8:00 PM ET",
+        },
     }
 
 
@@ -296,7 +318,9 @@ if __name__ == "__main__":
     print(f"Local Time: {status['local_time']}")
     print(f"UTC Time:   {status['utc_time']}")
     print(f"\nWeekday: {status['weekday']}")
-    print(f"Market Status: {status['market_status']} - {status['market_status_detail']}")
+    print(
+        f"Market Status: {status['market_status']} - {status['market_status_detail']}"
+    )
     print(f"Is Trading Day: {status['is_trading_day']}")
     print(f"Is Holiday: {status['is_holiday']}")
     print(f"Is Early Close: {status['is_early_close']}")

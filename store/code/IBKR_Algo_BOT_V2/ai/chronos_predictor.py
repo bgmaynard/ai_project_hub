@@ -10,13 +10,14 @@ Key advantages:
 - Handles various time series patterns automatically
 """
 
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 import torch
 import yfinance as yf
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Tuple
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ def get_chronos_pipeline():
     if _pipeline is None:
         try:
             from chronos import ChronosPipeline
+
             logger.info(f"Loading Chronos model: {_model_name}")
             _pipeline = ChronosPipeline.from_pretrained(
                 _model_name,
@@ -79,7 +81,9 @@ class ChronosPredictor:
             raise ValueError(f"No data available for {symbol}")
         return df
 
-    def _prepare_context(self, df: pd.DataFrame, use_returns: bool = False) -> torch.Tensor:
+    def _prepare_context(
+        self, df: pd.DataFrame, use_returns: bool = False
+    ) -> torch.Tensor:
         """
         Prepare price series as context for Chronos.
 
@@ -89,21 +93,17 @@ class ChronosPredictor:
         """
         if use_returns:
             # Use log returns for stationarity
-            prices = df['Close'].values
+            prices = df["Close"].values
             returns = np.log(prices[1:] / prices[:-1])
             context = torch.tensor(returns, dtype=torch.float32)
         else:
             # Use raw closing prices
-            context = torch.tensor(df['Close'].values, dtype=torch.float32)
+            context = torch.tensor(df["Close"].values, dtype=torch.float32)
 
         return context.unsqueeze(0)  # Add batch dimension
 
     def predict(
-        self,
-        symbol: str,
-        horizon: int = 5,
-        num_samples: int = 20,
-        period: str = "3mo"
+        self, symbol: str, horizon: int = 5, num_samples: int = 20, period: str = "3mo"
     ) -> Dict:
         """
         Generate probabilistic price forecast for a symbol.
@@ -122,7 +122,7 @@ class ChronosPredictor:
 
             # Fetch and prepare data
             df = self._fetch_price_data(symbol, period)
-            last_price = float(df['Close'].iloc[-1])
+            last_price = float(df["Close"].iloc[-1])
             last_date = df.index[-1]
 
             # Prepare context (use returns for better forecasting)
@@ -143,7 +143,9 @@ class ChronosPredictor:
             price_paths[:, 0] = last_price
 
             for t in range(horizon):
-                price_paths[:, t + 1] = price_paths[:, t] * np.exp(forecast_returns[:, t])
+                price_paths[:, t + 1] = price_paths[:, t] * np.exp(
+                    forecast_returns[:, t]
+                )
 
             # Remove the starting price
             forecast_prices = price_paths[:, 1:]
@@ -180,7 +182,9 @@ class ChronosPredictor:
 
             # Confidence based on forecast spread
             forecast_spread = (q90[-1] - q10[-1]) / last_price
-            confidence = max(0, 1 - forecast_spread)  # Tighter spread = higher confidence
+            confidence = max(
+                0, 1 - forecast_spread
+            )  # Tighter spread = higher confidence
 
             return {
                 "symbol": symbol,
@@ -262,7 +266,9 @@ class ChronosPredictor:
             price_paths[:, 0] = last_price
 
             for t in range(horizon):
-                price_paths[:, t + 1] = price_paths[:, t] * np.exp(forecast_returns[:, t])
+                price_paths[:, t + 1] = price_paths[:, t] * np.exp(
+                    forecast_returns[:, t]
+                )
 
             forecast_prices = price_paths[:, 1:]
 

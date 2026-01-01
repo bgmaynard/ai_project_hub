@@ -11,22 +11,18 @@ Key Principles:
 4. Full transparency on rank, metrics, inclusion/exclusion
 """
 
+import json
 import logging
 from datetime import datetime
-from typing import Dict, Optional
 from pathlib import Path
-import json
+from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .momentum_watchlist import (
-    get_momentum_watchlist,
-    reset_momentum_watchlist,
-    WatchlistConfig,
-    ExclusionReason,
-    get_rel_vol_floor
-)
+from .momentum_watchlist import (ExclusionReason, WatchlistConfig,
+                                 get_momentum_watchlist, get_rel_vol_floor,
+                                 reset_momentum_watchlist)
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +37,7 @@ def _log_operator_action(action: Dict):
     try:
         actions = []
         if OPERATOR_LOG_PATH.exists():
-            with open(OPERATOR_LOG_PATH, 'r') as f:
+            with open(OPERATOR_LOG_PATH, "r") as f:
                 data = json.load(f)
                 actions = data.get("actions", [])
 
@@ -52,12 +48,16 @@ def _log_operator_action(action: Dict):
             actions = actions[-1000:]
 
         OPERATOR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(OPERATOR_LOG_PATH, 'w') as f:
-            json.dump({
-                "last_updated": datetime.now().isoformat(),
-                "action_count": len(actions),
-                "actions": actions
-            }, f, indent=2)
+        with open(OPERATOR_LOG_PATH, "w") as f:
+            json.dump(
+                {
+                    "last_updated": datetime.now().isoformat(),
+                    "action_count": len(actions),
+                    "actions": actions,
+                },
+                f,
+                indent=2,
+            )
 
     except Exception as e:
         logger.error(f"Failed to log operator action: {e}")
@@ -74,6 +74,7 @@ class ConfigUpdate(BaseModel):
 # =============================================================================
 # OPERATOR ENDPOINTS
 # =============================================================================
+
 
 @router.get("/status")
 async def get_watchlist_status():
@@ -111,7 +112,7 @@ async def get_active_symbols():
     return {
         "symbols": watchlist.get_active_watchlist(),
         "count": len(watchlist.active_symbols),
-        "session_date": watchlist.session_date.isoformat()
+        "session_date": watchlist.session_date.isoformat(),
     }
 
 
@@ -131,8 +132,7 @@ async def get_symbol_status(symbol: str):
 
     if status is None:
         raise HTTPException(
-            status_code=404,
-            detail=f"Symbol {symbol} not found in current session"
+            status_code=404, detail=f"Symbol {symbol} not found in current session"
         )
 
     return status
@@ -165,7 +165,7 @@ async def purge_watchlist(triggered_by: str = "operator"):
     return {
         "status": "success",
         "message": f"Purged {len(action.get('symbols_before', []))} symbols",
-        "action": action
+        "action": action,
     }
 
 
@@ -191,8 +191,7 @@ async def delete_symbol(symbol: str, triggered_by: str = "operator"):
     # Check if symbol exists
     if symbol not in watchlist.active_symbols:
         raise HTTPException(
-            status_code=404,
-            detail=f"Symbol {symbol} not in active watchlist"
+            status_code=404, detail=f"Symbol {symbol} not in active watchlist"
         )
 
     # Remove from active watchlist
@@ -219,7 +218,7 @@ async def delete_symbol(symbol: str, triggered_by: str = "operator"):
         "timestamp": now.isoformat(),
         "symbol": symbol,
         "triggered_by": triggered_by,
-        "session_date": watchlist.session_date.isoformat()
+        "session_date": watchlist.session_date.isoformat(),
     }
     watchlist._operator_actions.append(action)
     _log_operator_action(action)
@@ -229,7 +228,7 @@ async def delete_symbol(symbol: str, triggered_by: str = "operator"):
     return {
         "status": "success",
         "message": f"Deleted {symbol} from watchlist",
-        "action": action
+        "action": action,
     }
 
 
@@ -252,7 +251,7 @@ async def refresh_watchlist():
     action = {
         "action_type": "refresh",
         "timestamp": datetime.now().isoformat(),
-        "triggered_by": "operator"
+        "triggered_by": "operator",
     }
     _log_operator_action(action)
 
@@ -261,7 +260,7 @@ async def refresh_watchlist():
     return {
         "status": "success",
         "message": "Watchlist refreshed - next cycle will start fresh",
-        "action": action
+        "action": action,
     }
 
 
@@ -300,14 +299,11 @@ async def update_watchlist_config(update: ConfigUpdate):
         "action_type": "config_update",
         "timestamp": datetime.now().isoformat(),
         "new_config": watchlist.config.to_dict(),
-        "triggered_by": "operator"
+        "triggered_by": "operator",
     }
     _log_operator_action(action)
 
-    return {
-        "status": "success",
-        "config": watchlist.config.to_dict()
-    }
+    return {"status": "success", "config": watchlist.config.to_dict()}
 
 
 @router.get("/actions")
@@ -325,7 +321,7 @@ async def get_operator_actions(limit: int = 50):
     persisted_actions = []
     if OPERATOR_LOG_PATH.exists():
         try:
-            with open(OPERATOR_LOG_PATH, 'r') as f:
+            with open(OPERATOR_LOG_PATH, "r") as f:
                 data = json.load(f)
                 persisted_actions = data.get("actions", [])
         except Exception as e:
@@ -339,15 +335,10 @@ async def get_operator_actions(limit: int = 50):
 
     # Sort by timestamp descending
     sorted_actions = sorted(
-        all_actions.values(),
-        key=lambda x: x.get("timestamp", ""),
-        reverse=True
+        all_actions.values(), key=lambda x: x.get("timestamp", ""), reverse=True
     )
 
-    return {
-        "actions": sorted_actions[:limit],
-        "total_count": len(sorted_actions)
-    }
+    return {"actions": sorted_actions[:limit], "total_count": len(sorted_actions)}
 
 
 @router.get("/rank-snapshot")
@@ -367,28 +358,24 @@ async def get_rank_snapshot():
 
     if not r1_path.exists():
         raise HTTPException(
-            status_code=404,
-            detail="No R1 report found - run pipeline first"
+            status_code=404, detail="No R1 report found - run pipeline first"
         )
 
     try:
-        with open(r1_path, 'r') as f:
+        with open(r1_path, "r") as f:
             r1_data = json.load(f)
 
         rank_snapshot = r1_data.get("rank_snapshot", {})
         if not rank_snapshot:
             raise HTTPException(
                 status_code=404,
-                detail="R1 report exists but has no rank_snapshot - old format?"
+                detail="R1 report exists but has no rank_snapshot - old format?",
             )
 
         return rank_snapshot
 
     except json.JSONDecodeError as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to parse R1 report: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to parse R1 report: {e}")
 
 
 @router.get("/exclusions")
@@ -406,13 +393,10 @@ async def get_exclusion_summary():
     r1_path = reports_dir / "report_R1_daily_top_gappers.json"
 
     if not r1_path.exists():
-        return {
-            "message": "No R1 report found",
-            "exclusions": []
-        }
+        return {"message": "No R1 report found", "exclusions": []}
 
     try:
-        with open(r1_path, 'r') as f:
+        with open(r1_path, "r") as f:
             r1_data = json.load(f)
 
         rank_snapshot = r1_data.get("rank_snapshot", {})
@@ -421,14 +405,11 @@ async def get_exclusion_summary():
             "excluded": rank_snapshot.get("excluded", []),
             "exclusion_summary": rank_snapshot.get("exclusion_summary", {}),
             "below_cutoff": rank_snapshot.get("below_cutoff", []),
-            "timestamp": r1_data.get("timestamp")
+            "timestamp": r1_data.get("timestamp"),
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to read exclusions: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to read exclusions: {e}")
 
 
 @router.get("/entry-windows")
@@ -451,11 +432,11 @@ async def get_entry_window_log(limit: int = 50):
         return {
             "message": "No entry window events yet",
             "total_events": 0,
-            "events": []
+            "events": [],
         }
 
     try:
-        with open(log_path, 'r') as f:
+        with open(log_path, "r") as f:
             log_data = json.load(f)
 
         events = log_data.get("events", [])
@@ -466,13 +447,12 @@ async def get_entry_window_log(limit: int = 50):
             "last_updated": log_data.get("last_updated"),
             "total_events": log_data.get("total_events", 0),
             "symbol_counts": log_data.get("symbol_counts", {}),
-            "events": events_reversed
+            "events": events_reversed,
         }
 
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to read entry window log: {e}"
+            status_code=500, detail=f"Failed to read entry window log: {e}"
         )
 
 
@@ -487,7 +467,4 @@ async def clear_entry_window_log():
     if log_path.exists():
         log_path.unlink()
 
-    return {
-        "status": "success",
-        "message": "Entry window log cleared"
-    }
+    return {"status": "success", "message": "Entry window log cleared"}

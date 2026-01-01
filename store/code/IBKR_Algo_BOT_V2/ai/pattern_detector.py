@@ -11,10 +11,11 @@ Based on: "The best days are when multiple setups align on the same stock"
 """
 
 import logging
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Candle:
     """OHLCV candle data"""
+
     timestamp: datetime
     open: float
     high: float
@@ -58,6 +60,7 @@ class Candle:
 @dataclass
 class PatternResult:
     """Result of pattern detection"""
+
     pattern_type: str  # BULL_FLAG, ABCD, MICRO_PB, HOD_BREAK
     detected: bool = False
     confidence: float = 0.0
@@ -75,17 +78,23 @@ class PatternResult:
 
     def to_dict(self) -> dict:
         return {
-            'pattern_type': self.pattern_type,
-            'detected': self.detected,
-            'confidence': round(self.confidence, 3),
-            'entry_price': self.entry_price,
-            'stop_loss': self.stop_loss,
-            'target_price': self.target_price,
-            'risk_reward': round((self.target_price - self.entry_price) /
-                                 (self.entry_price - self.stop_loss), 2)
-                          if self.stop_loss and self.entry_price else 0,
-            'details': self.details,
-            'detected_at': self.detected_at.isoformat()
+            "pattern_type": self.pattern_type,
+            "detected": self.detected,
+            "confidence": round(self.confidence, 3),
+            "entry_price": self.entry_price,
+            "stop_loss": self.stop_loss,
+            "target_price": self.target_price,
+            "risk_reward": (
+                round(
+                    (self.target_price - self.entry_price)
+                    / (self.entry_price - self.stop_loss),
+                    2,
+                )
+                if self.stop_loss and self.entry_price
+                else 0
+            ),
+            "details": self.details,
+            "detected_at": self.detected_at.isoformat(),
         }
 
 
@@ -106,7 +115,7 @@ class PatternDetector:
 
         # Pattern thresholds
         self.flag_min_pole_pct = 10.0  # 10% min move for pole
-        self.flag_max_retrace = 0.50   # 50% max retracement
+        self.flag_max_retrace = 0.50  # 50% max retracement
         self.flag_min_candles = 2
         self.flag_max_candles = 8
 
@@ -128,12 +137,14 @@ class PatternDetector:
         """Add multiple candles from API response"""
         for c in candles:
             candle = Candle(
-                timestamp=datetime.fromisoformat(c.get('timestamp', datetime.now().isoformat())),
-                open=float(c.get('open', 0)),
-                high=float(c.get('high', 0)),
-                low=float(c.get('low', 0)),
-                close=float(c.get('close', 0)),
-                volume=int(c.get('volume', 0))
+                timestamp=datetime.fromisoformat(
+                    c.get("timestamp", datetime.now().isoformat())
+                ),
+                open=float(c.get("open", 0)),
+                high=float(c.get("high", 0)),
+                low=float(c.get("low", 0)),
+                close=float(c.get("close", 0)),
+                volume=int(c.get("volume", 0)),
             )
             self.add_candle(symbol, candle)
 
@@ -165,14 +176,14 @@ class PatternDetector:
         for i in range(len(candles) - 5, 4, -1):
             # Check if candles i to some earlier point form a strong move
             for j in range(max(0, i - 15), i - 3):  # 3-15 candles for pole
-                pole_low = min(c.low for c in candles[j:i+1])
-                pole_high = max(c.high for c in candles[j:i+1])
+                pole_low = min(c.low for c in candles[j : i + 1])
+                pole_high = max(c.high for c in candles[j : i + 1])
                 pole_pct = (pole_high - pole_low) / pole_low * 100
 
                 if pole_pct >= self.flag_min_pole_pct and pole_pct > best_pole_pct:
                     # Check if mostly green candles (momentum)
-                    green_count = sum(1 for c in candles[j:i+1] if c.is_green)
-                    if green_count >= len(candles[j:i+1]) * 0.6:  # 60%+ green
+                    green_count = sum(1 for c in candles[j : i + 1] if c.is_green)
+                    if green_count >= len(candles[j : i + 1]) * 0.6:  # 60%+ green
                         pole_start_idx = j
                         pole_end_idx = i
                         best_pole_pct = pole_pct
@@ -181,14 +192,14 @@ class PatternDetector:
             return result
 
         # Look for flag (consolidation after pole)
-        flag_candles = candles[pole_end_idx + 1:]
+        flag_candles = candles[pole_end_idx + 1 :]
         if len(flag_candles) < self.flag_min_candles:
             return result
         if len(flag_candles) > self.flag_max_candles:
-            flag_candles = flag_candles[:self.flag_max_candles]
+            flag_candles = flag_candles[: self.flag_max_candles]
 
         # Check flag characteristics
-        pole_high = max(c.high for c in candles[pole_start_idx:pole_end_idx+1])
+        pole_high = max(c.high for c in candles[pole_start_idx : pole_end_idx + 1])
         pole_low = candles[pole_start_idx].low
         pole_height = pole_high - pole_low
 
@@ -201,7 +212,9 @@ class PatternDetector:
             return result
 
         # Volume should decrease in flag
-        pole_avg_vol = np.mean([c.volume for c in candles[pole_start_idx:pole_end_idx+1]])
+        pole_avg_vol = np.mean(
+            [c.volume for c in candles[pole_start_idx : pole_end_idx + 1]]
+        )
         flag_avg_vol = np.mean([c.volume for c in flag_candles])
         volume_decreasing = flag_avg_vol < pole_avg_vol * 0.8
 
@@ -222,11 +235,11 @@ class PatternDetector:
 
         result.confidence = min(confidence, 1.0)
         result.details = {
-            'pole_pct': round(best_pole_pct, 1),
-            'pole_height': round(pole_height, 2),
-            'retrace_pct': round(retrace_pct * 100, 1),
-            'flag_candles': len(flag_candles),
-            'volume_decreasing': volume_decreasing
+            "pole_pct": round(best_pole_pct, 1),
+            "pole_height": round(pole_height, 2),
+            "retrace_pct": round(retrace_pct * 100, 1),
+            "flag_candles": len(flag_candles),
+            "volume_decreasing": volume_decreasing,
         }
 
         return result
@@ -263,12 +276,20 @@ class PatternDetector:
 
         for i in range(2, len(recent) - 2):
             # Local low
-            if recent[i].low <= min(recent[i-1].low, recent[i-2].low,
-                                     recent[i+1].low, recent[i+2].low):
+            if recent[i].low <= min(
+                recent[i - 1].low,
+                recent[i - 2].low,
+                recent[i + 1].low,
+                recent[i + 2].low,
+            ):
                 lows.append((i, recent[i].low))
             # Local high
-            if recent[i].high >= max(recent[i-1].high, recent[i-2].high,
-                                      recent[i+1].high, recent[i+2].high):
+            if recent[i].high >= max(
+                recent[i - 1].high,
+                recent[i - 2].high,
+                recent[i + 1].high,
+                recent[i + 2].high,
+            ):
                 highs.append((i, recent[i].high))
 
         if len(lows) < 2 or len(highs) < 1:
@@ -294,7 +315,11 @@ class PatternDetector:
                     bc_retrace = (b_price - c_price) / ab_move
 
                     fib_low, fib_high = self.abcd_fib_levels
-                    if fib_low - self.abcd_fib_tolerance <= bc_retrace <= fib_high + self.abcd_fib_tolerance:
+                    if (
+                        fib_low - self.abcd_fib_tolerance
+                        <= bc_retrace
+                        <= fib_high + self.abcd_fib_tolerance
+                    ):
                         # Valid ABCD pattern found
                         result.detected = True
                         result.entry_price = b_price  # Break above B
@@ -307,13 +332,13 @@ class PatternDetector:
                         result.confidence = max(0.5, min(0.9, fib_accuracy))
 
                         result.details = {
-                            'a_price': a_price,
-                            'b_price': b_price,
-                            'c_price': c_price,
-                            'd_target': round(result.target_price, 2),
-                            'ab_move': round(ab_move, 2),
-                            'bc_retrace_pct': round(bc_retrace * 100, 1),
-                            'fib_level': f"{fib_low*100:.0f}-{fib_high*100:.0f}%"
+                            "a_price": a_price,
+                            "b_price": b_price,
+                            "c_price": c_price,
+                            "d_target": round(result.target_price, 2),
+                            "ab_move": round(ab_move, 2),
+                            "bc_retrace_pct": round(bc_retrace * 100, 1),
+                            "fib_level": f"{fib_low*100:.0f}-{fib_high*100:.0f}%",
                         }
                         return result
 
@@ -387,11 +412,11 @@ class PatternDetector:
 
             result.confidence = min(confidence, 0.9)
             result.details = {
-                'momentum_high': momentum_high,
-                'pullback_low': pullback_low,
-                'retrace_pct': round(pullback_retrace * 100, 1),
-                'pullback_candles': len(pullback_candles),
-                'green_entry': True
+                "momentum_high": momentum_high,
+                "pullback_low": pullback_low,
+                "retrace_pct": round(pullback_retrace * 100, 1),
+                "pullback_candles": len(pullback_candles),
+                "green_entry": True,
             }
 
         return result
@@ -431,7 +456,9 @@ class PatternDetector:
             return result
 
         # Check for consolidation (tight range near HOD)
-        consolidation_range = max(c.high for c in recent[-3:]) - min(c.low for c in recent[-3:])
+        consolidation_range = max(c.high for c in recent[-3:]) - min(
+            c.low for c in recent[-3:]
+        )
         avg_range = np.mean([c.range for c in candles[-10:]])
 
         tight_consolidation = consolidation_range < avg_range * 1.5
@@ -458,30 +485,34 @@ class PatternDetector:
 
             result.confidence = min(confidence, 0.9)
             result.details = {
-                'current_hod': current_hod,
-                'distance_from_hod_pct': round(distance_from_hod * 100, 2),
-                'consolidation_range': round(consolidation_range, 2),
-                'tight_consolidation': tight_consolidation,
-                'volume_building': volume_building
+                "current_hod": current_hod,
+                "distance_from_hod_pct": round(distance_from_hod * 100, 2),
+                "consolidation_range": round(consolidation_range, 2),
+                "tight_consolidation": tight_consolidation,
+                "volume_building": volume_building,
             }
 
         return result
 
-    def detect_all_patterns(self, symbol: str, current_hod: float = None) -> Dict[str, PatternResult]:
+    def detect_all_patterns(
+        self, symbol: str, current_hod: float = None
+    ) -> Dict[str, PatternResult]:
         """
         Run all pattern detectors and return results.
 
         Returns dict of pattern_type -> PatternResult
         """
         results = {
-            'bull_flag': self.detect_bull_flag(symbol),
-            'abcd': self.detect_abcd(symbol),
-            'micro_pullback': self.detect_micro_pullback(symbol),
-            'hod_break': self.detect_hod_break(symbol, current_hod)
+            "bull_flag": self.detect_bull_flag(symbol),
+            "abcd": self.detect_abcd(symbol),
+            "micro_pullback": self.detect_micro_pullback(symbol),
+            "hod_break": self.detect_hod_break(symbol, current_hod),
         }
         return results
 
-    def get_best_setup(self, symbol: str, current_hod: float = None) -> Optional[PatternResult]:
+    def get_best_setup(
+        self, symbol: str, current_hod: float = None
+    ) -> Optional[PatternResult]:
         """
         Get the highest confidence pattern currently detected.
         """
@@ -496,14 +527,14 @@ class PatternDetector:
     def get_status(self) -> Dict:
         """Get detector status"""
         return {
-            'symbols_tracked': list(self.candle_history.keys()),
-            'candle_counts': {s: len(c) for s, c in self.candle_history.items()},
-            'thresholds': {
-                'flag_min_pole_pct': self.flag_min_pole_pct,
-                'flag_max_retrace': self.flag_max_retrace,
-                'abcd_fib_levels': self.abcd_fib_levels,
-                'micro_pb_max_retrace': self.micro_pb_max_retrace
-            }
+            "symbols_tracked": list(self.candle_history.keys()),
+            "candle_counts": {s: len(c) for s, c in self.candle_history.items()},
+            "thresholds": {
+                "flag_min_pole_pct": self.flag_min_pole_pct,
+                "flag_max_retrace": self.flag_max_retrace,
+                "abcd_fib_levels": self.abcd_fib_levels,
+                "micro_pb_max_retrace": self.micro_pb_max_retrace,
+            },
         }
 
 

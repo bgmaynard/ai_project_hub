@@ -20,9 +20,10 @@ Endpoints:
 
 import logging
 from datetime import datetime
+from typing import Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -31,23 +32,27 @@ router = APIRouter(prefix="/api/warrior", tags=["Warrior Trading"])
 
 class AnalyzeRequest(BaseModel):
     """Request to analyze symbols"""
+
     symbols: List[str]
 
 
 class TapeFeedRequest(BaseModel):
     """Request to feed tape data"""
+
     symbol: str
     trades: List[Dict]
 
 
 class CandleFeedRequest(BaseModel):
     """Request to feed candle data"""
+
     symbol: str
     candles: List[Dict]
 
 
 class LULDRequest(BaseModel):
     """Request to calculate LULD bands"""
+
     symbol: str
     reference_price: float
     tier: int = 2
@@ -61,6 +66,7 @@ def get_detector():
     global _detector
     if _detector is None:
         from ai.warrior_setup_detector import get_warrior_detector
+
         _detector = get_warrior_detector()
     return _detector
 
@@ -77,7 +83,7 @@ async def get_status():
             "scanner_enabled": True,
             "patterns_enabled": ["ABCD", "Flag", "VWAP_Hold", "HOD_Break"],
             "risk_config": {"daily_goal": 500, "min_rr": 2},
-            "status": status
+            "status": status,
         }
     except Exception as e:
         logger.error(f"Status error: {e}")
@@ -87,7 +93,7 @@ async def get_status():
             "scanner_enabled": True,
             "patterns_enabled": ["ABCD", "Flag", "VWAP_Hold"],
             "risk_config": {"daily_goal": 500, "min_rr": 2},
-            "error": str(e)
+            "error": str(e),
         }
 
 
@@ -96,11 +102,9 @@ async def get_signal(symbol: str):
     """Get trading signal for a symbol"""
     try:
         from ai.warrior_setup_detector import get_trading_signal
+
         signal = await get_trading_signal(symbol.upper())
-        return {
-            "success": True,
-            "signal": signal
-        }
+        return {"success": True, "signal": signal}
     except Exception as e:
         logger.error(f"Signal error for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -118,23 +122,18 @@ async def analyze_symbols(request: AnalyzeRequest):
                 signal = await get_trading_signal(symbol.upper())
                 results.append(signal)
             except Exception as e:
-                results.append({
-                    "symbol": symbol,
-                    "error": str(e)
-                })
+                results.append({"symbol": symbol, "error": str(e)})
 
         # Sort by setup grade and confidence
         grade_order = {"A+": 0, "A": 1, "B": 2, "C": 3, "F": 4}
-        results.sort(key=lambda x: (
-            grade_order.get(x.get('setup', {}).get('grade', 'F'), 4),
-            -x.get('setup', {}).get('confidence', 0)
-        ))
+        results.sort(
+            key=lambda x: (
+                grade_order.get(x.get("setup", {}).get("grade", "F"), 4),
+                -x.get("setup", {}).get("confidence", 0),
+            )
+        )
 
-        return {
-            "success": True,
-            "count": len(results),
-            "signals": results
-        }
+        return {"success": True, "count": len(results), "signals": results}
     except Exception as e:
         logger.error(f"Analyze error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -152,11 +151,12 @@ async def get_patterns(symbol: str):
         return {
             "success": True,
             "symbol": symbol.upper(),
-            "patterns": {
-                name: p.to_dict() for name, p in patterns.items()
-            },
-            "best_pattern": detector.get_best_setup(symbol.upper()).to_dict()
-                           if detector.get_best_setup(symbol.upper()) else None
+            "patterns": {name: p.to_dict() for name, p in patterns.items()},
+            "best_pattern": (
+                detector.get_best_setup(symbol.upper()).to_dict()
+                if detector.get_best_setup(symbol.upper())
+                else None
+            ),
         }
     except Exception as e:
         logger.error(f"Pattern detection error for {symbol}: {e}")
@@ -179,7 +179,7 @@ async def get_tape_analysis(symbol: str):
             "symbol": symbol.upper(),
             "analysis": analysis.to_dict(),
             "entry_signal": entry_signal,
-            "flush_detection": flush
+            "flush_detection": flush,
         }
     except Exception as e:
         logger.error(f"Tape analysis error for {symbol}: {e}")
@@ -196,17 +196,13 @@ async def get_luld_status(symbol: str):
         status = detector.get_luld_status(symbol.upper())
 
         if status:
-            return {
-                "success": True,
-                "symbol": symbol.upper(),
-                "luld": status
-            }
+            return {"success": True, "symbol": symbol.upper(), "luld": status}
         else:
             return {
                 "success": True,
                 "symbol": symbol.upper(),
                 "luld": None,
-                "message": "No LULD bands calculated. Use POST /api/warrior/luld to calculate."
+                "message": "No LULD bands calculated. Use POST /api/warrior/luld to calculate.",
             }
     except Exception as e:
         logger.error(f"LULD status error for {symbol}: {e}")
@@ -221,15 +217,13 @@ async def calculate_luld(request: LULDRequest):
 
         detector = get_halt_detector()
         bands = detector.calculate_luld_bands(
-            request.symbol.upper(),
-            request.reference_price,
-            request.tier
+            request.symbol.upper(), request.reference_price, request.tier
         )
 
         return {
             "success": True,
             "symbol": request.symbol.upper(),
-            "bands": bands.to_dict()
+            "bands": bands.to_dict(),
         }
     except Exception as e:
         logger.error(f"LULD calculation error: {e}")
@@ -250,9 +244,8 @@ async def get_halts():
             "history": detector.get_halt_history(limit=10),
             "false_halts": detector.false_halts[-10:],
             "luld_bands": {
-                sym: bands.to_dict()
-                for sym, bands in detector.luld_bands.items()
-            }
+                sym: bands.to_dict() for sym, bands in detector.luld_bands.items()
+            },
         }
     except Exception as e:
         logger.error(f"Halts error: {e}")
@@ -269,7 +262,7 @@ async def feed_tape_data(request: TapeFeedRequest):
         return {
             "success": True,
             "symbol": request.symbol.upper(),
-            "trades_added": len(request.trades)
+            "trades_added": len(request.trades),
         }
     except Exception as e:
         logger.error(f"Tape feed error: {e}")
@@ -286,7 +279,7 @@ async def feed_candle_data(request: CandleFeedRequest):
         return {
             "success": True,
             "symbol": request.symbol.upper(),
-            "candles_added": len(request.candles)
+            "candles_added": len(request.candles),
         }
     except Exception as e:
         logger.error(f"Candle feed error: {e}")
@@ -297,19 +290,19 @@ async def feed_candle_data(request: CandleFeedRequest):
 async def get_setup_rules(setup_type: str):
     """Get entry rules for a specific setup type"""
     try:
-        from ai.setup_classifier import get_setup_classifier, SetupType
+        from ai.setup_classifier import SetupType, get_setup_classifier
 
         classifier = get_setup_classifier()
 
         # Map string to SetupType
         setup_map = {
-            'bull_flag': SetupType.BULL_FLAG,
-            'abcd': SetupType.ABCD,
-            'micro_pullback': SetupType.MICRO_PULLBACK,
-            'hod_break': SetupType.HOD_BREAK,
-            'vwap_breakout': SetupType.VWAP_BREAKOUT,
-            'dip_buy': SetupType.DIP_BUY,
-            'halt_resume': SetupType.HALT_RESUME
+            "bull_flag": SetupType.BULL_FLAG,
+            "abcd": SetupType.ABCD,
+            "micro_pullback": SetupType.MICRO_PULLBACK,
+            "hod_break": SetupType.HOD_BREAK,
+            "vwap_breakout": SetupType.VWAP_BREAKOUT,
+            "dip_buy": SetupType.DIP_BUY,
+            "halt_resume": SetupType.HALT_RESUME,
         }
 
         setup = setup_map.get(setup_type.lower())
@@ -317,16 +310,12 @@ async def get_setup_rules(setup_type: str):
             return {
                 "success": False,
                 "error": f"Unknown setup type: {setup_type}",
-                "valid_types": list(setup_map.keys())
+                "valid_types": list(setup_map.keys()),
             }
 
         rules = classifier.get_entry_rules(setup)
 
-        return {
-            "success": True,
-            "setup_type": setup.value,
-            "rules": rules
-        }
+        return {"success": True, "setup_type": setup.value, "rules": rules}
     except Exception as e:
         logger.error(f"Setup rules error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -341,23 +330,24 @@ async def get_stock_grade(symbol: str):
         # Get stock data
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                f"http://localhost:9100/api/price/{symbol.upper()}",
-                timeout=5.0
+                f"http://localhost:9100/api/price/{symbol.upper()}", timeout=5.0
             )
             if resp.status_code != 200:
-                raise HTTPException(status_code=404, detail=f"Price not found for {symbol}")
+                raise HTTPException(
+                    status_code=404, detail=f"Price not found for {symbol}"
+                )
 
             quote = resp.json()
 
-        from ai.setup_classifier import get_setup_classifier, StockCriteria
+        from ai.setup_classifier import StockCriteria, get_setup_classifier
 
         classifier = get_setup_classifier()
 
         # Build criteria (we may not have all data)
-        price = quote.get('price') or quote.get('last', 0)
-        change_pct = quote.get('change_pct', 0)
-        volume = quote.get('volume', 0)
-        avg_volume = quote.get('avg_volume', 0)
+        price = quote.get("price") or quote.get("last", 0)
+        change_pct = quote.get("change_pct", 0)
+        volume = quote.get("volume", 0)
+        avg_volume = quote.get("avg_volume", 0)
 
         criteria = StockCriteria(
             symbol=symbol.upper(),
@@ -366,7 +356,7 @@ async def get_stock_grade(symbol: str):
             rvol_over_5x=(volume / avg_volume >= 5.0) if avg_volume > 0 else False,
             price=price,
             change_pct=change_pct,
-            relative_volume=volume / avg_volume if avg_volume > 0 else 0
+            relative_volume=volume / avg_volume if avg_volume > 0 else 0,
         )
 
         return {
@@ -379,8 +369,8 @@ async def get_stock_grade(symbol: str):
                 "A": "Full position",
                 "B": "Half position",
                 "C": "Scalp only or skip",
-                "F": "Do not trade"
-            }.get(criteria.grade.value, "Unknown")
+                "F": "Do not trade",
+            }.get(criteria.grade.value, "Unknown"),
         }
     except HTTPException:
         raise
@@ -392,6 +382,7 @@ async def get_stock_grade(symbol: str):
 # ═══════════════════════════════════════════════════════════════════════
 #                 MULTI-TIMEFRAME CONFIRMATION
 # ═══════════════════════════════════════════════════════════════════════
+
 
 @router.get("/mtf/{symbol}")
 async def get_mtf_confirmation(symbol: str):
@@ -407,10 +398,7 @@ async def get_mtf_confirmation(symbol: str):
         engine = get_mtf_engine()
         result = engine.analyze(symbol.upper())
 
-        return {
-            "success": True,
-            **result.to_dict()
-        }
+        return {"success": True, **result.to_dict()}
     except Exception as e:
         logger.error(f"MTF error for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -418,6 +406,7 @@ async def get_mtf_confirmation(symbol: str):
 
 class MTFAnalyzeRequest(BaseModel):
     """Request to analyze multiple symbols for MTF confirmation"""
+
     symbols: List[str]
 
 
@@ -439,18 +428,16 @@ async def analyze_mtf_batch(request: MTFAnalyzeRequest):
                 result = engine.analyze(symbol.upper())
                 results.append(result.to_dict())
             except Exception as e:
-                results.append({
-                    "symbol": symbol.upper(),
-                    "error": str(e),
-                    "signal": "ERROR",
-                    "recommendation": "WAIT"
-                })
+                results.append(
+                    {
+                        "symbol": symbol.upper(),
+                        "error": str(e),
+                        "signal": "ERROR",
+                        "recommendation": "WAIT",
+                    }
+                )
 
-        return {
-            "success": True,
-            "count": len(results),
-            "results": results
-        }
+        return {"success": True, "count": len(results), "results": results}
     except Exception as e:
         logger.error(f"MTF batch error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -464,8 +451,8 @@ async def get_confirmed_symbols():
     Only returns symbols with CONFIRMED_LONG signal.
     """
     try:
-        from ai.mtf_confirmation import get_mtf_engine
         import httpx
+        from ai.mtf_confirmation import get_mtf_engine
 
         engine = get_mtf_engine()
 
@@ -485,19 +472,17 @@ async def get_confirmed_symbols():
             try:
                 result = engine.analyze(symbol)
                 if result.signal.value == "CONFIRMED_LONG":
-                    confirmed.append({
-                        "symbol": symbol,
-                        "confidence": result.confidence,
-                        "reasons": result.reasons
-                    })
+                    confirmed.append(
+                        {
+                            "symbol": symbol,
+                            "confidence": result.confidence,
+                            "reasons": result.reasons,
+                        }
+                    )
             except:
                 pass
 
-        return {
-            "success": True,
-            "count": len(confirmed),
-            "confirmed": confirmed
-        }
+        return {"success": True, "count": len(confirmed), "confirmed": confirmed}
     except Exception as e:
         logger.error(f"MTF confirmed error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -518,19 +503,16 @@ async def get_mtf_status():
             "cache_ttl_seconds": engine.cache_ttl,
             "min_confidence": engine.min_confidence_to_enter,
             "require_vwap": engine.require_both_above_vwap,
-            "require_macd": engine.require_macd_alignment
+            "require_macd": engine.require_macd_alignment,
         }
     except Exception as e:
-        return {
-            "success": False,
-            "status": "error",
-            "error": str(e)
-        }
+        return {"success": False, "status": "error", "error": str(e)}
 
 
 # ═══════════════════════════════════════════════════════════════════════
 #                 VWAP MANAGEMENT
 # ═══════════════════════════════════════════════════════════════════════
+
 
 @router.get("/vwap/{symbol}")
 async def get_vwap_data(symbol: str):
@@ -546,17 +528,16 @@ async def get_vwap_data(symbol: str):
         data = manager.get_vwap(symbol.upper())
 
         if data:
-            return {
-                "success": True,
-                **data.to_dict()
-            }
+            return {"success": True, **data.to_dict()}
         else:
             # Try to load from recent candles
             try:
                 from polygon_data import get_polygon_client
+
                 client = get_polygon_client()
 
                 from datetime import datetime, timedelta
+
                 end = datetime.now()
                 start = end - timedelta(days=1)
 
@@ -565,7 +546,7 @@ async def get_vwap_data(symbol: str):
                     multiplier=1,
                     timespan="minute",
                     from_date=start.strftime("%Y-%m-%d"),
-                    to_date=end.strftime("%Y-%m-%d")
+                    to_date=end.strftime("%Y-%m-%d"),
                 )
 
                 if bars:
@@ -574,22 +555,19 @@ async def get_vwap_data(symbol: str):
                             "high": b.get("h", b.get("high", 0)),
                             "low": b.get("l", b.get("low", 0)),
                             "close": b.get("c", b.get("close", 0)),
-                            "volume": b.get("v", b.get("volume", 0))
+                            "volume": b.get("v", b.get("volume", 0)),
                         }
                         for b in bars[-100:]  # Last 100 candles
                     ]
                     data = manager.load_from_candles(symbol.upper(), candles)
-                    return {
-                        "success": True,
-                        **data.to_dict()
-                    }
+                    return {"success": True, **data.to_dict()}
             except Exception as e:
                 logger.warning(f"Could not load VWAP from Polygon: {e}")
 
             return {
                 "success": False,
                 "symbol": symbol.upper(),
-                "message": "No VWAP data available - send candle data first"
+                "message": "No VWAP data available - send candle data first",
             }
     except Exception as e:
         logger.error(f"VWAP error for {symbol}: {e}")
@@ -622,7 +600,7 @@ async def check_vwap_entry(symbol: str):
             "current_price": data.current_price if data else 0,
             "distance_pct": data.distance_pct if data else 0,
             "position": data.position.value if data else "UNKNOWN",
-            "stop_price": data.stop_price if data else 0
+            "stop_price": data.stop_price if data else 0,
         }
     except Exception as e:
         logger.error(f"VWAP check error for {symbol}: {e}")
@@ -631,6 +609,7 @@ async def check_vwap_entry(symbol: str):
 
 class VWAPFeedRequest(BaseModel):
     """Request to feed candle data for VWAP calculation"""
+
     symbol: str
     candles: List[Dict]
 
@@ -652,7 +631,7 @@ async def feed_vwap_candles(request: VWAPFeedRequest):
             "success": True,
             "symbol": request.symbol.upper(),
             "candles_processed": len(request.candles),
-            **data.to_dict()
+            **data.to_dict(),
         }
     except Exception as e:
         logger.error(f"VWAP feed error: {e}")
@@ -675,15 +654,11 @@ async def get_vwap_status():
             "trailing_stops": list(manager.trailing_stops.keys()),
             "config": {
                 "extended_threshold_pct": manager.extended_threshold_pct,
-                "at_vwap_threshold_pct": manager.at_vwap_threshold_pct
-            }
+                "at_vwap_threshold_pct": manager.at_vwap_threshold_pct,
+            },
         }
     except Exception as e:
-        return {
-            "success": False,
-            "status": "error",
-            "error": str(e)
-        }
+        return {"success": False, "status": "error", "error": str(e)}
 
 
 @router.post("/vwap/reset")
@@ -702,7 +677,7 @@ async def reset_vwap(symbol: str = None):
 
         return {
             "success": True,
-            "message": f"VWAP reset for {symbol.upper() if symbol else 'all symbols'}"
+            "message": f"VWAP reset for {symbol.upper() if symbol else 'all symbols'}",
         }
     except Exception as e:
         logger.error(f"VWAP reset error: {e}")
@@ -712,6 +687,7 @@ async def reset_vwap(symbol: str = None):
 # ============================================================================
 # FLOAT ROTATION TRACKER ENDPOINTS
 # ============================================================================
+
 
 @router.get("/float-rotation/{symbol}")
 async def get_float_rotation(symbol: str):
@@ -737,12 +713,9 @@ async def get_float_rotation(symbol: str):
                 return {
                     "symbol": symbol.upper(),
                     "float_shares": float_shares,
-                    "message": "Float loaded, volume tracking will start with trades"
+                    "message": "Float loaded, volume tracking will start with trades",
                 }
-            return {
-                "symbol": symbol.upper(),
-                "error": "No float data available"
-            }
+            return {"symbol": symbol.upper(), "error": "No float data available"}
 
         return data.to_dict()
 
@@ -771,7 +744,7 @@ async def get_float_rotation_boost(symbol: str):
             "boost": round(boost, 2),
             "rotation_ratio": round(data.rotation_ratio, 2) if data else 0,
             "rotation_level": data.rotation_level.value if data else "NONE",
-            "is_low_float": data.is_low_float if data else False
+            "is_low_float": data.is_low_float if data else False,
         }
 
     except Exception as e:
@@ -796,7 +769,7 @@ async def get_rotating_stocks(min_rotation: float = 1.0):
         return {
             "count": len(rotating),
             "min_rotation": min_rotation,
-            "stocks": [d.to_dict() for d in rotating]
+            "stocks": [d.to_dict() for d in rotating],
         }
 
     except Exception as e:
@@ -816,10 +789,7 @@ async def get_low_float_movers():
         tracker = get_float_tracker()
         movers = tracker.get_low_float_movers()
 
-        return {
-            "count": len(movers),
-            "stocks": [d.to_dict() for d in movers]
-        }
+        return {"count": len(movers), "stocks": [d.to_dict() for d in movers]}
 
     except Exception as e:
         logger.error(f"Low float movers error: {e}")
@@ -839,10 +809,7 @@ async def get_float_rotation_alerts(limit: int = 20):
         tracker = get_float_tracker()
         alerts = tracker.get_recent_alerts(limit)
 
-        return {
-            "count": len(alerts),
-            "alerts": [a.to_dict() for a in alerts]
-        }
+        return {"count": len(alerts), "alerts": [a.to_dict() for a in alerts]}
 
     except Exception as e:
         logger.error(f"Float rotation alerts error: {e}")
@@ -884,7 +851,7 @@ async def set_symbol_float(symbol: str, float_shares: int, avg_volume: int = 0):
             "symbol": symbol.upper(),
             "float_shares": float_shares,
             "float_millions": round(float_shares / 1_000_000, 2),
-            "avg_volume": avg_volume
+            "avg_volume": avg_volume,
         }
 
     except Exception as e:
@@ -908,13 +875,13 @@ async def load_symbol_float(symbol: str):
                 "success": True,
                 "symbol": symbol.upper(),
                 "float_shares": float_shares,
-                "float_millions": round(float_shares / 1_000_000, 2)
+                "float_millions": round(float_shares / 1_000_000, 2),
             }
         else:
             return {
                 "success": False,
                 "symbol": symbol.upper(),
-                "error": "Could not load float data"
+                "error": "Could not load float data",
             }
 
     except Exception as e:
@@ -938,7 +905,7 @@ async def reset_float_rotation(symbol: str = None):
 
         return {
             "success": True,
-            "message": f"Float rotation reset for {symbol.upper() if symbol else 'all symbols'}"
+            "message": f"Float rotation reset for {symbol.upper() if symbol else 'all symbols'}",
         }
 
     except Exception as e:
@@ -949,6 +916,7 @@ async def reset_float_rotation(symbol: str = None):
 # ============================================================================
 # MOMENTUM EXHAUSTION DETECTOR ENDPOINTS
 # ============================================================================
+
 
 @router.get("/exhaustion/{symbol}")
 async def get_exhaustion_data(symbol: str):
@@ -967,7 +935,7 @@ async def get_exhaustion_data(symbol: str):
             return {
                 "symbol": symbol.upper(),
                 "tracked": False,
-                "message": "Symbol not being tracked. Add candle data to start."
+                "message": "Symbol not being tracked. Add candle data to start.",
             }
 
         score, reasons = detector.get_exhaustion_score(symbol.upper())
@@ -982,8 +950,10 @@ async def get_exhaustion_data(symbol: str):
             "avg_spread": round(state.avg_spread, 4),
             "last_high": round(state.last_high, 4),
             "entry_price": round(state.entry_price, 4) if state.entry_price else None,
-            "high_since_entry": round(state.high_since_entry, 4) if state.high_since_entry else None,
-            "active_alerts": [a.to_dict() for a in state.active_alerts[-5:]]
+            "high_since_entry": (
+                round(state.high_since_entry, 4) if state.high_since_entry else None
+            ),
+            "active_alerts": [a.to_dict() for a in state.active_alerts[-5:]],
         }
 
     except Exception as e:
@@ -1007,9 +977,13 @@ async def get_exhaustion_score(symbol: str):
         return {
             "symbol": symbol.upper(),
             "score": round(score, 1),
-            "level": "CRITICAL" if score > 70 else "HIGH" if score > 50 else "MEDIUM" if score > 30 else "LOW",
+            "level": (
+                "CRITICAL"
+                if score > 70
+                else "HIGH" if score > 50 else "MEDIUM" if score > 30 else "LOW"
+            ),
             "should_exit": score > 60,
-            "reasons": reasons
+            "reasons": reasons,
         }
 
     except Exception as e:
@@ -1034,7 +1008,7 @@ async def check_exhaustion_exit(symbol: str):
             return {
                 "symbol": symbol.upper(),
                 "should_exit": False,
-                "reason": "Not tracked"
+                "reason": "Not tracked",
             }
 
         # Check for exit signal
@@ -1044,7 +1018,7 @@ async def check_exhaustion_exit(symbol: str):
             return {
                 "symbol": symbol.upper(),
                 "should_exit": True,
-                "alert": alert.to_dict()
+                "alert": alert.to_dict(),
             }
 
         score, reasons = detector.get_exhaustion_score(symbol.upper())
@@ -1053,7 +1027,7 @@ async def check_exhaustion_exit(symbol: str):
             "symbol": symbol.upper(),
             "should_exit": False,
             "exhaustion_score": round(score, 1),
-            "reasons": reasons
+            "reasons": reasons,
         }
 
     except Exception as e:
@@ -1070,10 +1044,7 @@ async def get_exhaustion_alerts(limit: int = 20):
         detector = get_exhaustion_detector()
         alerts = detector.get_recent_alerts(limit)
 
-        return {
-            "count": len(alerts),
-            "alerts": [a.to_dict() for a in alerts]
-        }
+        return {"count": len(alerts), "alerts": [a.to_dict() for a in alerts]}
 
     except Exception as e:
         logger.error(f"Exhaustion alerts error: {e}")
@@ -1111,7 +1082,7 @@ async def register_exhaustion_position(symbol: str, entry_price: float):
             "success": True,
             "symbol": symbol.upper(),
             "entry_price": entry_price,
-            "message": "Position registered for exhaustion monitoring"
+            "message": "Position registered for exhaustion monitoring",
         }
 
     except Exception as e:
@@ -1131,7 +1102,7 @@ async def unregister_exhaustion_position(symbol: str):
         return {
             "success": True,
             "symbol": symbol.upper(),
-            "message": "Position unregistered from exhaustion monitoring"
+            "message": "Position unregistered from exhaustion monitoring",
         }
 
     except Exception as e:
@@ -1152,10 +1123,7 @@ async def update_exhaustion_config(config: Dict):
             if key in detector.config:
                 detector.config[key] = value
 
-        return {
-            "success": True,
-            "config": detector.config
-        }
+        return {"success": True, "config": detector.config}
 
     except Exception as e:
         logger.error(f"Exhaustion config error: {e}")
@@ -1165,6 +1133,7 @@ async def update_exhaustion_config(config: Dict):
 # ============================================================================
 # LEVEL 2 DEPTH ANALYZER ENDPOINTS
 # ============================================================================
+
 
 @router.get("/depth/{symbol}")
 async def get_depth_snapshot(symbol: str):
@@ -1183,7 +1152,7 @@ async def get_depth_snapshot(symbol: str):
             return {
                 "symbol": symbol.upper(),
                 "tracked": False,
-                "message": "No depth data. Update depth to start tracking."
+                "message": "No depth data. Update depth to start tracking.",
             }
 
         return snapshot.to_dict()
@@ -1210,7 +1179,7 @@ async def get_depth_analysis(symbol: str):
             return {
                 "symbol": symbol.upper(),
                 "analyzed": False,
-                "message": "No depth data available"
+                "message": "No depth data available",
             }
 
         return analysis.to_dict()
@@ -1277,7 +1246,7 @@ async def check_depth_entry(symbol: str):
             "reason": reason,
             "boost": round(boost, 2),
             "signal": analysis.signal.value if analysis else "UNKNOWN",
-            "imbalance_ratio": round(analysis.imbalance_ratio, 2) if analysis else 1.0
+            "imbalance_ratio": round(analysis.imbalance_ratio, 2) if analysis else 1.0,
         }
 
     except Exception as e:
@@ -1306,10 +1275,7 @@ async def update_depth_data(symbol: str, data: Dict):
 
         analysis = analyzer.update_depth(symbol.upper(), bids, asks, price)
 
-        return {
-            "success": True,
-            "analysis": analysis.to_dict()
-        }
+        return {"success": True, "analysis": analysis.to_dict()}
 
     except Exception as e:
         logger.error(f"Depth update error: {e}")
@@ -1342,10 +1308,7 @@ async def update_depth_config(config: Dict):
             if key in analyzer.config:
                 analyzer.config[key] = value
 
-        return {
-            "success": True,
-            "config": analyzer.config
-        }
+        return {"success": True, "config": analyzer.config}
 
     except Exception as e:
         logger.error(f"Depth config error: {e}")
@@ -1355,6 +1318,7 @@ async def update_depth_config(config: Dict):
 # ============================================================================
 # GAP GRADER ENDPOINTS
 # ============================================================================
+
 
 @router.get("/gap/status")
 async def get_gap_grader_status():
@@ -1382,7 +1346,7 @@ async def grade_gap(
     prior_day_change: float = 0,
     catalyst_headline: str = "",
     premarket_high: float = 0,
-    premarket_low: float = 0
+    premarket_low: float = 0,
 ):
     """Grade a gap using Ross Cameron methodology"""
     try:
@@ -1400,7 +1364,7 @@ async def grade_gap(
             prior_day_change=prior_day_change,
             catalyst_headline=catalyst_headline,
             premarket_high=premarket_high,
-            premarket_low=premarket_low
+            premarket_low=premarket_low,
         )
 
         return graded.to_dict()
@@ -1422,7 +1386,11 @@ async def get_gap_grade(symbol: str):
         if graded:
             return graded.to_dict()
         else:
-            return {"symbol": symbol, "graded": False, "message": "Symbol not graded yet"}
+            return {
+                "symbol": symbol,
+                "graded": False,
+                "message": "Symbol not graded yet",
+            }
 
     except Exception as e:
         logger.error(f"Gap grade retrieval error: {e}")
@@ -1433,19 +1401,18 @@ async def get_gap_grade(symbol: str):
 async def get_top_gaps(min_grade: str = "C", limit: int = 10):
     """Get top graded gaps"""
     try:
-        from ai.gap_grader import get_gap_grader, GapGrade
+        from ai.gap_grader import GapGrade, get_gap_grader
 
         grader = get_gap_grader()
         grade = GapGrade[min_grade.upper()]
         gaps = grader.get_top_gaps(min_grade=grade, limit=limit)
 
-        return {
-            "gaps": [g.to_dict() for g in gaps],
-            "count": len(gaps)
-        }
+        return {"gaps": [g.to_dict() for g in gaps], "count": len(gaps)}
 
     except KeyError:
-        raise HTTPException(status_code=400, detail=f"Invalid grade: {min_grade}. Use A, B, C, D, or F")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid grade: {min_grade}. Use A, B, C, D, or F"
+        )
     except Exception as e:
         logger.error(f"Top gaps error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1460,10 +1427,7 @@ async def get_tradeable_gaps():
         grader = get_gap_grader()
         gaps = grader.get_tradeable_gaps()
 
-        return {
-            "gaps": [g.to_dict() for g in gaps],
-            "count": len(gaps)
-        }
+        return {"gaps": [g.to_dict() for g in gaps], "count": len(gaps)}
 
     except Exception as e:
         logger.error(f"Tradeable gaps error: {e}")
@@ -1479,10 +1443,7 @@ async def get_a_grade_gaps():
         grader = get_gap_grader()
         gaps = grader.get_a_grades()
 
-        return {
-            "gaps": [g.to_dict() for g in gaps],
-            "count": len(gaps)
-        }
+        return {"gaps": [g.to_dict() for g in gaps], "count": len(gaps)}
 
     except Exception as e:
         logger.error(f"A-grade gaps error: {e}")
@@ -1512,9 +1473,9 @@ async def scan_and_grade_gaps():
     This integrates gap grader with premarket scanner for automated gap detection.
     """
     try:
+        import yfinance as yf
         from ai.gap_grader import get_gap_grader
         from ai.premarket_scanner import get_premarket_scanner
-        import yfinance as yf
 
         grader = get_gap_grader()
         scanner = get_premarket_scanner()
@@ -1537,7 +1498,14 @@ async def scan_and_grade_gaps():
 
                 gap_percent = item.get("change_pct", 0)
                 current_price = item.get("price", 0)
-                prior_close = info.get("previousClose", current_price / (1 + gap_percent/100) if gap_percent else current_price)
+                prior_close = info.get(
+                    "previousClose",
+                    (
+                        current_price / (1 + gap_percent / 100)
+                        if gap_percent
+                        else current_price
+                    ),
+                )
                 premarket_volume = item.get("volume", 0)
                 float_shares = info.get("floatShares", 0)
                 avg_volume = info.get("averageVolume", 0)
@@ -1546,7 +1514,10 @@ async def scan_and_grade_gaps():
                 hist = ticker.history(period="2d")
                 prior_day_change = 0
                 if len(hist) >= 2:
-                    prior_day_change = ((hist.iloc[-2]["Close"] - hist.iloc[-2]["Open"]) / hist.iloc[-2]["Open"]) * 100
+                    prior_day_change = (
+                        (hist.iloc[-2]["Close"] - hist.iloc[-2]["Open"])
+                        / hist.iloc[-2]["Open"]
+                    ) * 100
 
                 # Get catalyst from news monitor
                 catalyst = item.get("catalyst", "") or item.get("headline", "")
@@ -1560,7 +1531,7 @@ async def scan_and_grade_gaps():
                     float_shares=float_shares,
                     avg_volume=avg_volume,
                     prior_day_change=prior_day_change,
-                    catalyst_headline=catalyst
+                    catalyst_headline=catalyst,
                 )
 
                 graded_results.append(graded.to_dict())
@@ -1574,7 +1545,7 @@ async def scan_and_grade_gaps():
             "scanned": len(watchlist),
             "graded": len(graded_results),
             "results": graded_results,
-            "top_5": [g for g in graded_results if g.get("grade") in ["A", "B"]][:5]
+            "top_5": [g for g in graded_results if g.get("grade") in ["A", "B"]][:5],
         }
 
     except Exception as e:
@@ -1586,7 +1557,7 @@ async def scan_and_grade_gaps():
 async def add_graded_gaps_to_scalper(min_grade: str = "B"):
     """Add top graded gaps to HFT Scalper watchlist"""
     try:
-        from ai.gap_grader import get_gap_grader, GapGrade
+        from ai.gap_grader import GapGrade, get_gap_grader
         from ai.hft_scalper import get_hft_scalper
 
         grader = get_gap_grader()
@@ -1599,22 +1570,26 @@ async def add_graded_gaps_to_scalper(min_grade: str = "B"):
         for gap in gaps:
             if gap.gap_percent > 0:  # Only add gap-ups (we don't short)
                 scalper.watchlist.add(gap.symbol)
-                added.append({
-                    "symbol": gap.symbol,
-                    "grade": gap.grade.value,
-                    "score": gap.score.total,
-                    "gap_percent": gap.gap_percent
-                })
+                added.append(
+                    {
+                        "symbol": gap.symbol,
+                        "grade": gap.grade.value,
+                        "score": gap.score.total,
+                        "gap_percent": gap.gap_percent,
+                    }
+                )
 
         return {
             "success": True,
             "added": len(added),
             "symbols": added,
-            "scalper_watchlist": list(scalper.watchlist)
+            "scalper_watchlist": list(scalper.watchlist),
         }
 
     except KeyError:
-        raise HTTPException(status_code=400, detail=f"Invalid grade: {min_grade}. Use A, B, C, D, or F")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid grade: {min_grade}. Use A, B, C, D, or F"
+        )
     except Exception as e:
         logger.error(f"Add to scalper error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1623,6 +1598,7 @@ async def add_graded_gaps_to_scalper(min_grade: str = "B"):
 # ============================================================================
 # OVERNIGHT CONTINUATION SCANNER ENDPOINTS
 # ============================================================================
+
 
 @router.get("/overnight/status")
 async def get_overnight_status():
@@ -1647,7 +1623,7 @@ async def record_after_hours_move(
     ah_high: float = 0,
     ah_low: float = 0,
     avg_daily_volume: int = 0,
-    catalyst: str = ""
+    catalyst: str = "",
 ):
     """Record an after-hours move (call at ~8 PM)"""
     try:
@@ -1662,7 +1638,7 @@ async def record_after_hours_move(
             ah_close=ah_close,
             ah_volume=ah_volume,
             avg_daily_volume=avg_daily_volume,
-            catalyst=catalyst
+            catalyst=catalyst,
         )
 
         if mover:
@@ -1682,7 +1658,7 @@ async def update_premarket(
     pm_volume: int,
     pm_open: float = 0,
     pm_high: float = 0,
-    pm_low: float = 0
+    pm_low: float = 0,
 ):
     """Update pre-market data (call during 4AM-9:30AM)"""
     try:
@@ -1695,7 +1671,7 @@ async def update_premarket(
             pm_high=pm_high or pm_current,
             pm_low=pm_low or pm_current,
             pm_current=pm_current,
-            pm_volume=pm_volume
+            pm_volume=pm_volume,
         )
 
         if mover:
@@ -1720,7 +1696,11 @@ async def get_overnight_mover(symbol: str):
         if mover:
             return mover.to_dict()
         else:
-            return {"symbol": symbol, "tracked": False, "message": "Not tracked overnight"}
+            return {
+                "symbol": symbol,
+                "tracked": False,
+                "message": "Not tracked overnight",
+            }
 
     except Exception as e:
         logger.error(f"Get overnight mover error: {e}")
@@ -1731,21 +1711,19 @@ async def get_overnight_mover(symbol: str):
 async def get_continuations(min_strength: str = "WEAK"):
     """Get all continuation setups"""
     try:
-        from ai.overnight_continuation import get_overnight_scanner, ContinuationStrength
+        from ai.overnight_continuation import (ContinuationStrength,
+                                               get_overnight_scanner)
 
         scanner = get_overnight_scanner()
         strength = ContinuationStrength[min_strength.upper()]
         movers = scanner.get_continuations(min_strength=strength)
 
-        return {
-            "continuations": [m.to_dict() for m in movers],
-            "count": len(movers)
-        }
+        return {"continuations": [m.to_dict() for m in movers], "count": len(movers)}
 
     except KeyError:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid strength: {min_strength}. Use STRONG, MODERATE, WEAK, or NONE"
+            detail=f"Invalid strength: {min_strength}. Use STRONG, MODERATE, WEAK, or NONE",
         )
     except Exception as e:
         logger.error(f"Get continuations error: {e}")
@@ -1763,7 +1741,7 @@ async def get_strong_continuations():
 
         return {
             "strong_continuations": [m.to_dict() for m in movers],
-            "count": len(movers)
+            "count": len(movers),
         }
 
     except Exception as e:
@@ -1780,10 +1758,7 @@ async def get_accelerators():
         scanner = get_overnight_scanner()
         movers = scanner.get_accelerators()
 
-        return {
-            "accelerators": [m.to_dict() for m in movers],
-            "count": len(movers)
-        }
+        return {"accelerators": [m.to_dict() for m in movers], "count": len(movers)}
 
     except Exception as e:
         logger.error(f"Get accelerators error: {e}")
@@ -1802,7 +1777,7 @@ async def get_reversals():
         return {
             "reversals": [m.to_dict() for m in movers],
             "count": len(movers),
-            "warning": "These stocks reversed direction in PM - avoid trading"
+            "warning": "These stocks reversed direction in PM - avoid trading",
         }
 
     except Exception as e:
@@ -1822,7 +1797,7 @@ async def get_faders():
         return {
             "faders": [m.to_dict() for m in movers],
             "count": len(movers),
-            "warning": "These stocks are losing AH gains - trade with caution"
+            "warning": "These stocks are losing AH gains - trade with caution",
         }
 
     except Exception as e:
@@ -1841,7 +1816,7 @@ async def get_bullish_continuations():
 
         return {
             "bullish_continuations": [m.to_dict() for m in movers],
-            "count": len(movers)
+            "count": len(movers),
         }
 
     except Exception as e:
@@ -1869,8 +1844,9 @@ async def clear_overnight_movers():
 async def add_continuations_to_scalper(min_strength: str = "MODERATE"):
     """Add bullish continuations to HFT Scalper watchlist"""
     try:
-        from ai.overnight_continuation import get_overnight_scanner, ContinuationStrength
         from ai.hft_scalper import get_hft_scalper
+        from ai.overnight_continuation import (ContinuationStrength,
+                                               get_overnight_scanner)
 
         scanner = get_overnight_scanner()
         scalper = get_hft_scalper()
@@ -1884,7 +1860,7 @@ async def add_continuations_to_scalper(min_strength: str = "MODERATE"):
             ContinuationStrength.STRONG: 0,
             ContinuationStrength.MODERATE: 1,
             ContinuationStrength.WEAK: 2,
-            ContinuationStrength.NONE: 3
+            ContinuationStrength.NONE: 3,
         }
         min_order = strength_order[strength]
 
@@ -1892,24 +1868,26 @@ async def add_continuations_to_scalper(min_strength: str = "MODERATE"):
         for mover in movers:
             if strength_order[mover.strength] <= min_order:
                 scalper.watchlist.add(mover.symbol)
-                added.append({
-                    "symbol": mover.symbol,
-                    "pattern": mover.pattern.value,
-                    "score": mover.continuation_score,
-                    "total_change": mover.total_overnight_change
-                })
+                added.append(
+                    {
+                        "symbol": mover.symbol,
+                        "pattern": mover.pattern.value,
+                        "score": mover.continuation_score,
+                        "total_change": mover.total_overnight_change,
+                    }
+                )
 
         return {
             "success": True,
             "added": len(added),
             "symbols": added,
-            "scalper_watchlist": list(scalper.watchlist)
+            "scalper_watchlist": list(scalper.watchlist),
         }
 
     except KeyError:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid strength: {min_strength}. Use STRONG, MODERATE, WEAK, or NONE"
+            detail=f"Invalid strength: {min_strength}. Use STRONG, MODERATE, WEAK, or NONE",
         )
     except Exception as e:
         logger.error(f"Add to scalper error: {e}")
@@ -1923,16 +1901,30 @@ async def scan_after_hours():
     Call this at ~8 PM to capture AH movers.
     """
     try:
-        from ai.overnight_continuation import get_overnight_scanner
         import yfinance as yf
+        from ai.overnight_continuation import get_overnight_scanner
 
         scanner = get_overnight_scanner()
 
         # Get potential movers from Yahoo Finance (works after hours)
         # This is a simplified scan - in production would use Schwab API
         symbols_to_check = [
-            "AAPL", "TSLA", "NVDA", "AMD", "AMZN", "META", "GOOGL", "MSFT",
-            "SPY", "QQQ", "IWM", "COIN", "MARA", "RIOT", "PLUG", "NIO"
+            "AAPL",
+            "TSLA",
+            "NVDA",
+            "AMD",
+            "AMZN",
+            "META",
+            "GOOGL",
+            "MSFT",
+            "SPY",
+            "QQQ",
+            "IWM",
+            "COIN",
+            "MARA",
+            "RIOT",
+            "PLUG",
+            "NIO",
         ]
 
         scanned = []
@@ -1963,15 +1955,17 @@ async def scan_after_hours():
                     ah_low=ah_low,
                     ah_close=ah_close,
                     ah_volume=ah_volume,
-                    avg_daily_volume=avg_volume
+                    avg_daily_volume=avg_volume,
                 )
 
                 if mover:
-                    scanned.append({
-                        "symbol": symbol,
-                        "ah_change": mover.after_hours.change_pct,
-                        "volume": ah_volume
-                    })
+                    scanned.append(
+                        {
+                            "symbol": symbol,
+                            "ah_change": mover.after_hours.change_pct,
+                            "volume": ah_volume,
+                        }
+                    )
 
             except Exception as e:
                 logger.warning(f"Error scanning {symbol}: {e}")
@@ -1981,7 +1975,7 @@ async def scan_after_hours():
             "success": True,
             "scanned_symbols": len(symbols_to_check),
             "movers_found": len(scanned),
-            "movers": scanned
+            "movers": scanned,
         }
 
     except Exception as e:
@@ -1993,11 +1987,13 @@ async def scan_after_hours():
 # AI CONTROL CENTER ENDPOINTS (For React UI)
 # ============================================================================
 
+
 @router.get("/watchlist")
 async def get_warrior_watchlist():
     """Get current watchlist for Warrior Trading"""
     try:
         import httpx
+
         async with httpx.AsyncClient() as client:
             response = await client.get("http://localhost:9100/api/worklist")
             wl_data = response.json()
@@ -2005,26 +2001,36 @@ async def get_warrior_watchlist():
         watchlist = []
         if wl_data.get("data"):
             for item in wl_data["data"][:20]:
-                watchlist.append({
-                    "symbol": item.get("symbol", ""),
-                    "price": item.get("price", 0),
-                    "gap_percent": item.get("change_pct", 0),
-                    "relative_volume": item.get("rvol", 1.0),
-                    "float_shares": item.get("float", 0) / 1_000_000 if item.get("float") else 0,
-                    "pre_market_volume": item.get("volume", 0),
-                    "catalyst": item.get("catalyst", ""),
-                    "daily_chart_signal": "BULLISH" if item.get("change_pct", 0) > 0 else "BEARISH",
-                    "confidence_score": item.get("ai_prediction", 50)
-                })
+                watchlist.append(
+                    {
+                        "symbol": item.get("symbol", ""),
+                        "price": item.get("price", 0),
+                        "gap_percent": item.get("change_pct", 0),
+                        "relative_volume": item.get("rvol", 1.0),
+                        "float_shares": (
+                            item.get("float", 0) / 1_000_000 if item.get("float") else 0
+                        ),
+                        "pre_market_volume": item.get("volume", 0),
+                        "catalyst": item.get("catalyst", ""),
+                        "daily_chart_signal": (
+                            "BULLISH" if item.get("change_pct", 0) > 0 else "BEARISH"
+                        ),
+                        "confidence_score": item.get("ai_prediction", 50),
+                    }
+                )
 
         return {
             "success": True,
             "watchlist": watchlist,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"Watchlist error: {e}")
-        return {"success": True, "watchlist": [], "timestamp": datetime.now().isoformat()}
+        return {
+            "success": True,
+            "watchlist": [],
+            "timestamp": datetime.now().isoformat(),
+        }
 
 
 @router.post("/scan/premarket")
@@ -2039,26 +2045,36 @@ async def run_premarket_scan():
 
         candidates = []
         for item in watchlist[:10]:
-            candidates.append({
-                "symbol": item.get("symbol", ""),
-                "price": item.get("price", 0),
-                "gap_percent": item.get("change_pct", 0),
-                "relative_volume": item.get("rvol", 1.0),
-                "float_shares": item.get("float", 0) / 1_000_000 if item.get("float") else 0,
-                "pre_market_volume": item.get("volume", 0),
-                "catalyst": item.get("catalyst", ""),
-                "daily_chart_signal": "BULLISH" if item.get("change_pct", 0) > 0 else "BEARISH",
-                "confidence_score": 65
-            })
+            candidates.append(
+                {
+                    "symbol": item.get("symbol", ""),
+                    "price": item.get("price", 0),
+                    "gap_percent": item.get("change_pct", 0),
+                    "relative_volume": item.get("rvol", 1.0),
+                    "float_shares": (
+                        item.get("float", 0) / 1_000_000 if item.get("float") else 0
+                    ),
+                    "pre_market_volume": item.get("volume", 0),
+                    "catalyst": item.get("catalyst", ""),
+                    "daily_chart_signal": (
+                        "BULLISH" if item.get("change_pct", 0) > 0 else "BEARISH"
+                    ),
+                    "confidence_score": 65,
+                }
+            )
 
         return {
             "success": True,
             "candidates": candidates,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"Premarket scan error: {e}")
-        return {"success": True, "candidates": [], "timestamp": datetime.now().isoformat()}
+        return {
+            "success": True,
+            "candidates": [],
+            "timestamp": datetime.now().isoformat(),
+        }
 
 
 @router.get("/risk/status")
@@ -2085,7 +2101,7 @@ async def get_risk_status():
             "consecutive_wins": 0,
             "consecutive_losses": 0,
             "distance_to_goal": max(0, 200 - stats.get("total_pnl", 0)),
-            "best_trade": None
+            "best_trade": None,
         }
     except Exception as e:
         logger.error(f"Risk status error: {e}")
@@ -2104,7 +2120,7 @@ async def get_risk_status():
             "consecutive_wins": 0,
             "consecutive_losses": 0,
             "distance_to_goal": 200,
-            "best_trade": None
+            "best_trade": None,
         }
 
 
@@ -2130,37 +2146,37 @@ async def get_trades_history(status: Optional[str] = None, limit: int = 100):
         from ai.hft_scalper import get_hft_scalper
 
         scalper = get_hft_scalper()
-        trades = scalper.trade_history[-limit:] if hasattr(scalper, 'trade_history') else []
+        trades = (
+            scalper.trade_history[-limit:] if hasattr(scalper, "trade_history") else []
+        )
 
         trade_list = []
         for i, trade in enumerate(trades):
-            trade_list.append({
-                "id": i,
-                "trade_id": trade.get("trade_id", f"trade_{i}"),
-                "symbol": trade.get("symbol", ""),
-                "setup_type": trade.get("setup_type", "MOMENTUM"),
-                "entry_time": trade.get("entry_time", ""),
-                "entry_price": trade.get("entry_price", 0),
-                "shares": trade.get("shares", 0),
-                "stop_price": trade.get("stop_price", 0),
-                "target_price": trade.get("target_price", 0),
-                "exit_time": trade.get("exit_time"),
-                "exit_price": trade.get("exit_price"),
-                "exit_reason": trade.get("exit_reason"),
-                "pnl": trade.get("pnl", 0),
-                "pnl_percent": trade.get("pnl_pct", 0),
-                "r_multiple": trade.get("r_multiple", 0),
-                "status": "CLOSED" if trade.get("exit_time") else "OPEN"
-            })
+            trade_list.append(
+                {
+                    "id": i,
+                    "trade_id": trade.get("trade_id", f"trade_{i}"),
+                    "symbol": trade.get("symbol", ""),
+                    "setup_type": trade.get("setup_type", "MOMENTUM"),
+                    "entry_time": trade.get("entry_time", ""),
+                    "entry_price": trade.get("entry_price", 0),
+                    "shares": trade.get("shares", 0),
+                    "stop_price": trade.get("stop_price", 0),
+                    "target_price": trade.get("target_price", 0),
+                    "exit_time": trade.get("exit_time"),
+                    "exit_price": trade.get("exit_price"),
+                    "exit_reason": trade.get("exit_reason"),
+                    "pnl": trade.get("pnl", 0),
+                    "pnl_percent": trade.get("pnl_pct", 0),
+                    "r_multiple": trade.get("r_multiple", 0),
+                    "status": "CLOSED" if trade.get("exit_time") else "OPEN",
+                }
+            )
 
         if status:
             trade_list = [t for t in trade_list if t["status"] == status.upper()]
 
-        return {
-            "success": True,
-            "trades": trade_list,
-            "count": len(trade_list)
-        }
+        return {"success": True, "trades": trade_list, "count": len(trade_list)}
     except Exception as e:
         logger.error(f"Trade history error: {e}")
         return {"success": True, "trades": [], "count": 0}

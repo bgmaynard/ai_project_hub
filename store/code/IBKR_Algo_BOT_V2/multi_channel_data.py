@@ -16,24 +16,21 @@ Author: AI Trading Bot Team
 Version: 1.0
 """
 
-import os
-import logging
 import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
-from enum import Enum
+import logging
+import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
 from alpaca.data.historical import StockHistoricalDataClient
-from alpaca.data.requests import (
-    StockBarsRequest,
-    StockLatestQuoteRequest,
-    StockLatestBarRequest,
-    StockSnapshotRequest
-)
+from alpaca.data.requests import (StockBarsRequest, StockLatestBarRequest,
+                                  StockLatestQuoteRequest,
+                                  StockSnapshotRequest)
 from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from alpaca.trading.client import TradingClient
 from config.broker_config import get_broker_config
@@ -45,16 +42,18 @@ logger = logging.getLogger(__name__)
 
 class DataChannel(str, Enum):
     """Data channel types"""
-    ORDERS = "orders"      # Order execution, positions, account
-    CHARTS = "charts"      # Charting data, historical bars
-    AI = "ai"              # AI predictions, analysis
-    SCANNER = "scanner"    # Market scanning, screening
+
+    ORDERS = "orders"  # Order execution, positions, account
+    CHARTS = "charts"  # Charting data, historical bars
+    AI = "ai"  # AI predictions, analysis
+    SCANNER = "scanner"  # Market scanning, screening
     REALTIME = "realtime"  # Real-time quotes and snapshots
 
 
 @dataclass
 class ChannelStats:
     """Statistics for a data channel"""
+
     requests_total: int = 0
     requests_success: int = 0
     requests_failed: int = 0
@@ -97,7 +96,9 @@ class DataChannelClient:
         self.trading_client = TradingClient(api_key, secret_key, paper=True)
 
         # Thread pool for parallel requests within this channel
-        self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix=f"{channel.value}_")
+        self.executor = ThreadPoolExecutor(
+            max_workers=5, thread_name_prefix=f"{channel.value}_"
+        )
 
         logger.info(f"[CHANNEL] {channel.value.upper()} channel initialized")
 
@@ -119,6 +120,7 @@ class DataChannelClient:
     def get_quote(self, symbol: str) -> Optional[Dict]:
         """Get latest quote"""
         try:
+
             def _fetch():
                 request = StockLatestQuoteRequest(symbol_or_symbols=symbol)
                 quotes = self.data_client.get_stock_latest_quote(request)
@@ -133,9 +135,10 @@ class DataChannelClient:
                         "mid": (float(q.bid_price) + float(q.ask_price)) / 2,
                         "spread": float(q.ask_price) - float(q.bid_price),
                         "timestamp": q.timestamp.isoformat() if q.timestamp else None,
-                        "channel": self.channel.value
+                        "channel": self.channel.value,
                     }
                 return None
+
             return self._timed_request(_fetch)
         except Exception as e:
             logger.error(f"[{self.channel.value}] Quote error for {symbol}: {e}")
@@ -145,6 +148,7 @@ class DataChannelClient:
         """Get quotes for multiple symbols in parallel"""
         results = {}
         try:
+
             def _fetch():
                 request = StockLatestQuoteRequest(symbol_or_symbols=symbols)
                 return self.data_client.get_stock_latest_quote(request)
@@ -157,7 +161,7 @@ class DataChannelClient:
                     "ask": float(q.ask_price),
                     "mid": (float(q.bid_price) + float(q.ask_price)) / 2,
                     "timestamp": q.timestamp.isoformat() if q.timestamp else None,
-                    "channel": self.channel.value
+                    "channel": self.channel.value,
                 }
         except Exception as e:
             logger.error(f"[{self.channel.value}] Multi-quote error: {e}")
@@ -166,6 +170,7 @@ class DataChannelClient:
     def get_snapshot(self, symbol: str) -> Optional[Dict]:
         """Get full market snapshot"""
         try:
+
             def _fetch():
                 request = StockSnapshotRequest(symbol_or_symbols=symbol)
                 return self.data_client.get_stock_snapshot(request)
@@ -176,37 +181,51 @@ class DataChannelClient:
                 result = {
                     "symbol": symbol,
                     "channel": self.channel.value,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
 
                 if s.latest_quote:
-                    result.update({
-                        "bid": float(s.latest_quote.bid_price),
-                        "ask": float(s.latest_quote.ask_price),
-                        "mid": (float(s.latest_quote.bid_price) + float(s.latest_quote.ask_price)) / 2
-                    })
+                    result.update(
+                        {
+                            "bid": float(s.latest_quote.bid_price),
+                            "ask": float(s.latest_quote.ask_price),
+                            "mid": (
+                                float(s.latest_quote.bid_price)
+                                + float(s.latest_quote.ask_price)
+                            )
+                            / 2,
+                        }
+                    )
 
                 if s.latest_trade:
-                    result.update({
-                        "last": float(s.latest_trade.price),
-                        "last_size": int(s.latest_trade.size)
-                    })
+                    result.update(
+                        {
+                            "last": float(s.latest_trade.price),
+                            "last_size": int(s.latest_trade.size),
+                        }
+                    )
 
                 if s.daily_bar:
-                    result.update({
-                        "open": float(s.daily_bar.open),
-                        "high": float(s.daily_bar.high),
-                        "low": float(s.daily_bar.low),
-                        "close": float(s.daily_bar.close),
-                        "volume": int(s.daily_bar.volume),
-                        "vwap": float(s.daily_bar.vwap) if s.daily_bar.vwap else None
-                    })
+                    result.update(
+                        {
+                            "open": float(s.daily_bar.open),
+                            "high": float(s.daily_bar.high),
+                            "low": float(s.daily_bar.low),
+                            "close": float(s.daily_bar.close),
+                            "volume": int(s.daily_bar.volume),
+                            "vwap": (
+                                float(s.daily_bar.vwap) if s.daily_bar.vwap else None
+                            ),
+                        }
+                    )
 
                 if s.previous_daily_bar:
                     result["prev_close"] = float(s.previous_daily_bar.close)
                     if "close" in result:
                         result["change"] = result["close"] - result["prev_close"]
-                        result["change_pct"] = (result["change"] / result["prev_close"]) * 100
+                        result["change_pct"] = (
+                            result["change"] / result["prev_close"]
+                        ) * 100
 
                 return result
             return None
@@ -214,8 +233,9 @@ class DataChannelClient:
             logger.error(f"[{self.channel.value}] Snapshot error for {symbol}: {e}")
             return None
 
-    def get_bars(self, symbol: str, timeframe: str = "1Day",
-                 days: int = 30, limit: int = None) -> List[Dict]:
+    def get_bars(
+        self, symbol: str, timeframe: str = "1Day", days: int = 30, limit: int = None
+    ) -> List[Dict]:
         """Get historical bars"""
         try:
             tf_map = {
@@ -226,7 +246,7 @@ class DataChannelClient:
                 "1Hour": TimeFrame.Hour,
                 "4Hour": TimeFrame(4, TimeFrameUnit.Hour),
                 "1Day": TimeFrame.Day,
-                "1Week": TimeFrame.Week
+                "1Week": TimeFrame.Week,
             }
 
             alpaca_tf = tf_map.get(timeframe, TimeFrame.Day)
@@ -237,7 +257,7 @@ class DataChannelClient:
                     symbol_or_symbols=symbol,
                     timeframe=alpaca_tf,
                     start=start,
-                    limit=limit
+                    limit=limit,
                 )
                 return self.data_client.get_stock_bars(request)
 
@@ -245,15 +265,17 @@ class DataChannelClient:
             if symbol in bars:
                 result = []
                 for bar in bars[symbol]:
-                    result.append({
-                        "timestamp": bar.timestamp.isoformat(),
-                        "open": float(bar.open),
-                        "high": float(bar.high),
-                        "low": float(bar.low),
-                        "close": float(bar.close),
-                        "volume": int(bar.volume),
-                        "vwap": float(bar.vwap) if bar.vwap else None
-                    })
+                    result.append(
+                        {
+                            "timestamp": bar.timestamp.isoformat(),
+                            "open": float(bar.open),
+                            "high": float(bar.high),
+                            "low": float(bar.low),
+                            "close": float(bar.close),
+                            "volume": int(bar.volume),
+                            "vwap": float(bar.vwap) if bar.vwap else None,
+                        }
+                    )
                 return result
             return []
         except Exception as e:
@@ -268,11 +290,17 @@ class DataChannelClient:
             "requests_total": self.stats.requests_total,
             "requests_success": self.stats.requests_success,
             "requests_failed": self.stats.requests_failed,
-            "success_rate": (self.stats.requests_success / self.stats.requests_total * 100)
-                           if self.stats.requests_total > 0 else 0,
+            "success_rate": (
+                (self.stats.requests_success / self.stats.requests_total * 100)
+                if self.stats.requests_total > 0
+                else 0
+            ),
             "avg_latency_ms": round(self.stats.avg_latency_ms, 2),
-            "last_request": self.stats.last_request_time.isoformat()
-                           if self.stats.last_request_time else None
+            "last_request": (
+                self.stats.last_request_time.isoformat()
+                if self.stats.last_request_time
+                else None
+            ),
         }
 
 
@@ -307,7 +335,9 @@ class MultiChannelDataProvider:
                 logger.error(f"Failed to create {channel.value} channel: {e}")
 
         # Global thread pool for cross-channel parallel operations
-        self.global_executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix="global_")
+        self.global_executor = ThreadPoolExecutor(
+            max_workers=20, thread_name_prefix="global_"
+        )
 
         logger.info(f"[MULTI-CHANNEL] Initialized {len(self.channels)} data channels")
 
@@ -319,8 +349,9 @@ class MultiChannelDataProvider:
     # PARALLEL DATA FETCHING
     # ========================================================================
 
-    def get_quotes_parallel(self, symbols: List[str],
-                           channels: List[DataChannel] = None) -> Dict[str, Dict]:
+    def get_quotes_parallel(
+        self, symbols: List[str], channels: List[DataChannel] = None
+    ) -> Dict[str, Dict]:
         """
         Fetch quotes for symbols using multiple channels in parallel.
         Each channel handles a portion of the symbols for maximum speed.
@@ -334,7 +365,9 @@ class MultiChannelDataProvider:
 
         # Split symbols across channels
         chunk_size = max(1, len(symbols) // len(available_channels))
-        symbol_chunks = [symbols[i:i+chunk_size] for i in range(0, len(symbols), chunk_size)]
+        symbol_chunks = [
+            symbols[i : i + chunk_size] for i in range(0, len(symbols), chunk_size)
+        ]
 
         results = {}
         futures = []
@@ -380,8 +413,9 @@ class MultiChannelDataProvider:
 
         return results
 
-    def get_multi_symbol_bars(self, symbols: List[str], timeframe: str = "1Day",
-                              days: int = 30) -> Dict[str, List[Dict]]:
+    def get_multi_symbol_bars(
+        self, symbols: List[str], timeframe: str = "1Day", days: int = 30
+    ) -> Dict[str, List[Dict]]:
         """
         Fetch historical bars for multiple symbols in parallel.
         Ideal for AI training data collection.
@@ -393,7 +427,7 @@ class MultiChannelDataProvider:
         channels = [
             self.channels.get(DataChannel.AI),
             self.channels.get(DataChannel.CHARTS),
-            self.channels.get(DataChannel.SCANNER)
+            self.channels.get(DataChannel.SCANNER),
         ]
         channels = [c for c in channels if c]
 
@@ -452,7 +486,7 @@ class MultiChannelDataProvider:
                 channel.value: client.get_status()
                 for channel, client in self.channels.items()
             },
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     def get_aggregate_stats(self) -> Dict:
@@ -461,16 +495,24 @@ class MultiChannelDataProvider:
         total_success = sum(c.stats.requests_success for c in self.channels.values())
         total_failed = sum(c.stats.requests_failed for c in self.channels.values())
 
-        avg_latencies = [c.stats.avg_latency_ms for c in self.channels.values() if c.stats.avg_latency_ms > 0]
-        overall_avg_latency = sum(avg_latencies) / len(avg_latencies) if avg_latencies else 0
+        avg_latencies = [
+            c.stats.avg_latency_ms
+            for c in self.channels.values()
+            if c.stats.avg_latency_ms > 0
+        ]
+        overall_avg_latency = (
+            sum(avg_latencies) / len(avg_latencies) if avg_latencies else 0
+        )
 
         return {
             "total_requests": total_requests,
             "total_success": total_success,
             "total_failed": total_failed,
-            "success_rate": (total_success / total_requests * 100) if total_requests > 0 else 0,
+            "success_rate": (
+                (total_success / total_requests * 100) if total_requests > 0 else 0
+            ),
             "avg_latency_ms": round(overall_avg_latency, 2),
-            "channels_active": len(self.channels)
+            "channels_active": len(self.channels),
         }
 
 
@@ -498,7 +540,10 @@ def get_multi_channel_provider() -> MultiChannelDataProvider:
 # CONVENIENCE FUNCTIONS
 # ============================================================================
 
-def get_quote_fast(symbol: str, channel: DataChannel = DataChannel.REALTIME) -> Optional[Dict]:
+
+def get_quote_fast(
+    symbol: str, channel: DataChannel = DataChannel.REALTIME
+) -> Optional[Dict]:
     """Quick quote fetch using specified channel"""
     provider = get_multi_channel_provider()
     return provider.get_channel(channel).get_quote(symbol)
@@ -510,7 +555,9 @@ def get_quotes_fast(symbols: List[str]) -> Dict[str, Dict]:
     return provider.get_quotes_parallel(symbols)
 
 
-def get_snapshot_fast(symbol: str, channel: DataChannel = DataChannel.REALTIME) -> Optional[Dict]:
+def get_snapshot_fast(
+    symbol: str, channel: DataChannel = DataChannel.REALTIME
+) -> Optional[Dict]:
     """Quick snapshot fetch using specified channel"""
     provider = get_multi_channel_provider()
     return provider.get_channel(channel).get_snapshot(symbol)
@@ -522,7 +569,9 @@ def get_bars_for_ai(symbol: str, days: int = 365) -> List[Dict]:
     return provider.ai_channel().get_bars(symbol, "1Day", days)
 
 
-def get_bars_for_chart(symbol: str, timeframe: str = "5Min", days: int = 5) -> List[Dict]:
+def get_bars_for_chart(
+    symbol: str, timeframe: str = "5Min", days: int = 5
+) -> List[Dict]:
     """Get historical bars for charting using CHARTS channel"""
     provider = get_multi_channel_provider()
     return provider.charts_channel().get_bars(symbol, timeframe, days)
@@ -534,6 +583,7 @@ def get_bars_for_chart(symbol: str, timeframe: str = "5Min", days: int = 5) -> L
 
 if __name__ == "__main__":
     import json
+
     logging.basicConfig(level=logging.INFO)
 
     print("Testing Multi-Channel Data Provider...")

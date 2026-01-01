@@ -7,16 +7,17 @@ Uses free data sources (Yahoo Finance, etc.)
 
 import asyncio
 import logging
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict, field
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class HealthRating(Enum):
     """Financial health rating"""
+
     EXCELLENT = "excellent"
     GOOD = "good"
     FAIR = "fair"
@@ -27,6 +28,7 @@ class HealthRating(Enum):
 @dataclass
 class FundamentalMetrics:
     """Fundamental metrics for a stock"""
+
     symbol: str
     last_updated: datetime = field(default_factory=datetime.now)
 
@@ -75,13 +77,14 @@ class FundamentalMetrics:
 
     def to_dict(self) -> Dict:
         data = asdict(self)
-        data['last_updated'] = self.last_updated.isoformat()
+        data["last_updated"] = self.last_updated.isoformat()
         return data
 
 
 @dataclass
 class EarningsEvent:
     """Upcoming earnings event"""
+
     symbol: str
     date: datetime
     estimated_eps: Optional[float] = None
@@ -96,13 +99,14 @@ class EarningsEvent:
             "estimated_eps": self.estimated_eps,
             "actual_eps": self.actual_eps,
             "estimated_revenue": self.estimated_revenue,
-            "actual_revenue": self.actual_revenue
+            "actual_revenue": self.actual_revenue,
         }
 
 
 @dataclass
 class EconomicEvent:
     """Economic calendar event"""
+
     name: str
     date: datetime
     importance: str  # high, medium, low
@@ -117,7 +121,7 @@ class EconomicEvent:
             "importance": self.importance,
             "previous": self.previous,
             "forecast": self.forecast,
-            "actual": self.actual
+            "actual": self.actual,
         }
 
 
@@ -134,6 +138,7 @@ class FundamentalAnalyzer:
         # Try to import yfinance for real data
         try:
             import yfinance
+
             self.yf = yfinance
             self.has_yfinance = True
             logger.info("FundamentalAnalyzer using yfinance for real data")
@@ -142,7 +147,9 @@ class FundamentalAnalyzer:
             self.has_yfinance = False
             logger.warning("yfinance not installed - using mock fundamental data")
 
-    async def get_fundamentals(self, symbol: str, force_refresh: bool = False) -> FundamentalMetrics:
+    async def get_fundamentals(
+        self, symbol: str, force_refresh: bool = False
+    ) -> FundamentalMetrics:
         """Get fundamental metrics for a symbol"""
         symbol = symbol.upper()
 
@@ -170,49 +177,41 @@ class FundamentalAnalyzer:
             return FundamentalMetrics(
                 symbol=symbol,
                 last_updated=datetime.now(),
-
                 # Valuation
-                market_cap=info.get('marketCap'),
-                pe_ratio=info.get('trailingPE'),
-                forward_pe=info.get('forwardPE'),
-                peg_ratio=info.get('pegRatio'),
-                price_to_book=info.get('priceToBook'),
-                price_to_sales=info.get('priceToSalesTrailing12Months'),
-
+                market_cap=info.get("marketCap"),
+                pe_ratio=info.get("trailingPE"),
+                forward_pe=info.get("forwardPE"),
+                peg_ratio=info.get("pegRatio"),
+                price_to_book=info.get("priceToBook"),
+                price_to_sales=info.get("priceToSalesTrailing12Months"),
                 # Profitability
-                profit_margin=info.get('profitMargins'),
-                operating_margin=info.get('operatingMargins'),
-                return_on_equity=info.get('returnOnEquity'),
-                return_on_assets=info.get('returnOnAssets'),
-
+                profit_margin=info.get("profitMargins"),
+                operating_margin=info.get("operatingMargins"),
+                return_on_equity=info.get("returnOnEquity"),
+                return_on_assets=info.get("returnOnAssets"),
                 # Growth
-                revenue_growth=info.get('revenueGrowth'),
-                earnings_growth=info.get('earningsGrowth'),
-
+                revenue_growth=info.get("revenueGrowth"),
+                earnings_growth=info.get("earningsGrowth"),
                 # Financial Health
-                current_ratio=info.get('currentRatio'),
-                debt_to_equity=info.get('debtToEquity'),
-                free_cash_flow=info.get('freeCashflow'),
-
+                current_ratio=info.get("currentRatio"),
+                debt_to_equity=info.get("debtToEquity"),
+                free_cash_flow=info.get("freeCashflow"),
                 # Dividend
-                dividend_yield=info.get('dividendYield'),
-                payout_ratio=info.get('payoutRatio'),
-
+                dividend_yield=info.get("dividendYield"),
+                payout_ratio=info.get("payoutRatio"),
                 # Other
-                beta=info.get('beta'),
-                fifty_two_week_high=info.get('fiftyTwoWeekHigh'),
-                fifty_two_week_low=info.get('fiftyTwoWeekLow'),
-                avg_volume=info.get('averageVolume'),
-                shares_outstanding=info.get('sharesOutstanding'),
-                float_shares=info.get('floatShares'),  # Free float
-
+                beta=info.get("beta"),
+                fifty_two_week_high=info.get("fiftyTwoWeekHigh"),
+                fifty_two_week_low=info.get("fiftyTwoWeekLow"),
+                avg_volume=info.get("averageVolume"),
+                shares_outstanding=info.get("sharesOutstanding"),
+                float_shares=info.get("floatShares"),  # Free float
                 # Ratings
-                analyst_rating=info.get('recommendationKey'),
-                price_target=info.get('targetMeanPrice'),
-
+                analyst_rating=info.get("recommendationKey"),
+                price_target=info.get("targetMeanPrice"),
                 # Sector
-                sector=info.get('sector'),
-                industry=info.get('industry')
+                sector=info.get("sector"),
+                industry=info.get("industry"),
             )
         except Exception as e:
             logger.error(f"Error fetching fundamentals for {symbol}: {e}")
@@ -240,7 +239,7 @@ class FundamentalAnalyzer:
             sector="Technology",
             industry="Software",
             analyst_rating="buy",
-            price_target=180.0
+            price_target=180.0,
         )
 
     async def get_ai_analysis(self, symbol: str) -> Dict:
@@ -307,10 +306,10 @@ class FundamentalAnalyzer:
                 "profit_margin": metrics.profit_margin,
                 "roe": metrics.return_on_equity,
                 "debt_to_equity": metrics.debt_to_equity,
-                "revenue_growth": metrics.revenue_growth
+                "revenue_growth": metrics.revenue_growth,
             },
             "summary": f"{symbol} scores {score}/100 based on fundamental analysis. "
-                       f"Rating: {rating}. Sector: {metrics.sector or 'Unknown'}."
+            f"Rating: {rating}. Sector: {metrics.sector or 'Unknown'}.",
         }
 
     def get_sector_comparison(self, symbol: str) -> Dict:
@@ -326,35 +325,42 @@ class FundamentalAnalyzer:
             "profit_margin": 0.12,
             "roe": 0.18,
             "debt_to_equity": 0.8,
-            "revenue_growth": 0.08
+            "revenue_growth": 0.08,
         }
 
         comparison = {}
         if metrics.pe_ratio:
-            diff = ((metrics.pe_ratio - sector_avg["pe_ratio"]) / sector_avg["pe_ratio"]) * 100
+            diff = (
+                (metrics.pe_ratio - sector_avg["pe_ratio"]) / sector_avg["pe_ratio"]
+            ) * 100
             comparison["pe_ratio"] = {
                 "value": metrics.pe_ratio,
                 "sector_avg": sector_avg["pe_ratio"],
                 "diff_pct": round(diff, 1),
-                "better": diff < 0  # Lower PE is better
+                "better": diff < 0,  # Lower PE is better
             }
 
         if metrics.profit_margin:
-            diff = ((metrics.profit_margin - sector_avg["profit_margin"]) / sector_avg["profit_margin"]) * 100
+            diff = (
+                (metrics.profit_margin - sector_avg["profit_margin"])
+                / sector_avg["profit_margin"]
+            ) * 100
             comparison["profit_margin"] = {
                 "value": metrics.profit_margin,
                 "sector_avg": sector_avg["profit_margin"],
                 "diff_pct": round(diff, 1),
-                "better": diff > 0
+                "better": diff > 0,
             }
 
         return {
             "symbol": symbol,
             "sector": metrics.sector or "Unknown",
-            "comparison": comparison
+            "comparison": comparison,
         }
 
-    async def get_earnings_calendar(self, symbols: List[str] = None, days_ahead: int = 14) -> List[EarningsEvent]:
+    async def get_earnings_calendar(
+        self, symbols: List[str] = None, days_ahead: int = 14
+    ) -> List[EarningsEvent]:
         """Get upcoming earnings for symbols"""
         # Mock earnings calendar
         events = []
@@ -362,21 +368,23 @@ class FundamentalAnalyzer:
         if symbols:
             for i, symbol in enumerate(symbols[:10]):
                 event_date = datetime.now() + timedelta(days=(i * 2) + 1)
-                events.append(EarningsEvent(
-                    symbol=symbol.upper(),
-                    date=event_date,
-                    estimated_eps=2.50 + (i * 0.1)
-                ))
+                events.append(
+                    EarningsEvent(
+                        symbol=symbol.upper(),
+                        date=event_date,
+                        estimated_eps=2.50 + (i * 0.1),
+                    )
+                )
         else:
             # Default major stocks
             major = ["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
             for i, symbol in enumerate(major):
                 event_date = datetime.now() + timedelta(days=(i * 3) + 1)
-                events.append(EarningsEvent(
-                    symbol=symbol,
-                    date=event_date,
-                    estimated_eps=3.00 + (i * 0.5)
-                ))
+                events.append(
+                    EarningsEvent(
+                        symbol=symbol, date=event_date, estimated_eps=3.00 + (i * 0.5)
+                    )
+                )
 
         return events
 
@@ -388,28 +396,28 @@ class FundamentalAnalyzer:
             EconomicEvent(
                 name="FOMC Meeting Minutes",
                 date=now + timedelta(days=2),
-                importance="high"
+                importance="high",
             ),
             EconomicEvent(
                 name="CPI (Monthly)",
                 date=now + timedelta(days=4),
                 importance="high",
                 forecast="0.2%",
-                previous="0.3%"
+                previous="0.3%",
             ),
             EconomicEvent(
                 name="Unemployment Rate",
                 date=now + timedelta(days=5),
                 importance="high",
                 forecast="3.8%",
-                previous="3.7%"
+                previous="3.7%",
             ),
             EconomicEvent(
                 name="Retail Sales",
                 date=now + timedelta(days=6),
                 importance="medium",
-                forecast="0.3%"
-            )
+                forecast="0.3%",
+            ),
         ]
 
         return [e for e in events if (e.date - now).days <= days_ahead]

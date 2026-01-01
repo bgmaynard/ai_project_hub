@@ -8,8 +8,9 @@ Enables walkforward analysis with actual intraday data.
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -37,16 +38,13 @@ class SchwabDataSource:
         if self._schwab is None:
             try:
                 from schwab_market_data import get_schwab_market_data
+
                 self._schwab = get_schwab_market_data()
             except Exception as e:
                 logger.error(f"Failed to initialize Schwab connection: {e}")
         return self._schwab
 
-    def fetch_minute_bars(
-        self,
-        symbol: str,
-        days: int = 10
-    ) -> Optional[pd.DataFrame]:
+    def fetch_minute_bars(self, symbol: str, days: int = 10) -> Optional[pd.DataFrame]:
         """
         Fetch minute bars for a symbol from Schwab.
 
@@ -73,7 +71,7 @@ class SchwabDataSource:
                 period_type="day",
                 period=days,
                 frequency_type="minute",
-                frequency=1
+                frequency=1,
             )
 
             if not data or "candles" not in data:
@@ -88,14 +86,16 @@ class SchwabDataSource:
             df = pd.DataFrame(candles)
 
             # Rename columns to standard format
-            df = df.rename(columns={
-                "datetime": "date",
-                "open": "open",
-                "high": "high",
-                "low": "low",
-                "close": "close",
-                "volume": "volume"
-            })
+            df = df.rename(
+                columns={
+                    "datetime": "date",
+                    "open": "open",
+                    "high": "high",
+                    "low": "low",
+                    "close": "close",
+                    "volume": "volume",
+                }
+            )
 
             # Convert timestamp to datetime
             df["date"] = pd.to_datetime(df["date"], unit="ms")
@@ -109,7 +109,9 @@ class SchwabDataSource:
             # Ensure numeric types
             for col in ["open", "high", "low", "close"]:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
-            df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0).astype(int)
+            df["volume"] = (
+                pd.to_numeric(df["volume"], errors="coerce").fillna(0).astype(int)
+            )
 
             logger.info(f"Fetched {len(df)} minute bars for {symbol}")
             return df
@@ -119,9 +121,7 @@ class SchwabDataSource:
             return None
 
     def fetch_multiple_periods(
-        self,
-        symbol: str,
-        total_days: int = 30
+        self, symbol: str, total_days: int = 30
     ) -> Optional[pd.DataFrame]:
         """
         Fetch extended minute data by making multiple API calls.
@@ -165,7 +165,7 @@ class SchwabDataSource:
         symbols: List[str],
         start_date: str = None,
         end_date: str = None,
-        days: int = 10
+        days: int = 10,
     ) -> pd.DataFrame:
         """
         Query minute bar data for multiple symbols.
@@ -191,7 +191,9 @@ class SchwabDataSource:
                 all_data.append(df_copy)
 
         if not all_data:
-            return pd.DataFrame(columns=["symbol", "date", "open", "high", "low", "close", "volume"])
+            return pd.DataFrame(
+                columns=["symbol", "date", "open", "high", "low", "close", "volume"]
+            )
 
         combined = pd.concat(all_data, ignore_index=True)
 
@@ -209,9 +211,7 @@ class SchwabDataSource:
         return combined
 
     def get_pybroker_dataframe(
-        self,
-        symbols: List[str],
-        days: int = 10
+        self, symbols: List[str], days: int = 10
     ) -> pd.DataFrame:
         """
         Get data in format directly usable by PyBroker Strategy.
@@ -237,10 +237,7 @@ class SchwabDataSource:
         return df
 
 
-def create_pybroker_data(
-    symbols: List[str],
-    days: int = 10
-) -> pd.DataFrame:
+def create_pybroker_data(symbols: List[str], days: int = 10) -> pd.DataFrame:
     """
     Convenience function to create PyBroker-ready data from Schwab.
 
@@ -285,10 +282,7 @@ def fetch_and_store(symbols: List[str], days: int = 10) -> Dict:
                     del bar["date"]
 
             stored = collector.store_minute_bars(symbol, bars, source="schwab")
-            results[symbol] = {
-                "fetched": len(bars),
-                "stored": stored
-            }
+            results[symbol] = {"fetched": len(bars), "stored": stored}
         else:
             results[symbol] = {"error": "No data returned"}
 

@@ -16,9 +16,10 @@ Patterns detected:
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 # Deep Learning
@@ -26,7 +27,8 @@ try:
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
-    from torch.utils.data import Dataset, DataLoader
+    from torch.utils.data import DataLoader, Dataset
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -39,6 +41,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PatternDetection:
     """Detected pattern with metadata"""
+
     pattern_type: str  # 'bull_flag', 'breakout', etc.
     confidence: float  # 0.0 to 1.0
     timeframe: str  # '1min', '5min', '15min', 'daily'
@@ -61,17 +64,18 @@ class PositionalEncoding(nn.Module):
         # Create positional encoding matrix
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len).unsqueeze(1).float()
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() *
-                            -(np.log(10000.0) / d_model))
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2).float() * -(np.log(10000.0) / d_model)
+        )
 
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
 
-        self.register_buffer('pe', pe)
+        self.register_buffer("pe", pe)
 
     def forward(self, x):
-        return x + self.pe[:, :x.size(1)]
+        return x + self.pe[:, : x.size(1)]
 
 
 class TransformerPatternEncoder(nn.Module):
@@ -92,7 +96,7 @@ class TransformerPatternEncoder(nn.Module):
         num_layers: int = 4,
         dim_feedforward: int = 512,
         dropout: float = 0.1,
-        num_patterns: int = 8  # Number of pattern classes
+        num_patterns: int = 8,  # Number of pattern classes
     ):
         super().__init__()
 
@@ -111,12 +115,11 @@ class TransformerPatternEncoder(nn.Module):
             nhead=nhead,
             dim_feedforward=dim_feedforward,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
         )
 
         self.transformer_encoder = nn.TransformerEncoder(
-            encoder_layer,
-            num_layers=num_layers
+            encoder_layer, num_layers=num_layers
         )
 
         # Pattern classification head
@@ -124,7 +127,7 @@ class TransformerPatternEncoder(nn.Module):
             nn.Linear(d_model, dim_feedforward),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(dim_feedforward, num_patterns)
+            nn.Linear(dim_feedforward, num_patterns),
         )
 
         # Confidence prediction head
@@ -133,7 +136,7 @@ class TransformerPatternEncoder(nn.Module):
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(dim_feedforward // 2, 1),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
         # Price target prediction head
@@ -141,7 +144,7 @@ class TransformerPatternEncoder(nn.Module):
             nn.Linear(d_model, dim_feedforward // 2),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(dim_feedforward // 2, 1)
+            nn.Linear(dim_feedforward // 2, 1),
         )
 
     def forward(self, x):
@@ -189,7 +192,7 @@ class TemporalConvNet(nn.Module):
         input_dim: int = 10,
         hidden_channels: List[int] = [64, 128, 256],
         kernel_size: int = 3,
-        dropout: float = 0.2
+        dropout: float = 0.2,
     ):
         super().__init__()
 
@@ -199,10 +202,7 @@ class TemporalConvNet(nn.Module):
         for hidden_dim in hidden_channels:
             layers.append(
                 nn.Conv1d(
-                    in_channels,
-                    hidden_dim,
-                    kernel_size,
-                    padding=(kernel_size - 1) // 2
+                    in_channels, hidden_dim, kernel_size, padding=(kernel_size - 1) // 2
                 )
             )
             layers.append(nn.ReLU())
@@ -245,29 +245,22 @@ class HybridPatternDetector(nn.Module):
         input_dim: int = 10,
         d_model: int = 128,
         tcn_channels: List[int] = [64, 128],
-        num_patterns: int = 8
+        num_patterns: int = 8,
     ):
         super().__init__()
 
         # Transformer branch
         self.transformer = TransformerPatternEncoder(
-            input_dim=input_dim,
-            d_model=d_model,
-            num_patterns=num_patterns
+            input_dim=input_dim, d_model=d_model, num_patterns=num_patterns
         )
 
         # TCN branch
-        self.tcn = TemporalConvNet(
-            input_dim=input_dim,
-            hidden_channels=tcn_channels
-        )
+        self.tcn = TemporalConvNet(input_dim=input_dim, hidden_channels=tcn_channels)
 
         # Fusion layer
         fusion_dim = d_model + tcn_channels[-1]
         self.fusion = nn.Sequential(
-            nn.Linear(fusion_dim, d_model),
-            nn.ReLU(),
-            nn.Dropout(0.1)
+            nn.Linear(fusion_dim, d_model), nn.ReLU(), nn.Dropout(0.1)
         )
 
         # Final pattern classifier
@@ -312,38 +305,36 @@ class WarriorTransformerDetector:
     """
 
     PATTERN_NAMES = [
-        'bull_flag',
-        'bear_flag',
-        'breakout',
-        'breakdown',
-        'bullish_reversal',
-        'bearish_reversal',
-        'consolidation',
-        'gap_and_go'
+        "bull_flag",
+        "bear_flag",
+        "breakout",
+        "breakdown",
+        "bullish_reversal",
+        "bearish_reversal",
+        "consolidation",
+        "gap_and_go",
     ]
 
-    def __init__(
-        self,
-        model_path: Optional[str] = None,
-        device: str = None
-    ):
+    def __init__(self, model_path: Optional[str] = None, device: str = None):
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch is required for Transformer detector")
 
-        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
         # Initialize model
         self.model = HybridPatternDetector(
             input_dim=10,  # OHLCV + 5 indicators
             d_model=128,
             tcn_channels=[64, 128],
-            num_patterns=len(self.PATTERN_NAMES)
+            num_patterns=len(self.PATTERN_NAMES),
         ).to(self.device)
 
         # Load pretrained weights if available
         if model_path:
             try:
-                self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+                self.model.load_state_dict(
+                    torch.load(model_path, map_location=self.device)
+                )
                 logger.info(f"Loaded model from {model_path}")
             except Exception as e:
                 logger.warning(f"Could not load model from {model_path}: {e}")
@@ -366,11 +357,11 @@ class WarriorTransformerDetector:
 
         for candle in candles:
             # Basic OHLCV
-            open_price = candle['open']
-            high = candle['high']
-            low = candle['low']
-            close = candle['close']
-            volume = candle['volume']
+            open_price = candle["open"]
+            high = candle["high"]
+            low = candle["low"]
+            close = candle["close"]
+            volume = candle["volume"]
 
             # Normalize prices relative to close
             feat = [
@@ -378,7 +369,7 @@ class WarriorTransformerDetector:
                 (high - close) / close,
                 (low - close) / close,
                 1.0,  # close/close = 1
-                volume / 1e6  # Normalize volume
+                volume / 1e6,  # Normalize volume
             ]
 
             # Add technical indicators (simplified)
@@ -389,13 +380,15 @@ class WarriorTransformerDetector:
             bb_width = 0.02  # Placeholder
             atr = 0.01  # Placeholder
 
-            feat.extend([
-                (close - sma_20) / close if sma_20 > 0 else 0,
-                rsi / 100.0,
-                macd,
-                bb_width,
-                atr
-            ])
+            feat.extend(
+                [
+                    (close - sma_20) / close if sma_20 > 0 else 0,
+                    rsi / 100.0,
+                    macd,
+                    bb_width,
+                    atr,
+                ]
+            )
 
             features.append(feat)
 
@@ -406,10 +399,7 @@ class WarriorTransformerDetector:
         return features_tensor.to(self.device)
 
     def detect_pattern(
-        self,
-        candles: List[Dict],
-        symbol: str,
-        timeframe: str = '5min'
+        self, candles: List[Dict], symbol: str, timeframe: str = "5min"
     ) -> Optional[PatternDetection]:
         """
         Detect pattern in candlestick data
@@ -423,7 +413,9 @@ class WarriorTransformerDetector:
             PatternDetection if pattern found, None otherwise
         """
         if len(candles) < 20:
-            logger.warning(f"Need at least 20 candles for pattern detection, got {len(candles)}")
+            logger.warning(
+                f"Need at least 20 candles for pattern detection, got {len(candles)}"
+            )
             return None
 
         # Prepare input features
@@ -449,11 +441,11 @@ class WarriorTransformerDetector:
         target_pct = price_target[0].item()
 
         # Calculate price levels
-        current_price = candles[-1]['close']
+        current_price = candles[-1]["close"]
         predicted_target = current_price * (1 + target_pct)
 
         # Calculate stop loss (risk 1-2%)
-        if 'bull' in pattern_type or pattern_type in ['breakout', 'gap_and_go']:
+        if "bull" in pattern_type or pattern_type in ["breakout", "gap_and_go"]:
             stop_loss = current_price * 0.98  # 2% below
         else:
             stop_loss = current_price * 1.02  # 2% above
@@ -464,13 +456,13 @@ class WarriorTransformerDetector:
             timeframe=timeframe,
             timestamp=datetime.now(),
             features={
-                'pattern_confidence': pattern_confidence,
-                'target_pct': target_pct,
-                'current_price': current_price
+                "pattern_confidence": pattern_confidence,
+                "target_pct": target_pct,
+                "current_price": current_price,
             },
             price_target=predicted_target,
             stop_loss=stop_loss,
-            duration=len(candles)
+            duration=len(candles),
         )
 
     def train_model(
@@ -478,7 +470,7 @@ class WarriorTransformerDetector:
         train_data: List[Tuple[torch.Tensor, int, float]],
         epochs: int = 50,
         batch_size: int = 32,
-        learning_rate: float = 0.001
+        learning_rate: float = 0.001,
     ):
         """
         Train the model on labeled pattern data
@@ -506,7 +498,9 @@ class WarriorTransformerDetector:
                 optimizer.zero_grad()
 
                 # Forward pass
-                pattern_logits, confidence, price_target = self.model(features.unsqueeze(0))
+                pattern_logits, confidence, price_target = self.model(
+                    features.unsqueeze(0)
+                )
 
                 # Losses
                 loss_pattern = criterion_pattern(pattern_logits, torch.tensor([label]))
@@ -533,7 +527,9 @@ class WarriorTransformerDetector:
 _transformer_detector: Optional[WarriorTransformerDetector] = None
 
 
-def get_transformer_detector(model_path: Optional[str] = None) -> WarriorTransformerDetector:
+def get_transformer_detector(
+    model_path: Optional[str] = None,
+) -> WarriorTransformerDetector:
     """Get or create global transformer detector instance"""
     global _transformer_detector
     if _transformer_detector is None:
@@ -547,8 +543,13 @@ if __name__ == "__main__":
 
     # Create sample candle data
     sample_candles = [
-        {'open': 100 + i*0.1, 'high': 101 + i*0.1, 'low': 99 + i*0.1,
-         'close': 100.5 + i*0.1, 'volume': 1000000}
+        {
+            "open": 100 + i * 0.1,
+            "high": 101 + i * 0.1,
+            "low": 99 + i * 0.1,
+            "close": 100.5 + i * 0.1,
+            "volume": 1000000,
+        }
         for i in range(50)
     ]
 

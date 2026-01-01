@@ -25,10 +25,11 @@ Created: December 2025
 import asyncio
 import json
 import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Dict, List, Set, Optional, Any
-from dataclasses import dataclass, asdict
 from enum import Enum
+from typing import Any, Dict, List, Optional, Set
+
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -36,16 +37,18 @@ logger = logging.getLogger(__name__)
 
 class Channel(str, Enum):
     """WebSocket channels"""
-    TRADING = "trading"     # Bot, trades, positions
-    AI = "ai"               # Predictions, signals, brain
-    RISK = "risk"           # VAR, drawdown, alerts
-    SYSTEM = "system"       # Server status, errors
-    ALL = "all"             # Broadcast to all channels
+
+    TRADING = "trading"  # Bot, trades, positions
+    AI = "ai"  # Predictions, signals, brain
+    RISK = "risk"  # VAR, drawdown, alerts
+    SYSTEM = "system"  # Server status, errors
+    ALL = "all"  # Broadcast to all channels
 
 
 @dataclass
 class RealtimeMessage:
     """Standard message format for real-time updates"""
+
     channel: str
     type: str
     data: Dict[str, Any]
@@ -71,7 +74,7 @@ class RealtimeHub:
     """
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # Client management
         # client_id -> {queue, channels}
@@ -97,11 +100,15 @@ class RealtimeHub:
 
         # Stats
         self._messages_sent = 0
-        self._messages_by_channel: Dict[str, int] = {c.value: 0 for c in Channel if c != Channel.ALL}
+        self._messages_by_channel: Dict[str, int] = {
+            c.value: 0 for c in Channel if c != Channel.ALL
+        }
 
         logger.info("RealtimeHub initialized")
 
-    def register_client(self, client_id: str, channels: List[str] = None) -> asyncio.Queue:
+    def register_client(
+        self, client_id: str, channels: List[str] = None
+    ) -> asyncio.Queue:
         """
         Register a new WebSocket client.
 
@@ -113,14 +120,19 @@ class RealtimeHub:
             asyncio.Queue for receiving messages
         """
         if channels is None:
-            channels = [Channel.TRADING.value, Channel.AI.value, Channel.RISK.value, Channel.SYSTEM.value]
+            channels = [
+                Channel.TRADING.value,
+                Channel.AI.value,
+                Channel.RISK.value,
+                Channel.SYSTEM.value,
+            ]
 
         queue = asyncio.Queue()
 
         self._clients[client_id] = {
             "queue": queue,
             "channels": set(channels),
-            "connected_at": datetime.now(self.et_tz).isoformat()
+            "connected_at": datetime.now(self.et_tz).isoformat(),
         }
 
         # Add to channel subscriptions
@@ -175,10 +187,7 @@ class RealtimeHub:
         timestamp = datetime.now(self.et_tz).isoformat()
 
         message = RealtimeMessage(
-            channel=channel,
-            type=message_type,
-            data=data,
-            timestamp=timestamp
+            channel=channel, type=message_type, data=data, timestamp=timestamp
         )
 
         message_json = message.to_json()
@@ -193,7 +202,7 @@ class RealtimeHub:
         if channel in self._history:
             self._history[channel].append(message)
             if len(self._history[channel]) > self._history_limit:
-                self._history[channel] = self._history[channel][-self._history_limit:]
+                self._history[channel] = self._history[channel][-self._history_limit :]
 
         # Send to all target clients
         for client_id in target_clients:
@@ -206,7 +215,9 @@ class RealtimeHub:
                 except Exception as e:
                     logger.error(f"Error sending to client {client_id}: {e}")
 
-    async def send_to_client(self, client_id: str, message_type: str, data: Dict[str, Any]):
+    async def send_to_client(
+        self, client_id: str, message_type: str, data: Dict[str, Any]
+    ):
         """Send a message to a specific client"""
         if client_id not in self._clients:
             return
@@ -214,10 +225,7 @@ class RealtimeHub:
         timestamp = datetime.now(self.et_tz).isoformat()
 
         message = RealtimeMessage(
-            channel="direct",
-            type=message_type,
-            data=data,
-            timestamp=timestamp
+            channel="direct", type=message_type, data=data, timestamp=timestamp
         )
 
         try:
@@ -246,10 +254,10 @@ class RealtimeHub:
                 {
                     "id": cid,
                     "channels": list(c.get("channels", [])),
-                    "connected_at": c.get("connected_at")
+                    "connected_at": c.get("connected_at"),
                 }
                 for cid, c in self._clients.items()
-            ]
+            ],
         }
 
 
@@ -275,14 +283,17 @@ async def broadcast(channel: str, data: Dict[str, Any], message_type: str = "upd
 #                    PRE-BUILT BROADCAST FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def broadcast_trade(symbol: str, side: str, quantity: int, price: float, pnl: float = None):
+
+async def broadcast_trade(
+    symbol: str, side: str, quantity: int, price: float, pnl: float = None
+):
     """Broadcast a trade execution"""
     data = {
         "symbol": symbol,
         "side": side,
         "quantity": quantity,
         "price": price,
-        "pnl": pnl
+        "pnl": pnl,
     }
     await broadcast(Channel.TRADING.value, data, "trade")
 
@@ -298,13 +309,15 @@ async def broadcast_bot_status(status: str, message: str = None):
     await broadcast(Channel.TRADING.value, data, "bot_status")
 
 
-async def broadcast_prediction(symbol: str, signal: str, confidence: float, price: float):
+async def broadcast_prediction(
+    symbol: str, signal: str, confidence: float, price: float
+):
     """Broadcast AI prediction"""
     data = {
         "symbol": symbol,
         "signal": signal,
         "confidence": confidence,
-        "price": price
+        "price": price,
     }
     await broadcast(Channel.AI.value, data, "prediction")
 
@@ -316,48 +329,33 @@ async def broadcast_brain_status(metrics: Dict):
 
 async def broadcast_drift_alert(drift_pct: float, recommendation: str):
     """Broadcast prediction drift alert"""
-    data = {
-        "drift_pct": drift_pct,
-        "recommendation": recommendation
-    }
+    data = {"drift_pct": drift_pct, "recommendation": recommendation}
     await broadcast(Channel.AI.value, data, "drift_alert")
 
 
 async def broadcast_var_update(var_95_pct: float, var_95_dollars: float):
     """Broadcast VAR update"""
-    data = {
-        "var_95_pct": var_95_pct,
-        "var_95_dollars": var_95_dollars
-    }
+    data = {"var_95_pct": var_95_pct, "var_95_dollars": var_95_dollars}
     await broadcast(Channel.RISK.value, data, "var")
 
 
 async def broadcast_drawdown_update(drawdown_pct: float, max_drawdown_pct: float):
     """Broadcast drawdown update"""
-    data = {
-        "drawdown_pct": drawdown_pct,
-        "max_drawdown_pct": max_drawdown_pct
-    }
+    data = {"drawdown_pct": drawdown_pct, "max_drawdown_pct": max_drawdown_pct}
     await broadcast(Channel.RISK.value, data, "drawdown")
 
 
 async def broadcast_circuit_breaker(level: str, reason: str, can_trade: bool):
     """Broadcast circuit breaker status"""
-    data = {
-        "level": level,
-        "reason": reason,
-        "can_trade": can_trade
-    }
+    data = {"level": level, "reason": reason, "can_trade": can_trade}
     await broadcast(Channel.RISK.value, data, "circuit_breaker")
 
 
-async def broadcast_risk_alert(alert_type: str, message: str, severity: str = "warning"):
+async def broadcast_risk_alert(
+    alert_type: str, message: str, severity: str = "warning"
+):
     """Broadcast risk alert"""
-    data = {
-        "alert_type": alert_type,
-        "message": message,
-        "severity": severity
-    }
+    data = {"alert_type": alert_type, "message": message, "severity": severity}
     await broadcast(Channel.RISK.value, data, "alert")
 
 

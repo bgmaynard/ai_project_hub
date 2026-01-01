@@ -14,27 +14,23 @@ Endpoints:
 - POST /api/task-queue/reset            - Reset pipeline for new run
 """
 
+import json
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-import json
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from .task_queue_manager import (
-    get_task_queue_manager,
-    reset_task_queue_manager,
-    TaskStatus,
-    PipelineStatus,
-    REPORTS_DIR
-)
 from .task_group_1_discovery import register_discovery_tasks
 from .task_group_2_qlib import register_qlib_tasks
 from .task_group_3_chronos import register_chronos_tasks
 from .task_group_4_gating import register_gating_tasks
 from .task_group_5_post_trade import register_post_trade_tasks
+from .task_queue_manager import (REPORTS_DIR, PipelineStatus, TaskStatus,
+                                 get_task_queue_manager,
+                                 reset_task_queue_manager)
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +56,7 @@ def ensure_tasks_registered():
 # =============================================================================
 # Response Models
 # =============================================================================
+
 
 class PipelineStatusResponse(BaseModel):
     run_id: str
@@ -89,6 +86,7 @@ class RunPipelineResponse(BaseModel):
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.get("/status", response_model=PipelineStatusResponse)
 async def get_pipeline_status():
@@ -130,7 +128,7 @@ async def run_full_pipeline(start_from: Optional[str] = Query(None)):
             "tasks_completed": completed,
             "tasks_failed": failed,
             "halted_reason": manager.halted_reason,
-            "reports_generated": reports
+            "reports_generated": reports,
         }
 
     except Exception as e:
@@ -156,7 +154,7 @@ async def run_single_task(task_id: str):
             "status": result.status.value,
             "output_file": result.output_file,
             "error": result.error,
-            "duration_ms": result.duration_ms
+            "duration_ms": result.duration_ms,
         }
 
     except Exception as e:
@@ -176,18 +174,20 @@ async def list_reports():
     if reports_dir.exists():
         for f in sorted(reports_dir.glob("*.json")):
             stat = f.stat()
-            reports.append({
-                "name": f.name,
-                "path": str(f),
-                "size_bytes": stat.st_size,
-                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
-            })
+            reports.append(
+                {
+                    "name": f.name,
+                    "path": str(f),
+                    "size_bytes": stat.st_size,
+                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                }
+            )
 
     return {
         "run_id": manager.run_id,
         "reports_dir": str(reports_dir),
         "report_count": len(reports),
-        "reports": reports
+        "reports": reports,
     }
 
 
@@ -207,7 +207,7 @@ async def get_report(report_name: str):
         raise HTTPException(status_code=404, detail=f"Report {report_name} not found")
 
     try:
-        with open(report_path, 'r') as f:
+        with open(report_path, "r") as f:
             data = json.load(f)
         return data
     except Exception as e:
@@ -244,7 +244,7 @@ async def check_can_trade():
         "can_trade": can_trade,
         "reason": reason,
         "r10_approved": r10_approved,
-        "r11_ready": r11_ready
+        "r11_ready": r11_ready,
     }
 
 
@@ -260,7 +260,7 @@ async def reset_pipeline():
     return {
         "success": True,
         "new_run_id": manager.run_id,
-        "message": "Pipeline reset for new run"
+        "message": "Pipeline reset for new run",
     }
 
 
@@ -285,12 +285,16 @@ async def get_task_details(task_id: str):
         "fail_conditions": task.fail_conditions,
         "next_task": task.next_task,
         "status": task.status.value,
-        "result": {
-            "status": result.status.value if result else None,
-            "output_file": result.output_file if result else None,
-            "error": result.error if result else None,
-            "duration_ms": result.duration_ms if result else None
-        } if result else None
+        "result": (
+            {
+                "status": result.status.value if result else None,
+                "output_file": result.output_file if result else None,
+                "error": result.error if result else None,
+                "duration_ms": result.duration_ms if result else None,
+            }
+            if result
+            else None
+        ),
     }
 
 
@@ -303,39 +307,52 @@ async def get_execution_contract():
             "No downstream task runs if upstream fails",
             "Every task produces a named artifact",
             "All decisions must be explainable via reports",
-            "NO TRADE MAY EXECUTE WITHOUT report_R10 = APPROVED"
+            "NO TRADE MAY EXECUTE WITHOUT report_R10 = APPROVED",
         ],
         "task_groups": [
             {
                 "group": "MARKET_DISCOVERY",
-                "tasks": ["DISCOVERY_GAPPERS", "DISCOVERY_FLOAT_FILTER", "DISCOVERY_REL_VOLUME", "DISCOVERY_HOD_BEHAVIOR"],
-                "outputs": ["R1", "R2", "R3", "R4"]
+                "tasks": [
+                    "DISCOVERY_GAPPERS",
+                    "DISCOVERY_FLOAT_FILTER",
+                    "DISCOVERY_REL_VOLUME",
+                    "DISCOVERY_HOD_BEHAVIOR",
+                ],
+                "outputs": ["R1", "R2", "R3", "R4"],
             },
             {
                 "group": "QLIB_RESEARCH",
-                "tasks": ["QLIB_HOD_PROBABILITY", "QLIB_REGIME_CHECK", "QLIB_FEATURE_RANK"],
-                "outputs": ["R5", "R6", "R7"]
+                "tasks": [
+                    "QLIB_HOD_PROBABILITY",
+                    "QLIB_REGIME_CHECK",
+                    "QLIB_FEATURE_RANK",
+                ],
+                "outputs": ["R5", "R6", "R7"],
             },
             {
                 "group": "CHRONOS_CONTEXT",
                 "tasks": ["CHRONOS_PERSISTENCE", "CHRONOS_PULLBACK_DEPTH"],
-                "outputs": ["R8", "R9"]
+                "outputs": ["R8", "R9"],
             },
             {
                 "group": "SIGNAL_GATING",
                 "tasks": ["GATING_SIGNAL_EVAL", "EXECUTION_QUEUE"],
                 "outputs": ["R10", "R11"],
-                "critical": True
+                "critical": True,
             },
             {
                 "group": "POST_TRADE",
-                "tasks": ["POST_TRADE_OUTCOME", "POST_STRATEGY_HEALTH", "POST_STRATEGY_TOGGLE"],
-                "outputs": ["R12", "R13", "R15"]
-            }
+                "tasks": [
+                    "POST_TRADE_OUTCOME",
+                    "POST_STRATEGY_HEALTH",
+                    "POST_STRATEGY_TOGGLE",
+                ],
+                "outputs": ["R12", "R13", "R15"],
+            },
         ],
         "gating_requirements": {
             "R10_approved_required": True,
             "all_upstream_must_pass": True,
-            "fail_conditions_halt_pipeline": True
-        }
+            "fail_conditions_halt_pipeline": True,
+        },
     }

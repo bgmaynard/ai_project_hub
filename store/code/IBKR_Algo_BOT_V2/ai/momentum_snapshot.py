@@ -25,31 +25,35 @@ Rules:
 All state transitions are logged.
 """
 
-import logging
 import json
+import logging
 import os
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from enum import Enum
 from collections import deque
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-SNAPSHOT_LOG_FILE = os.path.join(os.path.dirname(__file__), "momentum_snapshot_log.json")
+SNAPSHOT_LOG_FILE = os.path.join(
+    os.path.dirname(__file__), "momentum_snapshot_log.json"
+)
 
 
 class MomentumOutputState(Enum):
     """Momentum output states for execution decisions"""
-    IGNITION = "IGNITION"      # Initial momentum detected
-    CONFIRMED = "CONFIRMED"    # Momentum confirmed with follow-through
-    DECAY = "DECAY"            # Momentum weakening
-    DEAD = "DEAD"              # Momentum failed
+
+    IGNITION = "IGNITION"  # Initial momentum detected
+    CONFIRMED = "CONFIRMED"  # Momentum confirmed with follow-through
+    DECAY = "DECAY"  # Momentum weakening
+    DEAD = "DEAD"  # Momentum failed
 
 
 @dataclass
 class PricePoint:
     """Single price observation"""
+
     timestamp: datetime
     price: float
     volume: int
@@ -64,6 +68,7 @@ class MomentumSnapshot:
 
     All metrics are computed from recent price/volume data.
     """
+
     symbol: str
     timestamp: datetime
 
@@ -73,30 +78,30 @@ class MomentumSnapshot:
     ask: float = 0
 
     # Rate of Change (percentage)
-    roc_5s: float = 0       # 5-second rate of change
-    roc_30s: float = 0      # 30-second rate of change
-    roc_2m: float = 0       # 2-minute rate of change
+    roc_5s: float = 0  # 5-second rate of change
+    roc_30s: float = 0  # 30-second rate of change
+    roc_2m: float = 0  # 2-minute rate of change
 
     # Relative Volume
-    rvol_1m: float = 1.0    # 1-minute relative volume
-    rvol_5m: float = 1.0    # 5-minute relative volume
+    rvol_1m: float = 1.0  # 1-minute relative volume
+    rvol_5m: float = 1.0  # 5-minute relative volume
 
     # VWAP metrics
     vwap: float = 0
-    vwap_distance_pct: float = 0    # % distance from VWAP
+    vwap_distance_pct: float = 0  # % distance from VWAP
     above_vwap: bool = False
-    vwap_reclaim: bool = False      # Just reclaimed VWAP
+    vwap_reclaim: bool = False  # Just reclaimed VWAP
 
     # Micro-trend
-    higher_highs: bool = False      # Making higher highs
-    higher_lows: bool = False       # Making higher lows
-    lower_highs: bool = False       # Making lower highs
-    lower_lows: bool = False        # Making lower lows
-    micro_trend: str = "NEUTRAL"    # BULLISH, BEARISH, NEUTRAL
+    higher_highs: bool = False  # Making higher highs
+    higher_lows: bool = False  # Making higher lows
+    lower_highs: bool = False  # Making lower highs
+    lower_lows: bool = False  # Making lower lows
+    micro_trend: str = "NEUTRAL"  # BULLISH, BEARISH, NEUTRAL
 
     # Spread and liquidity
-    spread_pct: float = 0           # Bid-ask spread %
-    spread_score: int = 100         # 0-100 liquidity score (100=tight)
+    spread_pct: float = 0  # Bid-ask spread %
+    spread_score: int = 100  # 0-100 liquidity score (100=tight)
 
     # Computed output state
     output_state: MomentumOutputState = MomentumOutputState.IGNITION
@@ -108,32 +113,33 @@ class MomentumSnapshot:
 
     def to_dict(self) -> Dict:
         return {
-            'symbol': self.symbol,
-            'timestamp': self.timestamp.isoformat(),
-            'current_price': self.current_price,
-            'roc_5s': round(self.roc_5s, 3),
-            'roc_30s': round(self.roc_30s, 3),
-            'roc_2m': round(self.roc_2m, 3),
-            'rvol_1m': round(self.rvol_1m, 2),
-            'rvol_5m': round(self.rvol_5m, 2),
-            'vwap': round(self.vwap, 2),
-            'vwap_distance_pct': round(self.vwap_distance_pct, 2),
-            'above_vwap': self.above_vwap,
-            'vwap_reclaim': self.vwap_reclaim,
-            'micro_trend': self.micro_trend,
-            'higher_highs': self.higher_highs,
-            'higher_lows': self.higher_lows,
-            'spread_pct': round(self.spread_pct, 3),
-            'spread_score': self.spread_score,
-            'output_state': self.output_state.value,
-            'state_confidence': round(self.state_confidence, 2),
-            'time_in_state_seconds': round(self.time_in_state_seconds, 1),
+            "symbol": self.symbol,
+            "timestamp": self.timestamp.isoformat(),
+            "current_price": self.current_price,
+            "roc_5s": round(self.roc_5s, 3),
+            "roc_30s": round(self.roc_30s, 3),
+            "roc_2m": round(self.roc_2m, 3),
+            "rvol_1m": round(self.rvol_1m, 2),
+            "rvol_5m": round(self.rvol_5m, 2),
+            "vwap": round(self.vwap, 2),
+            "vwap_distance_pct": round(self.vwap_distance_pct, 2),
+            "above_vwap": self.above_vwap,
+            "vwap_reclaim": self.vwap_reclaim,
+            "micro_trend": self.micro_trend,
+            "higher_highs": self.higher_highs,
+            "higher_lows": self.higher_lows,
+            "spread_pct": round(self.spread_pct, 3),
+            "spread_score": self.spread_score,
+            "output_state": self.output_state.value,
+            "state_confidence": round(self.state_confidence, 2),
+            "time_in_state_seconds": round(self.time_in_state_seconds, 1),
         }
 
 
 @dataclass
 class StateTransitionLog:
     """Log entry for momentum state transition"""
+
     symbol: str
     timestamp: str
     from_state: str
@@ -154,17 +160,17 @@ class MomentumSnapshotEngine:
     """
 
     # Thresholds for state determination
-    IGNITION_ROC_5S = 0.3           # 0.3% move in 5s = ignition
-    CONFIRMED_ROC_30S = 0.5         # 0.5% in 30s with volume
-    CONFIRMED_RVOL = 2.0            # 2x relative volume for confirmation
-    DECAY_ROC_REVERSAL = -0.2       # -0.2% = decay starting
-    DEAD_ROC_THRESHOLD = -0.5       # -0.5% from high = dead
+    IGNITION_ROC_5S = 0.3  # 0.3% move in 5s = ignition
+    CONFIRMED_ROC_30S = 0.5  # 0.5% in 30s with volume
+    CONFIRMED_RVOL = 2.0  # 2x relative volume for confirmation
+    DECAY_ROC_REVERSAL = -0.2  # -0.2% = decay starting
+    DEAD_ROC_THRESHOLD = -0.5  # -0.5% from high = dead
 
-    IGNITION_TIMEOUT_SECONDS = 30   # Must confirm within 30s
-    VWAP_RECLAIM_THRESHOLD = 0.1    # % above VWAP to count as reclaim
+    IGNITION_TIMEOUT_SECONDS = 30  # Must confirm within 30s
+    VWAP_RECLAIM_THRESHOLD = 0.1  # % above VWAP to count as reclaim
 
-    SPREAD_TIGHT = 0.5              # < 0.5% = tight spread
-    SPREAD_WIDE = 2.0               # > 2% = wide spread (danger)
+    SPREAD_TIGHT = 0.5  # < 0.5% = tight spread
+    SPREAD_WIDE = 2.0  # > 2% = wide spread (danger)
 
     def __init__(self):
         # Price history per symbol (last 5 minutes of ticks)
@@ -187,8 +193,9 @@ class MomentumSnapshotEngine:
         # High watermarks for decay detection
         self._session_highs: Dict[str, float] = {}
 
-    def add_price(self, symbol: str, price: float, volume: int = 0,
-                  bid: float = 0, ask: float = 0):
+    def add_price(
+        self, symbol: str, price: float, volume: int = 0, bid: float = 0, ask: float = 0
+    ):
         """
         Add a new price observation for a symbol.
 
@@ -200,11 +207,7 @@ class MomentumSnapshotEngine:
             self._state_entered[symbol] = datetime.now()
 
         point = PricePoint(
-            timestamp=datetime.now(),
-            price=price,
-            volume=volume,
-            bid=bid,
-            ask=ask
+            timestamp=datetime.now(), price=price, volume=volume, bid=bid, ask=ask
         )
         self._price_history[symbol].append(point)
 
@@ -214,10 +217,7 @@ class MomentumSnapshotEngine:
 
     def set_volume_baseline(self, symbol: str, avg_1m: float, avg_5m: float):
         """Set baseline volumes for relative volume calculation"""
-        self._volume_baselines[symbol] = {
-            'avg_1m': avg_1m,
-            'avg_5m': avg_5m
-        }
+        self._volume_baselines[symbol] = {"avg_1m": avg_1m, "avg_5m": avg_5m}
 
     def compute_snapshot(self, symbol: str) -> Optional[MomentumSnapshot]:
         """
@@ -250,7 +250,11 @@ class MomentumSnapshotEngine:
 
         # Detect VWAP reclaim
         prev_above = self._prev_above_vwap.get(symbol, False)
-        vwap_reclaim = above_vwap and not prev_above and vwap_distance > self.VWAP_RECLAIM_THRESHOLD
+        vwap_reclaim = (
+            above_vwap
+            and not prev_above
+            and vwap_distance > self.VWAP_RECLAIM_THRESHOLD
+        )
         self._prev_above_vwap[symbol] = above_vwap
 
         # Compute micro-trend
@@ -266,14 +270,28 @@ class MomentumSnapshotEngine:
             elif spread_pct > self.SPREAD_WIDE:
                 spread_score = 0
             else:
-                spread_score = int(100 * (1 - (spread_pct - self.SPREAD_TIGHT) /
-                                          (self.SPREAD_WIDE - self.SPREAD_TIGHT)))
+                spread_score = int(
+                    100
+                    * (
+                        1
+                        - (spread_pct - self.SPREAD_TIGHT)
+                        / (self.SPREAD_WIDE - self.SPREAD_TIGHT)
+                    )
+                )
 
         # Determine output state
         prev_state = self._states.get(symbol, MomentumOutputState.DEAD)
         new_state, confidence, reason = self._determine_state(
-            symbol, roc_5s, roc_30s, roc_2m, rvol_1m, above_vwap,
-            vwap_reclaim, micro_trend, spread_score, prev_state
+            symbol,
+            roc_5s,
+            roc_30s,
+            roc_2m,
+            rvol_1m,
+            above_vwap,
+            vwap_reclaim,
+            micro_trend,
+            spread_score,
+            prev_state,
         )
 
         # Handle state transition
@@ -356,10 +374,10 @@ class MomentumSnapshotEngine:
                 vol_5m += point.volume
 
         # Get baselines
-        baselines = self._volume_baselines.get(symbol, {'avg_1m': 1, 'avg_5m': 1})
+        baselines = self._volume_baselines.get(symbol, {"avg_1m": 1, "avg_5m": 1})
 
-        rvol_1m = vol_1m / max(baselines['avg_1m'], 1)
-        rvol_5m = vol_5m / max(baselines['avg_5m'], 1)
+        rvol_1m = vol_1m / max(baselines["avg_1m"], 1)
+        rvol_5m = vol_5m / max(baselines["avg_5m"], 1)
 
         return rvol_1m, rvol_5m
 
@@ -420,11 +438,19 @@ class MomentumSnapshotEngine:
 
         return trend, higher_highs, higher_lows, lower_highs, lower_lows
 
-    def _determine_state(self, symbol: str, roc_5s: float, roc_30s: float,
-                         roc_2m: float, rvol: float, above_vwap: bool,
-                         vwap_reclaim: bool, micro_trend: str,
-                         spread_score: int, prev_state: MomentumOutputState
-                        ) -> tuple:
+    def _determine_state(
+        self,
+        symbol: str,
+        roc_5s: float,
+        roc_30s: float,
+        roc_2m: float,
+        rvol: float,
+        above_vwap: bool,
+        vwap_reclaim: bool,
+        micro_trend: str,
+        spread_score: int,
+        prev_state: MomentumOutputState,
+    ) -> tuple:
         """
         Determine momentum output state.
 
@@ -432,7 +458,11 @@ class MomentumSnapshotEngine:
         """
         # Check for DEAD first (failed momentum)
         session_high = self._session_highs.get(symbol, 0)
-        current_price = self._last_snapshot[symbol].current_price if symbol in self._last_snapshot else 0
+        current_price = (
+            self._last_snapshot[symbol].current_price
+            if symbol in self._last_snapshot
+            else 0
+        )
 
         pct_from_high = 0
         if session_high > 0 and current_price > 0:
@@ -440,7 +470,11 @@ class MomentumSnapshotEngine:
 
         # DEAD: Significant drop from high OR wide spread OR bearish trend
         if pct_from_high < self.DEAD_ROC_THRESHOLD:
-            return MomentumOutputState.DEAD, 0.9, f"Dropped {pct_from_high:.1f}% from high"
+            return (
+                MomentumOutputState.DEAD,
+                0.9,
+                f"Dropped {pct_from_high:.1f}% from high",
+            )
 
         if spread_score == 0:
             return MomentumOutputState.DEAD, 0.85, "Spread too wide"
@@ -449,7 +483,10 @@ class MomentumSnapshotEngine:
             return MomentumOutputState.DEAD, 0.8, "Bearish trend with negative ROC"
 
         # DECAY: Momentum weakening
-        if roc_5s < self.DECAY_ROC_REVERSAL and prev_state == MomentumOutputState.CONFIRMED:
+        if (
+            roc_5s < self.DECAY_ROC_REVERSAL
+            and prev_state == MomentumOutputState.CONFIRMED
+        ):
             return MomentumOutputState.DECAY, 0.75, f"ROC reversal: {roc_5s:.2f}%"
 
         if not above_vwap and prev_state == MomentumOutputState.CONFIRMED:
@@ -460,31 +497,49 @@ class MomentumSnapshotEngine:
 
         # Check for IGNITION timeout
         if prev_state == MomentumOutputState.IGNITION:
-            time_in_ignition = (datetime.now() -
-                               self._state_entered.get(symbol, datetime.now())).total_seconds()
+            time_in_ignition = (
+                datetime.now() - self._state_entered.get(symbol, datetime.now())
+            ).total_seconds()
             if time_in_ignition > self.IGNITION_TIMEOUT_SECONDS:
-                return MomentumOutputState.DEAD, 0.8, f"Ignition timeout ({time_in_ignition:.0f}s)"
+                return (
+                    MomentumOutputState.DEAD,
+                    0.8,
+                    f"Ignition timeout ({time_in_ignition:.0f}s)",
+                )
 
         # CONFIRMED: Strong momentum with follow-through
-        if (roc_30s >= self.CONFIRMED_ROC_30S and
-            rvol >= self.CONFIRMED_RVOL and
-            micro_trend == "BULLISH" and
-            above_vwap):
+        if (
+            roc_30s >= self.CONFIRMED_ROC_30S
+            and rvol >= self.CONFIRMED_RVOL
+            and micro_trend == "BULLISH"
+            and above_vwap
+        ):
             confidence = min(0.5 + (roc_30s / 2) + (rvol / 10), 0.95)
-            return MomentumOutputState.CONFIRMED, confidence, \
-                   f"ROC={roc_30s:.1f}%, RVol={rvol:.1f}x, Bullish, Above VWAP"
+            return (
+                MomentumOutputState.CONFIRMED,
+                confidence,
+                f"ROC={roc_30s:.1f}%, RVol={rvol:.1f}x, Bullish, Above VWAP",
+            )
 
         # Partial confirmation (3 of 4 criteria)
-        criteria_met = sum([
-            roc_30s >= self.CONFIRMED_ROC_30S,
-            rvol >= self.CONFIRMED_RVOL,
-            micro_trend == "BULLISH",
-            above_vwap
-        ])
+        criteria_met = sum(
+            [
+                roc_30s >= self.CONFIRMED_ROC_30S,
+                rvol >= self.CONFIRMED_RVOL,
+                micro_trend == "BULLISH",
+                above_vwap,
+            ]
+        )
 
-        if criteria_met >= 3 and prev_state in [MomentumOutputState.IGNITION,
-                                                 MomentumOutputState.CONFIRMED]:
-            return MomentumOutputState.CONFIRMED, 0.7, f"Partial confirmation ({criteria_met}/4 criteria)"
+        if criteria_met >= 3 and prev_state in [
+            MomentumOutputState.IGNITION,
+            MomentumOutputState.CONFIRMED,
+        ]:
+            return (
+                MomentumOutputState.CONFIRMED,
+                0.7,
+                f"Partial confirmation ({criteria_met}/4 criteria)",
+            )
 
         # IGNITION: Initial momentum detected
         if roc_5s >= self.IGNITION_ROC_5S or vwap_reclaim:
@@ -504,8 +559,14 @@ class MomentumSnapshotEngine:
         # Default: DEAD
         return MomentumOutputState.DEAD, 0.5, "No momentum detected"
 
-    def _log_transition(self, symbol: str, from_state: MomentumOutputState,
-                        to_state: MomentumOutputState, reason: str, price: float):
+    def _log_transition(
+        self,
+        symbol: str,
+        from_state: MomentumOutputState,
+        to_state: MomentumOutputState,
+        reason: str,
+        price: float,
+    ):
         """Log a state transition"""
         entry = StateTransitionLog(
             symbol=symbol,
@@ -513,7 +574,7 @@ class MomentumSnapshotEngine:
             from_state=from_state.value,
             to_state=to_state.value,
             reason=reason,
-            snapshot={'price': price}
+            snapshot={"price": price},
         )
         self._transition_log.append(entry)
 
@@ -525,7 +586,7 @@ class MomentumSnapshotEngine:
         try:
             log_data = []
             if os.path.exists(SNAPSHOT_LOG_FILE):
-                with open(SNAPSHOT_LOG_FILE, 'r') as f:
+                with open(SNAPSHOT_LOG_FILE, "r") as f:
                     log_data = json.load(f)
 
             log_data.append(asdict(entry))
@@ -534,12 +595,14 @@ class MomentumSnapshotEngine:
             if len(log_data) > 500:
                 log_data = log_data[-500:]
 
-            with open(SNAPSHOT_LOG_FILE, 'w') as f:
+            with open(SNAPSHOT_LOG_FILE, "w") as f:
                 json.dump(log_data, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to log transition: {e}")
 
-        logger.info(f"MOMENTUM STATE: {symbol} {from_state.value} -> {to_state.value} ({reason})")
+        logger.info(
+            f"MOMENTUM STATE: {symbol} {from_state.value} -> {to_state.value} ({reason})"
+        )
 
     def can_enter(self, symbol: str) -> tuple:
         """
@@ -555,8 +618,9 @@ class MomentumSnapshotEngine:
             return True, "Momentum CONFIRMED"
 
         if state == MomentumOutputState.IGNITION:
-            time_in_state = (datetime.now() -
-                            self._state_entered.get(symbol, datetime.now())).total_seconds()
+            time_in_state = (
+                datetime.now() - self._state_entered.get(symbol, datetime.now())
+            ).total_seconds()
             return False, f"Awaiting confirmation (in IGNITION {time_in_state:.0f}s)"
 
         if state == MomentumOutputState.DECAY:
@@ -608,7 +672,9 @@ class MomentumSnapshotEngine:
         """Get momentum engine statistics"""
         state_counts = {}
         for state in MomentumOutputState:
-            state_counts[state.value] = sum(1 for s in self._states.values() if s == state)
+            state_counts[state.value] = sum(
+                1 for s in self._states.values() if s == state
+            )
 
         # Count transitions by type
         transition_counts = {}
@@ -617,14 +683,20 @@ class MomentumSnapshotEngine:
             transition_counts[key] = transition_counts.get(key, 0) + 1
 
         return {
-            'total_symbols': len(self._states),
-            'state_counts': state_counts,
-            'transition_counts': transition_counts,
-            'total_transitions': len(self._transition_log),
-            'symbols_confirmed': [s for s, st in self._states.items()
-                                  if st == MomentumOutputState.CONFIRMED],
-            'symbols_igniting': [s for s, st in self._states.items()
-                                 if st == MomentumOutputState.IGNITION],
+            "total_symbols": len(self._states),
+            "state_counts": state_counts,
+            "transition_counts": transition_counts,
+            "total_transitions": len(self._transition_log),
+            "symbols_confirmed": [
+                s
+                for s, st in self._states.items()
+                if st == MomentumOutputState.CONFIRMED
+            ],
+            "symbols_igniting": [
+                s
+                for s, st in self._states.items()
+                if st == MomentumOutputState.IGNITION
+            ],
         }
 
     def reset_symbol(self, symbol: str):
@@ -633,8 +705,9 @@ class MomentumSnapshotEngine:
             prev_state = self._states[symbol]
             self._states[symbol] = MomentumOutputState.DEAD
             self._state_entered[symbol] = datetime.now()
-            self._log_transition(symbol, prev_state, MomentumOutputState.DEAD,
-                               "Manual reset", 0)
+            self._log_transition(
+                symbol, prev_state, MomentumOutputState.DEAD, "Manual reset", 0
+            )
 
     def clear_all(self):
         """Clear all state (for testing)"""
@@ -660,8 +733,10 @@ def get_momentum_snapshot_engine() -> MomentumSnapshotEngine:
 if __name__ == "__main__":
     import random
 
-    logging.basicConfig(level=logging.INFO,
-                       format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    )
 
     print("=" * 60)
     print("MOMENTUM SNAPSHOT ENGINE TEST")
@@ -680,7 +755,7 @@ if __name__ == "__main__":
     for i in range(20):
         price = base_price + (i * 0.01) + random.uniform(-0.02, 0.03)
         volume = volume_base + random.randint(5000, 15000)
-        engine.add_price(symbol, price, volume, bid=price-0.01, ask=price+0.01)
+        engine.add_price(symbol, price, volume, bid=price - 0.01, ask=price + 0.01)
 
     snapshot = engine.compute_snapshot(symbol)
     print(f"   State: {snapshot.output_state.value}")
@@ -691,7 +766,7 @@ if __name__ == "__main__":
         # Strong upward move with volume
         price = base_price + 0.20 + (i * 0.02) + random.uniform(0, 0.01)
         volume = volume_base * 3 + random.randint(10000, 30000)
-        engine.add_price(symbol, price, volume, bid=price-0.01, ask=price+0.01)
+        engine.add_price(symbol, price, volume, bid=price - 0.01, ask=price + 0.01)
         snapshot = engine.compute_snapshot(symbol)
 
     print(f"   State: {snapshot.output_state.value}")
@@ -709,7 +784,7 @@ if __name__ == "__main__":
         # Price starts dropping
         price = base_price + 0.60 - (i * 0.03)
         volume = volume_base
-        engine.add_price(symbol, price, volume, bid=price-0.02, ask=price+0.02)
+        engine.add_price(symbol, price, volume, bid=price - 0.02, ask=price + 0.02)
         snapshot = engine.compute_snapshot(symbol)
 
     print(f"   State: {snapshot.output_state.value}")

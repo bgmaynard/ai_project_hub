@@ -19,18 +19,19 @@ Gap Grades:
 - F = Avoid (false gap or too risky)
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime, time, timedelta
 from enum import Enum
-import asyncio
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class GapGrade(Enum):
     """Gap quality grades"""
+
     A = "A"  # Perfect setup
     B = "B"  # Good setup
     C = "C"  # Okay setup
@@ -40,43 +41,52 @@ class GapGrade(Enum):
 
 class GapType(Enum):
     """Type of gap"""
+
     GAP_UP = "GAP_UP"
     GAP_DOWN = "GAP_DOWN"
-    CONTINUATION_UP = "CONTINUATION_UP"    # Prior day green + gap up
-    CONTINUATION_DOWN = "CONTINUATION_DOWN" # Prior day red + gap down
-    REVERSAL_UP = "REVERSAL_UP"            # Prior day red + gap up
-    REVERSAL_DOWN = "REVERSAL_DOWN"        # Prior day green + gap down
+    CONTINUATION_UP = "CONTINUATION_UP"  # Prior day green + gap up
+    CONTINUATION_DOWN = "CONTINUATION_DOWN"  # Prior day red + gap down
+    REVERSAL_UP = "REVERSAL_UP"  # Prior day red + gap up
+    REVERSAL_DOWN = "REVERSAL_DOWN"  # Prior day green + gap down
 
 
 class CatalystType(Enum):
     """Type of catalyst driving the gap"""
-    FDA = "FDA"                  # FDA approval/news
-    EARNINGS = "EARNINGS"        # Earnings beat/miss
-    CONTRACT = "CONTRACT"        # Major contract
-    MERGER = "MERGER"            # M&A news
-    UPGRADE = "UPGRADE"          # Analyst upgrade
-    DOWNGRADE = "DOWNGRADE"      # Analyst downgrade
-    OFFERING = "OFFERING"        # Secondary offering (usually bearish)
+
+    FDA = "FDA"  # FDA approval/news
+    EARNINGS = "EARNINGS"  # Earnings beat/miss
+    CONTRACT = "CONTRACT"  # Major contract
+    MERGER = "MERGER"  # M&A news
+    UPGRADE = "UPGRADE"  # Analyst upgrade
+    DOWNGRADE = "DOWNGRADE"  # Analyst downgrade
+    OFFERING = "OFFERING"  # Secondary offering (usually bearish)
     PARTNERSHIP = "PARTNERSHIP"  # Strategic partnership
-    CLINICAL = "CLINICAL"        # Clinical trial results
-    OTHER = "OTHER"              # Other catalyst
-    NONE = "NONE"                # No clear catalyst (technical gap)
+    CLINICAL = "CLINICAL"  # Clinical trial results
+    OTHER = "OTHER"  # Other catalyst
+    NONE = "NONE"  # No clear catalyst (technical gap)
 
 
 @dataclass
 class GapScore:
     """Detailed gap scoring breakdown"""
-    gap_size_score: int = 0      # 0-20 points
-    volume_score: int = 0        # 0-20 points
-    float_score: int = 0         # 0-15 points
-    catalyst_score: int = 0      # 0-25 points
-    prior_day_score: int = 0     # 0-10 points
-    price_score: int = 0         # 0-10 points
+
+    gap_size_score: int = 0  # 0-20 points
+    volume_score: int = 0  # 0-20 points
+    float_score: int = 0  # 0-15 points
+    catalyst_score: int = 0  # 0-25 points
+    prior_day_score: int = 0  # 0-10 points
+    price_score: int = 0  # 0-10 points
 
     @property
     def total(self) -> int:
-        return (self.gap_size_score + self.volume_score + self.float_score +
-                self.catalyst_score + self.prior_day_score + self.price_score)
+        return (
+            self.gap_size_score
+            + self.volume_score
+            + self.float_score
+            + self.catalyst_score
+            + self.prior_day_score
+            + self.price_score
+        )
 
     def to_dict(self) -> Dict:
         return {
@@ -86,13 +96,14 @@ class GapScore:
             "catalyst": self.catalyst_score,
             "prior_day": self.prior_day_score,
             "price": self.price_score,
-            "total": self.total
+            "total": self.total,
         }
 
 
 @dataclass
 class GradedGap:
     """A graded gap with full analysis"""
+
     symbol: str
     grade: GapGrade
     score: GapScore
@@ -146,23 +157,25 @@ class GradedGap:
             "current_price": round(self.current_price, 4),
             "prior_close": round(self.prior_close, 4),
             "premarket_volume": self.premarket_volume,
-            "float_millions": round(self.float_shares / 1_000_000, 2) if self.float_shares else 0,
+            "float_millions": (
+                round(self.float_shares / 1_000_000, 2) if self.float_shares else 0
+            ),
             "relative_volume": round(self.relative_volume, 2),
             "prior_day_change": round(self.prior_day_change, 2),
             "catalyst_headline": self.catalyst_headline,
             "entry_zone": {
                 "low": round(self.entry_zone_low, 4),
-                "high": round(self.entry_zone_high, 4)
+                "high": round(self.entry_zone_high, 4),
             },
             "stop_loss": round(self.stop_loss, 4),
             "targets": {
                 "target_1": round(self.target_1, 4),
-                "target_2": round(self.target_2, 4)
+                "target_2": round(self.target_2, 4),
             },
             "position_size_pct": self.position_size_pct,
             "warnings": self.warnings,
             "scanned_at": self.scanned_at,
-            "market_session": self.market_session
+            "market_session": self.market_session,
         }
 
 
@@ -192,7 +205,7 @@ class GapGrader:
         GapGrade.B: 65,
         GapGrade.C: 50,
         GapGrade.D: 35,
-        GapGrade.F: 0
+        GapGrade.F: 0,
     }
 
     # Optimal ranges
@@ -216,15 +229,63 @@ class GapGrader:
 
         # Catalyst keywords for detection
         self.catalyst_keywords = {
-            CatalystType.FDA: ['fda', 'approval', 'approved', 'clearance', 'pdufa'],
-            CatalystType.EARNINGS: ['earnings', 'eps', 'revenue', 'quarterly', 'q1', 'q2', 'q3', 'q4', 'beat', 'miss'],
-            CatalystType.CONTRACT: ['contract', 'award', 'deal', 'agreement', 'order'],
-            CatalystType.MERGER: ['merger', 'acquisition', 'acquire', 'buyout', 'takeover', 'm&a'],
-            CatalystType.UPGRADE: ['upgrade', 'raises', 'price target', 'outperform', 'buy rating'],
-            CatalystType.DOWNGRADE: ['downgrade', 'lowers', 'underperform', 'sell rating'],
-            CatalystType.OFFERING: ['offering', 'secondary', 'dilution', 'shelf', 'atm'],
-            CatalystType.PARTNERSHIP: ['partnership', 'collaboration', 'alliance', 'joint venture'],
-            CatalystType.CLINICAL: ['clinical', 'trial', 'phase', 'study', 'data', 'results', 'efficacy']
+            CatalystType.FDA: ["fda", "approval", "approved", "clearance", "pdufa"],
+            CatalystType.EARNINGS: [
+                "earnings",
+                "eps",
+                "revenue",
+                "quarterly",
+                "q1",
+                "q2",
+                "q3",
+                "q4",
+                "beat",
+                "miss",
+            ],
+            CatalystType.CONTRACT: ["contract", "award", "deal", "agreement", "order"],
+            CatalystType.MERGER: [
+                "merger",
+                "acquisition",
+                "acquire",
+                "buyout",
+                "takeover",
+                "m&a",
+            ],
+            CatalystType.UPGRADE: [
+                "upgrade",
+                "raises",
+                "price target",
+                "outperform",
+                "buy rating",
+            ],
+            CatalystType.DOWNGRADE: [
+                "downgrade",
+                "lowers",
+                "underperform",
+                "sell rating",
+            ],
+            CatalystType.OFFERING: [
+                "offering",
+                "secondary",
+                "dilution",
+                "shelf",
+                "atm",
+            ],
+            CatalystType.PARTNERSHIP: [
+                "partnership",
+                "collaboration",
+                "alliance",
+                "joint venture",
+            ],
+            CatalystType.CLINICAL: [
+                "clinical",
+                "trial",
+                "phase",
+                "study",
+                "data",
+                "results",
+                "efficacy",
+            ],
         }
 
     def _detect_catalyst(self, headline: str) -> CatalystType:
@@ -321,7 +382,9 @@ class GapGrader:
     def _score_prior_day(self, prior_change: float, gap_pct: float) -> int:
         """Score prior day action (0-10 points)"""
         # Continuation patterns are stronger
-        is_continuation = (prior_change > 0 and gap_pct > 0) or (prior_change < 0 and gap_pct < 0)
+        is_continuation = (prior_change > 0 and gap_pct > 0) or (
+            prior_change < 0 and gap_pct < 0
+        )
 
         if is_continuation:
             if abs(prior_change) > 10:
@@ -392,7 +455,9 @@ class GapGrader:
             graded.stop_loss = max(pm_low * 0.99, prior_close * 0.98)
 
             # Targets based on gap size
-            graded.target_1 = price * (1 + gap_pct / 200)  # Half the gap as first target
+            graded.target_1 = price * (
+                1 + gap_pct / 200
+            )  # Half the gap as first target
             graded.target_2 = price * (1 + gap_pct / 100)  # Full gap extension
 
         else:  # Gap down (for shorts, but we don't short)
@@ -454,7 +519,7 @@ class GapGrader:
         prior_day_change: float = 0,
         catalyst_headline: str = "",
         premarket_high: float = 0,
-        premarket_low: float = 0
+        premarket_low: float = 0,
     ) -> GradedGap:
         """
         Grade a gap with full analysis.
@@ -487,7 +552,7 @@ class GapGrader:
             float_score=self._score_float(float_shares),
             catalyst_score=self._score_catalyst(catalyst_type, catalyst_headline),
             prior_day_score=self._score_prior_day(prior_day_change, gap_percent),
-            price_score=self._score_price(current_price)
+            price_score=self._score_price(current_price),
         )
 
         # Get grade
@@ -533,7 +598,7 @@ class GapGrader:
             catalyst_headline=catalyst_headline,
             position_size_pct=self._calculate_position_size(grade),
             scanned_at=datetime.now().isoformat(),
-            market_session=session
+            market_session=session,
         )
 
         # Calculate trading levels
@@ -558,14 +623,21 @@ class GapGrader:
         """Get graded gap for symbol"""
         return self.graded_gaps.get(symbol.upper())
 
-    def get_top_gaps(self, min_grade: GapGrade = GapGrade.C, limit: int = 10) -> List[GradedGap]:
+    def get_top_gaps(
+        self, min_grade: GapGrade = GapGrade.C, limit: int = 10
+    ) -> List[GradedGap]:
         """Get top graded gaps"""
-        grade_order = {GapGrade.A: 0, GapGrade.B: 1, GapGrade.C: 2, GapGrade.D: 3, GapGrade.F: 4}
+        grade_order = {
+            GapGrade.A: 0,
+            GapGrade.B: 1,
+            GapGrade.C: 2,
+            GapGrade.D: 3,
+            GapGrade.F: 4,
+        }
         min_order = grade_order[min_grade]
 
         filtered = [
-            g for g in self.graded_gaps.values()
-            if grade_order[g.grade] <= min_order
+            g for g in self.graded_gaps.values() if grade_order[g.grade] <= min_order
         ]
 
         # Sort by score descending
@@ -600,7 +672,7 @@ class GapGrader:
             "top_gaps": [
                 {"symbol": g.symbol, "grade": g.grade.value, "score": g.score.total}
                 for g in self.get_top_gaps(limit=5)
-            ]
+            ],
         }
 
 
@@ -617,8 +689,9 @@ def get_gap_grader() -> GapGrader:
 
 
 # Convenience functions
-def grade_gap(symbol: str, gap_pct: float, price: float, prior_close: float,
-              **kwargs) -> GradedGap:
+def grade_gap(
+    symbol: str, gap_pct: float, price: float, prior_close: float, **kwargs
+) -> GradedGap:
     """Quick gap grading"""
     return get_gap_grader().grade_gap(symbol, gap_pct, price, prior_close, **kwargs)
 

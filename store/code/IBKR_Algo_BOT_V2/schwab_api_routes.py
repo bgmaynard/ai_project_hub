@@ -2,10 +2,12 @@
 Schwab Trading API Routes
 FastAPI router for Schwab/ThinkOrSwim trading endpoints
 """
+
 import logging
-from typing import Optional, List
-from pydantic import BaseModel
+from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +15,9 @@ router = APIRouter(prefix="/api/schwab", tags=["schwab"])
 
 # Import Schwab trading module
 try:
-    from schwab_trading import (
-        get_schwab_trading,
-        is_schwab_trading_available,
-        SchwabTrading
-    )
+    from schwab_trading import (SchwabTrading, get_schwab_trading,
+                                is_schwab_trading_available)
+
     HAS_SCHWAB_TRADING = True
 except ImportError as e:
     logger.warning(f"Schwab trading not available: {e}")
@@ -27,6 +27,7 @@ except ImportError as e:
 # ============================================================================
 # REQUEST MODELS
 # ============================================================================
+
 
 class MarketOrderRequest(BaseModel):
     symbol: str
@@ -71,6 +72,7 @@ class AccountSelectRequest(BaseModel):
 
 class UnifiedOrderRequest(BaseModel):
     """Unified order request matching UI format"""
+
     symbol: str
     action: str  # BUY, SELL (UI sends action, convert to side)
     quantity: int
@@ -86,21 +88,19 @@ class UnifiedOrderRequest(BaseModel):
 # STATUS ENDPOINTS
 # ============================================================================
 
+
 @router.get("/status")
 async def get_schwab_status():
     """Get Schwab trading status"""
     if not HAS_SCHWAB_TRADING:
-        return {
-            "available": False,
-            "message": "Schwab trading module not available"
-        }
+        return {"available": False, "message": "Schwab trading module not available"}
 
     try:
         trading = get_schwab_trading()
         if not trading:
             return {
                 "available": False,
-                "message": "Schwab not authenticated. Run schwab_authenticate.py"
+                "message": "Schwab not authenticated. Run schwab_authenticate.py",
             }
 
         accounts = trading.get_accounts()
@@ -111,7 +111,7 @@ async def get_schwab_status():
             "authenticated": True,
             "accounts_count": len(accounts),
             "selected_account": selected,
-            "accounts": accounts
+            "accounts": accounts,
         }
     except Exception as e:
         logger.error(f"Error getting Schwab status: {e}")
@@ -125,7 +125,7 @@ async def connect_schwab():
         return {
             "connected": False,
             "status": "unavailable",
-            "message": "Schwab trading module not available"
+            "message": "Schwab trading module not available",
         }
 
     try:
@@ -134,7 +134,7 @@ async def connect_schwab():
             return {
                 "connected": False,
                 "status": "not_authenticated",
-                "message": "Schwab not authenticated. Run schwab_authenticate.py"
+                "message": "Schwab not authenticated. Run schwab_authenticate.py",
             }
 
         # Verify connection by getting accounts
@@ -147,7 +147,7 @@ async def connect_schwab():
             "broker": "Schwab",
             "accounts_count": len(accounts),
             "selected_account": selected,
-            "message": "Connected to Schwab successfully"
+            "message": "Connected to Schwab successfully",
         }
     except Exception as e:
         logger.error(f"Error connecting to Schwab: {e}")
@@ -157,6 +157,7 @@ async def connect_schwab():
 # ============================================================================
 # ACCOUNT ENDPOINTS
 # ============================================================================
+
 
 @router.get("/accounts")
 async def get_accounts():
@@ -170,7 +171,7 @@ async def get_accounts():
 
     return {
         "accounts": trading.get_accounts(),
-        "selected": trading.get_selected_account()
+        "selected": trading.get_selected_account(),
     }
 
 
@@ -186,12 +187,11 @@ async def select_account(request: AccountSelectRequest):
 
     success = trading.select_account(request.account_number)
     if not success:
-        raise HTTPException(status_code=404, detail=f"Account not found: {request.account_number}")
+        raise HTTPException(
+            status_code=404, detail=f"Account not found: {request.account_number}"
+        )
 
-    return {
-        "success": True,
-        "selected_account": request.account_number
-    }
+    return {"success": True, "selected_account": request.account_number}
 
 
 @router.get("/account")
@@ -222,11 +222,7 @@ async def get_positions():
         raise HTTPException(status_code=401, detail="Schwab not authenticated")
 
     positions = trading.get_positions()
-    return {
-        "positions": positions,
-        "count": len(positions),
-        "source": "schwab"
-    }
+    return {"positions": positions, "count": len(positions), "source": "schwab"}
 
 
 @router.get("/positions/all")
@@ -244,13 +240,14 @@ async def get_all_positions():
         "positions": positions,
         "count": len(positions),
         "source": "schwab",
-        "multi_account": True
+        "multi_account": True,
     }
 
 
 # ============================================================================
 # ORDER ENDPOINTS
 # ============================================================================
+
 
 @router.get("/orders")
 async def get_orders(status: Optional[str] = None):
@@ -263,11 +260,7 @@ async def get_orders(status: Optional[str] = None):
         raise HTTPException(status_code=401, detail="Schwab not authenticated")
 
     orders = trading.get_orders(status=status)
-    return {
-        "orders": orders,
-        "count": len(orders),
-        "source": "schwab"
-    }
+    return {"orders": orders, "count": len(orders), "source": "schwab"}
 
 
 @router.post("/place-order")
@@ -289,7 +282,9 @@ async def place_unified_order(request: UnifiedOrderRequest):
 
     extended = request.extended_hours or False
     session_type = "SEAMLESS (extended)" if extended else "NORMAL"
-    logger.info(f"Schwab order: {side} {request.quantity} {request.symbol} @ {request.order_type} | Session: {session_type}")
+    logger.info(
+        f"Schwab order: {side} {request.quantity} {request.symbol} @ {request.order_type} | Session: {session_type}"
+    )
 
     try:
         if request.order_type.upper() == "MARKET":
@@ -297,36 +292,46 @@ async def place_unified_order(request: UnifiedOrderRequest):
                 symbol=request.symbol,
                 quantity=request.quantity,
                 side=side,
-                extended_hours=extended
+                extended_hours=extended,
             )
         elif request.order_type.upper() == "LIMIT":
             if not request.limit_price:
-                raise HTTPException(status_code=400, detail="Limit price required for LIMIT orders")
+                raise HTTPException(
+                    status_code=400, detail="Limit price required for LIMIT orders"
+                )
             result = trading.place_limit_order(
                 symbol=request.symbol,
                 quantity=request.quantity,
                 side=side,
                 limit_price=request.limit_price,
-                extended_hours=extended
+                extended_hours=extended,
             )
         elif request.order_type.upper() == "STOP":
             if not request.stop_price:
-                raise HTTPException(status_code=400, detail="Stop price required for STOP orders")
+                raise HTTPException(
+                    status_code=400, detail="Stop price required for STOP orders"
+                )
             result = trading.place_stop_order(
                 symbol=request.symbol,
                 quantity=request.quantity,
                 side=side,
                 stop_price=request.stop_price,
-                extended_hours=extended
+                extended_hours=extended,
             )
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported order type: {request.order_type}")
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported order type: {request.order_type}"
+            )
 
         if result.get("error"):
             raise HTTPException(status_code=400, detail=result["error"])
 
         # Get selected account for response
-        selected_account = trading.get_selected_account() if hasattr(trading, 'get_selected_account') else "unknown"
+        selected_account = (
+            trading.get_selected_account()
+            if hasattr(trading, "get_selected_account")
+            else "unknown"
+        )
 
         # Format response to match UI expectations
         return {
@@ -337,7 +342,7 @@ async def place_unified_order(request: UnifiedOrderRequest):
             "broker": "schwab",
             "account": selected_account,
             "session": "SEAMLESS" if extended else "NORMAL",
-            "details": result
+            "details": result,
         }
 
     except HTTPException:
@@ -361,7 +366,7 @@ async def place_limit_order(request: LimitOrderRequest):
         symbol=request.symbol,
         quantity=request.quantity,
         side=request.side,
-        limit_price=request.limit_price
+        limit_price=request.limit_price,
     )
 
     if result.get("error"):
@@ -384,7 +389,7 @@ async def place_stop_order(request: StopOrderRequest):
         symbol=request.symbol,
         quantity=request.quantity,
         side=request.side,
-        stop_price=request.stop_price
+        stop_price=request.stop_price,
     )
 
     if result.get("error"):
@@ -408,7 +413,7 @@ async def place_stop_limit_order(request: StopLimitOrderRequest):
         quantity=request.quantity,
         side=request.side,
         stop_price=request.stop_price,
-        limit_price=request.limit_price
+        limit_price=request.limit_price,
     )
 
     if result.get("error"):
@@ -433,7 +438,7 @@ async def place_bracket_order(request: BracketOrderRequest):
         side=request.side,
         take_profit_price=request.take_profit_price,
         stop_loss_price=request.stop_loss_price,
-        limit_price=request.limit_price
+        limit_price=request.limit_price,
     )
 
     if result.get("error"):
@@ -500,6 +505,7 @@ async def cancel_all_orders():
 # ORDER TYPES INFO
 # ============================================================================
 
+
 @router.get("/order-types")
 async def get_order_types():
     """Get supported order types for Schwab"""
@@ -509,29 +515,29 @@ async def get_order_types():
             {
                 "type": "MARKET",
                 "description": "Execute immediately at best available price",
-                "endpoint": "/api/schwab/place-order"
+                "endpoint": "/api/schwab/place-order",
             },
             {
                 "type": "LIMIT",
                 "description": "Execute at specified price or better",
-                "endpoint": "/api/schwab/place-limit-order"
+                "endpoint": "/api/schwab/place-limit-order",
             },
             {
                 "type": "STOP",
                 "description": "Trigger market order when stop price is reached",
-                "endpoint": "/api/schwab/place-stop-order"
+                "endpoint": "/api/schwab/place-stop-order",
             },
             {
                 "type": "STOP_LIMIT",
                 "description": "Trigger limit order when stop price is reached",
-                "endpoint": "/api/schwab/place-stop-limit-order"
+                "endpoint": "/api/schwab/place-stop-limit-order",
             },
             {
                 "type": "BRACKET",
                 "description": "Entry with automatic take profit and stop loss",
-                "endpoint": "/api/schwab/place-bracket-order"
-            }
-        ]
+                "endpoint": "/api/schwab/place-bracket-order",
+            },
+        ],
     }
 
 
@@ -539,15 +545,19 @@ async def get_order_types():
 # MARKET DATA ENDPOINTS
 # ============================================================================
 
+
 @router.get("/quote/{symbol}")
 async def get_schwab_quote(symbol: str):
     """Get real-time quote from Schwab"""
     try:
         from schwab_market_data import get_schwab_market_data
+
         market_data = get_schwab_market_data()
 
         if not market_data:
-            raise HTTPException(status_code=503, detail="Schwab market data not available")
+            raise HTTPException(
+                status_code=503, detail="Schwab market data not available"
+            )
 
         quote = market_data.get_quote(symbol.upper())
 
@@ -563,23 +573,24 @@ async def get_schwab_quote(symbol: str):
 
 
 @router.get("/quotes")
-async def get_schwab_quotes(symbols: str = Query(..., description="Comma-separated symbols")):
+async def get_schwab_quotes(
+    symbols: str = Query(..., description="Comma-separated symbols")
+):
     """Get real-time quotes for multiple symbols from Schwab"""
     try:
         from schwab_market_data import get_schwab_market_data
+
         market_data = get_schwab_market_data()
 
         if not market_data:
-            raise HTTPException(status_code=503, detail="Schwab market data not available")
+            raise HTTPException(
+                status_code=503, detail="Schwab market data not available"
+            )
 
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
         quotes = market_data.get_quotes(symbol_list)
 
-        return {
-            "quotes": quotes,
-            "count": len(quotes),
-            "source": "schwab"
-        }
+        return {"quotes": quotes, "count": len(quotes), "source": "schwab"}
     except HTTPException:
         raise
     except Exception as e:
@@ -593,15 +604,11 @@ async def get_schwab_quotes(symbols: str = Query(..., description="Comma-separat
 
 # Import streaming module
 try:
-    from schwab_streaming import (
-        start_streaming,
-        stop_streaming,
-        subscribe,
-        unsubscribe,
-        get_status as get_stream_status,
-        get_cached_quote,
-        get_quote_cache
-    )
+    from schwab_streaming import get_cached_quote, get_quote_cache
+    from schwab_streaming import get_status as get_stream_status
+    from schwab_streaming import (start_streaming, stop_streaming, subscribe,
+                                  unsubscribe)
+
     HAS_SCHWAB_STREAMING = True
 except ImportError as e:
     logger.warning(f"Schwab streaming not available: {e}")
@@ -616,17 +623,11 @@ class StreamSubscribeRequest(BaseModel):
 async def get_streaming_status():
     """Get Schwab real-time streaming status"""
     if not HAS_SCHWAB_STREAMING:
-        return {
-            "available": False,
-            "message": "Schwab streaming module not available"
-        }
+        return {"available": False, "message": "Schwab streaming module not available"}
 
     try:
         status = get_stream_status()
-        return {
-            "available": True,
-            **status
-        }
+        return {"available": True, **status}
     except Exception as e:
         logger.error(f"Error getting streaming status: {e}")
         return {"available": False, "error": str(e)}
@@ -644,7 +645,7 @@ async def start_streaming_endpoint(request: Optional[StreamSubscribeRequest] = N
         return {
             "success": True,
             "message": "Streaming started",
-            "subscribed": symbols or []
+            "subscribed": symbols or [],
         }
     except Exception as e:
         logger.error(f"Error starting streaming: {e}")
@@ -673,10 +674,7 @@ async def subscribe_symbols(request: StreamSubscribeRequest):
 
     try:
         subscribe(request.symbols)
-        return {
-            "success": True,
-            "subscribed": request.symbols
-        }
+        return {"success": True, "subscribed": request.symbols}
     except Exception as e:
         logger.error(f"Error subscribing to symbols: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -690,10 +688,7 @@ async def unsubscribe_symbols(request: StreamSubscribeRequest):
 
     try:
         unsubscribe(request.symbols)
-        return {
-            "success": True,
-            "unsubscribed": request.symbols
-        }
+        return {"success": True, "unsubscribed": request.symbols}
     except Exception as e:
         logger.error(f"Error unsubscribing from symbols: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -711,13 +706,9 @@ async def get_streaming_quote(symbol: str):
             return {
                 "symbol": symbol.upper(),
                 "available": False,
-                "message": "Symbol not in streaming cache. Subscribe first."
+                "message": "Symbol not in streaming cache. Subscribe first.",
             }
-        return {
-            "symbol": symbol.upper(),
-            "available": True,
-            **quote
-        }
+        return {"symbol": symbol.upper(), "available": True, **quote}
     except Exception as e:
         logger.error(f"Error getting streaming quote for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -731,11 +722,7 @@ async def get_all_streaming_quotes():
 
     try:
         quotes = get_quote_cache()
-        return {
-            "quotes": quotes,
-            "count": len(quotes),
-            "source": "schwab_stream"
-        }
+        return {"quotes": quotes, "count": len(quotes), "source": "schwab_stream"}
     except Exception as e:
         logger.error(f"Error getting streaming quotes: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -747,16 +734,14 @@ async def get_all_streaming_quotes():
 
 # Import fast polling module
 try:
-    from schwab_fast_polling import (
-        start_polling,
-        stop_polling,
-        subscribe as fast_subscribe,
-        unsubscribe as fast_unsubscribe,
-        get_status as get_fast_poll_status,
-        get_cached_quote as get_fast_cached_quote,
-        get_quote_cache as get_fast_quote_cache,
-        set_poll_interval
-    )
+    from schwab_fast_polling import get_cached_quote as get_fast_cached_quote
+    from schwab_fast_polling import get_quote_cache as get_fast_quote_cache
+    from schwab_fast_polling import get_status as get_fast_poll_status
+    from schwab_fast_polling import (set_poll_interval, start_polling,
+                                     stop_polling)
+    from schwab_fast_polling import subscribe as fast_subscribe
+    from schwab_fast_polling import unsubscribe as fast_unsubscribe
+
     HAS_FAST_POLLING = True
 except ImportError as e:
     logger.warning(f"Schwab fast polling not available: {e}")
@@ -769,15 +754,12 @@ async def get_fast_polling_status():
     if not HAS_FAST_POLLING:
         return {
             "available": False,
-            "message": "Schwab fast polling module not available"
+            "message": "Schwab fast polling module not available",
         }
 
     try:
         status = get_fast_poll_status()
-        return {
-            "available": True,
-            **status
-        }
+        return {"available": True, **status}
     except Exception as e:
         logger.error(f"Error getting fast polling status: {e}")
         return {"available": False, "error": str(e)}
@@ -795,7 +777,7 @@ async def start_fast_polling_endpoint(request: Optional[StreamSubscribeRequest] 
         return {
             "success": True,
             "message": "Fast polling started",
-            "subscribed": symbols or []
+            "subscribed": symbols or [],
         }
     except Exception as e:
         logger.error(f"Error starting fast polling: {e}")
@@ -842,13 +824,9 @@ async def get_fast_polling_quote(symbol: str):
             return {
                 "symbol": symbol.upper(),
                 "available": False,
-                "message": "Symbol not in fast polling cache. Subscribe first."
+                "message": "Symbol not in fast polling cache. Subscribe first.",
             }
-        return {
-            "symbol": symbol.upper(),
-            "available": True,
-            **quote
-        }
+        return {"symbol": symbol.upper(), "available": True, **quote}
     except Exception as e:
         logger.error(f"Error getting fast polling quote for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -862,11 +840,7 @@ async def get_all_fast_polling_quotes():
 
     try:
         quotes = get_fast_quote_cache()
-        return {
-            "quotes": quotes,
-            "count": len(quotes),
-            "source": "schwab_fast_poll"
-        }
+        return {"quotes": quotes, "count": len(quotes), "source": "schwab_fast_poll"}
     except Exception as e:
         logger.error(f"Error getting fast polling quotes: {e}")
         raise HTTPException(status_code=500, detail=str(e))

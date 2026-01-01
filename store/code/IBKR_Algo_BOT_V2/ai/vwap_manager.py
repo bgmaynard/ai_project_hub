@@ -20,9 +20,10 @@ VWAP Concepts:
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime, time
 from enum import Enum
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -30,26 +31,29 @@ logger = logging.getLogger(__name__)
 
 class VWAPPosition(Enum):
     """Position relative to VWAP"""
-    FAR_ABOVE = "FAR_ABOVE"      # >3% above - extended, risky entry
-    ABOVE = "ABOVE"              # 0-3% above - ideal entry zone
-    AT_VWAP = "AT_VWAP"          # Within 0.5% - at VWAP
-    BELOW = "BELOW"              # 0-3% below - weak, avoid longs
-    FAR_BELOW = "FAR_BELOW"      # >3% below - very weak
+
+    FAR_ABOVE = "FAR_ABOVE"  # >3% above - extended, risky entry
+    ABOVE = "ABOVE"  # 0-3% above - ideal entry zone
+    AT_VWAP = "AT_VWAP"  # Within 0.5% - at VWAP
+    BELOW = "BELOW"  # 0-3% below - weak, avoid longs
+    FAR_BELOW = "FAR_BELOW"  # >3% below - very weak
 
 
 class VWAPSignal(Enum):
     """VWAP-based trading signals"""
-    STRONG_BUY = "STRONG_BUY"           # Just crossed above VWAP with volume
-    BUY_SUPPORTED = "BUY_SUPPORTED"     # Above VWAP, holding support
-    NEUTRAL = "NEUTRAL"                  # At VWAP, waiting for direction
-    SELL_WARNING = "SELL_WARNING"        # Approaching VWAP from above
-    SELL = "SELL"                        # Broke below VWAP
-    AVOID = "AVOID"                      # Extended or below VWAP
+
+    STRONG_BUY = "STRONG_BUY"  # Just crossed above VWAP with volume
+    BUY_SUPPORTED = "BUY_SUPPORTED"  # Above VWAP, holding support
+    NEUTRAL = "NEUTRAL"  # At VWAP, waiting for direction
+    SELL_WARNING = "SELL_WARNING"  # Approaching VWAP from above
+    SELL = "SELL"  # Broke below VWAP
+    AVOID = "AVOID"  # Extended or below VWAP
 
 
 @dataclass
 class VWAPData:
     """VWAP data for a symbol"""
+
     symbol: str
     vwap: float = 0.0
     current_price: float = 0.0
@@ -94,24 +98,25 @@ class VWAPData:
                 "upper_1": round(self.upper_band_1, 4),
                 "upper_2": round(self.upper_band_2, 4),
                 "lower_1": round(self.lower_band_1, 4),
-                "lower_2": round(self.lower_band_2, 4)
+                "lower_2": round(self.lower_band_2, 4),
             },
             "crossover": {
                 "crossed_above": self.crossed_above,
                 "crossed_below": self.crossed_below,
-                "candles_since": self.candles_since_cross
+                "candles_since": self.candles_since_cross,
             },
             "signal": self.signal.value,
             "entry_valid": self.entry_valid,
             "stop_price": round(self.stop_price, 4),
             "relative_volume": round(self.relative_volume, 2),
-            "last_update": self.last_update
+            "last_update": self.last_update,
         }
 
 
 @dataclass
 class VWAPTrailingStop:
     """VWAP-based trailing stop for an open position"""
+
     symbol: str
     entry_price: float
     entry_vwap: float
@@ -125,7 +130,7 @@ class VWAPTrailingStop:
 
     # Trailing mode
     trailing_active: bool = False  # Activated when price rises
-    trail_from_vwap: bool = True   # Trail from VWAP vs fixed %
+    trail_from_vwap: bool = True  # Trail from VWAP vs fixed %
     trail_offset_pct: float = 0.3  # Trail 0.3% below VWAP
 
     # Stats
@@ -143,7 +148,9 @@ class VWAPTrailingStop:
         # Track max
         if price > self.max_price:
             self.max_price = price
-            self.max_distance_from_vwap = ((price - vwap) / vwap * 100) if vwap > 0 else 0
+            self.max_distance_from_vwap = (
+                ((price - vwap) / vwap * 100) if vwap > 0 else 0
+            )
 
         # Calculate current stop
         if self.trail_from_vwap:
@@ -198,7 +205,7 @@ class VWAPManager:
 
         # Configuration
         self.extended_threshold_pct = 3.0  # >3% above = extended
-        self.at_vwap_threshold_pct = 0.5   # Within 0.5% = "at VWAP"
+        self.at_vwap_threshold_pct = 0.5  # Within 0.5% = "at VWAP"
         self.min_volume_for_signal = 1000  # Min volume for crossover signal
 
         # Market hours (ET)
@@ -306,8 +313,9 @@ class VWAPManager:
 
         return self._update_vwap_data(symbol, price, vwap, std_dev, volume)
 
-    def _update_vwap_data(self, symbol: str, price: float, vwap: float,
-                          std_dev: float, volume: int) -> VWAPData:
+    def _update_vwap_data(
+        self, symbol: str, price: float, vwap: float, std_dev: float, volume: int
+    ) -> VWAPData:
         """Update VWAPData with calculated values"""
 
         # Get or create data
@@ -357,7 +365,9 @@ class VWAPManager:
         # Volume analysis
         data.volume_at_vwap = volume if data.position == VWAPPosition.AT_VWAP else 0
         if len(self.price_history.get(symbol, [])) >= 20:
-            data.avg_volume = self.cumulative_volume[symbol] / len(self.price_history[symbol])
+            data.avg_volume = self.cumulative_volume[symbol] / len(
+                self.price_history[symbol]
+            )
             if data.avg_volume > 0:
                 data.relative_volume = volume / data.avg_volume
 
@@ -457,7 +467,10 @@ class VWAPManager:
             return False, f"Price below VWAP ({data.distance_pct:.1f}%)"
 
         if data.position == VWAPPosition.FAR_ABOVE:
-            return False, f"Price extended above VWAP ({data.distance_pct:.1f}%) - wait for pullback"
+            return (
+                False,
+                f"Price extended above VWAP ({data.distance_pct:.1f}%) - wait for pullback",
+            )
 
         if data.position == VWAPPosition.AT_VWAP:
             return True, "At VWAP - ideal entry zone"
@@ -482,11 +495,13 @@ class VWAPManager:
             current_price=entry_price,
             initial_stop=vwap * 0.997,  # 0.3% below VWAP
             current_stop=vwap * 0.997,
-            max_price=entry_price
+            max_price=entry_price,
         )
 
         self.trailing_stops[symbol] = stop
-        logger.info(f"VWAP trailing stop created: {symbol} entry=${entry_price:.2f}, stop=${stop.initial_stop:.2f}")
+        logger.info(
+            f"VWAP trailing stop created: {symbol} entry=${entry_price:.2f}, stop=${stop.initial_stop:.2f}"
+        )
 
         return stop
 

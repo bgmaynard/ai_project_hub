@@ -21,14 +21,15 @@ This module integrates with:
 - market_regime.py: Trading phase awareness
 """
 
-import logging
 import asyncio
-import threading
+import logging
 import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable
+import threading
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Callable, Dict, List, Optional
+
 import aiohttp
 import pytz
 
@@ -37,24 +38,27 @@ logger = logging.getLogger(__name__)
 
 class NewsUrgency(Enum):
     """News urgency level for scalping"""
-    CRITICAL = "critical"      # FDA, M&A, Earnings surprise - TRADE IMMEDIATELY
-    HIGH = "high"              # Analyst upgrade, guidance - Act within 2 min
-    MEDIUM = "medium"          # Product launch, partnership - Monitor
-    LOW = "low"                # Routine news - Skip
+
+    CRITICAL = "critical"  # FDA, M&A, Earnings surprise - TRADE IMMEDIATELY
+    HIGH = "high"  # Analyst upgrade, guidance - Act within 2 min
+    MEDIUM = "medium"  # Product launch, partnership - Monitor
+    LOW = "low"  # Routine news - Skip
 
 
 class ScalpSignal(Enum):
     """Scalp signal type"""
-    LONG_NOW = "long_now"           # BUY IMMEDIATELY
-    LONG_PULLBACK = "long_pullback" # Wait for small dip, then buy
-    SHORT_NOW = "short_now"         # SHORT IMMEDIATELY
-    AVOID = "avoid"                 # Skip this one
-    MONITOR = "monitor"             # Watch for setup
+
+    LONG_NOW = "long_now"  # BUY IMMEDIATELY
+    LONG_PULLBACK = "long_pullback"  # Wait for small dip, then buy
+    SHORT_NOW = "short_now"  # SHORT IMMEDIATELY
+    AVOID = "avoid"  # Skip this one
+    MONITOR = "monitor"  # Watch for setup
 
 
 @dataclass
 class NewsAlert:
     """Breaking news alert with scalp analysis"""
+
     id: str
     headline: str
     summary: str
@@ -73,7 +77,7 @@ class NewsAlert:
     scalp_reason: str
     target_entry_price: Optional[float] = None
     target_profit_pct: float = 3.0  # Warrior 3% target
-    stop_loss_pct: float = 1.0      # Warrior 1% stop
+    stop_loss_pct: float = 1.0  # Warrior 1% stop
 
     # Timing
     time_since_news: float = 0  # seconds
@@ -105,32 +109,62 @@ class NewsAlert:
             "window_remaining": self.window_remaining,
             "added_to_spike_watchlist": self.added_to_spike_watchlist,
             "momentum_detected": self.momentum_detected,
-            "trade_taken": self.trade_taken
+            "trade_taken": self.trade_taken,
         }
 
 
 # Critical catalyst keywords (TRADE IMMEDIATELY)
 CRITICAL_KEYWORDS = [
-    'FDA approval', 'FDA approves', 'FDA grants', 'breakthrough',
-    'acquisition', 'merger', 'buyout', 'takeover',
-    'earnings beat', 'earnings surprise', 'EPS beat', 'revenue beat',
-    'upgrade', 'price target raised', 'raised guidance',
-    'partnership', 'contract win', 'major deal'
+    "FDA approval",
+    "FDA approves",
+    "FDA grants",
+    "breakthrough",
+    "acquisition",
+    "merger",
+    "buyout",
+    "takeover",
+    "earnings beat",
+    "earnings surprise",
+    "EPS beat",
+    "revenue beat",
+    "upgrade",
+    "price target raised",
+    "raised guidance",
+    "partnership",
+    "contract win",
+    "major deal",
 ]
 
 # High urgency keywords (Act within 2 min)
 HIGH_KEYWORDS = [
-    'analyst upgrade', 'buy rating', 'outperform',
-    'guidance raise', 'outlook positive', 'beat estimates',
-    'expansion', 'launch', 'new product', 'breakthrough'
+    "analyst upgrade",
+    "buy rating",
+    "outperform",
+    "guidance raise",
+    "outlook positive",
+    "beat estimates",
+    "expansion",
+    "launch",
+    "new product",
+    "breakthrough",
 ]
 
 # Bearish catalyst keywords
 BEARISH_KEYWORDS = [
-    'FDA reject', 'trial fail', 'earnings miss', 'revenue miss',
-    'downgrade', 'price target cut', 'lowered guidance',
-    'lawsuit', 'investigation', 'SEC', 'fraud',
-    'layoff', 'restructuring', 'bankruptcy'
+    "FDA reject",
+    "trial fail",
+    "earnings miss",
+    "revenue miss",
+    "downgrade",
+    "price target cut",
+    "lowered guidance",
+    "lawsuit",
+    "investigation",
+    "SEC",
+    "fraud",
+    "layoff",
+    "restructuring",
+    "bankruptcy",
 ]
 
 
@@ -146,7 +180,7 @@ class WarriorNewsDetector:
     """
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # Alpaca news API
         self.api_key = os.getenv("ALPACA_API_KEY")
@@ -154,8 +188,8 @@ class WarriorNewsDetector:
         self.news_url = "https://data.alpaca.markets/v1beta1/news"
 
         # WARRIOR SPEED - HYPER-FAST polling
-        self.poll_interval = 5           # 5 seconds during prime time (7-10 AM)
-        self.poll_interval_normal = 15   # 15 seconds outside prime time
+        self.poll_interval = 5  # 5 seconds during prime time (7-10 AM)
+        self.poll_interval_normal = 15  # 15 seconds outside prime time
         self.is_monitoring = False
         self._monitor_thread = None
 
@@ -177,12 +211,14 @@ class WarriorNewsDetector:
 
         # Scalp window settings - TIGHTER for speed
         self.scalp_window_seconds = 180  # 3 minutes to act on news (was 5)
-        self.max_chase_seconds = 300     # Don't enter after 5 min (was 10)
+        self.max_chase_seconds = 300  # Don't enter after 5 min (was 10)
 
         # Watched symbols (optional filter)
         self.watched_symbols: List[str] = []
 
-        logger.info("WarriorNewsDetector initialized - 5 second polling during 7-10 AM prime time!")
+        logger.info(
+            "WarriorNewsDetector initialized - 5 second polling during 7-10 AM prime time!"
+        )
 
     def start_monitoring(self, symbols: List[str] = None):
         """Start hyper-fast news monitoring"""
@@ -195,7 +231,9 @@ class WarriorNewsDetector:
         self._monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self._monitor_thread.start()
 
-        logger.info(f"Warrior News Detector STARTED - Polling every {self.poll_interval}s")
+        logger.info(
+            f"Warrior News Detector STARTED - Polling every {self.poll_interval}s"
+        )
         if self.watched_symbols:
             logger.info(f"Watching symbols: {self.watched_symbols}")
 
@@ -221,12 +259,14 @@ class WarriorNewsDetector:
 
                 # ADAPTIVE POLLING SPEED
                 import time
+
                 current_interval = self._get_poll_interval()
                 time.sleep(current_interval)
 
             except Exception as e:
                 logger.error(f"News monitor error: {e}")
                 import time
+
                 time.sleep(5)
 
         loop.close()
@@ -268,7 +308,7 @@ class WarriorNewsDetector:
 
         headers = {
             "APCA-API-KEY-ID": self.api_key,
-            "APCA-API-SECRET-KEY": self.api_secret
+            "APCA-API-SECRET-KEY": self.api_secret,
         }
 
         params = {"limit": 20}  # Get last 20 news items
@@ -277,7 +317,9 @@ class WarriorNewsDetector:
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(self.news_url, headers=headers, params=params) as response:
+                async with session.get(
+                    self.news_url, headers=headers, params=params
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         news_items = data.get("news", [])
@@ -294,7 +336,9 @@ class WarriorNewsDetector:
 
                             # Check if this is fresh news (within last 5 minutes)
                             published_at = self._parse_datetime(item.get("created_at"))
-                            age_seconds = (datetime.now(self.et_tz) - published_at).total_seconds()
+                            age_seconds = (
+                                datetime.now(self.et_tz) - published_at
+                            ).total_seconds()
 
                             if age_seconds < 300:  # Within 5 minutes
                                 await self._process_breaking_news(item, age_seconds)
@@ -356,20 +400,20 @@ class WarriorNewsDetector:
             scalp_signal=scalp_signal,
             scalp_reason=scalp_reason,
             time_since_news=age_seconds,
-            window_remaining=max(0, self.scalp_window_seconds - age_seconds)
+            window_remaining=max(0, self.scalp_window_seconds - age_seconds),
         )
 
         # Store alert
         self.active_alerts[news_id] = alert
         self.alert_history.insert(0, alert)
         if len(self.alert_history) > self.max_history:
-            self.alert_history = self.alert_history[:self.max_history]
+            self.alert_history = self.alert_history[: self.max_history]
 
         # Log the alert
         urgency_emoji = {
             NewsUrgency.CRITICAL: "🚨",
             NewsUrgency.HIGH: "⚠️",
-            NewsUrgency.MEDIUM: "📰"
+            NewsUrgency.MEDIUM: "📰",
         }
 
         logger.warning(
@@ -390,7 +434,10 @@ class WarriorNewsDetector:
             except Exception as e:
                 logger.error(f"News callback error: {e}")
 
-        if scalp_signal in [ScalpSignal.LONG_NOW, ScalpSignal.SHORT_NOW] and self.on_scalp_signal_callback:
+        if (
+            scalp_signal in [ScalpSignal.LONG_NOW, ScalpSignal.SHORT_NOW]
+            and self.on_scalp_signal_callback
+        ):
             try:
                 self.on_scalp_signal_callback(alert)
             except Exception as e:
@@ -425,17 +472,55 @@ class WarriorNewsDetector:
         text_lower = text.lower()
 
         bullish_keywords = [
-            'beat', 'exceed', 'surge', 'soar', 'rally', 'upgrade', 'breakthrough',
-            'approval', 'approved', 'growth', 'record', 'strong', 'bullish',
-            'outperform', 'positive', 'upside', 'raise', 'higher', 'partnership',
-            'contract', 'deal', 'expansion', 'launch'
+            "beat",
+            "exceed",
+            "surge",
+            "soar",
+            "rally",
+            "upgrade",
+            "breakthrough",
+            "approval",
+            "approved",
+            "growth",
+            "record",
+            "strong",
+            "bullish",
+            "outperform",
+            "positive",
+            "upside",
+            "raise",
+            "higher",
+            "partnership",
+            "contract",
+            "deal",
+            "expansion",
+            "launch",
         ]
 
         bearish_keywords = [
-            'miss', 'decline', 'plunge', 'crash', 'downgrade', 'rejection', 'reject',
-            'layoff', 'weak', 'bearish', 'underperform', 'negative', 'downside',
-            'lower', 'cut', 'warning', 'concern', 'risk', 'lawsuit', 'investigation',
-            'fail', 'fraud', 'bankruptcy'
+            "miss",
+            "decline",
+            "plunge",
+            "crash",
+            "downgrade",
+            "rejection",
+            "reject",
+            "layoff",
+            "weak",
+            "bearish",
+            "underperform",
+            "negative",
+            "downside",
+            "lower",
+            "cut",
+            "warning",
+            "concern",
+            "risk",
+            "lawsuit",
+            "investigation",
+            "fail",
+            "fraud",
+            "bankruptcy",
         ]
 
         bullish_count = sum(1 for kw in bullish_keywords if kw in text_lower)
@@ -456,17 +541,28 @@ class WarriorNewsDetector:
 
         return sentiment, score
 
-    def _generate_scalp_signal(self, urgency: NewsUrgency, sentiment: str,
-                               sentiment_score: float, age_seconds: float) -> tuple:
+    def _generate_scalp_signal(
+        self,
+        urgency: NewsUrgency,
+        sentiment: str,
+        sentiment_score: float,
+        age_seconds: float,
+    ) -> tuple:
         """Generate scalp trading signal"""
 
         # Too late to trade
         if age_seconds > self.max_chase_seconds:
-            return ScalpSignal.AVOID, f"News is {age_seconds/60:.1f} min old - missed the window"
+            return (
+                ScalpSignal.AVOID,
+                f"News is {age_seconds/60:.1f} min old - missed the window",
+            )
 
         # Critical + Bullish = LONG NOW
         if urgency == NewsUrgency.CRITICAL and sentiment == "bullish":
-            return ScalpSignal.LONG_NOW, f"CRITICAL bullish catalyst - scalp the momentum!"
+            return (
+                ScalpSignal.LONG_NOW,
+                f"CRITICAL bullish catalyst - scalp the momentum!",
+            )
 
         # Critical + Bearish = SHORT NOW
         if urgency == NewsUrgency.CRITICAL and sentiment == "bearish":
@@ -477,7 +573,10 @@ class WarriorNewsDetector:
             if age_seconds < 120:  # Within 2 minutes
                 return ScalpSignal.LONG_NOW, f"HIGH urgency bullish - act fast!"
             else:
-                return ScalpSignal.LONG_PULLBACK, f"HIGH bullish but {age_seconds/60:.1f} min old - wait for pullback"
+                return (
+                    ScalpSignal.LONG_PULLBACK,
+                    f"HIGH bullish but {age_seconds/60:.1f} min old - wait for pullback",
+                )
 
         # High + Bearish
         if urgency == NewsUrgency.HIGH and sentiment == "bearish":
@@ -489,7 +588,10 @@ class WarriorNewsDetector:
         # Medium urgency
         if urgency == NewsUrgency.MEDIUM:
             if sentiment == "bullish" and sentiment_score > 0.5:
-                return ScalpSignal.MONITOR, f"Medium urgency bullish - monitor for momentum"
+                return (
+                    ScalpSignal.MONITOR,
+                    f"Medium urgency bullish - monitor for momentum",
+                )
             else:
                 return ScalpSignal.AVOID, f"Not strong enough catalyst for scalp"
 
@@ -527,18 +629,31 @@ class WarriorNewsDetector:
 
                 # Filter by urgency
                 if min_urgency:
-                    urgency_order = [NewsUrgency.LOW, NewsUrgency.MEDIUM,
-                                    NewsUrgency.HIGH, NewsUrgency.CRITICAL]
-                    if urgency_order.index(alert.urgency) >= urgency_order.index(min_urgency):
+                    urgency_order = [
+                        NewsUrgency.LOW,
+                        NewsUrgency.MEDIUM,
+                        NewsUrgency.HIGH,
+                        NewsUrgency.CRITICAL,
+                    ]
+                    if urgency_order.index(alert.urgency) >= urgency_order.index(
+                        min_urgency
+                    ):
                         active.append(alert)
                 else:
                     active.append(alert)
 
         # Sort by urgency (critical first) then by recency
-        active.sort(key=lambda x: (
-            -[NewsUrgency.LOW, NewsUrgency.MEDIUM, NewsUrgency.HIGH, NewsUrgency.CRITICAL].index(x.urgency),
-            x.time_since_news
-        ))
+        active.sort(
+            key=lambda x: (
+                -[
+                    NewsUrgency.LOW,
+                    NewsUrgency.MEDIUM,
+                    NewsUrgency.HIGH,
+                    NewsUrgency.CRITICAL,
+                ].index(x.urgency),
+                x.time_since_news,
+            )
+        )
 
         return active
 
@@ -546,7 +661,11 @@ class WarriorNewsDetector:
         """Get alerts with actionable scalp signals"""
         active = self.get_active_alerts(min_urgency=NewsUrgency.HIGH)
 
-        actionable_signals = [ScalpSignal.LONG_NOW, ScalpSignal.SHORT_NOW, ScalpSignal.LONG_PULLBACK]
+        actionable_signals = [
+            ScalpSignal.LONG_NOW,
+            ScalpSignal.SHORT_NOW,
+            ScalpSignal.LONG_PULLBACK,
+        ]
 
         return [a for a in active if a.scalp_signal in actionable_signals]
 
@@ -567,7 +686,7 @@ class WarriorNewsDetector:
             "history_count": len(self.alert_history),
             "seen_news_count": len(self._seen_news_ids),
             "scalp_window_seconds": self.scalp_window_seconds,
-            "max_chase_seconds": self.max_chase_seconds
+            "max_chase_seconds": self.max_chase_seconds,
         }
 
     def force_poll(self) -> Dict:
@@ -578,7 +697,7 @@ class WarriorNewsDetector:
             return {
                 "status": "polled",
                 "active_alerts": len(self.get_active_alerts()),
-                "scalp_signals": len(self.get_scalp_signals())
+                "scalp_signals": len(self.get_scalp_signals()),
             }
         finally:
             loop.close()
@@ -623,7 +742,9 @@ def setup_news_to_spike_integration():
             for symbol in alert.symbols:
                 if symbol not in spike_detector.watchlist:
                     spike_detector.watchlist.append(symbol)
-                logger.info(f"News scalp signal: {alert.scalp_signal.value} for {symbol}")
+                logger.info(
+                    f"News scalp signal: {alert.scalp_signal.value} for {symbol}"
+                )
 
         news_detector.on_scalp_signal_callback = on_scalp_signal
 

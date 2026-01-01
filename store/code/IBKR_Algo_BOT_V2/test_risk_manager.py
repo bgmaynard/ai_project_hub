@@ -4,17 +4,17 @@ Test script for Warrior Trading Risk Manager
 Tests all risk management features
 """
 
-import sys
-from pathlib import Path
 import logging
+import sys
 from datetime import datetime
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from ai.warrior_risk_manager import WarriorRiskManager, ValidationResult
-from ai.warrior_pattern_detector import TradingSetup, SetupType
+from ai.warrior_pattern_detector import SetupType, TradingSetup
+from ai.warrior_risk_manager import ValidationResult, WarriorRiskManager
 from config.config_loader import get_config
 
 
@@ -73,6 +73,7 @@ def test_risk_manager():
     except Exception as e:
         print(f"\n[FAIL] Error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -85,9 +86,9 @@ def test_position_sizing(risk_mgr):
 
     test_cases = [
         # (entry, stop, risk, expected_shares)
-        (5.00, 4.90, 100.0, 1000),   # $0.10 stop
-        (10.00, 9.50, 100.0, 200),    # $0.50 stop
-        (2.50, 2.40, 50.0, 500),      # $0.10 stop, lower risk
+        (5.00, 4.90, 100.0, 1000),  # $0.10 stop
+        (10.00, 9.50, 100.0, 200),  # $0.50 stop
+        (2.50, 2.40, 50.0, 500),  # $0.10 stop, lower risk
         (100.00, 99.00, 100.0, 100),  # $1.00 stop
     ]
 
@@ -113,31 +114,27 @@ def test_trade_validation(risk_mgr):
     print("-" * 60)
 
     # Test Case 1: Valid trade
-    setup1 = create_test_setup(
-        entry=5.00,
-        stop=4.90,
-        target=5.20,
-        rr=2.0
-    )
+    setup1 = create_test_setup(entry=5.00, stop=4.90, target=5.20, rr=2.0)
 
     validation1 = risk_mgr.validate_trade(setup1)
     print(f"\n  Test 1: Valid Trade")
-    print(f"    Entry ${setup1.entry_price:.2f}, Stop ${setup1.stop_price:.2f}, "
-          f"Target ${setup1.target_2r:.2f}")
+    print(
+        f"    Entry ${setup1.entry_price:.2f}, Stop ${setup1.stop_price:.2f}, "
+        f"Target ${setup1.target_2r:.2f}"
+    )
     print(f"    Result: {validation1.result.value}")
     print(f"    Position size: {validation1.position_size} shares")
     print(f"    Risk: ${validation1.risk_dollars:.2f}")
     print(f"    Reward: ${validation1.reward_dollars:.2f}")
 
-    assert validation1.result in [ValidationResult.APPROVED, ValidationResult.WARNING], \
-        "Valid trade should be approved"
+    assert validation1.result in [
+        ValidationResult.APPROVED,
+        ValidationResult.WARNING,
+    ], "Valid trade should be approved"
 
     # Test Case 2: Low R:R (should reject)
     setup2 = create_test_setup(
-        entry=5.00,
-        stop=4.90,
-        target=5.05,  # Only 1:0.5 R:R
-        rr=0.5
+        entry=5.00, stop=4.90, target=5.05, rr=0.5  # Only 1:0.5 R:R
     )
 
     validation2 = risk_mgr.validate_trade(setup2)
@@ -146,15 +143,13 @@ def test_trade_validation(risk_mgr):
     print(f"    Result: {validation2.result.value}")
     print(f"    Reason: {validation2.reason}")
 
-    assert validation2.result == ValidationResult.REJECTED, \
-        "Low R:R trade should be rejected"
+    assert (
+        validation2.result == ValidationResult.REJECTED
+    ), "Low R:R trade should be rejected"
 
     # Test Case 3: Wide stop (high risk per trade)
     setup3 = create_test_setup(
-        entry=10.00,
-        stop=8.00,  # $2 stop on 50 shares = $100 risk
-        target=14.00,
-        rr=2.0
+        entry=10.00, stop=8.00, target=14.00, rr=2.0  # $2 stop on 50 shares = $100 risk
     )
 
     validation3 = risk_mgr.validate_trade(setup3)
@@ -165,8 +160,10 @@ def test_trade_validation(risk_mgr):
     print(f"    Risk: ${validation3.risk_dollars:.2f}")
 
     # Should work but with reduced size
-    assert validation3.result in [ValidationResult.APPROVED, ValidationResult.WARNING], \
-        "Wide stop should still be approved with reduced size"
+    assert validation3.result in [
+        ValidationResult.APPROVED,
+        ValidationResult.WARNING,
+    ], "Wide stop should still be approved with reduced size"
 
     print("\n  [OK] Trade validation tests complete")
 
@@ -184,7 +181,7 @@ def test_trade_recording(risk_mgr):
         entry_price=5.00,
         shares=1000,
         stop_price=4.90,
-        target_price=5.20
+        target_price=5.20,
     )
 
     print(f"\n  Trade entered: {trade_id}")
@@ -194,9 +191,7 @@ def test_trade_recording(risk_mgr):
 
     # Exit the trade (winner)
     completed_trade = risk_mgr.record_trade_exit(
-        trade_id=trade_id,
-        exit_price=5.15,
-        exit_reason="TARGET_HIT"
+        trade_id=trade_id, exit_price=5.15, exit_reason="TARGET_HIT"
     )
 
     print(f"\n  Trade exited: {trade_id}")
@@ -215,13 +210,11 @@ def test_trade_recording(risk_mgr):
         entry_price=10.00,
         shares=500,
         stop_price=9.80,
-        target_price=10.40
+        target_price=10.40,
     )
 
     completed_trade2 = risk_mgr.record_trade_exit(
-        trade_id=trade_id2,
-        exit_price=9.80,
-        exit_reason="STOP_HIT"
+        trade_id=trade_id2, exit_price=9.80, exit_reason="STOP_HIT"
     )
 
     print(f"\n  Trade 2 exited (loser):")
@@ -262,14 +255,12 @@ def test_loss_limits():
             entry_price=5.00,
             shares=500,
             stop_price=4.90,
-            target_price=5.20
+            target_price=5.20,
         )
 
         # Exit at stop
         risk_mgr.record_trade_exit(
-            trade_id=trade_id,
-            exit_price=4.90,
-            exit_reason="STOP_HIT"
+            trade_id=trade_id, exit_price=4.90, exit_reason="STOP_HIT"
         )
 
         print(f"    Trade {i+1}: P&L ${risk_mgr.current_pnl:+.2f}")
@@ -289,8 +280,9 @@ def test_loss_limits():
     print(f"    Result: {validation.result.value}")
     print(f"    Reason: {validation.reason}")
 
-    assert validation.result == ValidationResult.REJECTED, \
-        "Trades should be rejected when halted"
+    assert (
+        validation.result == ValidationResult.REJECTED
+    ), "Trades should be rejected when halted"
 
     print("\n  [OK] Loss limit tests complete")
 
@@ -317,13 +309,13 @@ def test_daily_stats(risk_mgr):
     print(f"  Consecutive wins: {stats['consecutive_wins']}")
     print(f"  Consecutive losses: {stats['consecutive_losses']}")
 
-    if stats['best_trade']:
+    if stats["best_trade"]:
         print(f"\n  Best trade:")
         print(f"    Symbol: {stats['best_trade']['symbol']}")
         print(f"    P&L: ${stats['best_trade']['pnl']:+.2f}")
         print(f"    R: {stats['best_trade']['r_multiple']:+.2f}R")
 
-    if stats['worst_trade']:
+    if stats["worst_trade"]:
         print(f"\n  Worst trade:")
         print(f"    Symbol: {stats['worst_trade']['symbol']}")
         print(f"    P&L: ${stats['worst_trade']['pnl']:+.2f}")
@@ -338,8 +330,8 @@ def test_full_integration():
     print("\nFull Integration Test:")
     print("-" * 60)
 
-    from ai.warrior_scanner import WarriorScanner
     from ai.warrior_pattern_detector import WarriorPatternDetector
+    from ai.warrior_scanner import WarriorScanner
 
     print("\n  Complete Warrior Trading workflow:")
     print("  1. Scanner → 2. Pattern Detector → 3. Risk Manager → 4. Execution")
@@ -397,15 +389,14 @@ def create_test_setup(entry=5.00, stop=4.90, target=5.20, rr=2.0):
         confidence=75.0,
         strength_factors=["Test strength"],
         risk_factors=[],
-        current_price=entry - 0.05
+        current_price=entry - 0.05,
     )
 
 
 if __name__ == "__main__":
     # Set up logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     success = test_risk_manager()

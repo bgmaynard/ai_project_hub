@@ -2,9 +2,11 @@
 Watchlist API Routes
 RESTful endpoints for managing trading watchlists
 """
+
+from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
 from watchlist_manager import get_watchlist_manager
 
 router = APIRouter(prefix="/api/watchlists", tags=["Watchlists"])
@@ -33,16 +35,14 @@ class RemoveSymbolsRequest(BaseModel):
 # WATCHLIST ENDPOINTS
 # ============================================================================
 
+
 @router.get("/")
 async def get_all_watchlists():
     """Get all watchlists"""
     try:
         manager = get_watchlist_manager()
         watchlists = manager.get_all_watchlists()
-        return {
-            "watchlists": watchlists,
-            "count": len(watchlists)
-        }
+        return {"watchlists": watchlists, "count": len(watchlists)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -64,10 +64,7 @@ async def get_all_symbols():
     try:
         manager = get_watchlist_manager()
         symbols = manager.get_all_symbols()
-        return {
-            "symbols": symbols,
-            "count": len(symbols)
-        }
+        return {"symbols": symbols, "count": len(symbols)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -80,7 +77,9 @@ async def get_watchlist(watchlist_id: str):
         watchlist = manager.get_watchlist(watchlist_id)
 
         if not watchlist:
-            raise HTTPException(status_code=404, detail=f"Watchlist {watchlist_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Watchlist {watchlist_id} not found"
+            )
 
         return watchlist
     except HTTPException:
@@ -117,7 +116,7 @@ async def create_watchlist(request: CreateWatchlistRequest):
         if existing:
             raise HTTPException(
                 status_code=400,
-                detail=f"Watchlist with name '{request.name}' already exists"
+                detail=f"Watchlist with name '{request.name}' already exists",
             )
 
         watchlist = manager.create_watchlist(request.name, request.symbols)
@@ -134,13 +133,13 @@ async def update_watchlist(watchlist_id: str, request: UpdateWatchlistRequest):
     try:
         manager = get_watchlist_manager()
         watchlist = manager.update_watchlist(
-            watchlist_id=watchlist_id,
-            name=request.name,
-            symbols=request.symbols
+            watchlist_id=watchlist_id, name=request.name, symbols=request.symbols
         )
 
         if not watchlist:
-            raise HTTPException(status_code=404, detail=f"Watchlist {watchlist_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Watchlist {watchlist_id} not found"
+            )
 
         return watchlist
     except HTTPException:
@@ -157,7 +156,9 @@ async def add_symbols(watchlist_id: str, request: AddSymbolsRequest):
         watchlist = manager.add_symbols(watchlist_id, request.symbols)
 
         if not watchlist:
-            raise HTTPException(status_code=404, detail=f"Watchlist {watchlist_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Watchlist {watchlist_id} not found"
+            )
 
         return watchlist
     except HTTPException:
@@ -174,7 +175,9 @@ async def remove_symbols(watchlist_id: str, request: RemoveSymbolsRequest):
         watchlist = manager.remove_symbols(watchlist_id, request.symbols)
 
         if not watchlist:
-            raise HTTPException(status_code=404, detail=f"Watchlist {watchlist_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Watchlist {watchlist_id} not found"
+            )
 
         return watchlist
     except HTTPException:
@@ -191,7 +194,9 @@ async def delete_watchlist(watchlist_id: str):
         deleted = manager.delete_watchlist(watchlist_id)
 
         if not deleted:
-            raise HTTPException(status_code=404, detail=f"Watchlist {watchlist_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Watchlist {watchlist_id} not found"
+            )
 
         return {"success": True, "message": "Watchlist deleted"}
     except HTTPException:
@@ -204,16 +209,14 @@ async def delete_watchlist(watchlist_id: str):
 # PATTERN BASELINE ENDPOINTS
 # ============================================================================
 
+
 @router.get("/baselines/all")
 async def get_all_baselines():
     """Get all pattern baselines across all symbols"""
     try:
         manager = get_watchlist_manager()
         baselines = manager.get_all_baselines()
-        return {
-            "count": len(baselines),
-            "baselines": baselines
-        }
+        return {"count": len(baselines), "baselines": baselines}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -229,13 +232,13 @@ async def get_symbol_baseline(symbol: str):
             return {
                 "symbol": symbol.upper(),
                 "message": "No baselines found. Add symbol to a watchlist to trigger backtest.",
-                "baselines": []
+                "baselines": [],
             }
 
         return {
             "symbol": symbol.upper(),
             "pattern_count": len(baselines),
-            "baselines": baselines
+            "baselines": baselines,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -252,7 +255,11 @@ async def get_best_patterns(symbol: str, min_win_rate: float = 0.5):
             "symbol": symbol.upper(),
             "min_win_rate": min_win_rate,
             "top_patterns": best,
-            "recommendation": "Use these patterns for trading signals" if best else "Not enough data - add to watchlist first"
+            "recommendation": (
+                "Use these patterns for trading signals"
+                if best
+                else "Not enough data - add to watchlist first"
+            ),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -270,7 +277,7 @@ async def refresh_baseline(symbol: str):
         return {
             "symbol": symbol.upper(),
             "status": "backtest_triggered",
-            "message": "Backtest running in background. Check baselines in 30-60 seconds."
+            "message": "Backtest running in background. Check baselines in 30-60 seconds.",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -279,6 +286,7 @@ async def refresh_baseline(symbol: str):
 # ============================================================================
 # AI TRAINING INTEGRATION
 # ============================================================================
+
 
 @router.post("/{watchlist_id}/train-all")
 async def train_all_symbols(watchlist_id: str, test_size: float = 0.2):
@@ -290,35 +298,35 @@ async def train_all_symbols(watchlist_id: str, test_size: float = 0.2):
         watchlist = manager.get_watchlist(watchlist_id)
 
         if not watchlist:
-            raise HTTPException(status_code=404, detail=f"Watchlist {watchlist_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Watchlist {watchlist_id} not found"
+            )
 
         predictor = get_alpaca_predictor()
         results = []
 
-        for symbol in watchlist['symbols']:
+        for symbol in watchlist["symbols"]:
             try:
                 result = predictor.train(symbol=symbol, test_size=test_size)
-                results.append({
-                    "symbol": symbol,
-                    "success": True,
-                    "accuracy": result['metrics']['accuracy'],
-                    "samples": result['samples']
-                })
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "success": True,
+                        "accuracy": result["metrics"]["accuracy"],
+                        "samples": result["samples"],
+                    }
+                )
             except Exception as e:
-                results.append({
-                    "symbol": symbol,
-                    "success": False,
-                    "error": str(e)
-                })
+                results.append({"symbol": symbol, "success": False, "error": str(e)})
 
-        success_count = sum(1 for r in results if r['success'])
+        success_count = sum(1 for r in results if r["success"])
 
         return {
-            "watchlist": watchlist['name'],
-            "total_symbols": len(watchlist['symbols']),
+            "watchlist": watchlist["name"],
+            "total_symbols": len(watchlist["symbols"]),
             "trained": success_count,
             "failed": len(results) - success_count,
-            "results": results
+            "results": results,
         }
     except HTTPException:
         raise
@@ -336,32 +344,28 @@ async def predict_all_symbols(watchlist_id: str, timeframe: str = "1Day"):
         watchlist = manager.get_watchlist(watchlist_id)
 
         if not watchlist:
-            raise HTTPException(status_code=404, detail=f"Watchlist {watchlist_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Watchlist {watchlist_id} not found"
+            )
 
         predictor = get_alpaca_predictor()
         predictions = []
 
-        for symbol in watchlist['symbols']:
+        for symbol in watchlist["symbols"]:
             try:
                 prediction = predictor.predict(symbol=symbol, timeframe=timeframe)
                 predictions.append(prediction)
             except Exception as e:
-                predictions.append({
-                    "symbol": symbol,
-                    "error": str(e)
-                })
+                predictions.append({"symbol": symbol, "error": str(e)})
 
         # Sort by confidence (highest first)
-        predictions.sort(
-            key=lambda x: x.get('confidence', 0),
-            reverse=True
-        )
+        predictions.sort(key=lambda x: x.get("confidence", 0), reverse=True)
 
         return {
-            "watchlist": watchlist['name'],
-            "total_symbols": len(watchlist['symbols']),
+            "watchlist": watchlist["name"],
+            "total_symbols": len(watchlist["symbols"]),
             "predictions": predictions,
-            "top_signals": [p for p in predictions if p.get('confidence', 0) > 0.15]
+            "top_signals": [p for p in predictions if p.get("confidence", 0) > 0.15],
         }
     except HTTPException:
         raise

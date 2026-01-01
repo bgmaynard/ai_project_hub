@@ -18,19 +18,19 @@ Warrior Trading Model:
 - Gap + volume + momentum = dominance score
 """
 
-import logging
-from datetime import datetime, timezone, date, time
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
-from enum import Enum
 import json
+import logging
+from dataclasses import dataclass, field
+from datetime import date, datetime, time, timezone
+from enum import Enum
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
 # Eastern timezone for market hours
-ET = ZoneInfo('America/New_York')
+ET = ZoneInfo("America/New_York")
 
 # Entry window log file for validation
 ENTRY_WINDOW_LOG_PATH = Path("reports/entry_window_log.json")
@@ -49,7 +49,7 @@ def _log_entry_window(symbol: str, data: Dict) -> None:
         # Load existing log
         events = []
         if ENTRY_WINDOW_LOG_PATH.exists():
-            with open(ENTRY_WINDOW_LOG_PATH, 'r') as f:
+            with open(ENTRY_WINDOW_LOG_PATH, "r") as f:
                 log_data = json.load(f)
                 events = log_data.get("events", [])
 
@@ -59,7 +59,7 @@ def _log_entry_window(symbol: str, data: Dict) -> None:
             "timestamp": et_now.isoformat(),
             "time_et": et_now.strftime("%H:%M:%S"),
             "symbol": symbol,
-            **data
+            **data,
         }
         events.append(event)
 
@@ -74,13 +74,17 @@ def _log_entry_window(symbol: str, data: Dict) -> None:
             symbol_counts[s] = symbol_counts.get(s, 0) + 1
 
         # Save
-        with open(ENTRY_WINDOW_LOG_PATH, 'w') as f:
-            json.dump({
-                "last_updated": et_now.isoformat(),
-                "total_events": len(events),
-                "symbol_counts": symbol_counts,
-                "events": events
-            }, f, indent=2)
+        with open(ENTRY_WINDOW_LOG_PATH, "w") as f:
+            json.dump(
+                {
+                    "last_updated": et_now.isoformat(),
+                    "total_events": len(events),
+                    "symbol_counts": symbol_counts,
+                    "events": events,
+                },
+                f,
+                indent=2,
+            )
 
         logger.warning(
             f"[ENTRY_WINDOW] {symbol} logged | "
@@ -135,6 +139,7 @@ def get_rel_vol_floor(now: Optional[datetime] = None) -> float:
 
 class ExclusionReason(Enum):
     """Why a symbol was excluded from active watchlist"""
+
     NONE = "NONE"  # Not excluded
     REL_VOL_BELOW_FLOOR = "REL_VOL_BELOW_FLOOR"
     RANK_BELOW_CUTOFF = "RANK_BELOW_CUTOFF"
@@ -151,16 +156,18 @@ class PullbackState(Enum):
     Tracks setup readiness for Ross Cameron's first pullback strategy.
     Does NOT place trades - only classifies current state.
     """
-    NONE = "NONE"                    # No setup detected
-    EXPANSION = "EXPANSION"          # At HOD with volume - momentum confirmed
+
+    NONE = "NONE"  # No setup detected
+    EXPANSION = "EXPANSION"  # At HOD with volume - momentum confirmed
     FIRST_PULLBACK = "FIRST_PULLBACK"  # Healthy pullback in progress (2-6%)
-    ENTRY_WINDOW = "ENTRY_WINDOW"    # Pullback stabilizing/reclaiming - ready for entry
-    INVALIDATED = "INVALIDATED"      # Setup failed (deep pullback or vol died)
+    ENTRY_WINDOW = "ENTRY_WINDOW"  # Pullback stabilizing/reclaiming - ready for entry
+    INVALIDATED = "INVALIDATED"  # Setup failed (deep pullback or vol died)
 
 
 @dataclass
 class RankedSymbol:
     """A symbol with its current metrics and rank"""
+
     symbol: str
 
     # Core metrics (recomputed every cycle)
@@ -197,8 +204,8 @@ class RankedSymbol:
     # === Warrior Trading First Pullback State Machine ===
     pullback_state: PullbackState = PullbackState.NONE
     pullback_start_hod: Optional[float] = None  # HOD when expansion started
-    pullback_pct: float = 0.0                   # Current pullback depth
-    pullback_confirmed: bool = False            # True when ENTRY_WINDOW reached
+    pullback_pct: float = 0.0  # Current pullback depth
+    pullback_confirmed: bool = False  # True when ENTRY_WINDOW reached
 
     def compute_dominance_score(self) -> float:
         """
@@ -264,29 +271,34 @@ class RankedSymbol:
             "is_active": self.is_active,
             "exclusion_reason": self.exclusion_reason.value,
             "first_seen": self.first_seen.isoformat() if self.first_seen else None,
-            "last_evaluated": self.last_evaluated.isoformat() if self.last_evaluated else None,
-            "session_date": self.session_date.isoformat() if self.session_date else None,
+            "last_evaluated": (
+                self.last_evaluated.isoformat() if self.last_evaluated else None
+            ),
+            "session_date": (
+                self.session_date.isoformat() if self.session_date else None
+            ),
             "has_valid_rel_vol": self.has_valid_rel_vol,
             "has_valid_price": self.has_valid_price,
             # Warrior Trading First Pullback
             "pullback_state": self.pullback_state.value,
             "pullback_start_hod": self.pullback_start_hod,
             "pullback_pct": self.pullback_pct,
-            "pullback_confirmed": self.pullback_confirmed
+            "pullback_confirmed": self.pullback_confirmed,
         }
 
 
 @dataclass
 class WatchlistConfig:
     """Configuration for watchlist ranking"""
+
     # Top N cutoff - HARD CAP at 10
     max_active_symbols: int = 10
 
     # Relative volume schedule: (hour_start, hour_end, floor)
     # Times are ET. End hour is exclusive.
     rel_vol_schedule: Tuple[Tuple[int, int, float], ...] = (
-        (4, 9, 5.0),    # 04:00-09:00 → rel_vol >= 5.0
-        (9, 10, 3.0),   # 09:00-10:00 → rel_vol >= 3.0
+        (4, 9, 5.0),  # 04:00-09:00 → rel_vol >= 5.0
+        (9, 10, 3.0),  # 09:00-10:00 → rel_vol >= 3.0
         (10, 12, 2.0),  # 10:00-12:00 → rel_vol >= 2.0
         (12, 20, 1.5),  # 12:00-20:00 → rel_vol >= 1.5
     )
@@ -348,7 +360,7 @@ class WatchlistConfig:
             "min_price": self.min_price,
             "max_price": self.max_price,
             "min_gap_pct": self.min_gap_pct,
-            "enforce_session_boundary": self.enforce_session_boundary
+            "enforce_session_boundary": self.enforce_session_boundary,
         }
 
 
@@ -404,9 +416,7 @@ class MomentumWatchlist:
             self._cycle_count = 0
 
     def full_recompute(
-        self,
-        candidates: List[Dict],
-        force_fresh: bool = True
+        self, candidates: List[Dict], force_fresh: bool = True
     ) -> Tuple[List[RankedSymbol], Dict]:
         """
         FULL RECOMPUTE - Core operation.
@@ -455,7 +465,7 @@ class MomentumWatchlist:
                 first_seen=now,
                 last_evaluated=now,
                 session_date=self.session_date,
-                has_valid_price=bool(c.get("price") and c.get("price") > 0)
+                has_valid_price=bool(c.get("price") and c.get("price") > 0),
             )
 
             # Compute dominance score
@@ -522,7 +532,9 @@ class MomentumWatchlist:
             "active_count": len(active),
             "below_cutoff_count": len(below_cutoff),
             "active_watchlist": [s.to_dict() for s in active],
-            "below_cutoff": [s.to_dict() for s in below_cutoff[:10]],  # Top 10 below cutoff
+            "below_cutoff": [
+                s.to_dict() for s in below_cutoff[:10]
+            ],  # Top 10 below cutoff
             "excluded": [
                 {
                     "symbol": s.symbol,
@@ -530,7 +542,7 @@ class MomentumWatchlist:
                     "dominance_score": s.dominance_score,
                     "rel_vol_daily": s.rel_vol_daily,
                     "gap_pct": s.gap_pct,
-                    "floor_used": current_rel_vol_floor
+                    "floor_used": current_rel_vol_floor,
                 }
                 for s in excluded
             ],
@@ -542,8 +554,8 @@ class MomentumWatchlist:
                 ],
                 "recomputed_all": True,
                 "force_fresh": force_fresh,
-                "rel_vol_floor_applied": current_rel_vol_floor
-            }
+                "rel_vol_floor_applied": current_rel_vol_floor,
+            },
         }
 
         logger.info(
@@ -575,7 +587,9 @@ class MomentumWatchlist:
         if ranked.rel_vol_daily is None:
             # NO REL_VOL DATA = REJECTED
             # Cannot enter watchlist without volume confirmation
-            logger.debug(f"{ranked.symbol}: REJECTED - no rel_vol data (floor={current_floor})")
+            logger.debug(
+                f"{ranked.symbol}: REJECTED - no rel_vol data (floor={current_floor})"
+            )
             return ExclusionReason.REL_VOL_BELOW_FLOOR
 
         if ranked.rel_vol_daily < current_floor:
@@ -668,17 +682,20 @@ class MomentumWatchlist:
                 sym.pullback_confirmed = True
 
                 # === LOG FOR VALIDATION ===
-                _log_entry_window(sym.symbol, {
-                    "price": sym.price,
-                    "hod_price": sym.hod_price,
-                    "pullback_start_hod": sym.pullback_start_hod,
-                    "pullback_pct": sym.pullback_pct,
-                    "pct_from_hod": sym.pct_from_hod,
-                    "rel_vol": sym.rel_vol_daily,
-                    "gap_pct": sym.gap_pct,
-                    "dominance_score": sym.dominance_score,
-                    "rank": sym.rank
-                })
+                _log_entry_window(
+                    sym.symbol,
+                    {
+                        "price": sym.price,
+                        "hod_price": sym.hod_price,
+                        "pullback_start_hod": sym.pullback_start_hod,
+                        "pullback_pct": sym.pullback_pct,
+                        "pct_from_hod": sym.pct_from_hod,
+                        "rel_vol": sym.rel_vol_daily,
+                        "gap_pct": sym.gap_pct,
+                        "dominance_score": sym.dominance_score,
+                        "rank": sym.rank,
+                    },
+                )
                 return
 
             # Deep pullback = invalidated (>8%)
@@ -746,11 +763,13 @@ class MomentumWatchlist:
             "symbols_before": symbols_before,
             "symbols_after": [],
             "triggered_by": triggered_by,
-            "session_date": self.session_date.isoformat()
+            "session_date": self.session_date.isoformat(),
         }
         self._operator_actions.append(action)
 
-        logger.warning(f"OPERATOR: Purged all watchlist ({len(symbols_before)} symbols)")
+        logger.warning(
+            f"OPERATOR: Purged all watchlist ({len(symbols_before)} symbols)"
+        )
 
         return action
 
@@ -763,11 +782,13 @@ class MomentumWatchlist:
         return {
             "session_date": self.session_date.isoformat(),
             "cycle_count": self._cycle_count,
-            "last_recompute": self._last_recompute.isoformat() if self._last_recompute else None,
+            "last_recompute": (
+                self._last_recompute.isoformat() if self._last_recompute else None
+            ),
             "active_count": len(self._active_watchlist),
             "total_candidates": len(self._all_candidates),
             "archived_count": len(self._archived),
-            "config": self.config.to_dict()
+            "config": self.config.to_dict(),
         }
 
 

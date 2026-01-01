@@ -20,15 +20,16 @@ Usage:
 """
 
 import asyncio
+import json
 import logging
 import random
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional, Dict, Any, Callable, Tuple
 from pathlib import Path
-import json
+from typing import Any, Callable, Dict, Optional, Tuple
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -36,21 +37,24 @@ logger = logging.getLogger(__name__)
 
 class CircuitState(Enum):
     """Circuit breaker states"""
-    CLOSED = "CLOSED"       # Normal operation
-    OPEN = "OPEN"           # Blocking requests
-    HALF_OPEN = "HALF_OPEN" # Testing if service recovered
+
+    CLOSED = "CLOSED"  # Normal operation
+    OPEN = "OPEN"  # Blocking requests
+    HALF_OPEN = "HALF_OPEN"  # Testing if service recovered
 
 
 class DataFreshnessState(Enum):
     """Data freshness states"""
-    FRESH = "FRESH"         # Data within threshold
-    STALE = "STALE"         # Data exceeds staleness threshold
-    UNKNOWN = "UNKNOWN"     # No data received yet
+
+    FRESH = "FRESH"  # Data within threshold
+    STALE = "STALE"  # Data exceeds staleness threshold
+    UNKNOWN = "UNKNOWN"  # No data received yet
 
 
 @dataclass
 class RetryPolicy:
     """Configuration for retry behavior"""
+
     max_retries: int = 3
     base_delay_ms: int = 500
     max_delay_ms: int = 10000
@@ -59,10 +63,7 @@ class RetryPolicy:
 
     def get_delay(self, attempt: int) -> float:
         """Calculate delay with exponential backoff + jitter"""
-        delay_ms = min(
-            self.base_delay_ms * (2 ** attempt),
-            self.max_delay_ms
-        )
+        delay_ms = min(self.base_delay_ms * (2**attempt), self.max_delay_ms)
         jitter = delay_ms * self.jitter_pct * (2 * random.random() - 1)
         return (delay_ms + jitter) / 1000  # Return seconds
 
@@ -73,6 +74,7 @@ class CircuitBreaker:
     Circuit breaker to prevent cascade failures.
     Opens after consecutive failures, closes after recovery.
     """
+
     failure_threshold: int = 5
     recovery_timeout_seconds: float = 30
     half_open_max_calls: int = 3
@@ -115,7 +117,9 @@ class CircuitBreaker:
         if self.state == CircuitState.OPEN:
             # Check if recovery timeout has passed
             if self.last_state_change:
-                elapsed = (datetime.now(timezone.utc) - self.last_state_change).total_seconds()
+                elapsed = (
+                    datetime.now(timezone.utc) - self.last_state_change
+                ).total_seconds()
                 if elapsed >= self.recovery_timeout_seconds:
                     self._half_open()
                     return True
@@ -149,8 +153,12 @@ class CircuitBreaker:
             "state": self.state.value,
             "failure_count": self.failure_count,
             "success_count": self.success_count,
-            "last_failure_time": self.last_failure_time.isoformat() if self.last_failure_time else None,
-            "last_state_change": self.last_state_change.isoformat() if self.last_state_change else None
+            "last_failure_time": (
+                self.last_failure_time.isoformat() if self.last_failure_time else None
+            ),
+            "last_state_change": (
+                self.last_state_change.isoformat() if self.last_state_change else None
+            ),
         }
 
 
@@ -160,6 +168,7 @@ class DataFreshness:
     Tracks data freshness for trading decisions.
     Trading MUST halt if data is stale.
     """
+
     staleness_threshold_seconds: float = 10.0  # Max age before stale
     last_good_data_time: Optional[datetime] = None
     last_update_attempt_time: Optional[datetime] = None
@@ -186,7 +195,9 @@ class DataFreshness:
             self.state = DataFreshnessState.UNKNOWN
             return False, None
 
-        elapsed = (datetime.now(timezone.utc) - self.last_good_data_time).total_seconds()
+        elapsed = (
+            datetime.now(timezone.utc) - self.last_good_data_time
+        ).total_seconds()
         if elapsed > self.staleness_threshold_seconds:
             self.state = DataFreshnessState.STALE
             self.stale_reason = f"Last good data {elapsed:.1f}s ago"
@@ -198,7 +209,9 @@ class DataFreshness:
     def _check_staleness(self, reason: str):
         """Update staleness state after failed fetch"""
         if self.last_good_data_time:
-            elapsed = (datetime.now(timezone.utc) - self.last_good_data_time).total_seconds()
+            elapsed = (
+                datetime.now(timezone.utc) - self.last_good_data_time
+            ).total_seconds()
             if elapsed > self.staleness_threshold_seconds:
                 self.state = DataFreshnessState.STALE
                 self.stale_reason = reason
@@ -210,8 +223,12 @@ class DataFreshness:
             "is_fresh": is_fresh,
             "stale_seconds": stale_seconds,
             "staleness_threshold_seconds": self.staleness_threshold_seconds,
-            "last_good_data_time": self.last_good_data_time.isoformat() if self.last_good_data_time else None,
-            "stale_reason": self.stale_reason
+            "last_good_data_time": (
+                self.last_good_data_time.isoformat()
+                if self.last_good_data_time
+                else None
+            ),
+            "stale_reason": self.stale_reason,
         }
 
 
@@ -267,7 +284,7 @@ class ConnectionManager:
         """Load last good snapshots from disk"""
         try:
             if self._snapshot_cache_path.exists():
-                with open(self._snapshot_cache_path, 'r') as f:
+                with open(self._snapshot_cache_path, "r") as f:
                     self._last_good_snapshots = json.load(f)
         except Exception as e:
             logger.warning(f"Could not load cached snapshots: {e}")
@@ -276,7 +293,7 @@ class ConnectionManager:
         """Persist last good snapshots to disk"""
         try:
             self._snapshot_cache_path.parent.mkdir(exist_ok=True)
-            with open(self._snapshot_cache_path, 'w') as f:
+            with open(self._snapshot_cache_path, "w") as f:
                 json.dump(self._last_good_snapshots, f, indent=2, default=str)
         except Exception as e:
             logger.warning(f"Could not save cached snapshots: {e}")
@@ -293,10 +310,7 @@ class ConnectionManager:
         return self.circuit_breaker.state == CircuitState.OPEN
 
     async def fetch_with_retry(
-        self,
-        endpoint: str,
-        method: str = "GET",
-        **kwargs
+        self, endpoint: str, method: str = "GET", **kwargs
     ) -> Tuple[Optional[Dict], bool]:
         """
         Fetch data with retry policy and circuit breaker.
@@ -311,7 +325,11 @@ class ConnectionManager:
             logger.warning(f"Circuit breaker OPEN - blocking request to {endpoint}")
             return None, False
 
-        url = f"{self.base_url}{endpoint}" if not endpoint.startswith("http") else endpoint
+        url = (
+            f"{self.base_url}{endpoint}"
+            if not endpoint.startswith("http")
+            else endpoint
+        )
         client = await self._get_client()
 
         last_error = None
@@ -347,7 +365,9 @@ class ConnectionManager:
                         wait_seconds = int(retry_after)
                     except ValueError:
                         wait_seconds = 5
-                    logger.warning(f"Rate limited on {endpoint}, waiting {wait_seconds}s")
+                    logger.warning(
+                        f"Rate limited on {endpoint}, waiting {wait_seconds}s"
+                    )
                     await asyncio.sleep(wait_seconds)
                     continue
 
@@ -355,20 +375,26 @@ class ConnectionManager:
                     # Retryable error
                     last_error = f"HTTP {response.status_code}"
                     delay = self.retry_policy.get_delay(attempt)
-                    logger.warning(f"Retryable error {response.status_code} on {endpoint}, attempt {attempt+1}, waiting {delay:.2f}s")
+                    logger.warning(
+                        f"Retryable error {response.status_code} on {endpoint}, attempt {attempt+1}, waiting {delay:.2f}s"
+                    )
                     await asyncio.sleep(delay)
                     continue
 
                 else:
                     # Non-retryable error
-                    logger.error(f"Non-retryable error {response.status_code} on {endpoint}")
+                    logger.error(
+                        f"Non-retryable error {response.status_code} on {endpoint}"
+                    )
                     self.circuit_breaker.record_failure()
                     break
 
             except httpx.TimeoutException:
                 last_error = "Timeout"
                 delay = self.retry_policy.get_delay(attempt)
-                logger.warning(f"Timeout on {endpoint}, attempt {attempt+1}, waiting {delay:.2f}s")
+                logger.warning(
+                    f"Timeout on {endpoint}, attempt {attempt+1}, waiting {delay:.2f}s"
+                )
                 # Reset HTTP client on final retry
                 if attempt >= self.retry_policy.max_retries:
                     await self._reset_http_client()
@@ -377,7 +403,9 @@ class ConnectionManager:
             except httpx.ConnectError as e:
                 last_error = f"Connection error: {e}"
                 delay = self.retry_policy.get_delay(attempt)
-                logger.warning(f"Connection error on {endpoint}: {e}, attempt {attempt+1}")
+                logger.warning(
+                    f"Connection error on {endpoint}: {e}, attempt {attempt+1}"
+                )
                 # Reset HTTP client on final retry
                 if attempt >= self.retry_policy.max_retries:
                     await self._reset_http_client()
@@ -407,7 +435,7 @@ class ConnectionManager:
             # Cache the good data
             self._last_good_snapshots[symbol] = {
                 "data": data,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             self._save_cached_snapshots()
             return data, True
@@ -415,7 +443,9 @@ class ConnectionManager:
         # Return cached data if available
         if symbol in self._last_good_snapshots:
             cached = self._last_good_snapshots[symbol]
-            logger.warning(f"Using cached quote for {symbol} from {cached.get('timestamp')}")
+            logger.warning(
+                f"Using cached quote for {symbol} from {cached.get('timestamp')}"
+            )
             return cached.get("data"), False
 
         return None, False
@@ -428,7 +458,9 @@ class ConnectionManager:
         """Fetch worklist with all symbols"""
         return await self.fetch_with_retry("/api/worklist")
 
-    async def fetch_market_movers(self, direction: str = "up") -> Tuple[Optional[Dict], bool]:
+    async def fetch_market_movers(
+        self, direction: str = "up"
+    ) -> Tuple[Optional[Dict], bool]:
         """Fetch market movers"""
         return await self.fetch_with_retry(f"/api/market/movers?direction={direction}")
 
@@ -441,7 +473,7 @@ class ConnectionManager:
             "is_data_stale": self.is_data_stale,
             "circuit_open": self.circuit_open,
             "cached_symbols": list(self._last_good_snapshots.keys()),
-            "trading_allowed": is_fresh and not self.circuit_open
+            "trading_allowed": is_fresh and not self.circuit_open,
         }
 
     def get_stale_veto_reason(self) -> Optional[str]:

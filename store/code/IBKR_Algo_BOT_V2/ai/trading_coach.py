@@ -11,12 +11,13 @@ Runs during Warrior Trading hours (4AM-9:30AM EST) to:
 Author: Claude Code
 """
 
-import logging
-from datetime import datetime, time, timedelta
-from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, asdict
 import json
+import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime, time, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -25,16 +26,17 @@ logger = logging.getLogger(__name__)
 _coach_instance = None
 
 # Trading hours (Eastern Time)
-ET = pytz.timezone('US/Eastern')
-PREMARKET_START = time(4, 0)   # 4:00 AM ET
+ET = pytz.timezone("US/Eastern")
+PREMARKET_START = time(4, 0)  # 4:00 AM ET
 PRIME_TIME_START = time(7, 0)  # 7:00 AM ET - Most active
-MARKET_OPEN = time(9, 30)      # 9:30 AM ET
-MARKET_CLOSE = time(16, 0)     # 4:00 PM ET
+MARKET_OPEN = time(9, 30)  # 9:30 AM ET
+MARKET_CLOSE = time(16, 0)  # 4:00 PM ET
 
 
 @dataclass
 class TradeCritique:
     """Critique of a manual trade"""
+
     trade_id: str
     symbol: str
     timestamp: str
@@ -71,6 +73,7 @@ class TradeCritique:
 @dataclass
 class MorningBriefing:
     """Pre-market morning briefing"""
+
     date: str
     generated_at: str
 
@@ -112,9 +115,11 @@ class TradingCoach:
             "FEAR": 0,
             "GREED": 0,
             "IMPATIENCE": 0,
-            "OVERTRADING": 0
+            "OVERTRADING": 0,
         }
-        self.state_file = Path(__file__).parent.parent / "store" / "trading_coach_state.json"
+        self.state_file = (
+            Path(__file__).parent.parent / "store" / "trading_coach_state.json"
+        )
         self._load_state()
         logger.info("[COACH] Trading Coach initialized")
 
@@ -124,7 +129,9 @@ class TradingCoach:
             if self.state_file.exists():
                 with open(self.state_file) as f:
                     data = json.load(f)
-                    self.emotional_patterns = data.get("emotional_patterns", self.emotional_patterns)
+                    self.emotional_patterns = data.get(
+                        "emotional_patterns", self.emotional_patterns
+                    )
         except Exception as e:
             logger.warning(f"[COACH] Failed to load state: {e}")
 
@@ -132,11 +139,15 @@ class TradingCoach:
         """Save state"""
         try:
             self.state_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.state_file, 'w') as f:
-                json.dump({
-                    "emotional_patterns": self.emotional_patterns,
-                    "last_updated": datetime.now().isoformat()
-                }, f, indent=2)
+            with open(self.state_file, "w") as f:
+                json.dump(
+                    {
+                        "emotional_patterns": self.emotional_patterns,
+                        "last_updated": datetime.now().isoformat(),
+                    },
+                    f,
+                    indent=2,
+                )
         except Exception as e:
             logger.warning(f"[COACH] Failed to save state: {e}")
 
@@ -164,18 +175,24 @@ class TradingCoach:
         if current_time < PREMARKET_START:
             window = "PRE_PREMARKET"
             status = "Markets closed. Pre-market starts at 4:00 AM ET"
-            minutes_until = (datetime.combine(now.date(), PREMARKET_START) -
-                          datetime.combine(now.date(), current_time)).seconds // 60
+            minutes_until = (
+                datetime.combine(now.date(), PREMARKET_START)
+                - datetime.combine(now.date(), current_time)
+            ).seconds // 60
         elif current_time < PRIME_TIME_START:
             window = "EARLY_PREMARKET"
             status = "Early pre-market. Scanning for gappers..."
-            minutes_until = (datetime.combine(now.date(), PRIME_TIME_START) -
-                          datetime.combine(now.date(), current_time)).seconds // 60
+            minutes_until = (
+                datetime.combine(now.date(), PRIME_TIME_START)
+                - datetime.combine(now.date(), current_time)
+            ).seconds // 60
         elif current_time < MARKET_OPEN:
             window = "PRIME_TIME"
             status = "PRIME WARRIOR TRADING TIME! Most active period."
-            minutes_until = (datetime.combine(now.date(), MARKET_OPEN) -
-                          datetime.combine(now.date(), current_time)).seconds // 60
+            minutes_until = (
+                datetime.combine(now.date(), MARKET_OPEN)
+                - datetime.combine(now.date(), current_time)
+            ).seconds // 60
         elif current_time < MARKET_CLOSE:
             window = "MARKET_OPEN"
             status = "Regular market hours. Warrior momentum slowing."
@@ -191,7 +208,7 @@ class TradingCoach:
             "current_time_et": now.strftime("%H:%M:%S ET"),
             "is_premarket": self.is_premarket_hours(),
             "is_prime_time": self.is_prime_time(),
-            "minutes_until_next": minutes_until
+            "minutes_until_next": minutes_until,
         }
 
     def generate_morning_briefing(self) -> MorningBriefing:
@@ -199,7 +216,7 @@ class TradingCoach:
         now = datetime.now(ET)
 
         briefing = MorningBriefing(
-            date=now.strftime('%Y-%m-%d'),
+            date=now.strftime("%Y-%m-%d"),
             generated_at=now.isoformat(),
             market_sentiment="NEUTRAL",
             spy_premarket=0.0,
@@ -212,18 +229,21 @@ class TradingCoach:
             warnings=[],
             max_trades_today=5,
             max_risk_today=500.0,
-            focus_strategy="momentum"
+            focus_strategy="momentum",
         )
 
         # Get scanner results
         try:
             from ai.warrior_scanner import WarriorScanner
+
             scanner = WarriorScanner()
             candidates = scanner.scan_premarket()
 
             if candidates:
                 # Sort by confidence
-                sorted_candidates = sorted(candidates, key=lambda x: x.confidence_score, reverse=True)
+                sorted_candidates = sorted(
+                    candidates, key=lambda x: x.confidence_score, reverse=True
+                )
 
                 # Top gappers
                 briefing.top_gappers = [
@@ -234,7 +254,7 @@ class TradingCoach:
                         "volume": c.pre_market_volume,
                         "float": c.float_shares,
                         "catalyst": c.catalyst,
-                        "score": c.confidence_score
+                        "score": c.confidence_score,
                     }
                     for c in sorted_candidates[:10]
                 ]
@@ -253,7 +273,9 @@ class TradingCoach:
 
         # Add trading plan based on conditions
         if len(briefing.top_gappers) == 0:
-            briefing.warnings.append("No clear setups found. Consider sitting out today.")
+            briefing.warnings.append(
+                "No clear setups found. Consider sitting out today."
+            )
             briefing.max_trades_today = 2
         elif len(briefing.a_grade_setups) >= 3:
             briefing.focus_strategy = "momentum"
@@ -264,17 +286,25 @@ class TradingCoach:
 
         # Emotional trading warnings based on history
         if self.emotional_patterns.get("OVERTRADING", 0) > 3:
-            briefing.warnings.append("⚠️ You've been overtrading recently. Stick to max 3 trades today.")
+            briefing.warnings.append(
+                "⚠️ You've been overtrading recently. Stick to max 3 trades today."
+            )
             briefing.max_trades_today = 3
 
         if self.emotional_patterns.get("REVENGE", 0) > 2:
-            briefing.warnings.append("⚠️ Revenge trading detected recently. Take a break after any loss.")
+            briefing.warnings.append(
+                "⚠️ Revenge trading detected recently. Take a break after any loss."
+            )
 
         if self.emotional_patterns.get("FOMO", 0) > 2:
-            briefing.warnings.append("⚠️ FOMO entries detected. Wait for pullbacks, don't chase.")
+            briefing.warnings.append(
+                "⚠️ FOMO entries detected. Wait for pullbacks, don't chase."
+            )
 
         self.briefings.append(briefing)
-        logger.info(f"[COACH] Generated morning briefing: {len(briefing.top_gappers)} gappers found")
+        logger.info(
+            f"[COACH] Generated morning briefing: {len(briefing.top_gappers)} gappers found"
+        )
 
         return briefing
 
@@ -301,7 +331,9 @@ class TradingCoach:
 
         # Calculate P&L
         pnl = (exit_price - entry_price) * quantity
-        pnl_percent = ((exit_price - entry_price) / entry_price * 100) if entry_price else 0
+        pnl_percent = (
+            ((exit_price - entry_price) / entry_price * 100) if entry_price else 0
+        )
 
         # Analyze entry timing
         entry_analysis = self._analyze_entry(trade_data)
@@ -323,7 +355,9 @@ class TradingCoach:
         )
 
         # Calculate grade
-        grade = self._calculate_grade(entry_analysis, exit_analysis, emotional_score, pnl)
+        grade = self._calculate_grade(
+            entry_analysis, exit_analysis, emotional_score, pnl
+        )
 
         critique = TradeCritique(
             trade_id=f"{symbol}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
@@ -346,7 +380,7 @@ class TradingCoach:
             mistakes=mistakes,
             lessons=lessons,
             recommendations=recommendations,
-            grade=grade
+            grade=grade,
         )
 
         self.critiques.append(critique)
@@ -364,11 +398,18 @@ class TradingCoach:
             "timing": "GOOD",
             "size_assessment": "GOOD",
             "optimal_entry": entry_price,
-            "optimal_pnl": 0
+            "optimal_pnl": 0,
         }
 
         # Check for chase indicators
-        chase_words = ["chased", "fomo", "had to get in", "running", "missed", "jumping"]
+        chase_words = [
+            "chased",
+            "fomo",
+            "had to get in",
+            "running",
+            "missed",
+            "jumping",
+        ]
         if any(word in reasoning for word in chase_words):
             analysis["timing"] = "CHASED"
             analysis["setup_quality"] = "C"
@@ -387,13 +428,16 @@ class TradingCoach:
         pnl = trade_data.get("pnl", 0)
         reasoning = trade_data.get("exit_reasoning", "").lower()
 
-        analysis = {
-            "timing": "GOOD",
-            "optimal_exit": exit_price
-        }
+        analysis = {"timing": "GOOD", "optimal_exit": exit_price}
 
         # Check for panic exit
-        panic_words = ["scared", "panic", "couldn't take it", "had to get out", "nervous"]
+        panic_words = [
+            "scared",
+            "panic",
+            "couldn't take it",
+            "had to get out",
+            "nervous",
+        ]
         if any(word in reasoning for word in panic_words):
             analysis["timing"] = "PANIC"
 
@@ -418,13 +462,26 @@ class TradingCoach:
         exit_reasoning = trade_data.get("exit_reasoning", "").lower()
 
         # FOMO detection
-        fomo_words = ["chased", "fomo", "had to", "couldn't miss", "everyone", "running away"]
+        fomo_words = [
+            "chased",
+            "fomo",
+            "had to",
+            "couldn't miss",
+            "everyone",
+            "running away",
+        ]
         if any(word in reasoning for word in fomo_words):
             flags.append("FOMO")
             score += 25
 
         # REVENGE trading detection
-        revenge_words = ["make back", "revenge", "recover", "lost earlier", "get it back"]
+        revenge_words = [
+            "make back",
+            "revenge",
+            "recover",
+            "lost earlier",
+            "get it back",
+        ]
         if any(word in reasoning for word in revenge_words):
             flags.append("REVENGE")
             score += 30
@@ -442,15 +499,26 @@ class TradingCoach:
             score += 20
 
         # IMPATIENCE detection
-        impatience_words = ["quick", "fast", "couldn't wait", "bored", "tired of waiting"]
+        impatience_words = [
+            "quick",
+            "fast",
+            "couldn't wait",
+            "bored",
+            "tired of waiting",
+        ]
         if any(word in reasoning for word in impatience_words):
             flags.append("IMPATIENCE")
             score += 15
 
         return flags, min(100, score)
 
-    def _generate_feedback(self, trade_data: Dict, entry_analysis: Dict,
-                          exit_analysis: Dict, emotional_flags: List[str]) -> tuple:
+    def _generate_feedback(
+        self,
+        trade_data: Dict,
+        entry_analysis: Dict,
+        exit_analysis: Dict,
+        emotional_flags: List[str],
+    ) -> tuple:
         """Generate coaching feedback"""
         mistakes = []
         lessons = []
@@ -465,34 +533,57 @@ class TradingCoach:
         # Exit feedback
         if exit_analysis.get("timing") == "PANIC":
             mistakes.append("Panic exit - sold based on fear, not plan")
-            lessons.append("Trust your stop loss. If it's not hit, the trade is still valid.")
-            recommendations.append("Write down your stop before entering. Don't touch it.")
+            lessons.append(
+                "Trust your stop loss. If it's not hit, the trade is still valid."
+            )
+            recommendations.append(
+                "Write down your stop before entering. Don't touch it."
+            )
 
         if exit_analysis.get("timing") == "LATE":
             mistakes.append("Held too long - greed overrode the plan")
-            lessons.append("Take profits at planned targets. First target = lock in gains.")
+            lessons.append(
+                "Take profits at planned targets. First target = lock in gains."
+            )
             recommendations.append("Use a trailing stop after hitting first target")
 
         # Emotional feedback
         if "FOMO" in emotional_flags:
             mistakes.append("FOMO entry - fear of missing out drove the decision")
-            lessons.append("There's always another trade. Missing one is better than forcing one.")
-            recommendations.append("If you feel FOMO, wait 5 minutes. The urge usually passes.")
+            lessons.append(
+                "There's always another trade. Missing one is better than forcing one."
+            )
+            recommendations.append(
+                "If you feel FOMO, wait 5 minutes. The urge usually passes."
+            )
 
         if "REVENGE" in emotional_flags:
             mistakes.append("Revenge trade - trying to recover losses")
-            lessons.append("Each trade is independent. Past losses don't affect future probability.")
-            recommendations.append("After a loss, take a 15-minute break. Reset mentally.")
+            lessons.append(
+                "Each trade is independent. Past losses don't affect future probability."
+            )
+            recommendations.append(
+                "After a loss, take a 15-minute break. Reset mentally."
+            )
 
         if "FEAR" in emotional_flags:
             mistakes.append("Fear-based exit - let emotions override the plan")
-            lessons.append("Your stop loss is your risk. If it's acceptable, hold the trade.")
-            recommendations.append("Reduce position size until comfortable holding to stop")
+            lessons.append(
+                "Your stop loss is your risk. If it's acceptable, hold the trade."
+            )
+            recommendations.append(
+                "Reduce position size until comfortable holding to stop"
+            )
 
         return mistakes, lessons, recommendations
 
-    def _calculate_grade(self, entry_analysis: Dict, exit_analysis: Dict,
-                        emotional_score: float, pnl: float) -> str:
+    def _calculate_grade(
+        self,
+        entry_analysis: Dict,
+        exit_analysis: Dict,
+        emotional_score: float,
+        pnl: float,
+    ) -> str:
         """Calculate overall trade grade"""
         score = 100
 
@@ -539,9 +630,7 @@ class TradingCoach:
 
         # Find top issues
         sorted_patterns = sorted(
-            self.emotional_patterns.items(),
-            key=lambda x: x[1],
-            reverse=True
+            self.emotional_patterns.items(), key=lambda x: x[1], reverse=True
         )
 
         top_issues = [p for p, count in sorted_patterns if count > 0][:3]
@@ -550,49 +639,59 @@ class TradingCoach:
         advice = []
 
         if "FOMO" in top_issues:
-            advice.append({
-                "issue": "FOMO (Fear of Missing Out)",
-                "frequency": self.emotional_patterns["FOMO"],
-                "impact": "Leads to chasing entries at poor prices",
-                "fix": "Wait for pullbacks. Set price alerts instead of watching constantly.",
-                "rule": "If a stock has moved more than 5% from your ideal entry, SKIP IT."
-            })
+            advice.append(
+                {
+                    "issue": "FOMO (Fear of Missing Out)",
+                    "frequency": self.emotional_patterns["FOMO"],
+                    "impact": "Leads to chasing entries at poor prices",
+                    "fix": "Wait for pullbacks. Set price alerts instead of watching constantly.",
+                    "rule": "If a stock has moved more than 5% from your ideal entry, SKIP IT.",
+                }
+            )
 
         if "REVENGE" in top_issues:
-            advice.append({
-                "issue": "Revenge Trading",
-                "frequency": self.emotional_patterns["REVENGE"],
-                "impact": "Compounds losses by forcing bad trades",
-                "fix": "After any loss, take a mandatory 15-minute break.",
-                "rule": "Max 2 consecutive losses, then done for the day."
-            })
+            advice.append(
+                {
+                    "issue": "Revenge Trading",
+                    "frequency": self.emotional_patterns["REVENGE"],
+                    "impact": "Compounds losses by forcing bad trades",
+                    "fix": "After any loss, take a mandatory 15-minute break.",
+                    "rule": "Max 2 consecutive losses, then done for the day.",
+                }
+            )
 
         if "FEAR" in top_issues:
-            advice.append({
-                "issue": "Fear-Based Exits",
-                "frequency": self.emotional_patterns["FEAR"],
-                "impact": "Cuts winners short, realizes losses too early",
-                "fix": "Reduce position size until you can hold comfortably.",
-                "rule": "Trust your stop loss. It's there for a reason."
-            })
+            advice.append(
+                {
+                    "issue": "Fear-Based Exits",
+                    "frequency": self.emotional_patterns["FEAR"],
+                    "impact": "Cuts winners short, realizes losses too early",
+                    "fix": "Reduce position size until you can hold comfortably.",
+                    "rule": "Trust your stop loss. It's there for a reason.",
+                }
+            )
 
         if "GREED" in top_issues:
-            advice.append({
-                "issue": "Greed (Holding Too Long)",
-                "frequency": self.emotional_patterns["GREED"],
-                "impact": "Turns winners into losers",
-                "fix": "Take partial profits at 1R, trail the rest.",
-                "rule": "A profit taken is better than a profit given back."
-            })
+            advice.append(
+                {
+                    "issue": "Greed (Holding Too Long)",
+                    "frequency": self.emotional_patterns["GREED"],
+                    "impact": "Turns winners into losers",
+                    "fix": "Take partial profits at 1R, trail the rest.",
+                    "rule": "A profit taken is better than a profit given back.",
+                }
+            )
 
         if "IMPATIENCE" in top_issues:
-            advice.append({
-                "issue": "Impatience",
-                "frequency": self.emotional_patterns["IMPATIENCE"],
-                "impact": "Enters before setup is complete",
-                "fix": "Wait for confirmation. The best trades come to you.",
-                "rule": "No trade is urgent. If it feels urgent, it's probably wrong."
-            })
+            advice.append(
+                {
+                    "issue": "Impatience",
+                    "frequency": self.emotional_patterns["IMPATIENCE"],
+                    "impact": "Enters before setup is complete",
+                    "fix": "Wait for confirmation. The best trades come to you.",
+                    "rule": "No trade is urgent. If it feels urgent, it's probably wrong.",
+                }
+            )
 
         return {
             "total_emotional_flags": total_flags,
@@ -600,7 +699,7 @@ class TradingCoach:
             "top_issues": top_issues,
             "personalized_advice": advice,
             "overall_assessment": self._get_overall_assessment(total_flags),
-            "rules_to_follow": self._get_rules(top_issues)
+            "rules_to_follow": self._get_rules(top_issues),
         }
 
     def _get_overall_assessment(self, total_flags: int) -> str:
@@ -619,7 +718,7 @@ class TradingCoach:
         rules = [
             "Always have a plan BEFORE entering (entry, stop, target)",
             "Risk max 1% of account per trade",
-            "No trading during first 5 minutes after open (too volatile)"
+            "No trading during first 5 minutes after open (too volatile)",
         ]
 
         if "FOMO" in top_issues:
@@ -645,7 +744,9 @@ class TradingCoach:
             return self._answer_entry_question(question)
 
         # Exit questions
-        if any(word in question_lower for word in ["exit", "sell", "out", "take profit"]):
+        if any(
+            word in question_lower for word in ["exit", "sell", "out", "take profit"]
+        ):
             return self._answer_exit_question(question)
 
         # Loss questions

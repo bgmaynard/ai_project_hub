@@ -5,19 +5,15 @@ Phase 5: Sentiment Analysis Endpoints
 Provides REST API endpoints for sentiment analysis data
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List
-from pydantic import BaseModel, Field
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import List, Optional
 
-from ai.warrior_sentiment_analyzer import (
-    get_sentiment_analyzer,
-    AggregatedSentiment,
-    SentimentSignal,
-    BreakingNewsAlert
-)
-
+from ai.warrior_sentiment_analyzer import (AggregatedSentiment,
+                                           BreakingNewsAlert, SentimentSignal,
+                                           get_sentiment_analyzer)
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +24,7 @@ router = APIRouter(prefix="/api/sentiment", tags=["Sentiment Analysis"])
 # Response models
 class SentimentSignalResponse(BaseModel):
     """Individual sentiment signal"""
+
     source: str
     symbol: str
     timestamp: datetime
@@ -41,6 +38,7 @@ class SentimentSignalResponse(BaseModel):
 
 class BreakingNewsAlertResponse(BaseModel):
     """Breaking news alert"""
+
     symbol: str
     timestamp: datetime
     alert_type: str = Field(..., description="positive, negative, or neutral")
@@ -55,6 +53,7 @@ class BreakingNewsAlertResponse(BaseModel):
 
 class AggregatedSentimentResponse(BaseModel):
     """Aggregated sentiment across all sources"""
+
     symbol: str
     timestamp: datetime
     overall_score: float = Field(..., ge=-1.0, le=1.0)
@@ -70,6 +69,7 @@ class AggregatedSentimentResponse(BaseModel):
 
 class SentimentHealthResponse(BaseModel):
     """Health status of sentiment analyzer"""
+
     status: str
     finbert_loaded: bool
     news_api_available: bool
@@ -79,6 +79,7 @@ class SentimentHealthResponse(BaseModel):
 
 
 # Endpoints
+
 
 @router.get("/health", response_model=SentimentHealthResponse)
 async def get_sentiment_health():
@@ -112,7 +113,7 @@ async def get_sentiment_health():
             news_api_available=news_available,
             twitter_available=twitter_available,
             reddit_available=reddit_available,
-            cache_size=cache_size
+            cache_size=cache_size,
         )
 
     except Exception as e:
@@ -125,9 +126,8 @@ async def get_symbol_sentiment(
     symbol: str,
     hours: int = Query(24, ge=1, le=168, description="Lookback period in hours"),
     sources: Optional[str] = Query(
-        None,
-        description="Comma-separated sources (news,twitter,reddit)"
-    )
+        None, description="Comma-separated sources (news,twitter,reddit)"
+    ),
 ):
     """
     Get aggregated sentiment for a symbol
@@ -149,13 +149,11 @@ async def get_symbol_sentiment(
         # Parse sources
         source_list = None
         if sources:
-            source_list = [s.strip() for s in sources.split(',')]
+            source_list = [s.strip() for s in sources.split(",")]
 
         # Get sentiment
         sentiment = await analyzer.analyze_symbol(
-            symbol=symbol.upper(),
-            hours=hours,
-            sources=source_list
+            symbol=symbol.upper(), hours=hours, sources=source_list
         )
 
         # Convert to response model
@@ -179,10 +177,10 @@ async def get_symbol_sentiment(
                     text=sig.text,
                     url=sig.url,
                     author=sig.author,
-                    metrics=sig.metrics
+                    metrics=sig.metrics,
                 )
                 for sig in sentiment.top_signals
-            ]
+            ],
         )
 
     except Exception as e:
@@ -194,7 +192,7 @@ async def get_symbol_sentiment(
 async def get_news_sentiment(
     symbol: str,
     hours: int = Query(24, ge=1, le=168),
-    limit: int = Query(10, ge=1, le=100)
+    limit: int = Query(10, ge=1, le=100),
 ):
     """
     Get news sentiment signals for a symbol
@@ -211,16 +209,13 @@ async def get_news_sentiment(
         analyzer = get_sentiment_analyzer()
 
         sentiment = await analyzer.analyze_symbol(
-            symbol=symbol.upper(),
-            hours=hours,
-            sources=['news']
+            symbol=symbol.upper(), hours=hours, sources=["news"]
         )
 
         # Filter and sort news signals
-        news_signals = [
-            sig for sig in sentiment.top_signals
-            if sig.source == 'news'
-        ][:limit]
+        news_signals = [sig for sig in sentiment.top_signals if sig.source == "news"][
+            :limit
+        ]
 
         return [
             SentimentSignalResponse(
@@ -232,7 +227,7 @@ async def get_news_sentiment(
                 text=sig.text,
                 url=sig.url,
                 author=sig.author,
-                metrics=sig.metrics
+                metrics=sig.metrics,
             )
             for sig in news_signals
         ]
@@ -246,7 +241,7 @@ async def get_news_sentiment(
 async def get_social_sentiment(
     symbol: str,
     platform: Optional[str] = Query(None, regex="^(twitter|reddit|all)$"),
-    limit: int = Query(20, ge=1, le=100)
+    limit: int = Query(20, ge=1, le=100),
 ):
     """
     Get social media sentiment signals
@@ -263,23 +258,20 @@ async def get_social_sentiment(
         analyzer = get_sentiment_analyzer()
 
         # Determine sources
-        if platform == 'twitter':
-            sources = ['twitter']
-        elif platform == 'reddit':
-            sources = ['reddit']
+        if platform == "twitter":
+            sources = ["twitter"]
+        elif platform == "reddit":
+            sources = ["reddit"]
         else:
-            sources = ['twitter', 'reddit']
+            sources = ["twitter", "reddit"]
 
         sentiment = await analyzer.analyze_symbol(
-            symbol=symbol.upper(),
-            hours=24,
-            sources=sources
+            symbol=symbol.upper(), hours=24, sources=sources
         )
 
         # Get social signals
         social_signals = [
-            sig for sig in sentiment.top_signals
-            if sig.source in ['twitter', 'reddit']
+            sig for sig in sentiment.top_signals if sig.source in ["twitter", "reddit"]
         ][:limit]
 
         return [
@@ -292,7 +284,7 @@ async def get_social_sentiment(
                 text=sig.text,
                 url=sig.url,
                 author=sig.author,
-                metrics=sig.metrics
+                metrics=sig.metrics,
             )
             for sig in social_signals
         ]
@@ -303,10 +295,7 @@ async def get_social_sentiment(
 
 
 @router.post("/{symbol}/analyze")
-async def trigger_analysis(
-    symbol: str,
-    hours: int = Query(24, ge=1, le=168)
-):
+async def trigger_analysis(symbol: str, hours: int = Query(24, ge=1, le=168)):
     """
     Trigger immediate sentiment analysis (bypasses cache)
 
@@ -326,16 +315,13 @@ async def trigger_analysis(
             del analyzer.sentiment_cache[cache_key]
 
         # Trigger new analysis
-        sentiment = await analyzer.analyze_symbol(
-            symbol=symbol.upper(),
-            hours=hours
-        )
+        sentiment = await analyzer.analyze_symbol(symbol=symbol.upper(), hours=hours)
 
         return {
             "status": "completed",
             "symbol": symbol.upper(),
             "signals_collected": sentiment.signals_count,
-            "timestamp": sentiment.timestamp
+            "timestamp": sentiment.timestamp,
         }
 
     except Exception as e:
@@ -346,7 +332,7 @@ async def trigger_analysis(
 @router.get("/batch/analyze")
 async def batch_sentiment_analysis(
     symbols: str = Query(..., description="Comma-separated symbols (max 10)"),
-    hours: int = Query(24, ge=1, le=168)
+    hours: int = Query(24, ge=1, le=168),
 ):
     """
     Analyze sentiment for multiple symbols
@@ -359,13 +345,10 @@ async def batch_sentiment_analysis(
         Dict of symbol -> sentiment score
     """
     try:
-        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
 
         if len(symbol_list) > 10:
-            raise HTTPException(
-                status_code=400,
-                detail="Maximum 10 symbols allowed"
-            )
+            raise HTTPException(status_code=400, detail="Maximum 10 symbols allowed")
 
         analyzer = get_sentiment_analyzer()
 
@@ -378,13 +361,11 @@ async def batch_sentiment_analysis(
                     "score": sentiment.overall_score,
                     "confidence": sentiment.overall_confidence,
                     "signals": sentiment.signals_count,
-                    "trending": sentiment.trending
+                    "trending": sentiment.trending,
                 }
             except Exception as e:
                 logger.error(f"Failed to analyze {symbol}: {e}")
-                results[symbol] = {
-                    "error": str(e)
-                }
+                results[symbol] = {"error": str(e)}
 
         return results
 
@@ -395,8 +376,10 @@ async def batch_sentiment_analysis(
 
 @router.get("/trending/symbols")
 async def get_trending_symbols(
-    min_signals: int = Query(20, ge=5, description="Minimum signal count to be trending"),
-    limit: int = Query(10, ge=1, le=50)
+    min_signals: int = Query(
+        20, ge=5, description="Minimum signal count to be trending"
+    ),
+    limit: int = Query(10, ge=1, le=50),
 ):
     """
     Get currently trending symbols based on social/news volume
@@ -417,17 +400,19 @@ async def get_trending_symbols(
 
         for cache_key, sentiment in analyzer.sentiment_cache.items():
             if sentiment.trending and sentiment.signals_count >= min_signals:
-                trending.append({
-                    "symbol": sentiment.symbol,
-                    "score": sentiment.overall_score,
-                    "confidence": sentiment.overall_confidence,
-                    "signals": sentiment.signals_count,
-                    "momentum": sentiment.momentum,
-                    "last_updated": sentiment.timestamp
-                })
+                trending.append(
+                    {
+                        "symbol": sentiment.symbol,
+                        "score": sentiment.overall_score,
+                        "confidence": sentiment.overall_confidence,
+                        "signals": sentiment.signals_count,
+                        "momentum": sentiment.momentum,
+                        "last_updated": sentiment.timestamp,
+                    }
+                )
 
         # Sort by signal count (volume)
-        trending.sort(key=lambda x: x['signals'], reverse=True)
+        trending.sort(key=lambda x: x["signals"], reverse=True)
 
         return trending[:limit]
 
@@ -439,7 +424,9 @@ async def get_trending_symbols(
 @router.get("/breaking-news", response_model=List[BreakingNewsAlertResponse])
 async def get_breaking_news(
     limit: int = Query(10, ge=1, le=50, description="Maximum alerts to return"),
-    min_severity: float = Query(0.5, ge=0.0, le=1.0, description="Minimum severity threshold")
+    min_severity: float = Query(
+        0.5, ge=0.0, le=1.0, description="Minimum severity threshold"
+    ),
 ):
     """
     Get current breaking news alerts across all tracked symbols
@@ -464,11 +451,14 @@ async def get_breaking_news(
 
         # Check all cached sentiment results for breaking news
         for cache_key, sentiment in analyzer.sentiment_cache.items():
-            if sentiment.breaking_news and sentiment.breaking_news.severity >= min_severity:
+            if (
+                sentiment.breaking_news
+                and sentiment.breaking_news.severity >= min_severity
+            ):
                 breaking_news_alerts.append(sentiment.breaking_news.to_dict())
 
         # Sort by severity (most severe first)
-        breaking_news_alerts.sort(key=lambda x: x['severity'], reverse=True)
+        breaking_news_alerts.sort(key=lambda x: x["severity"], reverse=True)
 
         return breaking_news_alerts[:limit]
 
@@ -477,10 +467,11 @@ async def get_breaking_news(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{symbol}/breaking-news", response_model=Optional[BreakingNewsAlertResponse])
+@router.get(
+    "/{symbol}/breaking-news", response_model=Optional[BreakingNewsAlertResponse]
+)
 async def get_symbol_breaking_news(
-    symbol: str,
-    hours: int = Query(24, ge=1, le=72, description="Hours to analyze")
+    symbol: str, hours: int = Query(24, ge=1, le=72, description="Hours to analyze")
 ):
     """
     Check for breaking news alerts for a specific symbol

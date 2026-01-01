@@ -13,16 +13,17 @@ Feeds results into MomentumWatchlist.
 """
 
 import logging
-from datetime import datetime, time
-from typing import List, Dict, Optional, Set
-import pytz
 import threading
+from datetime import datetime, time
+from typing import Dict, List, Optional, Set
+
+import pytz
 
 logger = logging.getLogger(__name__)
 
 from scanners import ScannerResult, ScannerType, get_scanner_config
-from scanners.gap_scanner import get_gap_scanner
 from scanners.gainer_scanner import get_gainer_scanner
+from scanners.gap_scanner import get_gap_scanner
 from scanners.hod_scanner import get_hod_scanner
 
 
@@ -34,15 +35,17 @@ class ScannerCoordinator:
     """
 
     def __init__(self):
-        self._et_tz = pytz.timezone('US/Eastern')
+        self._et_tz = pytz.timezone("US/Eastern")
         self._last_scan: Optional[datetime] = None
         self._scan_results: Dict[str, List[ScannerResult]] = {
             "GAPPER": [],
             "GAINER": [],
-            "HOD": []
+            "HOD": [],
         }
         self._lock = threading.Lock()
-        self._cutoff_time = time(16, 0)  # No new candidates after market close (4 PM ET)
+        self._cutoff_time = time(
+            16, 0
+        )  # No new candidates after market close (4 PM ET)
 
     def get_active_scanners(self) -> List[str]:
         """
@@ -144,7 +147,9 @@ class ScannerCoordinator:
             candidate_dicts = [c.to_dict() for c in candidates]
             watchlist.ingest_candidates(candidate_dicts)
 
-            logger.info(f"[ScannerCoordinator] Fed {len(candidates)} candidates to MomentumWatchlist")
+            logger.info(
+                f"[ScannerCoordinator] Fed {len(candidates)} candidates to MomentumWatchlist"
+            )
             return len(candidates)
 
         except ImportError:
@@ -181,14 +186,14 @@ class ScannerCoordinator:
             "candidate_counts": {
                 "GAPPER": len(self._scan_results.get("GAPPER", [])),
                 "GAINER": len(self._scan_results.get("GAINER", [])),
-                "HOD": len(self._scan_results.get("HOD", []))
+                "HOD": len(self._scan_results.get("HOD", [])),
             },
             "total_candidates": len(self.get_all_candidates()),
             "scanner_status": {
                 "gap": get_gap_scanner().get_status(),
                 "gainer": get_gainer_scanner().get_status(),
-                "hod": get_hod_scanner().get_status()
-            }
+                "hod": get_hod_scanner().get_status(),
+            },
         }
 
 

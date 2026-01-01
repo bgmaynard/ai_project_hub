@@ -21,9 +21,9 @@ TRADES_FILE = os.path.join(os.path.dirname(__file__), "scalper_trades.json")
 
 def load_trades() -> List[Dict]:
     """Load all historical trades"""
-    with open(TRADES_FILE, 'r') as f:
+    with open(TRADES_FILE, "r") as f:
         data = json.load(f)
-    return data.get('trades', [])
+    return data.get("trades", [])
 
 
 def analyze_stop_losses(trades: List[Dict]) -> Dict:
@@ -32,21 +32,21 @@ def analyze_stop_losses(trades: List[Dict]) -> Dict:
     other_trades = []
 
     for trade in trades:
-        if trade.get('status') != 'closed':
+        if trade.get("status") != "closed":
             continue
 
-        exit_reason = trade.get('exit_reason', '')
+        exit_reason = trade.get("exit_reason", "")
 
-        if 'STOP_LOSS' in exit_reason:
+        if "STOP_LOSS" in exit_reason:
             stop_loss_trades.append(trade)
         else:
             other_trades.append(trade)
 
     return {
-        'stop_loss_count': len(stop_loss_trades),
-        'stop_loss_trades': stop_loss_trades,
-        'other_count': len(other_trades),
-        'other_trades': other_trades
+        "stop_loss_count": len(stop_loss_trades),
+        "stop_loss_trades": stop_loss_trades,
+        "other_count": len(other_trades),
+        "other_trades": other_trades,
     }
 
 
@@ -61,13 +61,13 @@ def simulate_chronos_exit(trade: Dict) -> Dict:
 
     Conservative estimate: Chronos would have caught the trade at 1/3 of the loss
     """
-    entry_price = trade.get('entry_price', 0)
-    exit_price = trade.get('exit_price', 0)
-    shares = trade.get('shares', 0)
-    actual_pnl = trade.get('pnl', 0)
-    actual_pnl_pct = trade.get('pnl_percent', 0)
-    hold_time = trade.get('hold_time_seconds', 0)
-    max_gain = trade.get('max_gain_percent', 0)
+    entry_price = trade.get("entry_price", 0)
+    exit_price = trade.get("exit_price", 0)
+    shares = trade.get("shares", 0)
+    actual_pnl = trade.get("pnl", 0)
+    actual_pnl_pct = trade.get("pnl_percent", 0)
+    hold_time = trade.get("hold_time_seconds", 0)
+    max_gain = trade.get("max_gain_percent", 0)
 
     # Determine which Chronos trigger would have fired first
     chronos_trigger = None
@@ -98,18 +98,18 @@ def simulate_chronos_exit(trade: Dict) -> Dict:
     savings = projected_pnl - actual_pnl
 
     return {
-        'symbol': trade.get('symbol'),
-        'entry_price': entry_price,
-        'actual_exit_price': exit_price,
-        'projected_exit_price': round(projected_exit_price, 4),
-        'actual_pnl': round(actual_pnl, 2),
-        'projected_pnl': round(projected_pnl, 2),
-        'savings': round(savings, 2),
-        'actual_pnl_pct': round(actual_pnl_pct, 2),
-        'projected_pnl_pct': round(projected_exit_pnl_pct, 2),
-        'chronos_trigger': chronos_trigger,
-        'hold_time': hold_time,
-        'max_gain': round(max_gain, 2)
+        "symbol": trade.get("symbol"),
+        "entry_price": entry_price,
+        "actual_exit_price": exit_price,
+        "projected_exit_price": round(projected_exit_price, 4),
+        "actual_pnl": round(actual_pnl, 2),
+        "projected_pnl": round(projected_pnl, 2),
+        "savings": round(savings, 2),
+        "actual_pnl_pct": round(actual_pnl_pct, 2),
+        "projected_pnl_pct": round(projected_exit_pnl_pct, 2),
+        "chronos_trigger": chronos_trigger,
+        "hold_time": hold_time,
+        "max_gain": round(max_gain, 2),
     }
 
 
@@ -124,13 +124,13 @@ def run_backtest():
 
     # Analyze stop losses
     analysis = analyze_stop_losses(trades)
-    stop_loss_trades = analysis['stop_loss_trades']
+    stop_loss_trades = analysis["stop_loss_trades"]
 
     print(f"Stop loss exits: {analysis['stop_loss_count']}")
     print(f"Other exits: {analysis['other_count']}")
 
     # Calculate actual stop loss damage
-    total_stop_loss_pnl = sum(t.get('pnl', 0) for t in stop_loss_trades)
+    total_stop_loss_pnl = sum(t.get("pnl", 0) for t in stop_loss_trades)
     print(f"\nActual Stop Loss P&L: ${total_stop_loss_pnl:.2f}")
 
     if not stop_loss_trades:
@@ -150,32 +150,38 @@ def run_backtest():
     # Summary by trigger type
     trigger_stats = {}
     for sim in simulations:
-        trigger = sim['chronos_trigger']
+        trigger = sim["chronos_trigger"]
         if trigger not in trigger_stats:
             trigger_stats[trigger] = {
-                'count': 0,
-                'actual_pnl': 0,
-                'projected_pnl': 0,
-                'savings': 0
+                "count": 0,
+                "actual_pnl": 0,
+                "projected_pnl": 0,
+                "savings": 0,
             }
-        trigger_stats[trigger]['count'] += 1
-        trigger_stats[trigger]['actual_pnl'] += sim['actual_pnl']
-        trigger_stats[trigger]['projected_pnl'] += sim['projected_pnl']
-        trigger_stats[trigger]['savings'] += sim['savings']
+        trigger_stats[trigger]["count"] += 1
+        trigger_stats[trigger]["actual_pnl"] += sim["actual_pnl"]
+        trigger_stats[trigger]["projected_pnl"] += sim["projected_pnl"]
+        trigger_stats[trigger]["savings"] += sim["savings"]
 
     print("\nBy Trigger Type:")
-    print(f"{'Trigger':<20} {'Count':>6} {'Actual P&L':>12} {'Projected':>12} {'Savings':>10}")
+    print(
+        f"{'Trigger':<20} {'Count':>6} {'Actual P&L':>12} {'Projected':>12} {'Savings':>10}"
+    )
     print("-" * 62)
 
     for trigger, stats in sorted(trigger_stats.items()):
-        print(f"{trigger:<20} {stats['count']:>6} ${stats['actual_pnl']:>10.2f} ${stats['projected_pnl']:>10.2f} ${stats['savings']:>8.2f}")
+        print(
+            f"{trigger:<20} {stats['count']:>6} ${stats['actual_pnl']:>10.2f} ${stats['projected_pnl']:>10.2f} ${stats['savings']:>8.2f}"
+        )
 
     # Total savings
-    total_projected_pnl = sum(s['projected_pnl'] for s in simulations)
-    total_savings = sum(s['savings'] for s in simulations)
+    total_projected_pnl = sum(s["projected_pnl"] for s in simulations)
+    total_savings = sum(s["savings"] for s in simulations)
 
     print("-" * 62)
-    print(f"{'TOTAL':<20} {len(simulations):>6} ${total_stop_loss_pnl:>10.2f} ${total_projected_pnl:>10.2f} ${total_savings:>8.2f}")
+    print(
+        f"{'TOTAL':<20} {len(simulations):>6} ${total_stop_loss_pnl:>10.2f} ${total_projected_pnl:>10.2f} ${total_savings:>8.2f}"
+    )
 
     # Individual trade details
     print("\n" + "-" * 70)
@@ -183,36 +189,48 @@ def run_backtest():
     print("-" * 70)
 
     # Sort by worst actual P&L
-    simulations.sort(key=lambda x: x['actual_pnl'])
+    simulations.sort(key=lambda x: x["actual_pnl"])
 
-    print(f"{'Symbol':<8} {'Actual':>8} {'Projected':>10} {'Saved':>8} {'Trigger':<18} {'MaxGain':>8}")
+    print(
+        f"{'Symbol':<8} {'Actual':>8} {'Projected':>10} {'Saved':>8} {'Trigger':<18} {'MaxGain':>8}"
+    )
     print("-" * 62)
 
     for sim in simulations[:10]:
-        print(f"{sim['symbol']:<8} ${sim['actual_pnl']:>6.2f} ${sim['projected_pnl']:>8.2f} ${sim['savings']:>6.2f} {sim['chronos_trigger']:<18} {sim['max_gain']:>6.1f}%")
+        print(
+            f"{sim['symbol']:<8} ${sim['actual_pnl']:>6.2f} ${sim['projected_pnl']:>8.2f} ${sim['savings']:>6.2f} {sim['chronos_trigger']:<18} {sim['max_gain']:>6.1f}%"
+        )
 
     # Summary
     print("\n" + "=" * 70)
     print("PROJECTED IMPACT SUMMARY")
     print("=" * 70)
 
-    avg_stop_loss = total_stop_loss_pnl / len(stop_loss_trades) if stop_loss_trades else 0
+    avg_stop_loss = (
+        total_stop_loss_pnl / len(stop_loss_trades) if stop_loss_trades else 0
+    )
     avg_projected_loss = total_projected_pnl / len(simulations) if simulations else 0
 
     print(f"\nStop Loss Trades Analyzed: {len(stop_loss_trades)}")
     print(f"Average Stop Loss:         ${avg_stop_loss:.2f}")
     print(f"Average Projected Loss:    ${avg_projected_loss:.2f}")
-    print(f"Average Savings per Trade: ${(total_savings / len(simulations)) if simulations else 0:.2f}")
+    print(
+        f"Average Savings per Trade: ${(total_savings / len(simulations)) if simulations else 0:.2f}"
+    )
     print(f"\nTotal Actual Losses:       ${total_stop_loss_pnl:.2f}")
     print(f"Total Projected Losses:    ${total_projected_pnl:.2f}")
     print(f"TOTAL PROJECTED SAVINGS:   ${total_savings:.2f}")
 
-    savings_pct = (total_savings / abs(total_stop_loss_pnl) * 100) if total_stop_loss_pnl != 0 else 0
+    savings_pct = (
+        (total_savings / abs(total_stop_loss_pnl) * 100)
+        if total_stop_loss_pnl != 0
+        else 0
+    )
     print(f"Savings Percentage:        {savings_pct:.1f}%")
 
     # Win rate impact
-    other_trades = analysis['other_trades']
-    total_other_pnl = sum(t.get('pnl', 0) for t in other_trades)
+    other_trades = analysis["other_trades"]
+    total_other_pnl = sum(t.get("pnl", 0) for t in other_trades)
 
     print("\n" + "-" * 70)
     print("OVERALL PORTFOLIO IMPACT")
@@ -227,13 +245,13 @@ def run_backtest():
     print(f"NET IMPROVEMENT:           ${total_savings:.2f}")
 
     return {
-        'stop_loss_count': len(stop_loss_trades),
-        'total_stop_loss_pnl': total_stop_loss_pnl,
-        'total_projected_pnl': total_projected_pnl,
-        'total_savings': total_savings,
-        'savings_pct': savings_pct,
-        'trigger_stats': trigger_stats,
-        'simulations': simulations
+        "stop_loss_count": len(stop_loss_trades),
+        "total_stop_loss_pnl": total_stop_loss_pnl,
+        "total_projected_pnl": total_projected_pnl,
+        "total_savings": total_savings,
+        "savings_pct": savings_pct,
+        "trigger_stats": trigger_stats,
+        "simulations": simulations,
     }
 
 

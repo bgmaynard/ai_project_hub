@@ -23,11 +23,11 @@ This module monitors for:
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from dataclasses import dataclass, field
 import threading
 import time
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LULDBands:
     """LULD band calculations for a stock"""
+
     symbol: str
     reference_price: float  # Opening price or last consolidated
     tier: int  # 1 = S&P/Russell, 2 = Other NMS
@@ -84,28 +85,28 @@ class LULDBands:
 
         # Check if near band (within 2%)
         self.is_near_band = (
-            self.distance_to_upper_pct < 2.0 or
-            self.distance_to_lower_pct < 2.0
+            self.distance_to_upper_pct < 2.0 or self.distance_to_lower_pct < 2.0
         )
 
     def to_dict(self) -> Dict:
         return {
-            'symbol': self.symbol,
-            'reference_price': self.reference_price,
-            'tier': self.tier,
-            'upper_band': round(self.upper_band, 4),
-            'lower_band': round(self.lower_band, 4),
-            'band_percent': round(self.band_percent * 100, 1),
-            'current_price': self.current_price,
-            'distance_to_upper_pct': round(self.distance_to_upper_pct, 2),
-            'distance_to_lower_pct': round(self.distance_to_lower_pct, 2),
-            'is_near_band': self.is_near_band
+            "symbol": self.symbol,
+            "reference_price": self.reference_price,
+            "tier": self.tier,
+            "upper_band": round(self.upper_band, 4),
+            "lower_band": round(self.lower_band, 4),
+            "band_percent": round(self.band_percent * 100, 1),
+            "current_price": self.current_price,
+            "distance_to_upper_pct": round(self.distance_to_upper_pct, 2),
+            "distance_to_lower_pct": round(self.distance_to_lower_pct, 2),
+            "is_near_band": self.is_near_band,
         }
 
 
 @dataclass
 class HaltCountdown:
     """Tracks 15-second halt trigger countdown"""
+
     symbol: str
     band_hit_time: datetime
     band_type: str  # 'upper' or 'lower'
@@ -123,9 +124,9 @@ class HaltCountdown:
 
         # Check if still at band
         still_at_band = False
-        if self.band_type == 'upper' and price >= band.upper_band * 0.998:
+        if self.band_type == "upper" and price >= band.upper_band * 0.998:
             still_at_band = True
-        elif self.band_type == 'lower' and price <= band.lower_band * 1.002:
+        elif self.band_type == "lower" and price <= band.lower_band * 1.002:
             still_at_band = True
 
         if not still_at_band:
@@ -146,6 +147,7 @@ class HaltCountdown:
 @dataclass
 class HaltInfo:
     """Information about a trading halt"""
+
     symbol: str
     halt_price: float
     halt_time: datetime
@@ -184,12 +186,14 @@ class HaltInfo:
             "spread_percent": self.spread_percent,
             "resume_time": self.resume_time.isoformat() if self.resume_time else None,
             "resume_price": self.resume_price,
-            "estimated_resume": self.estimated_resume.isoformat() if self.estimated_resume else None,
+            "estimated_resume": (
+                self.estimated_resume.isoformat() if self.estimated_resume else None
+            ),
             "is_resumed": self.is_resumed,
             "resume_direction": self.resume_direction,
             "resume_gap_percent": self.resume_gap_percent,
             "continuation_action": self.continuation_action,
-            "duration_seconds": self.duration_seconds
+            "duration_seconds": self.duration_seconds,
         }
 
 
@@ -240,10 +244,7 @@ class HaltDetector:
         logger.info("HaltDetector initialized with LULD band tracking")
 
     def calculate_luld_bands(
-        self,
-        symbol: str,
-        reference_price: float,
-        tier: int = 2
+        self, symbol: str, reference_price: float, tier: int = 2
     ) -> LULDBands:
         """
         Calculate LULD bands for a symbol.
@@ -256,11 +257,7 @@ class HaltDetector:
         Returns:
             LULDBands with calculated upper/lower limits
         """
-        bands = LULDBands(
-            symbol=symbol,
-            reference_price=reference_price,
-            tier=tier
-        )
+        bands = LULDBands(symbol=symbol, reference_price=reference_price, tier=tier)
         bands.calculate_bands()
         self.luld_bands[symbol] = bands
 
@@ -279,26 +276,26 @@ class HaltDetector:
         Returns warning if within 2% of band.
         """
         if symbol not in self.luld_bands:
-            return {'warning': False}
+            return {"warning": False}
 
         bands = self.luld_bands[symbol]
         bands.update_price(price)
 
         result = {
-            'symbol': symbol,
-            'warning': bands.is_near_band,
-            'bands': bands.to_dict()
+            "symbol": symbol,
+            "warning": bands.is_near_band,
+            "bands": bands.to_dict(),
         }
 
         if bands.is_near_band:
             if bands.distance_to_upper_pct < 2.0:
-                result['approaching'] = 'upper'
-                result['distance_pct'] = bands.distance_to_upper_pct
-                result['band_price'] = bands.upper_band
+                result["approaching"] = "upper"
+                result["distance_pct"] = bands.distance_to_upper_pct
+                result["band_price"] = bands.upper_band
             else:
-                result['approaching'] = 'lower'
-                result['distance_pct'] = bands.distance_to_lower_pct
-                result['band_price'] = bands.lower_band
+                result["approaching"] = "lower"
+                result["distance_pct"] = bands.distance_to_lower_pct
+                result["band_price"] = bands.lower_band
 
             logger.warning(
                 f"LULD WARNING: {symbol} ${price:.2f} "
@@ -325,7 +322,7 @@ class HaltDetector:
             symbol=symbol,
             band_hit_time=datetime.now(),
             band_type=band_type,
-            band_price=bands.upper_band if band_type == 'upper' else bands.lower_band
+            band_price=bands.upper_band if band_type == "upper" else bands.lower_band,
         )
         self.halt_countdowns[symbol] = countdown
 
@@ -360,21 +357,25 @@ class HaltDetector:
                 f"FALSE HALT: {symbol} bounced after {countdown.seconds_at_band:.1f}s "
                 f"at {countdown.band_type} band"
             )
-            self.false_halts.append({
-                'symbol': symbol,
-                'time': datetime.now(),
-                'band_type': countdown.band_type,
-                'seconds': countdown.seconds_at_band
-            })
+            self.false_halts.append(
+                {
+                    "symbol": symbol,
+                    "time": datetime.now(),
+                    "band_type": countdown.band_type,
+                    "seconds": countdown.seconds_at_band,
+                }
+            )
             del self.halt_countdowns[symbol]
 
             if self.on_false_halt:
                 try:
-                    self.on_false_halt({
-                        'symbol': symbol,
-                        'band_type': countdown.band_type,
-                        'seconds': countdown.seconds_at_band
-                    })
+                    self.on_false_halt(
+                        {
+                            "symbol": symbol,
+                            "band_type": countdown.band_type,
+                            "seconds": countdown.seconds_at_band,
+                        }
+                    )
                 except Exception as e:
                     logger.error(f"False halt callback error: {e}")
 
@@ -398,40 +399,40 @@ class HaltDetector:
         - Multiple halts = exhaustion likely
         """
         prediction = {
-            'symbol': halt_info.symbol,
-            'halt_direction': halt_info.halt_direction,
-            'consecutive_halts': halt_info.consecutive_halts,
-            'predicted_action': 'WAIT',
-            'confidence': 0.5,
-            'reason': ''
+            "symbol": halt_info.symbol,
+            "halt_direction": halt_info.halt_direction,
+            "consecutive_halts": halt_info.consecutive_halts,
+            "predicted_action": "WAIT",
+            "confidence": 0.5,
+            "reason": "",
         }
 
-        if halt_info.halt_direction == 'UP':
+        if halt_info.halt_direction == "UP":
             if halt_info.consecutive_halts == 1:
                 # First up halt - usually continues up
-                prediction['predicted_action'] = 'BUY_BREAKOUT'
-                prediction['confidence'] = 0.6
-                prediction['reason'] = 'First up halt often continues momentum'
+                prediction["predicted_action"] = "BUY_BREAKOUT"
+                prediction["confidence"] = 0.6
+                prediction["reason"] = "First up halt often continues momentum"
             elif halt_info.consecutive_halts >= 3:
                 # 3+ up halts - exhaustion
-                prediction['predicted_action'] = 'FADE'
-                prediction['confidence'] = 0.7
-                prediction['reason'] = 'Multiple halts = buyer exhaustion, fade if flat'
+                prediction["predicted_action"] = "FADE"
+                prediction["confidence"] = 0.7
+                prediction["reason"] = "Multiple halts = buyer exhaustion, fade if flat"
             else:
-                prediction['predicted_action'] = 'WATCH'
-                prediction['confidence'] = 0.5
-                prediction['reason'] = 'Second halt - wait for direction'
+                prediction["predicted_action"] = "WATCH"
+                prediction["confidence"] = 0.5
+                prediction["reason"] = "Second halt - wait for direction"
 
-        elif halt_info.halt_direction == 'DOWN':
+        elif halt_info.halt_direction == "DOWN":
             if halt_info.consecutive_halts == 1:
                 # First down halt
-                prediction['predicted_action'] = 'WATCH_BOUNCE'
-                prediction['confidence'] = 0.55
-                prediction['reason'] = 'Down halt opening flat = potential long'
+                prediction["predicted_action"] = "WATCH_BOUNCE"
+                prediction["confidence"] = 0.55
+                prediction["reason"] = "Down halt opening flat = potential long"
             else:
-                prediction['predicted_action'] = 'AVOID'
-                prediction['confidence'] = 0.7
-                prediction['reason'] = 'Multiple down halts = dangerous, avoid'
+                prediction["predicted_action"] = "AVOID"
+                prediction["confidence"] = 0.7
+                prediction["reason"] = "Multiple down halts = dangerous, avoid"
 
         return prediction
 
@@ -446,20 +447,20 @@ class HaltDetector:
         # Add countdown info if active
         if symbol in self.halt_countdowns:
             countdown = self.halt_countdowns[symbol]
-            result['countdown'] = {
-                'active': True,
-                'seconds_at_band': countdown.seconds_at_band,
-                'seconds_remaining': max(0, 15 - countdown.seconds_at_band),
-                'band_type': countdown.band_type
+            result["countdown"] = {
+                "active": True,
+                "seconds_at_band": countdown.seconds_at_band,
+                "seconds_remaining": max(0, 15 - countdown.seconds_at_band),
+                "band_type": countdown.band_type,
             }
 
         return result
 
     async def check_for_halt(self, symbol: str, quote: Dict) -> Optional[HaltInfo]:
         """Check if a stock appears to be halted based on quote data"""
-        price = quote.get('price', 0) or quote.get('last', 0)
-        bid = quote.get('bid', 0)
-        ask = quote.get('ask', 0)
+        price = quote.get("price", 0) or quote.get("last", 0)
+        bid = quote.get("bid", 0)
+        ask = quote.get("ask", 0)
 
         if not price or not bid or not ask:
             return None
@@ -484,7 +485,11 @@ class HaltDetector:
 
                 # Calculate continuation direction
                 gap = price - halt_info.halt_price
-                halt_info.resume_gap_percent = (gap / halt_info.halt_price * 100) if halt_info.halt_price > 0 else 0
+                halt_info.resume_gap_percent = (
+                    (gap / halt_info.halt_price * 100)
+                    if halt_info.halt_price > 0
+                    else 0
+                )
 
                 # Determine direction and action
                 if halt_info.resume_gap_percent > 2:
@@ -508,7 +513,7 @@ class HaltDetector:
                     "SELL": "SELL",
                     "WATCH LONG": "WATCH+",
                     "WATCH SHORT": "WATCH-",
-                    "HOLD": "HOLD"
+                    "HOLD": "HOLD",
                 }
 
                 logger.warning(
@@ -523,12 +528,15 @@ class HaltDetector:
                 # Record resume to analytics
                 try:
                     from ai.halt_analytics import get_halt_analytics
+
                     analytics = get_halt_analytics()
-                    halt_id = f"{symbol}_{halt_info.halt_time.strftime('%Y%m%d_%H%M%S')}"
+                    halt_id = (
+                        f"{symbol}_{halt_info.halt_time.strftime('%Y%m%d_%H%M%S')}"
+                    )
                     analytics.record_resume(
                         halt_id=halt_id,
                         resume_price=price,
-                        resume_time=halt_info.resume_time
+                        resume_time=halt_info.resume_time,
                     )
                 except Exception as e:
                     logger.debug(f"Analytics resume record error: {e}")
@@ -563,7 +571,8 @@ class HaltDetector:
                 bid_at_halt=bid,
                 ask_at_halt=ask,
                 spread_percent=spread_percent,
-                estimated_resume=datetime.now() + timedelta(minutes=self.LULD_RESUME_MINUTES)
+                estimated_resume=datetime.now()
+                + timedelta(minutes=self.LULD_RESUME_MINUTES),
             )
 
             self.halted_stocks[symbol] = halt_info
@@ -579,6 +588,7 @@ class HaltDetector:
             # Record to analytics for strategy building
             try:
                 from ai.halt_analytics import get_halt_analytics
+
                 analytics = get_halt_analytics()
                 analytics.record_halt(
                     symbol=symbol,
@@ -586,7 +596,7 @@ class HaltDetector:
                     halt_time=halt_info.halt_time,
                     halt_type=halt_type,
                     pre_halt_price_5min=price * 0.95,  # Estimate, would need historical
-                    pre_halt_volume=quote.get('volume', 0)
+                    pre_halt_volume=quote.get("volume", 0),
                 )
             except Exception as e:
                 logger.debug(f"Analytics record error: {e}")
@@ -681,10 +691,10 @@ class HaltDetector:
         """Get quote for a symbol"""
         try:
             import httpx
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"http://localhost:9100/api/price/{symbol}",
-                    timeout=3.0
+                    f"http://localhost:9100/api/price/{symbol}", timeout=3.0
                 )
                 if response.status_code == 200:
                     return response.json()
@@ -731,10 +741,10 @@ async def check_halt(symbol: str) -> Optional[Dict]:
     # Get fresh quote and check
     try:
         import httpx
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"http://localhost:9100/api/price/{symbol}",
-                timeout=3.0
+                f"http://localhost:9100/api/price/{symbol}", timeout=3.0
             )
             if response.status_code == 200:
                 quote = response.json()
@@ -751,7 +761,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     # Test
-    detector = start_halt_detector(['AMCI', 'ASNS', 'BDRX'])
+    detector = start_halt_detector(["AMCI", "ASNS", "BDRX"])
 
     print("Monitoring for halts... Press Ctrl+C to stop")
 

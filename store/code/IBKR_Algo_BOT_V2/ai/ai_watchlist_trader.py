@@ -2,16 +2,17 @@
 AI Watchlist Trader - Automated Analysis and Trade Execution
 Monitors watchlist symbols, analyzes with AI, queues opportunities, executes trades
 """
-import logging
+
 import json
+import logging
+import os
 import threading
 import time
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
-from pathlib import Path
 from enum import Enum
-import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +26,17 @@ class TradeSignal(Enum):
 
 
 class OpportunityStatus(Enum):
-    PENDING = "pending"           # Waiting for better entry
-    READY = "ready"               # Ready to execute
-    EXECUTED = "executed"         # Trade placed
-    EXPIRED = "expired"           # Opportunity expired
-    CANCELLED = "cancelled"       # Manually cancelled
+    PENDING = "pending"  # Waiting for better entry
+    READY = "ready"  # Ready to execute
+    EXECUTED = "executed"  # Trade placed
+    EXPIRED = "expired"  # Opportunity expired
+    CANCELLED = "cancelled"  # Manually cancelled
 
 
 @dataclass
 class TradeOpportunity:
     """Represents a potential trade opportunity"""
+
     id: str
     symbol: str
     signal: str
@@ -56,6 +58,7 @@ class TradeOpportunity:
 @dataclass
 class SymbolAnalysis:
     """Complete AI analysis for a symbol"""
+
     symbol: str
     timestamp: str
     ai_signal: str
@@ -112,47 +115,52 @@ class AIWatchlistTrader:
             # Trading enabled
             "enabled": os.getenv("AI_TRADER_ENABLED", "false").lower() == "true",
             "paper_mode": os.getenv("AI_TRADER_PAPER", "true").lower() == "true",
-
             # AI Thresholds
             "min_confidence": float(os.getenv("AI_TRADER_MIN_CONFIDENCE", "0.60")),
-            "strong_signal_threshold": float(os.getenv("AI_TRADER_STRONG_THRESHOLD", "0.75")),
-
+            "strong_signal_threshold": float(
+                os.getenv("AI_TRADER_STRONG_THRESHOLD", "0.75")
+            ),
             # Position Sizing
             "max_position_value": float(os.getenv("AI_TRADER_MAX_POSITION", "1000")),
-            "position_size_pct": float(os.getenv("AI_TRADER_POSITION_PCT", "0.05")),  # 5% of capital
-
+            "position_size_pct": float(
+                os.getenv("AI_TRADER_POSITION_PCT", "0.05")
+            ),  # 5% of capital
             # Risk Management
             "stop_loss_pct": float(os.getenv("AI_TRADER_STOP_LOSS", "0.03")),  # 3%
             "take_profit_pct": float(os.getenv("AI_TRADER_TAKE_PROFIT", "0.06")),  # 6%
             "max_daily_trades": int(os.getenv("AI_TRADER_MAX_TRADES", "10")),
             "max_daily_loss": float(os.getenv("AI_TRADER_MAX_LOSS", "500")),
             "max_open_positions": int(os.getenv("AI_TRADER_MAX_POSITIONS", "5")),
-
             # Timing
             "opportunity_expiry_minutes": 60,
             "analysis_interval_seconds": 30,
             "monitor_interval_seconds": 5,
-
             # Strategies to use
-            "active_strategies": ["momentum", "ai_signal", "breakout", "mean_reversion"],
+            "active_strategies": [
+                "momentum",
+                "ai_signal",
+                "breakout",
+                "mean_reversion",
+            ],
         }
 
     def _load_state(self):
         """Load saved state from files"""
         try:
             if self.queue_file.exists():
-                with open(self.queue_file, 'r') as f:
+                with open(self.queue_file, "r") as f:
                     data = json.load(f)
                     self.opportunity_queue = [
-                        TradeOpportunity(**opp) for opp in data
-                        if opp.get('status') in ['pending', 'ready']
+                        TradeOpportunity(**opp)
+                        for opp in data
+                        if opp.get("status") in ["pending", "ready"]
                     ]
         except Exception as e:
             logger.warning(f"Could not load opportunity queue: {e}")
 
         try:
             if self.execution_file.exists():
-                with open(self.execution_file, 'r') as f:
+                with open(self.execution_file, "r") as f:
                     self.execution_log = json.load(f)
         except Exception as e:
             logger.warning(f"Could not load execution log: {e}")
@@ -160,13 +168,13 @@ class AIWatchlistTrader:
     def _save_state(self):
         """Save current state to files"""
         try:
-            with open(self.queue_file, 'w') as f:
+            with open(self.queue_file, "w") as f:
                 json.dump([asdict(opp) for opp in self.opportunity_queue], f, indent=2)
         except Exception as e:
             logger.error(f"Could not save opportunity queue: {e}")
 
         try:
-            with open(self.execution_file, 'w') as f:
+            with open(self.execution_file, "w") as f:
                 json.dump(self.execution_log[-1000:], f, indent=2)  # Keep last 1000
         except Exception as e:
             logger.error(f"Could not save execution log: {e}")
@@ -183,6 +191,7 @@ class AIWatchlistTrader:
         try:
             # Get AI prediction
             from ai.ai_predictor import get_predictor
+
             predictor = get_predictor()
 
             ai_result = {}
@@ -193,17 +202,23 @@ class AIWatchlistTrader:
                     ai_result = {"signal": "NEUTRAL", "confidence": 0, "action": "HOLD"}
             except Exception as e:
                 logger.warning(f"AI prediction failed for {symbol}: {e}")
-                ai_result = {"signal": "NEUTRAL", "confidence": 0, "action": "HOLD", "error": str(e)}
+                ai_result = {
+                    "signal": "NEUTRAL",
+                    "confidence": 0,
+                    "action": "HOLD",
+                    "error": str(e),
+                }
 
             # Get current price
             current_price = ai_result.get("current_price", 0)
             if current_price == 0:
                 try:
                     import yfinance as yf
+
                     ticker = yf.Ticker(symbol)
                     hist = ticker.history(period="1d")
                     if not hist.empty:
-                        current_price = float(hist['Close'].iloc[-1])
+                        current_price = float(hist["Close"].iloc[-1])
                 except:
                     pass
 
@@ -216,11 +231,11 @@ class AIWatchlistTrader:
             # Overall weighted score
             ai_conf = ai_result.get("confidence", 0)
             overall_score = (
-                ai_conf * 0.35 +
-                momentum_score * 0.25 +
-                technical_score * 0.20 +
-                volume_score * 0.10 +
-                news_sentiment * 0.10
+                ai_conf * 0.35
+                + momentum_score * 0.25
+                + technical_score * 0.20
+                + volume_score * 0.10
+                + news_sentiment * 0.10
             )
 
             # Determine which strategies are triggered
@@ -232,7 +247,11 @@ class AIWatchlistTrader:
             trade_rec = None
             if strategies_triggered and overall_score >= self.config["min_confidence"]:
                 trade_rec = self._create_opportunity(
-                    symbol, ai_result, current_price, overall_score, strategies_triggered
+                    symbol,
+                    ai_result,
+                    current_price,
+                    overall_score,
+                    strategies_triggered,
                 )
 
             # Determine direction
@@ -258,13 +277,15 @@ class AIWatchlistTrader:
                 news_sentiment=news_sentiment,
                 overall_score=overall_score,
                 strategies_triggered=strategies_triggered,
-                trade_recommendation=trade_rec
+                trade_recommendation=trade_rec,
             )
 
             # Cache analysis
             self.analyzed_symbols[symbol] = analysis
 
-            logger.info(f"[AI TRADER] {symbol}: Score={overall_score:.2f}, Signal={ai_signal}, Strategies={strategies_triggered}")
+            logger.info(
+                f"[AI TRADER] {symbol}: Score={overall_score:.2f}, Signal={ai_signal}, Strategies={strategies_triggered}"
+            )
 
             return analysis
 
@@ -284,20 +305,21 @@ class AIWatchlistTrader:
                 news_sentiment=0,
                 overall_score=0,
                 strategies_triggered=[],
-                trade_recommendation=None
+                trade_recommendation=None,
             )
 
     def _calculate_momentum_score(self, symbol: str) -> float:
         """Calculate momentum score (0-1)"""
         try:
             import yfinance as yf
+
             ticker = yf.Ticker(symbol)
             hist = ticker.history(period="1mo")
             if hist.empty or len(hist) < 5:
                 return 0.5
 
             # Price momentum
-            returns = hist['Close'].pct_change()
+            returns = hist["Close"].pct_change()
             recent_return = returns.iloc[-5:].mean()
 
             # Normalize to 0-1 scale
@@ -310,14 +332,15 @@ class AIWatchlistTrader:
         """Calculate volume score (0-1)"""
         try:
             import yfinance as yf
+
             ticker = yf.Ticker(symbol)
             hist = ticker.history(period="1mo")
             if hist.empty or len(hist) < 10:
                 return 0.5
 
             # Volume relative to average
-            avg_volume = hist['Volume'].iloc[:-5].mean()
-            recent_volume = hist['Volume'].iloc[-5:].mean()
+            avg_volume = hist["Volume"].iloc[:-5].mean()
+            recent_volume = hist["Volume"].iloc[-5:].mean()
 
             if avg_volume > 0:
                 volume_ratio = recent_volume / avg_volume
@@ -331,12 +354,13 @@ class AIWatchlistTrader:
         """Calculate technical indicators score (0-1)"""
         try:
             import yfinance as yf
+
             ticker = yf.Ticker(symbol)
             hist = ticker.history(period="3mo")
             if hist.empty or len(hist) < 50:
                 return 0.5
 
-            close = hist['Close']
+            close = hist["Close"]
 
             # Simple technical signals
             signals = []
@@ -379,6 +403,7 @@ class AIWatchlistTrader:
         try:
             # Try to get from news feed monitor
             from ai.news_feed_monitor import get_news_monitor
+
             monitor = get_news_monitor()
             sentiment = monitor.get_symbol_sentiment(symbol)
             if sentiment:
@@ -388,8 +413,14 @@ class AIWatchlistTrader:
             pass
         return 0.5  # Neutral default
 
-    def _check_strategies(self, symbol: str, ai_result: Dict,
-                         momentum: float, technical: float, volume: float) -> List[str]:
+    def _check_strategies(
+        self,
+        symbol: str,
+        ai_result: Dict,
+        momentum: float,
+        technical: float,
+        volume: float,
+    ) -> List[str]:
         """Check which trading strategies are triggered"""
         triggered = []
         ai_signal = ai_result.get("signal", "NEUTRAL")
@@ -424,24 +455,39 @@ class AIWatchlistTrader:
 
         return triggered
 
-    def _create_opportunity(self, symbol: str, ai_result: Dict,
-                           current_price: float, score: float,
-                           strategies: List[str]) -> TradeOpportunity:
+    def _create_opportunity(
+        self,
+        symbol: str,
+        ai_result: Dict,
+        current_price: float,
+        score: float,
+        strategies: List[str],
+    ) -> TradeOpportunity:
         """Create a trade opportunity from analysis"""
         self._opportunity_counter += 1
-        opp_id = f"OPP-{datetime.now().strftime('%Y%m%d%H%M%S')}-{self._opportunity_counter}"
+        opp_id = (
+            f"OPP-{datetime.now().strftime('%Y%m%d%H%M%S')}-{self._opportunity_counter}"
+        )
 
         action = ai_result.get("action", "HOLD")
-        signal = "STRONG_BUY" if score >= self.config["strong_signal_threshold"] else "BUY"
+        signal = (
+            "STRONG_BUY" if score >= self.config["strong_signal_threshold"] else "BUY"
+        )
         if action == "SELL":
-            signal = "STRONG_SELL" if score >= self.config["strong_signal_threshold"] else "SELL"
+            signal = (
+                "STRONG_SELL"
+                if score >= self.config["strong_signal_threshold"]
+                else "SELL"
+            )
 
         # Calculate position size
         position_value = min(
             self.config["max_position_value"],
-            10000 * self.config["position_size_pct"]  # Assume $10k capital
+            10000 * self.config["position_size_pct"],  # Assume $10k capital
         )
-        position_size = max(1, int(position_value / current_price)) if current_price > 0 else 1
+        position_size = (
+            max(1, int(position_value / current_price)) if current_price > 0 else 1
+        )
 
         # Calculate targets
         if action == "BUY":
@@ -451,7 +497,9 @@ class AIWatchlistTrader:
             target_price = current_price * (1 - self.config["take_profit_pct"])
             stop_loss = current_price * (1 + self.config["stop_loss_pct"])
 
-        expiry = datetime.now() + timedelta(minutes=self.config["opportunity_expiry_minutes"])
+        expiry = datetime.now() + timedelta(
+            minutes=self.config["opportunity_expiry_minutes"]
+        )
 
         # Priority based on score
         priority = min(10, max(1, int(score * 10)))
@@ -470,7 +518,7 @@ class AIWatchlistTrader:
             created_at=datetime.now().isoformat(),
             expires_at=expiry.isoformat(),
             status="pending",
-            priority=priority
+            priority=priority,
         )
 
         return opportunity
@@ -478,8 +526,11 @@ class AIWatchlistTrader:
     def add_to_queue(self, opportunity: TradeOpportunity):
         """Add opportunity to the trade queue"""
         # Check for duplicates
-        existing = [o for o in self.opportunity_queue
-                   if o.symbol == opportunity.symbol and o.status == "pending"]
+        existing = [
+            o
+            for o in self.opportunity_queue
+            if o.symbol == opportunity.symbol and o.status == "pending"
+        ]
 
         if existing:
             # Update existing if new one has higher priority
@@ -493,7 +544,9 @@ class AIWatchlistTrader:
         self.opportunity_queue.sort(key=lambda x: -x.priority)  # Sort by priority desc
         self._save_state()
 
-        logger.info(f"[AI TRADER] Added {opportunity.symbol} to queue: {opportunity.signal} @ ${opportunity.entry_price}")
+        logger.info(
+            f"[AI TRADER] Added {opportunity.symbol} to queue: {opportunity.signal} @ ${opportunity.entry_price}"
+        )
 
     def process_queue(self) -> List[Dict]:
         """Process the opportunity queue and execute ready trades"""
@@ -522,10 +575,13 @@ class AIWatchlistTrader:
 
         # Clean up old opportunities
         self.opportunity_queue = [
-            o for o in self.opportunity_queue
-            if o.status in ["pending", "ready"] or
-            (o.status == "executed" and
-             datetime.fromisoformat(o.executed_at) > now - timedelta(hours=24))
+            o
+            for o in self.opportunity_queue
+            if o.status in ["pending", "ready"]
+            or (
+                o.status == "executed"
+                and datetime.fromisoformat(o.executed_at) > now - timedelta(hours=24)
+            )
         ]
 
         self._save_state()
@@ -538,8 +594,9 @@ class AIWatchlistTrader:
 
         # Check daily limits
         today_trades = [
-            e for e in self.execution_log
-            if datetime.fromisoformat(e['timestamp']).date() == datetime.now().date()
+            e
+            for e in self.execution_log
+            if datetime.fromisoformat(e["timestamp"]).date() == datetime.now().date()
         ]
 
         if len(today_trades) >= self.config["max_daily_trades"]:
@@ -547,7 +604,7 @@ class AIWatchlistTrader:
             return False
 
         # Check daily loss
-        today_pnl = sum(e.get('pnl', 0) for e in today_trades)
+        today_pnl = sum(e.get("pnl", 0) for e in today_trades)
         if today_pnl < -self.config["max_daily_loss"]:
             logger.warning("[AI TRADER] Daily loss limit reached")
             return False
@@ -569,17 +626,20 @@ class AIWatchlistTrader:
 
         GATING ENFORCEMENT: All trades MUST go through Signal Gating Engine.
         """
-        logger.info(f"[AI TRADER] Executing: {opp.signal} {opp.symbol} x{opp.position_size}")
+        logger.info(
+            f"[AI TRADER] Executing: {opp.signal} {opp.symbol} x{opp.position_size}"
+        )
 
         # GATING ENFORCEMENT: Route through Signal Gating Engine first
         try:
             from ai.gated_trading import get_gated_trading_manager
+
             manager = get_gated_trading_manager()
 
             approved, exec_request, reason = manager.gate_trade_attempt(
                 symbol=opp.symbol,
                 trigger_type="ai_watchlist",
-                quote={"price": opp.entry_price}
+                quote={"price": opp.entry_price},
             )
 
             if not approved:
@@ -589,14 +649,16 @@ class AIWatchlistTrader:
                     "gating_vetoed": True,
                     "reason": reason,
                     "symbol": opp.symbol,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
                 self.execution_log.append(result)
                 self._save_state()
                 return result
 
             gating_token = f"GATED_{opp.symbol}_{datetime.now().strftime('%H%M%S')}"
-            logger.info(f"[AI TRADER] GATING APPROVED: {opp.symbol} - token={gating_token}")
+            logger.info(
+                f"[AI TRADER] GATING APPROVED: {opp.symbol} - token={gating_token}"
+            )
 
         except Exception as e:
             # Fail-closed: on gating error, reject trade
@@ -606,7 +668,7 @@ class AIWatchlistTrader:
                 "gating_error": True,
                 "error": str(e),
                 "symbol": opp.symbol,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             self.execution_log.append(result)
             self._save_state()
@@ -625,12 +687,13 @@ class AIWatchlistTrader:
                 "price": opp.entry_price,
                 "order_id": f"PAPER-{datetime.now().strftime('%Y%m%d%H%M%S')}",
                 "timestamp": datetime.now().isoformat(),
-                "pnl": 0
+                "pnl": 0,
             }
         else:
             # Real trading
             try:
                 from unified_broker import get_broker
+
                 broker = get_broker()
 
                 action = "BUY" if "BUY" in opp.signal else "SELL"
@@ -638,7 +701,7 @@ class AIWatchlistTrader:
                     symbol=opp.symbol,
                     qty=opp.position_size,
                     limit_price=opp.entry_price,
-                    side=action
+                    side=action,
                 )
 
                 result = {
@@ -651,7 +714,7 @@ class AIWatchlistTrader:
                     "price": opp.entry_price,
                     "order_id": order_result.get("order_id"),
                     "timestamp": datetime.now().isoformat(),
-                    "pnl": 0
+                    "pnl": 0,
                 }
             except Exception as e:
                 logger.error(f"[AI TRADER] Execution failed: {e}")
@@ -660,7 +723,7 @@ class AIWatchlistTrader:
                     "gating_token": gating_token,
                     "error": str(e),
                     "symbol": opp.symbol,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
 
         self.execution_log.append(result)
@@ -674,16 +737,20 @@ class AIWatchlistTrader:
     def _log_to_journal(self, opp: TradeOpportunity, result: Dict):
         """Log completed trade to the Trade Journal"""
         try:
-            from ai.trade_journal import get_trade_journal, TradeEntry
+            from ai.trade_journal import TradeEntry, get_trade_journal
+
             journal = get_trade_journal()
 
             # Get the analysis data if available
             analysis = self.analyzed_symbols.get(opp.symbol)
 
             trade = TradeEntry(
-                id=result.get("order_id", f"{opp.symbol}-{datetime.now().strftime('%Y%m%d%H%M%S')}"),
+                id=result.get(
+                    "order_id",
+                    f"{opp.symbol}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                ),
                 symbol=opp.symbol,
-                trade_date=datetime.now().strftime('%Y-%m-%d'),
+                trade_date=datetime.now().strftime("%Y-%m-%d"),
                 entry_time=result.get("timestamp", datetime.now().isoformat()),
                 entry_price=result.get("price", opp.entry_price),
                 entry_reason=opp.reason,
@@ -691,8 +758,16 @@ class AIWatchlistTrader:
                 position_size_usd=opp.entry_price * opp.position_size,
                 direction="LONG" if "BUY" in opp.signal else "SHORT",
                 strategy=opp.strategy,
-                pattern=analysis.strategies_triggered[0] if analysis and analysis.strategies_triggered else "",
-                setup_quality="A" if opp.confidence >= 0.75 else "B" if opp.confidence >= 0.60 else "C",
+                pattern=(
+                    analysis.strategies_triggered[0]
+                    if analysis and analysis.strategies_triggered
+                    else ""
+                ),
+                setup_quality=(
+                    "A"
+                    if opp.confidence >= 0.75
+                    else "B" if opp.confidence >= 0.60 else "C"
+                ),
                 ai_signal=analysis.ai_signal if analysis else opp.signal,
                 ai_confidence=opp.confidence,
                 ai_prediction=analysis.predicted_direction if analysis else "",
@@ -700,10 +775,12 @@ class AIWatchlistTrader:
                 relative_volume=0,  # TODO: Add from analysis
                 stop_loss=opp.stop_loss,
                 take_profit=opp.target_price,
-                risk_reward_ratio=opp.target_price / opp.stop_loss if opp.stop_loss else 0,
+                risk_reward_ratio=(
+                    opp.target_price / opp.stop_loss if opp.stop_loss else 0
+                ),
                 notes=f"Auto-traded via AI Watchlist Trader. Signal: {opp.signal}",
                 tags=f"{opp.strategy},{opp.signal}",
-                paper_trade=result.get("paper_trade", True)
+                paper_trade=result.get("paper_trade", True),
             )
 
             journal.log_trade(trade)
@@ -717,16 +794,13 @@ class AIWatchlistTrader:
         if symbols is None:
             try:
                 from watchlist_manager import get_watchlist_manager
+
                 wm = get_watchlist_manager()
                 symbols = wm.get_all_symbols()
             except:
                 symbols = []
 
-        results = {
-            "analyzed": 0,
-            "opportunities": 0,
-            "symbols": []
-        }
+        results = {"analyzed": 0, "opportunities": 0, "symbols": []}
 
         for symbol in symbols:
             analysis = self.analyze_symbol(symbol)
@@ -736,15 +810,19 @@ class AIWatchlistTrader:
                 self.add_to_queue(analysis.trade_recommendation)
                 results["opportunities"] += 1
 
-            results["symbols"].append({
-                "symbol": symbol,
-                "score": analysis.overall_score,
-                "signal": analysis.ai_signal,
-                "action": analysis.ai_action,
-                "has_opportunity": analysis.trade_recommendation is not None
-            })
+            results["symbols"].append(
+                {
+                    "symbol": symbol,
+                    "score": analysis.overall_score,
+                    "signal": analysis.ai_signal,
+                    "action": analysis.ai_action,
+                    "has_opportunity": analysis.trade_recommendation is not None,
+                }
+            )
 
-        logger.info(f"[AI TRADER] Analyzed {results['analyzed']} symbols, {results['opportunities']} opportunities")
+        logger.info(
+            f"[AI TRADER] Analyzed {results['analyzed']} symbols, {results['opportunities']} opportunities"
+        )
         return results
 
     def on_symbol_added(self, symbol: str):
@@ -757,9 +835,13 @@ class AIWatchlistTrader:
         # Queue if opportunity found
         if analysis.trade_recommendation:
             self.add_to_queue(analysis.trade_recommendation)
-            logger.info(f"[AI TRADER] {symbol} queued for trading: {analysis.trade_recommendation.signal}")
+            logger.info(
+                f"[AI TRADER] {symbol} queued for trading: {analysis.trade_recommendation.signal}"
+            )
         else:
-            logger.info(f"[AI TRADER] {symbol} analyzed but no opportunity (score: {analysis.overall_score:.2f})")
+            logger.info(
+                f"[AI TRADER] {symbol} analyzed but no opportunity (score: {analysis.overall_score:.2f})"
+            )
 
         return analysis
 
@@ -773,17 +855,20 @@ class AIWatchlistTrader:
             "paper_mode": self.config["paper_mode"],
             "pending_opportunities": len(pending),
             "ready_to_execute": len(ready),
-            "today_trades": len([
-                e for e in self.execution_log
-                if datetime.fromisoformat(e['timestamp']).date() == datetime.now().date()
-            ]),
+            "today_trades": len(
+                [
+                    e
+                    for e in self.execution_log
+                    if datetime.fromisoformat(e["timestamp"]).date()
+                    == datetime.now().date()
+                ]
+            ),
             "max_daily_trades": self.config["max_daily_trades"],
             "queue": [asdict(o) for o in pending[:10]],  # Top 10
             "analyzed_symbols": len(self.analyzed_symbols),
             "last_analysis": max(
-                (a.timestamp for a in self.analyzed_symbols.values()),
-                default=None
-            )
+                (a.timestamp for a in self.analyzed_symbols.values()), default=None
+            ),
         }
 
     def start_monitoring(self):
@@ -818,7 +903,9 @@ class AIWatchlistTrader:
                     self._last_watchlist_hash = current_hash
 
                 # Full analysis periodically
-                if datetime.now() - last_full_analysis > timedelta(seconds=self.config["analysis_interval_seconds"]):
+                if datetime.now() - last_full_analysis > timedelta(
+                    seconds=self.config["analysis_interval_seconds"]
+                ):
                     self.analyze_watchlist()
                     last_full_analysis = datetime.now()
 
@@ -834,6 +921,7 @@ class AIWatchlistTrader:
         """Get hash of current watchlist for change detection"""
         try:
             from watchlist_manager import get_watchlist_manager
+
             wm = get_watchlist_manager()
             symbols = sorted(wm.get_all_symbols())
             return hash(tuple(symbols))
@@ -844,6 +932,7 @@ class AIWatchlistTrader:
         """Detect newly added symbols"""
         try:
             from watchlist_manager import get_watchlist_manager
+
             wm = get_watchlist_manager()
             current_symbols = set(wm.get_all_symbols())
             analyzed = set(self.analyzed_symbols.keys())

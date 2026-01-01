@@ -14,13 +14,14 @@ Integration with Two-Phase Strategy:
 - Exit Indicator: MACD bearish divergence or histogram weakening
 """
 
-import pandas as pd
-import numpy as np
-import ta
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
 import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import ta
 import yfinance as yf
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MACDSignal:
     """MACD signal data"""
+
     symbol: str
     signal_type: str  # bullish, bearish, neutral
     crossover: bool  # True if crossover just occurred
@@ -57,18 +59,18 @@ class MACDAnalyzer:
     - Signal strength scoring
     """
 
-    def __init__(self,
-                 fast_period: int = 12,
-                 slow_period: int = 26,
-                 signal_period: int = 9):
+    def __init__(
+        self, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9
+    ):
         self.fast_period = fast_period
         self.slow_period = slow_period
         self.signal_period = signal_period
         self._data_cache: Dict[str, Dict] = {}
         self._cache_ttl = 60  # 1 minute cache for real-time
 
-    def _get_price_data(self, symbol: str, period: str = "5d",
-                        interval: str = "1m") -> Optional[pd.DataFrame]:
+    def _get_price_data(
+        self, symbol: str, period: str = "5d", interval: str = "1m"
+    ) -> Optional[pd.DataFrame]:
         """Fetch price data for MACD calculation"""
         cache_key = f"{symbol}_{period}_{interval}"
         now = datetime.now()
@@ -76,8 +78,8 @@ class MACDAnalyzer:
         # Check cache
         if cache_key in self._data_cache:
             entry = self._data_cache[cache_key]
-            if (now - entry['timestamp']).total_seconds() < self._cache_ttl:
-                return entry['data'].copy()
+            if (now - entry["timestamp"]).total_seconds() < self._cache_ttl:
+                return entry["data"].copy()
 
         try:
             ticker = yf.Ticker(symbol)
@@ -88,10 +90,7 @@ class MACDAnalyzer:
                 return None
 
             # Cache result
-            self._data_cache[cache_key] = {
-                'data': df,
-                'timestamp': now
-            }
+            self._data_cache[cache_key] = {"data": df, "timestamp": now}
 
             return df.copy()
 
@@ -104,11 +103,11 @@ class MACDAnalyzer:
         data = df.copy()
 
         # Handle multi-index columns
-        if hasattr(data.columns, 'get_level_values'):
+        if hasattr(data.columns, "get_level_values"):
             data.columns = data.columns.get_level_values(0)
 
-        close = data['Close']
-        if hasattr(close, 'values') and len(close.values.shape) > 1:
+        close = data["Close"]
+        if hasattr(close, "values") and len(close.values.shape) > 1:
             close = pd.Series(close.values.flatten(), index=data.index)
 
         # Calculate MACD
@@ -116,27 +115,27 @@ class MACDAnalyzer:
             close,
             window_slow=self.slow_period,
             window_fast=self.fast_period,
-            window_sign=self.signal_period
+            window_sign=self.signal_period,
         )
 
-        data['MACD'] = macd.macd()
-        data['MACD_Signal'] = macd.macd_signal()
-        data['MACD_Hist'] = macd.macd_diff()
+        data["MACD"] = macd.macd()
+        data["MACD_Signal"] = macd.macd_signal()
+        data["MACD_Hist"] = macd.macd_diff()
 
         # Calculate histogram change
-        data['MACD_Hist_Change'] = data['MACD_Hist'].diff()
+        data["MACD_Hist_Change"] = data["MACD_Hist"].diff()
 
         # Crossover signals
-        data['MACD_Cross'] = np.where(
-            (data['MACD'] > data['MACD_Signal']) &
-            (data['MACD'].shift(1) <= data['MACD_Signal'].shift(1)),
+        data["MACD_Cross"] = np.where(
+            (data["MACD"] > data["MACD_Signal"])
+            & (data["MACD"].shift(1) <= data["MACD_Signal"].shift(1)),
             1,  # Bullish crossover
             np.where(
-                (data['MACD'] < data['MACD_Signal']) &
-                (data['MACD'].shift(1) >= data['MACD_Signal'].shift(1)),
+                (data["MACD"] < data["MACD_Signal"])
+                & (data["MACD"].shift(1) >= data["MACD_Signal"].shift(1)),
                 -1,  # Bearish crossover
-                0
-            )
+                0,
+            ),
         )
 
         return data
@@ -152,8 +151,8 @@ class MACDAnalyzer:
             return None
 
         recent = df.tail(lookback)
-        close = recent['Close'].values
-        macd_hist = recent['MACD_Hist'].values
+        close = recent["Close"].values
+        macd_hist = recent["MACD_Hist"].values
 
         # Find local extremes
         price_lows = []
@@ -163,26 +162,38 @@ class MACDAnalyzer:
 
         for i in range(2, len(close) - 2):
             # Local low
-            if close[i] < close[i-1] and close[i] < close[i-2] and \
-               close[i] < close[i+1] and close[i] < close[i+2]:
+            if (
+                close[i] < close[i - 1]
+                and close[i] < close[i - 2]
+                and close[i] < close[i + 1]
+                and close[i] < close[i + 2]
+            ):
                 price_lows.append((i, close[i]))
                 macd_lows.append((i, macd_hist[i]))
             # Local high
-            if close[i] > close[i-1] and close[i] > close[i-2] and \
-               close[i] > close[i+1] and close[i] > close[i+2]:
+            if (
+                close[i] > close[i - 1]
+                and close[i] > close[i - 2]
+                and close[i] > close[i + 1]
+                and close[i] > close[i + 2]
+            ):
                 price_highs.append((i, close[i]))
                 macd_highs.append((i, macd_hist[i]))
 
         # Check for bullish divergence (price lower low, MACD higher low)
         if len(price_lows) >= 2 and len(macd_lows) >= 2:
-            if price_lows[-1][1] < price_lows[-2][1] and \
-               macd_lows[-1][1] > macd_lows[-2][1]:
+            if (
+                price_lows[-1][1] < price_lows[-2][1]
+                and macd_lows[-1][1] > macd_lows[-2][1]
+            ):
                 return "bullish_div"
 
         # Check for bearish divergence (price higher high, MACD lower high)
         if len(price_highs) >= 2 and len(macd_highs) >= 2:
-            if price_highs[-1][1] > price_highs[-2][1] and \
-               macd_highs[-1][1] < macd_highs[-2][1]:
+            if (
+                price_highs[-1][1] > price_highs[-2][1]
+                and macd_highs[-1][1] < macd_highs[-2][1]
+            ):
                 return "bearish_div"
 
         return None
@@ -192,15 +203,15 @@ class MACDAnalyzer:
         if len(df) < bars:
             return "flat"
 
-        recent_hist = df['MACD_Hist'].tail(bars).values
+        recent_hist = df["MACD_Hist"].tail(bars).values
 
         # Check if absolute values are increasing (expanding)
         abs_hist = np.abs(recent_hist)
-        if all(abs_hist[i] < abs_hist[i+1] for i in range(len(abs_hist)-1)):
+        if all(abs_hist[i] < abs_hist[i + 1] for i in range(len(abs_hist) - 1)):
             return "expanding"
 
         # Check if absolute values are decreasing (contracting)
-        if all(abs_hist[i] > abs_hist[i+1] for i in range(len(abs_hist)-1)):
+        if all(abs_hist[i] > abs_hist[i + 1] for i in range(len(abs_hist) - 1)):
             return "contracting"
 
         return "flat"
@@ -219,11 +230,11 @@ class MACDAnalyzer:
             return 0.0
 
         latest = df.iloc[-1]
-        hist = latest['MACD_Hist']
-        macd_line = latest['MACD']
+        hist = latest["MACD_Hist"]
+        macd_line = latest["MACD"]
 
         # Average histogram magnitude (last 20 bars)
-        avg_hist = df['MACD_Hist'].tail(20).abs().mean()
+        avg_hist = df["MACD_Hist"].tail(20).abs().mean()
         if avg_hist == 0:
             avg_hist = 0.001
 
@@ -232,10 +243,14 @@ class MACDAnalyzer:
 
         # Histogram momentum (expanding = stronger)
         hist_trend = self.get_histogram_trend(df)
-        trend_bonus = 0.2 if hist_trend == "expanding" else (-0.1 if hist_trend == "contracting" else 0)
+        trend_bonus = (
+            0.2
+            if hist_trend == "expanding"
+            else (-0.1 if hist_trend == "contracting" else 0)
+        )
 
         # Recent crossover bonus
-        recent_cross = df['MACD_Cross'].tail(5).abs().sum()
+        recent_cross = df["MACD_Cross"].tail(5).abs().sum()
         cross_bonus = 0.2 if recent_cross > 0 else 0
 
         # Combine factors
@@ -256,15 +271,15 @@ class MACDAnalyzer:
         # Calculate MACD
         df = self.calculate_macd(df)
 
-        if df['MACD'].isna().all():
+        if df["MACD"].isna().all():
             logger.warning(f"MACD calculation failed for {symbol}")
             return None
 
         latest = df.iloc[-1]
-        macd_line = float(latest['MACD'])
-        signal_line = float(latest['MACD_Signal'])
-        histogram = float(latest['MACD_Hist'])
-        crossover = int(latest['MACD_Cross'])
+        macd_line = float(latest["MACD"])
+        signal_line = float(latest["MACD_Signal"])
+        histogram = float(latest["MACD_Hist"])
+        crossover = int(latest["MACD_Cross"])
 
         # Determine signal type
         if macd_line > signal_line:
@@ -276,8 +291,11 @@ class MACDAnalyzer:
 
         # Crossover detection
         crossover_occurred = crossover != 0
-        crossover_type = "bullish_cross" if crossover == 1 else \
-                        ("bearish_cross" if crossover == -1 else "none")
+        crossover_type = (
+            "bullish_cross"
+            if crossover == 1
+            else ("bearish_cross" if crossover == -1 else "none")
+        )
 
         # Divergence
         divergence = self.detect_divergence(df)
@@ -302,10 +320,10 @@ class MACDAnalyzer:
         # Phase 2 readiness check
         # Ready when: Bullish signal + strength > 0.5 + (crossover OR expanding histogram)
         phase2_ready = (
-            signal_type == "bullish" and
-            strength >= 0.5 and
-            (crossover_occurred or hist_trend == "expanding") and
-            divergence != "bearish_div"
+            signal_type == "bullish"
+            and strength >= 0.5
+            and (crossover_occurred or hist_trend == "expanding")
+            and divergence != "bearish_div"
         )
 
         return MACDSignal(
@@ -321,7 +339,7 @@ class MACDAnalyzer:
             strength=strength,
             momentum_score=momentum,
             phase2_ready=phase2_ready,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
     def check_phase2_entry(self, symbol: str) -> Tuple[bool, str, Dict]:
@@ -343,7 +361,7 @@ class MACDAnalyzer:
             "histogram_trend": signal.histogram_trend,
             "strength": signal.strength,
             "momentum": signal.momentum_score,
-            "divergence": signal.divergence
+            "divergence": signal.divergence,
         }
 
         # Entry conditions for Phase 2
@@ -384,7 +402,7 @@ class MACDAnalyzer:
             "crossover": signal.crossover_type,
             "histogram_trend": signal.histogram_trend,
             "strength": signal.strength,
-            "divergence": signal.divergence
+            "divergence": signal.divergence,
         }
 
         # Exit conditions
@@ -437,7 +455,7 @@ def check_phase2_conditions(symbol: str) -> Dict:
         "should_enter": should_enter,
         "reason": reason,
         "details": details,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -453,7 +471,7 @@ if __name__ == "__main__":
     for symbol in test_symbols:
         print(f"\n{'='*50}")
         print(f"Analyzing {symbol}")
-        print('='*50)
+        print("=" * 50)
 
         signal = analyzer.analyze(symbol)
         if signal:

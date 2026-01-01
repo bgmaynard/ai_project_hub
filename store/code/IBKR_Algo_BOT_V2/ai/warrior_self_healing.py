@@ -20,20 +20,21 @@ Features:
 
 import json
 import logging
-import traceback
-from typing import Dict, List, Any, Optional, Callable
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from enum import Enum
 import time
+import traceback
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
-from claude_integration import get_claude_integration, ClaudeRequest
+from claude_integration import ClaudeRequest, get_claude_integration
 
 logger = logging.getLogger(__name__)
 
 
 class ErrorSeverity(Enum):
     """Error severity levels"""
+
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -42,6 +43,7 @@ class ErrorSeverity(Enum):
 
 class ErrorCategory(Enum):
     """Error categories"""
+
     DATA_FEED = "DATA_FEED"
     API_CONNECTION = "API_CONNECTION"
     PATTERN_DETECTION = "PATTERN_DETECTION"
@@ -53,6 +55,7 @@ class ErrorCategory(Enum):
 
 class RecoveryStatus(Enum):
     """Recovery attempt status"""
+
     PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESSFUL = "SUCCESSFUL"
@@ -63,6 +66,7 @@ class RecoveryStatus(Enum):
 @dataclass
 class ErrorContext:
     """Contextual information about an error"""
+
     error_type: str
     error_message: str
     category: ErrorCategory
@@ -76,6 +80,7 @@ class ErrorContext:
 @dataclass
 class RecoveryAction:
     """A recovery action to attempt"""
+
     action_name: str
     action_function: Optional[Callable] = None
     description: str = ""
@@ -86,6 +91,7 @@ class RecoveryAction:
 @dataclass
 class RecoveryResult:
     """Result of a recovery attempt"""
+
     error_context: ErrorContext
     diagnosis: str
     recovery_actions: List[str]
@@ -121,18 +127,18 @@ class SelfHealingSystem:
             RecoveryAction(
                 action_name="clear_cache",
                 description="Clear cached market data",
-                estimated_time_seconds=1
+                estimated_time_seconds=1,
             ),
             RecoveryAction(
                 action_name="reconnect_data_feed",
                 description="Reconnect to data provider",
-                estimated_time_seconds=5
+                estimated_time_seconds=5,
             ),
             RecoveryAction(
                 action_name="switch_backup_feed",
                 description="Switch to backup data source",
-                estimated_time_seconds=10
-            )
+                estimated_time_seconds=10,
+            ),
         ]
 
         # API connection recovery strategies
@@ -140,23 +146,23 @@ class SelfHealingSystem:
             RecoveryAction(
                 action_name="retry_connection",
                 description="Retry API connection (3 attempts)",
-                estimated_time_seconds=15
+                estimated_time_seconds=15,
             ),
             RecoveryAction(
                 action_name="verify_credentials",
                 description="Verify API credentials",
-                estimated_time_seconds=2
+                estimated_time_seconds=2,
             ),
             RecoveryAction(
                 action_name="check_gateway_status",
                 description="Check IBKR Gateway status",
-                estimated_time_seconds=3
+                estimated_time_seconds=3,
             ),
             RecoveryAction(
                 action_name="restart_gateway",
                 description="Attempt to restart IBKR Gateway",
-                estimated_time_seconds=30
-            )
+                estimated_time_seconds=30,
+            ),
         ]
 
         # Pattern detection recovery strategies
@@ -164,18 +170,18 @@ class SelfHealingSystem:
             RecoveryAction(
                 action_name="lower_confidence_threshold",
                 description="Temporarily lower confidence thresholds",
-                estimated_time_seconds=1
+                estimated_time_seconds=1,
             ),
             RecoveryAction(
                 action_name="restart_detector",
                 description="Restart pattern detector service",
-                estimated_time_seconds=5
+                estimated_time_seconds=5,
             ),
             RecoveryAction(
                 action_name="check_market_data",
                 description="Verify market data availability",
-                estimated_time_seconds=2
-            )
+                estimated_time_seconds=2,
+            ),
         ]
 
         # Risk management recovery strategies
@@ -183,18 +189,18 @@ class SelfHealingSystem:
             RecoveryAction(
                 action_name="halt_trading",
                 description="Halt all trading activity",
-                estimated_time_seconds=1
+                estimated_time_seconds=1,
             ),
             RecoveryAction(
                 action_name="verify_positions",
                 description="Verify open positions",
-                estimated_time_seconds=5
+                estimated_time_seconds=5,
             ),
             RecoveryAction(
                 action_name="recalculate_risk",
                 description="Recalculate risk metrics",
-                estimated_time_seconds=2
-            )
+                estimated_time_seconds=2,
+            ),
         ]
 
         # Database recovery strategies
@@ -202,25 +208,25 @@ class SelfHealingSystem:
             RecoveryAction(
                 action_name="reconnect_database",
                 description="Reconnect to database",
-                estimated_time_seconds=2
+                estimated_time_seconds=2,
             ),
             RecoveryAction(
                 action_name="verify_integrity",
                 description="Check database integrity",
-                estimated_time_seconds=5
+                estimated_time_seconds=5,
             ),
             RecoveryAction(
                 action_name="backup_database",
                 description="Create emergency backup",
-                estimated_time_seconds=10
-            )
+                estimated_time_seconds=10,
+            ),
         ]
 
     def detect_error(
         self,
         error: Exception,
         component: str = "unknown",
-        additional_data: Optional[Dict[str, Any]] = None
+        additional_data: Optional[Dict[str, Any]] = None,
     ) -> ErrorContext:
         """
         Detect and categorize an error
@@ -251,7 +257,7 @@ class SelfHealingSystem:
             timestamp=datetime.now(),
             stack_trace=stack_trace,
             component=component,
-            additional_data=additional_data
+            additional_data=additional_data,
         )
 
         # Track active error
@@ -266,10 +272,7 @@ class SelfHealingSystem:
         return context
 
     def _categorize_error(
-        self,
-        error_type: str,
-        error_message: str,
-        component: str
+        self, error_type: str, error_message: str, component: str
     ) -> ErrorCategory:
         """Categorize error based on type, message, and component"""
 
@@ -277,11 +280,17 @@ class SelfHealingSystem:
         component_lower = component.lower()
 
         # Data feed errors
-        if any(keyword in error_lower for keyword in ["stale", "missing data", "no data", "timeout"]):
+        if any(
+            keyword in error_lower
+            for keyword in ["stale", "missing data", "no data", "timeout"]
+        ):
             return ErrorCategory.DATA_FEED
 
         # API connection errors
-        if any(keyword in error_lower for keyword in ["connection", "api", "gateway", "timeout"]):
+        if any(
+            keyword in error_lower
+            for keyword in ["connection", "api", "gateway", "timeout"]
+        ):
             return ErrorCategory.API_CONNECTION
 
         # Pattern detection errors
@@ -293,7 +302,9 @@ class SelfHealingSystem:
             return ErrorCategory.RISK_MANAGEMENT
 
         # Database errors
-        if any(keyword in error_lower for keyword in ["database", "sql", "sqlite", "query"]):
+        if any(
+            keyword in error_lower for keyword in ["database", "sql", "sqlite", "query"]
+        ):
             return ErrorCategory.DATABASE
 
         # Configuration errors
@@ -303,16 +314,17 @@ class SelfHealingSystem:
         return ErrorCategory.UNKNOWN
 
     def _determine_severity(
-        self,
-        category: ErrorCategory,
-        error_message: str
+        self, category: ErrorCategory, error_message: str
     ) -> ErrorSeverity:
         """Determine error severity"""
 
         error_lower = error_message.lower()
 
         # Critical keywords
-        if any(keyword in error_lower for keyword in ["critical", "fatal", "crash", "corrupt"]):
+        if any(
+            keyword in error_lower
+            for keyword in ["critical", "fatal", "crash", "corrupt"]
+        ):
             return ErrorSeverity.CRITICAL
 
         # Category-based severity
@@ -334,9 +346,7 @@ class SelfHealingSystem:
         return ErrorSeverity.MEDIUM
 
     def diagnose_error(
-        self,
-        context: ErrorContext,
-        use_ai: bool = True
+        self, context: ErrorContext, use_ai: bool = True
     ) -> Dict[str, Any]:
         """
         Diagnose error and suggest recovery
@@ -353,10 +363,7 @@ class SelfHealingSystem:
         else:
             return self._diagnose_rule_based(context)
 
-    def _diagnose_rule_based(
-        self,
-        context: ErrorContext
-    ) -> Dict[str, Any]:
+    def _diagnose_rule_based(self, context: ErrorContext) -> Dict[str, Any]:
         """Rule-based error diagnosis"""
 
         # Get predefined recovery actions
@@ -371,14 +378,11 @@ class SelfHealingSystem:
             "preventive_measures": [
                 "Monitor error frequency",
                 "Review logs for patterns",
-                "Update error handling"
-            ]
+                "Update error handling",
+            ],
         }
 
-    def _diagnose_with_ai(
-        self,
-        context: ErrorContext
-    ) -> Dict[str, Any]:
+    def _diagnose_with_ai(self, context: ErrorContext) -> Dict[str, Any]:
         """AI-powered error diagnosis using Claude"""
 
         # Build error context for Claude
@@ -425,10 +429,12 @@ Focus on actionable recovery steps for a day trading system."""
             prompt=prompt,
             max_tokens=1536,
             temperature=0.3,  # Lower temperature for consistent diagnosis
-            system_prompt="You are a system reliability engineer diagnosing trading system errors. Provide clear, actionable recovery steps."
+            system_prompt="You are a system reliability engineer diagnosing trading system errors. Provide clear, actionable recovery steps.",
         )
 
-        response = self.claude.request(request, use_cache=False)  # Don't cache error diagnoses
+        response = self.claude.request(
+            request, use_cache=False
+        )  # Don't cache error diagnoses
 
         if not response.success:
             logger.error(f"AI diagnosis failed: {response.error}")
@@ -444,9 +450,7 @@ Focus on actionable recovery steps for a day trading system."""
             return self._diagnose_rule_based(context)
 
     def recover_from_error(
-        self,
-        context: ErrorContext,
-        auto_recover: bool = True
+        self, context: ErrorContext, auto_recover: bool = True
     ) -> RecoveryResult:
         """
         Attempt to recover from error
@@ -464,7 +468,7 @@ Focus on actionable recovery steps for a day trading system."""
         diagnosis_dict = self.diagnose_error(context, use_ai=True)
 
         # Determine if manual intervention required
-        manual_required = diagnosis_dict.get('requires_manual_intervention', False)
+        manual_required = diagnosis_dict.get("requires_manual_intervention", False)
 
         attempted_actions = []
         recovery_status = RecoveryStatus.PENDING
@@ -515,13 +519,13 @@ Focus on actionable recovery steps for a day trading system."""
         # Create result
         result = RecoveryResult(
             error_context=context,
-            diagnosis=diagnosis_dict.get('diagnosis', 'Error detected'),
-            recovery_actions=diagnosis_dict.get('recovery_steps', []),
+            diagnosis=diagnosis_dict.get("diagnosis", "Error detected"),
+            recovery_actions=diagnosis_dict.get("recovery_steps", []),
             attempted_actions=attempted_actions,
             status=recovery_status,
             recovery_time_seconds=recovery_time,
-            resolution_notes=diagnosis_dict.get('root_cause', ''),
-            requires_manual_intervention=manual_required
+            resolution_notes=diagnosis_dict.get("root_cause", ""),
+            requires_manual_intervention=manual_required,
         )
 
         # Store in history
@@ -552,7 +556,7 @@ Focus on actionable recovery steps for a day trading system."""
             ErrorSeverity.LOW: 0,
             ErrorSeverity.MEDIUM: 0,
             ErrorSeverity.HIGH: 0,
-            ErrorSeverity.CRITICAL: 0
+            ErrorSeverity.CRITICAL: 0,
         }
 
         for error in self.active_errors.values():
@@ -578,13 +582,13 @@ Focus on actionable recovery steps for a day trading system."""
 
         # Recent recovery stats
         recent_recoveries = [
-            r for r in self.error_history
+            r
+            for r in self.error_history
             if r.timestamp > datetime.now() - timedelta(hours=1)
         ]
 
         successful_recoveries = sum(
-            1 for r in recent_recoveries
-            if r.status == RecoveryStatus.SUCCESSFUL
+            1 for r in recent_recoveries if r.status == RecoveryStatus.SUCCESSFUL
         )
 
         return {
@@ -595,21 +599,20 @@ Focus on actionable recovery steps for a day trading system."""
                 "low": severity_counts[ErrorSeverity.LOW],
                 "medium": severity_counts[ErrorSeverity.MEDIUM],
                 "high": severity_counts[ErrorSeverity.HIGH],
-                "critical": severity_counts[ErrorSeverity.CRITICAL]
+                "critical": severity_counts[ErrorSeverity.CRITICAL],
             },
             "recent_recoveries_1h": len(recent_recoveries),
             "successful_recoveries_1h": successful_recoveries,
             "recovery_success_rate": (
                 (successful_recoveries / len(recent_recoveries)) * 100
-                if recent_recoveries else 0
+                if recent_recoveries
+                else 0
             ),
-            "last_check": datetime.now().isoformat()
+            "last_check": datetime.now().isoformat(),
         }
 
     def get_error_history(
-        self,
-        hours: int = 24,
-        category: Optional[ErrorCategory] = None
+        self, hours: int = 24, category: Optional[ErrorCategory] = None
     ) -> List[RecoveryResult]:
         """
         Get error recovery history
@@ -622,16 +625,10 @@ Focus on actionable recovery steps for a day trading system."""
             List of RecoveryResult objects
         """
         cutoff = datetime.now() - timedelta(hours=hours)
-        history = [
-            r for r in self.error_history
-            if r.timestamp > cutoff
-        ]
+        history = [r for r in self.error_history if r.timestamp > cutoff]
 
         if category:
-            history = [
-                r for r in history
-                if r.error_context.category == category
-            ]
+            history = [r for r in history if r.error_context.category == category]
 
         return history
 
@@ -640,8 +637,7 @@ Focus on actionable recovery steps for a day trading system."""
         # Keep only errors from the last hour
         cutoff = datetime.now() - timedelta(hours=1)
         self.active_errors = {
-            k: v for k, v in self.active_errors.items()
-            if v.timestamp > cutoff
+            k: v for k, v in self.active_errors.items() if v.timestamp > cutoff
         }
         logger.info(f"Cleared resolved errors (active: {len(self.active_errors)})")
 
@@ -674,7 +670,7 @@ if __name__ == "__main__":
         context = system.detect_error(
             error=e,
             component="ibkr_connector",
-            additional_data={"retry_count": 3, "last_success": "2025-11-15 09:30:00"}
+            additional_data={"retry_count": 3, "last_success": "2025-11-15 09:30:00"},
         )
 
         print(f"\nError Detected:")

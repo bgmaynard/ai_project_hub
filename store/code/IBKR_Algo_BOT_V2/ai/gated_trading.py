@@ -22,26 +22,15 @@ This ensures:
 
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
-from ai.signal_contract import (
-    SignalContract,
-    ChronosContext,
-    RiskState,
-    GateResult,
-    get_contract_repository
-)
-from ai.signal_gating_engine import (
-    SignalGatingEngine,
-    get_gating_engine,
-    ExecutionRequest,
-    create_execution_request
-)
-from ai.chronos_adapter import (
-    ChronosAdapter,
-    get_chronos_adapter,
-    get_market_context
-)
+from ai.chronos_adapter import (ChronosAdapter, get_chronos_adapter,
+                                get_market_context)
+from ai.signal_contract import (ChronosContext, GateResult, RiskState,
+                                SignalContract, get_contract_repository)
+from ai.signal_gating_engine import (ExecutionRequest, SignalGatingEngine,
+                                     create_execution_request,
+                                     get_gating_engine)
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +64,7 @@ class GatedTradingManager:
         open_positions: int = 0,
         daily_trades: int = 0,
         current_drawdown: float = 0,
-        symbol_cooldowns: Dict[str, str] = None
+        symbol_cooldowns: Dict[str, str] = None,
     ):
         """
         Update the current risk state.
@@ -90,11 +79,7 @@ class GatedTradingManager:
             self.risk_state.symbol_cooldowns = symbol_cooldowns
 
     def gate_trade_attempt(
-        self,
-        symbol: str,
-        trigger_type: str,
-        quote: Dict = None,
-        df=None
+        self, symbol: str, trigger_type: str, quote: Dict = None, df=None
     ) -> tuple[bool, Optional[ExecutionRequest], str]:
         """
         Gate a trade attempt through the full pipeline.
@@ -121,7 +106,9 @@ class GatedTradingManager:
         # STEP 0: TRADING WINDOW CHECK (MANDATORY - no overrides)
         # All new entries MUST occur within 07:00-09:30 AM ET
         try:
-            from ai.time_controls import is_in_warrior_window, VETO_TRADING_WINDOW_CLOSED, get_eastern_time
+            from ai.time_controls import (VETO_TRADING_WINDOW_CLOSED,
+                                          get_eastern_time,
+                                          is_in_warrior_window)
 
             if not is_in_warrior_window():
                 self.vetoed_count += 1
@@ -163,9 +150,7 @@ class GatedTradingManager:
 
         # Step 3: Run through gating engine
         gate_result = self.gating_engine.gate_signal(
-            contract,
-            chronos_context,
-            self.risk_state
+            contract, chronos_context, self.risk_state
         )
 
         # Step 4: Handle result
@@ -177,7 +162,7 @@ class GatedTradingManager:
                 contract,
                 gate_result,
                 chronos_context,
-                position_size_pct=contract.max_position_pct
+                position_size_pct=contract.max_position_pct,
             )
 
             logger.info(
@@ -198,26 +183,17 @@ class GatedTradingManager:
 
             return False, None, f"{gate_result.veto_reason}: {gate_result.veto_details}"
 
-    def _get_chronos_context(
-        self,
-        symbol: str,
-        df=None
-    ) -> ChronosContext:
+    def _get_chronos_context(self, symbol: str, df=None) -> ChronosContext:
         """Get Chronos context for a symbol."""
         try:
             return self.chronos_adapter.get_context(symbol, df)
         except Exception as e:
             logger.warning(f"Chronos context failed for {symbol}: {e}")
             # Return neutral context
-            return ChronosContext(
-                market_regime="UNKNOWN",
-                regime_confidence=0.5
-            )
+            return ChronosContext(market_regime="UNKNOWN", regime_confidence=0.5)
 
     def _create_default_contract(
-        self,
-        symbol: str,
-        trigger_type: str
+        self, symbol: str, trigger_type: str
     ) -> SignalContract:
         """
         Create a default contract for symbols without pre-approved contracts.
@@ -234,7 +210,7 @@ class GatedTradingManager:
             max_drawdown_allowed=0.03,
             expected_return=0.02,
             source="DEFAULT",
-            features=[trigger_type]
+            features=[trigger_type],
         )
 
     def get_stats(self) -> Dict[str, Any]:
@@ -247,11 +223,12 @@ class GatedTradingManager:
             "vetoed": self.vetoed_count,
             "approval_rate": (
                 self.approved_count / self.total_attempts
-                if self.total_attempts > 0 else 0
+                if self.total_attempts > 0
+                else 0
             ),
             "gating_engine": gating_stats,
             "contracts_loaded": len(self.contract_repo.contracts),
-            "active_contracts": len(self.contract_repo.get_active())
+            "active_contracts": len(self.contract_repo.get_active()),
         }
 
     def get_recent_vetoes(self, count: int = 20) -> List[Dict]:
@@ -290,14 +267,11 @@ class ScalperGatingWrapper:
             daily_pnl=self.scalper.daily_pnl,
             open_positions=len(self.scalper.open_positions),
             daily_trades=self.scalper.daily_trades,
-            current_drawdown=0  # Would need to calculate from trades
+            current_drawdown=0,  # Would need to calculate from trades
         )
 
     async def _gated_check_entry_signal(
-        self,
-        symbol: str,
-        quote: Dict,
-        priority: bool = False
+        self, symbol: str, quote: Dict, priority: bool = False
     ) -> Optional[Dict]:
         """
         Gated version of check_entry_signal.
@@ -318,9 +292,7 @@ class ScalperGatingWrapper:
 
         # Run through gating
         approved, exec_request, reason = self.gating_manager.gate_trade_attempt(
-            symbol,
-            trigger_type,
-            quote
+            symbol, trigger_type, quote
         )
 
         if approved:
@@ -340,9 +312,9 @@ class ScalperGatingWrapper:
             "scalper": {
                 "trades": self.scalper.daily_trades,
                 "pnl": self.scalper.daily_pnl,
-                "positions": len(self.scalper.open_positions)
+                "positions": len(self.scalper.open_positions),
             },
-            "gating": self.gating_manager.get_stats()
+            "gating": self.gating_manager.get_stats(),
         }
 
 
@@ -376,7 +348,7 @@ def get_gated_trading_manager() -> GatedTradingManager:
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s | %(name)s | %(levelname)s | %(message)s'
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     )
 
     print("=" * 60)
@@ -396,8 +368,7 @@ if __name__ == "__main__":
         print(f"\nTesting {symbol} ({trigger_type}):")
 
         approved, exec_request, reason = manager.gate_trade_attempt(
-            symbol,
-            trigger_type
+            symbol, trigger_type
         )
 
         print(f"  Approved: {approved}")

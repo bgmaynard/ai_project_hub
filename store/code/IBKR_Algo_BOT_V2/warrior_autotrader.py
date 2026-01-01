@@ -19,21 +19,19 @@ Author: Claude Code
 """
 
 import asyncio
-import aiohttp
+import json
 import logging
 from datetime import datetime, time
 from typing import Dict, List, Optional, Set
-import json
+
+import aiohttp
 import pytz
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s | %(levelname)s | %(message)s',
-    handlers=[
-        logging.FileHandler('warrior_autotrader.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[logging.FileHandler("warrior_autotrader.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
@@ -43,42 +41,38 @@ logger = logging.getLogger(__name__)
 
 CONFIG = {
     # Trading Parameters
-    'MAX_POSITION_SIZE': 2000,      # Max $ per position
-    'MAX_DAILY_LOSS': 500,          # Stop trading if daily loss exceeds this
-    'MAX_CONCURRENT_POSITIONS': 5,  # Max number of open positions
-    'MIN_BUYING_POWER': 5000,       # Minimum buying power to trade
-
+    "MAX_POSITION_SIZE": 2000,  # Max $ per position
+    "MAX_DAILY_LOSS": 500,  # Stop trading if daily loss exceeds this
+    "MAX_CONCURRENT_POSITIONS": 5,  # Max number of open positions
+    "MIN_BUYING_POWER": 5000,  # Minimum buying power to trade
     # Warrior Trading Criteria
-    'MIN_PRICE': 2.00,              # Min stock price
-    'MAX_PRICE': 20.00,             # Max stock price
-    'MIN_GAP_PCT': 4.0,             # Min gap % to consider
-    'MIN_RVOL': 1.5,                # Min relative volume
-    'MIN_VOLUME': 100000,           # Min pre-market volume
-
+    "MIN_PRICE": 2.00,  # Min stock price
+    "MAX_PRICE": 20.00,  # Max stock price
+    "MIN_GAP_PCT": 4.0,  # Min gap % to consider
+    "MIN_RVOL": 1.5,  # Min relative volume
+    "MIN_VOLUME": 100000,  # Min pre-market volume
     # Risk Management
-    'STOP_LOSS_PCT': 0.03,          # 3% stop loss
-    'TAKE_PROFIT_PCT': 0.06,        # 6% take profit (2:1 R:R)
-    'TRAILING_STOP_PCT': 0.02,      # 2% trailing stop after profit
-
+    "STOP_LOSS_PCT": 0.03,  # 3% stop loss
+    "TAKE_PROFIT_PCT": 0.06,  # 6% take profit (2:1 R:R)
+    "TRAILING_STOP_PCT": 0.02,  # 2% trailing stop after profit
     # Polling Intervals (seconds)
-    'SCANNER_POLL_INTERVAL': 30,    # How often to scan
-    'NEWS_POLL_INTERVAL': 60,       # How often to check news
-    'POSITION_CHECK_INTERVAL': 10,  # How often to check positions
-
+    "SCANNER_POLL_INTERVAL": 30,  # How often to scan
+    "NEWS_POLL_INTERVAL": 60,  # How often to check news
+    "POSITION_CHECK_INTERVAL": 10,  # How often to check positions
     # API
-    'API_BASE': 'http://localhost:9100/api/alpaca',
-    'SCANNER_BASE': 'http://localhost:9100/api/scanner/ALPACA',
-
+    "API_BASE": "http://localhost:9100/api/alpaca",
+    "SCANNER_BASE": "http://localhost:9100/api/scanner/ALPACA",
     # Trading Hours (Eastern Time)
-    'PRE_MARKET_START': time(4, 0),   # 4:00 AM ET
-    'MARKET_OPEN': time(9, 30),       # 9:30 AM ET
-    'MARKET_CLOSE': time(16, 0),      # 4:00 PM ET
-    'AFTER_HOURS_END': time(20, 0),   # 8:00 PM ET
+    "PRE_MARKET_START": time(4, 0),  # 4:00 AM ET
+    "MARKET_OPEN": time(9, 30),  # 9:30 AM ET
+    "MARKET_CLOSE": time(16, 0),  # 4:00 PM ET
+    "AFTER_HOURS_END": time(20, 0),  # 8:00 PM ET
 }
 
 # ============================================================================
 # AUTO TRADER CLASS
 # ============================================================================
+
 
 class WarriorAutoTrader:
     """
@@ -87,7 +81,7 @@ class WarriorAutoTrader:
     """
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
         self.session: Optional[aiohttp.ClientSession] = None
 
         # Trading state
@@ -148,9 +142,11 @@ class WarriorAutoTrader:
     async def _check_server(self) -> bool:
         """Check if the trading server is running"""
         try:
-            async with self.session.get(f"{CONFIG['API_BASE'].replace('/api/alpaca', '')}/health") as resp:
+            async with self.session.get(
+                f"{CONFIG['API_BASE'].replace('/api/alpaca', '')}/health"
+            ) as resp:
                 data = await resp.json()
-                return data.get('status') == 'ok'
+                return data.get("status") == "ok"
         except Exception as e:
             logger.error(f"Server check failed: {e}")
             return False
@@ -170,7 +166,7 @@ class WarriorAutoTrader:
             async with self.session.get(f"{CONFIG['API_BASE']}/positions") as resp:
                 positions = await resp.json()
                 for pos in positions:
-                    symbol = pos.get('symbol')
+                    symbol = pos.get("symbol")
                     if symbol:
                         self.open_positions[symbol] = pos
                         self.traded_symbols.add(symbol)
@@ -182,17 +178,19 @@ class WarriorAutoTrader:
     async def _check_circuit_breaker(self) -> bool:
         """Check if circuit breaker allows trading"""
         try:
-            async with self.session.get(f"{CONFIG['API_BASE']}/ai/circuit-breaker/status") as resp:
+            async with self.session.get(
+                f"{CONFIG['API_BASE']}/ai/circuit-breaker/status"
+            ) as resp:
                 data = await resp.json()
-                status = data.get('status', {})
-                can_trade = status.get('can_trade', True)
-                level = status.get('level', 'NORMAL')
+                status = data.get("status", {})
+                can_trade = status.get("can_trade", True)
+                level = status.get("level", "NORMAL")
 
                 if not can_trade:
                     logger.warning(f"Circuit breaker HALT - Level: {level}")
                     return False
 
-                if level in ['WARNING', 'CAUTION']:
+                if level in ["WARNING", "CAUTION"]:
                     logger.info(f"Circuit breaker: {level} - reducing position sizes")
 
                 return True
@@ -234,7 +232,7 @@ class WarriorAutoTrader:
                 self.circuit_breaker_ok = await self._check_circuit_breaker()
 
                 # Check daily loss limit
-                if self.daily_pnl <= -CONFIG['MAX_DAILY_LOSS']:
+                if self.daily_pnl <= -CONFIG["MAX_DAILY_LOSS"]:
                     logger.warning(f"DAILY LOSS LIMIT HIT: ${self.daily_pnl:.2f}")
                     self.is_trading_enabled = False
                     break
@@ -246,7 +244,7 @@ class WarriorAutoTrader:
                     logger.info(f"Found {len(candidates)} candidates")
                     await self._evaluate_and_trade(candidates)
 
-                await asyncio.sleep(CONFIG['SCANNER_POLL_INTERVAL'])
+                await asyncio.sleep(CONFIG["SCANNER_POLL_INTERVAL"])
 
             except Exception as e:
                 logger.error(f"Scanner loop error: {e}")
@@ -257,21 +255,27 @@ class WarriorAutoTrader:
         while self.is_trading_enabled:
             try:
                 # Get breaking news scanner results
-                async with self.session.get(f"{CONFIG['SCANNER_BASE']}/scan?preset=breaking_news") as resp:
+                async with self.session.get(
+                    f"{CONFIG['SCANNER_BASE']}/scan?preset=breaking_news"
+                ) as resp:
                     data = await resp.json()
-                    if data.get('success'):
-                        results = data.get('results', [])
+                    if data.get("success"):
+                        results = data.get("results", [])
                         for stock in results[:5]:  # Top 5 news movers
-                            symbol = stock.get('symbol')
+                            symbol = stock.get("symbol")
                             if symbol and symbol not in self.traded_symbols:
-                                logger.info(f"NEWS ALERT: {symbol} - checking for entry")
-                                self.news_alerts.append({
-                                    'symbol': symbol,
-                                    'time': datetime.now(self.et_tz).isoformat(),
-                                    'data': stock
-                                })
+                                logger.info(
+                                    f"NEWS ALERT: {symbol} - checking for entry"
+                                )
+                                self.news_alerts.append(
+                                    {
+                                        "symbol": symbol,
+                                        "time": datetime.now(self.et_tz).isoformat(),
+                                        "data": stock,
+                                    }
+                                )
 
-                await asyncio.sleep(CONFIG['NEWS_POLL_INTERVAL'])
+                await asyncio.sleep(CONFIG["NEWS_POLL_INTERVAL"])
 
             except Exception as e:
                 logger.error(f"News loop error: {e}")
@@ -282,7 +286,7 @@ class WarriorAutoTrader:
         while self.is_trading_enabled:
             try:
                 await self._update_positions()
-                await asyncio.sleep(CONFIG['POSITION_CHECK_INTERVAL'])
+                await asyncio.sleep(CONFIG["POSITION_CHECK_INTERVAL"])
             except Exception as e:
                 logger.error(f"Position monitor error: {e}")
                 await asyncio.sleep(5)
@@ -294,10 +298,14 @@ class WarriorAutoTrader:
                 account = await self._get_account()
                 if account:
                     logger.info("-" * 40)
-                    logger.info(f"STATUS UPDATE @ {datetime.now(self.et_tz).strftime('%H:%M:%S')} ET")
+                    logger.info(
+                        f"STATUS UPDATE @ {datetime.now(self.et_tz).strftime('%H:%M:%S')} ET"
+                    )
                     logger.info(f"Portfolio: ${account.get('portfolio_value', 0):,.2f}")
                     logger.info(f"Daily P&L: ${self.daily_pnl:+,.2f}")
-                    logger.info(f"Trades: {self.trades_today} (W:{self.wins_today} L:{self.losses_today})")
+                    logger.info(
+                        f"Trades: {self.trades_today} (W:{self.wins_today} L:{self.losses_today})"
+                    )
                     logger.info(f"Open Positions: {len(self.open_positions)}")
                     logger.info("-" * 40)
 
@@ -315,7 +323,7 @@ class WarriorAutoTrader:
         # Regular: 9:30 AM - 4 PM
         # After hours: 4 PM - 8 PM
 
-        if CONFIG['PRE_MARKET_START'] <= current_time < CONFIG['AFTER_HOURS_END']:
+        if CONFIG["PRE_MARKET_START"] <= current_time < CONFIG["AFTER_HOURS_END"]:
             return True
         return False
 
@@ -325,33 +333,39 @@ class WarriorAutoTrader:
 
         # 1. Warrior Trading Scanner (5 Pillars)
         try:
-            async with self.session.get(f"{CONFIG['SCANNER_BASE']}/scan?preset=warrior") as resp:
+            async with self.session.get(
+                f"{CONFIG['SCANNER_BASE']}/scan?preset=warrior"
+            ) as resp:
                 data = await resp.json()
-                if data.get('success'):
-                    for stock in data.get('results', [])[:10]:
-                        stock['source'] = 'warrior'
+                if data.get("success"):
+                    for stock in data.get("results", [])[:10]:
+                        stock["source"] = "warrior"
                         candidates.append(stock)
         except Exception as e:
             logger.error(f"Warrior scanner failed: {e}")
 
         # 2. Pre-Market Gappers
         try:
-            async with self.session.get(f"{CONFIG['SCANNER_BASE']}/scan?preset=gainers") as resp:
+            async with self.session.get(
+                f"{CONFIG['SCANNER_BASE']}/scan?preset=gainers"
+            ) as resp:
                 data = await resp.json()
-                if data.get('success'):
-                    for stock in data.get('results', [])[:10]:
-                        stock['source'] = 'gapper'
+                if data.get("success"):
+                    for stock in data.get("results", [])[:10]:
+                        stock["source"] = "gapper"
                         candidates.append(stock)
         except Exception as e:
             logger.error(f"Gapper scanner failed: {e}")
 
         # 3. Momentum Scanner
         try:
-            async with self.session.get(f"{CONFIG['SCANNER_BASE']}/scan?preset=momentum") as resp:
+            async with self.session.get(
+                f"{CONFIG['SCANNER_BASE']}/scan?preset=momentum"
+            ) as resp:
                 data = await resp.json()
-                if data.get('success'):
-                    for stock in data.get('results', [])[:5]:
-                        stock['source'] = 'momentum'
+                if data.get("success"):
+                    for stock in data.get("results", [])[:5]:
+                        stock["source"] = "momentum"
                         candidates.append(stock)
         except Exception as e:
             logger.error(f"Momentum scanner failed: {e}")
@@ -360,7 +374,7 @@ class WarriorAutoTrader:
         seen = set()
         unique_candidates = []
         for c in candidates:
-            symbol = c.get('symbol')
+            symbol = c.get("symbol")
             if symbol and symbol not in seen:
                 seen.add(symbol)
                 unique_candidates.append(c)
@@ -371,7 +385,7 @@ class WarriorAutoTrader:
         """Evaluate candidates and execute trades"""
 
         # Check if we can take more positions
-        if len(self.open_positions) >= CONFIG['MAX_CONCURRENT_POSITIONS']:
+        if len(self.open_positions) >= CONFIG["MAX_CONCURRENT_POSITIONS"]:
             logger.info("Max positions reached - waiting for exits")
             return
 
@@ -381,15 +395,15 @@ class WarriorAutoTrader:
             return
 
         for candidate in candidates:
-            symbol = candidate.get('symbol', '')
+            symbol = candidate.get("symbol", "")
 
             # Skip if already traded or holding
             if symbol in self.traded_symbols:
                 continue
 
             # Check price range
-            price = candidate.get('price', candidate.get('last_price', 0))
-            if not (CONFIG['MIN_PRICE'] <= price <= CONFIG['MAX_PRICE']):
+            price = candidate.get("price", candidate.get("last_price", 0))
+            if not (CONFIG["MIN_PRICE"] <= price <= CONFIG["MAX_PRICE"]):
                 continue
 
             # Get AI prediction
@@ -400,69 +414,77 @@ class WarriorAutoTrader:
                 await self._execute_trade(symbol, price, candidate, prediction)
 
                 # Don't overload - one trade per scan cycle
-                if len(self.open_positions) >= CONFIG['MAX_CONCURRENT_POSITIONS']:
+                if len(self.open_positions) >= CONFIG["MAX_CONCURRENT_POSITIONS"]:
                     break
 
     async def _get_ai_prediction(self, symbol: str) -> Optional[dict]:
         """Get AI prediction for symbol"""
         try:
-            async with self.session.get(f"{CONFIG['API_BASE']}/ai/explain/{symbol}") as resp:
+            async with self.session.get(
+                f"{CONFIG['API_BASE']}/ai/explain/{symbol}"
+            ) as resp:
                 data = await resp.json()
-                if data.get('success'):
-                    return data.get('explanation', {})
+                if data.get("success"):
+                    return data.get("explanation", {})
         except:
             pass
         return None
 
-    async def _is_valid_setup(self, candidate: dict, prediction: Optional[dict]) -> bool:
+    async def _is_valid_setup(
+        self, candidate: dict, prediction: Optional[dict]
+    ) -> bool:
         """Check if the candidate meets Warrior Trading criteria"""
 
         # Basic criteria from scanner
-        gap_pct = abs(candidate.get('gap_pct', candidate.get('change_pct', 0)))
-        volume = candidate.get('volume', candidate.get('pre_market_volume', 0))
-        rvol = candidate.get('rvol', candidate.get('relative_volume', 1.0))
+        gap_pct = abs(candidate.get("gap_pct", candidate.get("change_pct", 0)))
+        volume = candidate.get("volume", candidate.get("pre_market_volume", 0))
+        rvol = candidate.get("rvol", candidate.get("relative_volume", 1.0))
 
         # Warrior Trading 5 Pillars Check
         checks = {
-            'gap': gap_pct >= CONFIG['MIN_GAP_PCT'],
-            'volume': volume >= CONFIG['MIN_VOLUME'],
-            'rvol': rvol >= CONFIG['MIN_RVOL'],
+            "gap": gap_pct >= CONFIG["MIN_GAP_PCT"],
+            "volume": volume >= CONFIG["MIN_VOLUME"],
+            "rvol": rvol >= CONFIG["MIN_RVOL"],
         }
 
         # AI check (optional but preferred)
         if prediction:
-            pred_signal = prediction.get('prediction', '')
-            confidence = prediction.get('confidence', 0)
+            pred_signal = prediction.get("prediction", "")
+            confidence = prediction.get("confidence", 0)
 
-            if 'BULLISH' in pred_signal.upper() and confidence > 0.5:
-                checks['ai'] = True
-            elif 'BEARISH' in pred_signal.upper():
-                checks['ai'] = False
+            if "BULLISH" in pred_signal.upper() and confidence > 0.5:
+                checks["ai"] = True
+            elif "BEARISH" in pred_signal.upper():
+                checks["ai"] = False
             else:
-                checks['ai'] = True  # Neutral is OK
+                checks["ai"] = True  # Neutral is OK
         else:
-            checks['ai'] = True
+            checks["ai"] = True
 
         passed = all(checks.values())
 
         if passed:
-            logger.info(f"VALID SETUP: {candidate.get('symbol')} - Gap:{gap_pct:.1f}% RVOL:{rvol:.1f}x")
+            logger.info(
+                f"VALID SETUP: {candidate.get('symbol')} - Gap:{gap_pct:.1f}% RVOL:{rvol:.1f}x"
+            )
 
         return passed
 
-    async def _execute_trade(self, symbol: str, price: float, candidate: dict, prediction: Optional[dict]):
+    async def _execute_trade(
+        self, symbol: str, price: float, candidate: dict, prediction: Optional[dict]
+    ):
         """Execute a trade with bracket order"""
 
         # Calculate position size
         account = await self._get_account()
-        buying_power = account.get('buying_power', 0) if account else 0
+        buying_power = account.get("buying_power", 0) if account else 0
 
-        if buying_power < CONFIG['MIN_BUYING_POWER']:
+        if buying_power < CONFIG["MIN_BUYING_POWER"]:
             logger.warning(f"Insufficient buying power: ${buying_power:.2f}")
             return
 
         # Position sizing - risk 1% of account per trade
-        position_value = min(CONFIG['MAX_POSITION_SIZE'], buying_power * 0.1)
+        position_value = min(CONFIG["MAX_POSITION_SIZE"], buying_power * 0.1)
         quantity = int(position_value / price)
 
         if quantity < 1:
@@ -470,8 +492,8 @@ class WarriorAutoTrader:
             return
 
         # Calculate stop and target
-        stop_price = round(price * (1 - CONFIG['STOP_LOSS_PCT']), 2)
-        target_price = round(price * (1 + CONFIG['TAKE_PROFIT_PCT']), 2)
+        stop_price = round(price * (1 - CONFIG["STOP_LOSS_PCT"]), 2)
+        target_price = round(price * (1 + CONFIG["TAKE_PROFIT_PCT"]), 2)
 
         # Calculate limit price for extended hours
         limit_price = round(price * 1.005, 2)  # 0.5% above current price for fills
@@ -489,38 +511,37 @@ class WarriorAutoTrader:
         # Place bracket order using limit order (required for extended hours)
         try:
             order_data = {
-                'symbol': symbol,
-                'quantity': quantity,
-                'action': 'BUY',
-                'take_profit_price': target_price,
-                'stop_loss_price': stop_price,
-                'limit_price': limit_price  # Required for extended hours trading
+                "symbol": symbol,
+                "quantity": quantity,
+                "action": "BUY",
+                "take_profit_price": target_price,
+                "stop_loss_price": stop_price,
+                "limit_price": limit_price,  # Required for extended hours trading
             }
 
             async with self.session.post(
-                f"{CONFIG['API_BASE']}/place-bracket-order",
-                json=order_data
+                f"{CONFIG['API_BASE']}/place-bracket-order", json=order_data
             ) as resp:
                 result = await resp.json()
 
-                if result.get('success') or result.get('order_id'):
+                if result.get("success") or result.get("order_id"):
                     logger.info(f"ORDER PLACED: {symbol} x{quantity} @ ~${price:.2f}")
 
                     # Track the position
                     self.open_positions[symbol] = {
-                        'symbol': symbol,
-                        'quantity': quantity,
-                        'entry_price': price,
-                        'stop_price': stop_price,
-                        'target_price': target_price,
-                        'entry_time': datetime.now(self.et_tz).isoformat(),
-                        'source': candidate.get('source', 'scanner')
+                        "symbol": symbol,
+                        "quantity": quantity,
+                        "entry_price": price,
+                        "stop_price": stop_price,
+                        "target_price": target_price,
+                        "entry_time": datetime.now(self.et_tz).isoformat(),
+                        "source": candidate.get("source", "scanner"),
                     }
                     self.traded_symbols.add(symbol)
                     self.trades_today += 1
 
                     # Record to brain
-                    await self._record_trade(symbol, 'BUY', price, quantity)
+                    await self._record_trade(symbol, "BUY", price, quantity)
 
                 else:
                     logger.error(f"Order failed: {result}")
@@ -528,18 +549,20 @@ class WarriorAutoTrader:
         except Exception as e:
             logger.error(f"Trade execution failed: {e}")
 
-    async def _record_trade(self, symbol: str, action: str, price: float, quantity: int):
+    async def _record_trade(
+        self, symbol: str, action: str, price: float, quantity: int
+    ):
         """Record trade to AI brain and journal"""
         try:
             await self.session.post(
                 f"{CONFIG['API_BASE']}/ai/memory/record-trade",
                 json={
-                    'symbol': symbol,
-                    'action': action,
-                    'price': price,
-                    'quantity': quantity,
-                    'source': 'warrior_autotrader'
-                }
+                    "symbol": symbol,
+                    "action": action,
+                    "price": price,
+                    "quantity": quantity,
+                    "source": "warrior_autotrader",
+                },
             )
         except:
             pass
@@ -552,20 +575,22 @@ class WarriorAutoTrader:
 
                 current_symbols = set()
                 for pos in positions:
-                    symbol = pos.get('symbol')
+                    symbol = pos.get("symbol")
                     if symbol:
                         current_symbols.add(symbol)
-                        unrealized_pl = pos.get('unrealized_pl', 0)
+                        unrealized_pl = pos.get("unrealized_pl", 0)
 
                         if symbol in self.open_positions:
-                            self.open_positions[symbol]['unrealized_pl'] = unrealized_pl
-                            self.open_positions[symbol]['current_price'] = pos.get('current_price')
+                            self.open_positions[symbol]["unrealized_pl"] = unrealized_pl
+                            self.open_positions[symbol]["current_price"] = pos.get(
+                                "current_price"
+                            )
 
                 # Check for closed positions (exited via bracket orders)
                 closed = set(self.open_positions.keys()) - current_symbols
                 for symbol in closed:
                     pos_data = self.open_positions.pop(symbol, {})
-                    pnl = pos_data.get('unrealized_pl', 0)
+                    pnl = pos_data.get("unrealized_pl", 0)
 
                     if pnl >= 0:
                         self.wins_today += 1
@@ -588,6 +613,7 @@ class WarriorAutoTrader:
 # ============================================================================
 # MAIN
 # ============================================================================
+
 
 async def main():
     """Main entry point"""

@@ -10,15 +10,15 @@ Tests:
 Run with: python test_ml_modules.py
 """
 
-import unittest
 import asyncio
-import sys
 import logging
+import sys
+import unittest
 from datetime import datetime
-from typing import List, Dict
+from typing import Dict, List
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -29,10 +29,9 @@ class TestTransformerDetector(unittest.TestCase):
         """Set up test fixtures"""
         try:
             from ai.warrior_transformer_detector import (
-                WarriorTransformerDetector,
-                get_transformer_detector,
-                PatternDetection
-            )
+                PatternDetection, WarriorTransformerDetector,
+                get_transformer_detector)
+
             self.TransformerDetector = WarriorTransformerDetector
             self.get_detector = get_transformer_detector
             self.PatternDetection = PatternDetection
@@ -66,11 +65,11 @@ class TestTransformerDetector(unittest.TestCase):
         # Create sample candles
         candles = [
             {
-                'open': 100 + i * 0.1,
-                'high': 101 + i * 0.1,
-                'low': 99 + i * 0.1,
-                'close': 100.5 + i * 0.1,
-                'volume': 1000000
+                "open": 100 + i * 0.1,
+                "high": 101 + i * 0.1,
+                "low": 99 + i * 0.1,
+                "close": 100.5 + i * 0.1,
+                "volume": 1000000,
             }
             for i in range(50)
         ]
@@ -94,11 +93,11 @@ class TestTransformerDetector(unittest.TestCase):
         # Create sample candles (uptrend for bull pattern)
         candles = [
             {
-                'open': 100 + i * 0.2,
-                'high': 101 + i * 0.2,
-                'low': 99 + i * 0.2,
-                'close': 100.5 + i * 0.2,
-                'volume': 1000000 + i * 10000
+                "open": 100 + i * 0.2,
+                "high": 101 + i * 0.2,
+                "low": 99 + i * 0.2,
+                "close": 100.5 + i * 0.2,
+                "volume": 1000000 + i * 10000,
             }
             for i in range(50)
         ]
@@ -112,7 +111,9 @@ class TestTransformerDetector(unittest.TestCase):
             self.assertIn(pattern.pattern_type, detector.PATTERN_NAMES)
             self.assertGreaterEqual(pattern.confidence, 0.0)
             self.assertLessEqual(pattern.confidence, 1.0)
-            logger.info(f"[OK] Pattern detected: {pattern.pattern_type} (confidence: {pattern.confidence:.2%})")
+            logger.info(
+                f"[OK] Pattern detected: {pattern.pattern_type} (confidence: {pattern.confidence:.2%})"
+            )
         else:
             logger.info("[OK] No pattern detected (below confidence threshold)")
 
@@ -124,8 +125,14 @@ class TestTransformerDetector(unittest.TestCase):
         detector = self.get_detector()
 
         expected_patterns = [
-            'bull_flag', 'bear_flag', 'breakout', 'breakdown',
-            'bullish_reversal', 'bearish_reversal', 'consolidation', 'gap_and_go'
+            "bull_flag",
+            "bear_flag",
+            "breakout",
+            "breakdown",
+            "bullish_reversal",
+            "bearish_reversal",
+            "consolidation",
+            "gap_and_go",
         ]
 
         self.assertEqual(detector.PATTERN_NAMES, expected_patterns)
@@ -138,12 +145,9 @@ class TestRLAgent(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         try:
-            from ai.warrior_rl_agent import (
-                WarriorRLAgent,
-                get_rl_agent,
-                TradingState,
-                TradingAction
-            )
+            from ai.warrior_rl_agent import (TradingAction, TradingState,
+                                             WarriorRLAgent, get_rl_agent)
+
             self.RLAgent = WarriorRLAgent
             self.get_agent = get_rl_agent
             self.TradingState = TradingState
@@ -166,7 +170,9 @@ class TestRLAgent(unittest.TestCase):
         agent = self.get_agent()
         self.assertIsNotNone(agent)
         self.assertEqual(len(agent.ACTIONS), 5)
-        self.assertEqual(agent.ACTIONS, ['enter', 'hold', 'exit', 'size_up', 'size_down'])
+        self.assertEqual(
+            agent.ACTIONS, ["enter", "hold", "exit", "size_up", "size_down"]
+        )
         logger.info("[OK] Agent initialized with 5 actions")
 
     def test_03_state_to_tensor(self):
@@ -189,7 +195,7 @@ class TestRLAgent(unittest.TestCase):
             time_in_position=0,
             current_drawdown=0.0,
             sharpe_ratio=1.5,
-            win_rate=0.6
+            win_rate=0.6,
         )
 
         tensor = agent.state_to_tensor(state)
@@ -220,7 +226,7 @@ class TestRLAgent(unittest.TestCase):
             time_in_position=0,
             current_drawdown=0.0,
             sharpe_ratio=1.5,
-            win_rate=0.6
+            win_rate=0.6,
         )
 
         # Inference mode (no exploration)
@@ -231,7 +237,9 @@ class TestRLAgent(unittest.TestCase):
         self.assertGreaterEqual(action.confidence, 0.0)
         self.assertLessEqual(action.confidence, 1.0)
 
-        logger.info(f"[OK] Action selected: {action.action_type} (confidence: {action.confidence:.2%})")
+        logger.info(
+            f"[OK] Action selected: {action.action_type} (confidence: {action.confidence:.2%})"
+        )
 
     def test_05_action_selection_training(self):
         """Test action selection in training mode"""
@@ -253,7 +261,7 @@ class TestRLAgent(unittest.TestCase):
             time_in_position=10,
             current_drawdown=-0.01,
             sharpe_ratio=1.2,
-            win_rate=0.55
+            win_rate=0.55,
         )
 
         # Training mode (with exploration)
@@ -262,7 +270,9 @@ class TestRLAgent(unittest.TestCase):
         self.assertIsInstance(action, self.TradingAction)
         self.assertIn(action.action_type, agent.ACTIONS)
 
-        logger.info(f"[OK] Training action: {action.action_type} (epsilon: {agent.epsilon:.3f})")
+        logger.info(
+            f"[OK] Training action: {action.action_type} (epsilon: {agent.epsilon:.3f})"
+        )
 
     def test_06_reward_calculation(self):
         """Test reward calculation"""
@@ -285,7 +295,7 @@ class TestRLAgent(unittest.TestCase):
             time_in_position=10,
             current_drawdown=0.0,
             sharpe_ratio=1.5,
-            win_rate=0.6
+            win_rate=0.6,
         )
 
         # Next state: More profit
@@ -302,10 +312,10 @@ class TestRLAgent(unittest.TestCase):
             time_in_position=11,
             current_drawdown=0.0,
             sharpe_ratio=1.6,
-            win_rate=0.6
+            win_rate=0.6,
         )
 
-        action = self.TradingAction(action_type='hold', size_change=0.0, confidence=0.8)
+        action = self.TradingAction(action_type="hold", size_change=0.0, confidence=0.8)
 
         reward = agent.calculate_reward(state, action, next_state)
 
@@ -321,7 +331,7 @@ class TestRLAgent(unittest.TestCase):
 
         agent = self.get_agent()
 
-        expected_actions = ['enter', 'hold', 'exit', 'size_up', 'size_down']
+        expected_actions = ["enter", "hold", "exit", "size_up", "size_down"]
         self.assertEqual(agent.ACTIONS, expected_actions)
 
         logger.info(f"[OK] All 5 actions available: {', '.join(expected_actions)}")
@@ -333,11 +343,9 @@ class TestMLTrainer(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         try:
-            from ai.warrior_ml_trainer import (
-                HistoricalDataLoader,
-                PatternLabeler,
-                ModelTrainer
-            )
+            from ai.warrior_ml_trainer import (HistoricalDataLoader,
+                                               ModelTrainer, PatternLabeler)
+
             self.DataLoader = HistoricalDataLoader
             self.PatternLabeler = PatternLabeler
             self.ModelTrainer = ModelTrainer
@@ -366,23 +374,26 @@ class TestMLTrainer(unittest.TestCase):
             self.skipTest("ML trainer not available")
 
         # Create sample dataframe
-        import pandas as pd
         import numpy as np
+        import pandas as pd
 
-        dates = pd.date_range('2025-01-01', periods=100, freq='5min')
-        df = pd.DataFrame({
-            'open': np.random.uniform(100, 110, 100),
-            'high': np.random.uniform(105, 115, 100),
-            'low': np.random.uniform(95, 105, 100),
-            'close': np.random.uniform(100, 110, 100),
-            'volume': np.random.uniform(1000000, 2000000, 100)
-        }, index=dates)
+        dates = pd.date_range("2025-01-01", periods=100, freq="5min")
+        df = pd.DataFrame(
+            {
+                "open": np.random.uniform(100, 110, 100),
+                "high": np.random.uniform(105, 115, 100),
+                "low": np.random.uniform(95, 105, 100),
+                "close": np.random.uniform(100, 110, 100),
+                "volume": np.random.uniform(1000000, 2000000, 100),
+            },
+            index=dates,
+        )
 
         # Label patterns
         labeled_df = self.PatternLabeler.label_patterns(df)
 
         self.assertIsNotNone(labeled_df)
-        self.assertIn('pattern_label', labeled_df.columns)
+        self.assertIn("pattern_label", labeled_df.columns)
 
         logger.info(f"[OK] Patterns labeled: {len(labeled_df)} candles")
 
@@ -393,12 +404,10 @@ class TestMLRouter(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         try:
-            from ai.warrior_ml_router import (
-                router,
-                PatternDetectionRequest,
-                TradingStateRequest,
-                MLHealthResponse
-            )
+            from ai.warrior_ml_router import (MLHealthResponse,
+                                              PatternDetectionRequest,
+                                              TradingStateRequest, router)
+
             self.router = router
             self.PatternRequest = PatternDetectionRequest
             self.StateRequest = TradingStateRequest
@@ -425,17 +434,20 @@ class TestMLRouter(unittest.TestCase):
         route_paths = [route.path for route in self.router.routes]
 
         expected_paths = [
-            '/api/ml/health',
-            '/api/ml/detect-pattern',
-            '/api/ml/recommend-action',
-            '/api/ml/patterns/supported',
-            '/api/ml/actions/available',
-            '/api/ml/batch/detect-patterns'
+            "/api/ml/health",
+            "/api/ml/detect-pattern",
+            "/api/ml/recommend-action",
+            "/api/ml/patterns/supported",
+            "/api/ml/actions/available",
+            "/api/ml/batch/detect-patterns",
         ]
 
         for path in expected_paths:
             # Check if path exists (may have different prefix in routes)
-            path_found = any(path.replace('/api/ml', '') in route.path for route in self.router.routes)
+            path_found = any(
+                path.replace("/api/ml", "") in route.path
+                for route in self.router.routes
+            )
             self.assertTrue(path_found, f"Expected route {path} not found")
 
         logger.info(f"[OK] Router has {len(self.router.routes)} routes")
@@ -458,15 +470,13 @@ class TestMLRouter(unittest.TestCase):
                     high=101.0,
                     low=99.0,
                     close=100.5,
-                    volume=1000000
+                    volume=1000000,
                 )
                 for _ in range(25)
             ]
 
             request = self.PatternRequest(
-                symbol="TEST",
-                candles=candles,
-                timeframe="5min"
+                symbol="TEST", candles=candles, timeframe="5min"
             )
 
             self.assertEqual(request.symbol, "TEST")
@@ -479,11 +489,7 @@ class TestMLRouter(unittest.TestCase):
         # Test TradingStateRequest
         try:
             request = self.StateRequest(
-                symbol="TEST",
-                price=150.0,
-                volume=1000000,
-                volatility=0.02,
-                trend=0.5
+                symbol="TEST", price=150.0, volume=1000000, volatility=0.02, trend=0.5
             )
 
             self.assertEqual(request.symbol, "TEST")

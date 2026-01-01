@@ -6,6 +6,7 @@ REST endpoints for gap, gainer, and HOD scanners.
 
 import logging
 from typing import List, Optional
+
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
@@ -14,11 +15,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/scanners", tags=["Warrior Scanners"])
 
 try:
-    from scanners import get_scanner_config, ScannerConfig
-    from scanners.gap_scanner import get_gap_scanner
+    from scanners import ScannerConfig, get_scanner_config
     from scanners.gainer_scanner import get_gainer_scanner
+    from scanners.gap_scanner import get_gap_scanner
     from scanners.hod_scanner import get_hod_scanner
     from scanners.scanner_coordinator import get_scanner_coordinator
+
     HAS_SCANNERS = True
 except ImportError as e:
     logger.warning(f"Warrior scanners not available: {e}")
@@ -46,6 +48,7 @@ class ConfigUpdate(BaseModel):
 # STATUS ENDPOINTS
 # ============================================================================
 
+
 @router.get("/status")
 async def get_scanner_status():
     """Get status of all Warrior scanners"""
@@ -53,10 +56,7 @@ async def get_scanner_status():
         return {"available": False, "error": "Scanners not available"}
 
     coordinator = get_scanner_coordinator()
-    return {
-        "available": True,
-        **coordinator.get_status()
-    }
+    return {"available": True, **coordinator.get_status()}
 
 
 @router.get("/config")
@@ -76,7 +76,7 @@ async def get_config():
         "gainer_min_rel_vol": config.gainer_min_rel_vol,
         "gainer_min_volume": config.gainer_min_volume,
         "hod_min_rel_vol": config.hod_min_rel_vol,
-        "hod_min_volume": config.hod_min_volume
+        "hod_min_volume": config.hod_min_volume,
     }
 
 
@@ -117,6 +117,7 @@ async def update_config(update: ConfigUpdate):
 # AUTO-DISCOVERY ENDPOINTS (Pull from Schwab movers)
 # ============================================================================
 
+
 @router.get("/discover")
 async def discover_candidates():
     """
@@ -134,18 +135,18 @@ async def discover_candidates():
 
         # Get movers from Schwab
         all_movers = get_all_movers()
-        gainers = all_movers.get('gainers', [])
+        gainers = all_movers.get("gainers", [])
 
         if not gainers:
             return {
                 "source": "schwab_movers",
                 "movers_found": 0,
                 "candidates": [],
-                "message": "No movers returned from Schwab (market may be closed)"
+                "message": "No movers returned from Schwab (market may be closed)",
             }
 
         # Extract symbols
-        symbols = [m['symbol'] for m in gainers if m.get('symbol')]
+        symbols = [m["symbol"] for m in gainers if m.get("symbol")]
 
         # Run through scanners
         coordinator = get_scanner_coordinator()
@@ -161,7 +162,7 @@ async def discover_candidates():
                 scanner: [r.to_dict() for r in candidates]
                 for scanner, candidates in results.items()
             },
-            "total_candidates": len(coordinator.get_all_candidates())
+            "total_candidates": len(coordinator.get_all_candidates()),
         }
 
     except ImportError as e:
@@ -185,8 +186,8 @@ async def discover_and_scan():
 
         # Get movers
         all_movers = get_all_movers()
-        gainers = all_movers.get('gainers', [])
-        symbols = [m['symbol'] for m in gainers if m.get('symbol')]
+        gainers = all_movers.get("gainers", [])
+        symbols = [m["symbol"] for m in gainers if m.get("symbol")]
 
         if not symbols:
             return {"movers_found": 0, "candidates_added": 0}
@@ -202,7 +203,7 @@ async def discover_and_scan():
             "movers_found": len(gainers),
             "symbols_scanned": len(symbols),
             "candidates_added": count,
-            "active_scanners": coordinator.get_active_scanners()
+            "active_scanners": coordinator.get_active_scanners(),
         }
 
     except Exception as e:
@@ -213,6 +214,7 @@ async def discover_and_scan():
 # ============================================================================
 # SCAN ENDPOINTS
 # ============================================================================
+
 
 @router.post("/scan")
 async def run_all_scans(request: ScanRequest):
@@ -237,7 +239,7 @@ async def run_all_scans(request: ScanRequest):
             scanner: [r.to_dict() for r in candidates]
             for scanner, candidates in results.items()
         },
-        "total_candidates": len(coordinator.get_all_candidates())
+        "total_candidates": len(coordinator.get_all_candidates()),
     }
 
 
@@ -254,7 +256,7 @@ async def scan_gaps(request: ScanRequest):
         "scanner": "GAPPER",
         "active": scanner.is_active_window(),
         "results": [r.to_dict() for r in results],
-        "count": len(results)
+        "count": len(results),
     }
 
 
@@ -271,7 +273,7 @@ async def scan_gainers(request: ScanRequest):
         "scanner": "GAINER",
         "active": scanner.is_active_window(),
         "results": [r.to_dict() for r in results],
-        "count": len(results)
+        "count": len(results),
     }
 
 
@@ -288,13 +290,14 @@ async def scan_hod(request: ScanRequest):
         "scanner": "HOD",
         "active": scanner.is_active_window(),
         "results": [r.to_dict() for r in results],
-        "count": len(results)
+        "count": len(results),
     }
 
 
 # ============================================================================
 # CANDIDATE ENDPOINTS
 # ============================================================================
+
 
 @router.get("/candidates")
 async def get_all_candidates():
@@ -311,8 +314,8 @@ async def get_all_candidates():
         "by_scanner": {
             "GAPPER": len([c for c in candidates if c.scanner.value == "GAPPER"]),
             "GAINER": len([c for c in candidates if c.scanner.value == "GAINER"]),
-            "HOD": len([c for c in candidates if c.scanner.value == "HOD"])
-        }
+            "HOD": len([c for c in candidates if c.scanner.value == "HOD"]),
+        },
     }
 
 
@@ -328,7 +331,7 @@ async def get_gap_candidates():
     return {
         "scanner": "GAPPER",
         "candidates": [c.to_dict() for c in candidates],
-        "count": len(candidates)
+        "count": len(candidates),
     }
 
 
@@ -344,7 +347,7 @@ async def get_gainer_candidates():
     return {
         "scanner": "GAINER",
         "candidates": [c.to_dict() for c in candidates],
-        "count": len(candidates)
+        "count": len(candidates),
     }
 
 
@@ -360,13 +363,14 @@ async def get_hod_candidates():
     return {
         "scanner": "HOD",
         "candidates": [c.to_dict() for c in candidates],
-        "count": len(candidates)
+        "count": len(candidates),
     }
 
 
 # ============================================================================
 # WATCHLIST INTEGRATION
 # ============================================================================
+
 
 @router.post("/feed-watchlist")
 async def feed_to_watchlist():
@@ -377,15 +381,13 @@ async def feed_to_watchlist():
     coordinator = get_scanner_coordinator()
     count = coordinator.feed_to_watchlist()
 
-    return {
-        "success": True,
-        "candidates_fed": count
-    }
+    return {"success": True, "candidates_fed": count}
 
 
 # ============================================================================
 # MANAGEMENT
 # ============================================================================
+
 
 @router.post("/clear")
 async def clear_all_candidates():

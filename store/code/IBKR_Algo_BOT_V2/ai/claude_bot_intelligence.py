@@ -18,16 +18,17 @@ Author: AI Trading Bot Team
 Version: 2.0 (Sonnet 4.5 with Parallel Tools)
 """
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
+import os
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict, field
 from enum import Enum
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional, Tuple
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,8 +40,10 @@ logger = logging.getLogger(__name__)
 # ENUMS AND DATA CLASSES
 # ============================================================================
 
+
 class MarketRegime(str, Enum):
     """Market regime classification"""
+
     TRENDING_BULL = "trending_bull"
     TRENDING_BEAR = "trending_bear"
     RANGE_BOUND = "range_bound"
@@ -52,16 +55,18 @@ class MarketRegime(str, Enum):
 
 class BotMood(str, Enum):
     """Bot's current operational mood/state"""
-    AGGRESSIVE = "aggressive"      # High confidence, taking more trades
+
+    AGGRESSIVE = "aggressive"  # High confidence, taking more trades
     CONSERVATIVE = "conservative"  # Lower confidence, fewer trades
-    DEFENSIVE = "defensive"        # Protecting capital, minimal exposure
+    DEFENSIVE = "defensive"  # Protecting capital, minimal exposure
     OPPORTUNISTIC = "opportunistic"  # Waiting for high-probability setups
-    LEARNING = "learning"          # Analyzing past performance
+    LEARNING = "learning"  # Analyzing past performance
 
 
 @dataclass
 class PerformanceMetrics:
     """Bot performance metrics for analysis"""
+
     win_rate: float = 0.0
     profit_factor: float = 0.0
     avg_win: float = 0.0
@@ -82,6 +87,7 @@ class PerformanceMetrics:
 @dataclass
 class MarketConditions:
     """Current market conditions snapshot"""
+
     regime: str = "unknown"
     volatility: str = "normal"
     trend: str = "neutral"
@@ -96,6 +102,7 @@ class MarketConditions:
 @dataclass
 class StrategyAdjustment:
     """Strategy adjustment recommendation"""
+
     parameter: str
     current_value: Any
     recommended_value: Any
@@ -107,6 +114,7 @@ class StrategyAdjustment:
 @dataclass
 class BotInsight:
     """AI-generated insight about bot behavior"""
+
     category: str  # performance, risk, strategy, market
     insight: str
     severity: str  # info, warning, critical
@@ -118,6 +126,7 @@ class BotInsight:
 # ============================================================================
 # CLAUDE BOT INTELLIGENCE CLASS
 # ============================================================================
+
 
 class ClaudeBotIntelligence:
     """
@@ -134,6 +143,7 @@ class ClaudeBotIntelligence:
         # Initialize Anthropic client
         try:
             import anthropic
+
             if self.api_key:
                 self.client = anthropic.Anthropic(api_key=self.api_key)
                 self.ai_available = True
@@ -179,15 +189,18 @@ class ClaudeBotIntelligence:
         """Load saved intelligence state"""
         if self.state_file.exists():
             try:
-                with open(self.state_file, 'r') as f:
+                with open(self.state_file, "r") as f:
                     data = json.load(f)
                     self.current_mood = BotMood(data.get("mood", "conservative"))
-                    self.current_regime = MarketRegime(data.get("regime", "range_bound"))
+                    self.current_regime = MarketRegime(
+                        data.get("regime", "range_bound")
+                    )
                     self.insights_history = [
                         BotInsight(**i) for i in data.get("insights", [])[-50:]
                     ]
                     self.adjustment_history = [
-                        StrategyAdjustment(**a) for a in data.get("adjustments", [])[-50:]
+                        StrategyAdjustment(**a)
+                        for a in data.get("adjustments", [])[-50:]
                     ]
                 logger.info("Bot intelligence state loaded")
             except Exception as e:
@@ -201,9 +214,9 @@ class ClaudeBotIntelligence:
                 "regime": self.current_regime.value,
                 "insights": [asdict(i) for i in self.insights_history[-50:]],
                 "adjustments": [asdict(a) for a in self.adjustment_history[-50:]],
-                "last_updated": datetime.now().isoformat()
+                "last_updated": datetime.now().isoformat(),
             }
-            with open(self.state_file, 'w') as f:
+            with open(self.state_file, "w") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Could not save intelligence state: {e}")
@@ -212,6 +225,7 @@ class ClaudeBotIntelligence:
         """Initialize Alpaca MCP client for direct trading access"""
         try:
             from ai.alpaca_mcp_integration import get_mcp_client
+
             self.mcp_client = get_mcp_client()
             if self.mcp_client and self.mcp_client.initialized:
                 logger.info("[OK] Alpaca MCP Client connected - faster trading enabled")
@@ -236,25 +250,21 @@ class ClaudeBotIntelligence:
                     "properties": {
                         "symbol": {
                             "type": "string",
-                            "description": "Stock symbol to fetch data for (e.g., AAPL, TSLA)"
+                            "description": "Stock symbol to fetch data for (e.g., AAPL, TSLA)",
                         },
                         "include_indicators": {
                             "type": "boolean",
                             "description": "Whether to include technical indicators",
-                            "default": True
-                        }
+                            "default": True,
+                        },
                     },
-                    "required": ["symbol"]
-                }
+                    "required": ["symbol"],
+                },
             },
             {
                 "name": "get_account_status",
                 "description": "Get current account status including equity, buying power, and positions",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                "input_schema": {"type": "object", "properties": {}, "required": []},
             },
             {
                 "name": "get_performance_metrics",
@@ -266,20 +276,16 @@ class ClaudeBotIntelligence:
                             "type": "string",
                             "enum": ["today", "week", "month", "all"],
                             "description": "Time period for metrics",
-                            "default": "today"
+                            "default": "today",
                         }
                     },
-                    "required": []
-                }
+                    "required": [],
+                },
             },
             {
                 "name": "get_open_positions",
                 "description": "Get all currently open positions with P&L",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                "input_schema": {"type": "object", "properties": {}, "required": []},
             },
             {
                 "name": "get_recent_trades",
@@ -290,11 +296,11 @@ class ClaudeBotIntelligence:
                         "limit": {
                             "type": "integer",
                             "description": "Number of trades to return",
-                            "default": 10
+                            "default": 10,
                         }
                     },
-                    "required": []
-                }
+                    "required": [],
+                },
             },
             {
                 "name": "get_watchlist",
@@ -305,11 +311,11 @@ class ClaudeBotIntelligence:
                         "watchlist_name": {
                             "type": "string",
                             "description": "Name of the watchlist",
-                            "default": "default"
+                            "default": "default",
                         }
                     },
-                    "required": []
-                }
+                    "required": [],
+                },
             },
             {
                 "name": "analyze_symbol",
@@ -319,36 +325,39 @@ class ClaudeBotIntelligence:
                     "properties": {
                         "symbol": {
                             "type": "string",
-                            "description": "Stock symbol to analyze"
+                            "description": "Stock symbol to analyze",
                         }
                     },
-                    "required": ["symbol"]
-                }
+                    "required": ["symbol"],
+                },
             },
             {
                 "name": "get_market_sentiment",
                 "description": "Get overall market sentiment and conditions",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
-            }
+                "input_schema": {"type": "object", "properties": {}, "required": []},
+            },
         ]
 
         # Add Alpaca MCP tools if available for faster direct trading
         if self.mcp_client and self.mcp_client.initialized:
             from ai.alpaca_mcp_integration import get_mcp_tools
+
             mcp_tools = get_mcp_tools()
             tools.extend(mcp_tools)
-            logger.info(f"[OK] Added {len(mcp_tools)} Alpaca MCP tools for direct trading")
+            logger.info(
+                f"[OK] Added {len(mcp_tools)} Alpaca MCP tools for direct trading"
+            )
 
         return tools
 
     def _execute_tool(self, tool_name: str, tool_input: Dict) -> Dict:
         """Execute a tool and return results - uses MCP for Alpaca tools"""
         # Check if this is an Alpaca MCP tool (faster direct access)
-        if tool_name.startswith("alpaca_") and self.mcp_client and self.mcp_client.initialized:
+        if (
+            tool_name.startswith("alpaca_")
+            and self.mcp_client
+            and self.mcp_client.initialized
+        ):
             return self._execute_mcp_tool(tool_name, tool_input)
 
         # Base tool handlers
@@ -382,12 +391,16 @@ class ClaudeBotIntelligence:
             mcp_handlers = {
                 "alpaca_get_account": lambda p: self.mcp_client.get_account(),
                 "alpaca_get_positions": lambda p: self.mcp_client.get_positions(),
-                "alpaca_get_quote": lambda p: self.mcp_client.get_quote(p.get("symbol")),
-                "alpaca_get_snapshot": lambda p: self.mcp_client.get_snapshot(p.get("symbol")),
+                "alpaca_get_quote": lambda p: self.mcp_client.get_quote(
+                    p.get("symbol")
+                ),
+                "alpaca_get_snapshot": lambda p: self.mcp_client.get_snapshot(
+                    p.get("symbol")
+                ),
                 "alpaca_get_bars": lambda p: self.mcp_client.get_bars(
                     p.get("symbol"),
                     p.get("timeframe", "1Day"),
-                    limit=p.get("limit", 100)
+                    limit=p.get("limit", 100),
                 ),
                 "alpaca_place_order": lambda p: self.mcp_client.place_order(
                     symbol=p.get("symbol"),
@@ -395,24 +408,26 @@ class ClaudeBotIntelligence:
                     side=p.get("side"),
                     order_type=p.get("order_type", "market"),
                     limit_price=p.get("limit_price"),
-                    stop_price=p.get("stop_price")
+                    stop_price=p.get("stop_price"),
                 ),
                 "alpaca_get_orders": lambda p: self.mcp_client.get_orders(
-                    status=p.get("status", "open"),
-                    limit=p.get("limit", 50)
+                    status=p.get("status", "open"), limit=p.get("limit", 50)
                 ),
-                "alpaca_cancel_order": lambda p: self.mcp_client.cancel_order(p.get("order_id")),
+                "alpaca_cancel_order": lambda p: self.mcp_client.cancel_order(
+                    p.get("order_id")
+                ),
                 "alpaca_close_position": lambda p: self.mcp_client.close_position(
                     symbol=p.get("symbol"),
                     qty=p.get("qty"),
-                    percentage=p.get("percentage")
+                    percentage=p.get("percentage"),
                 ),
                 "alpaca_get_clock": lambda p: self.mcp_client.get_clock(),
                 "alpaca_get_portfolio_history": lambda p: self.mcp_client.get_portfolio_history(
-                    period=p.get("period", "1M"),
-                    timeframe=p.get("timeframe", "1D")
+                    period=p.get("period", "1M"), timeframe=p.get("timeframe", "1D")
                 ),
-                "alpaca_get_crypto_quote": lambda p: self.mcp_client.get_crypto_quote(p.get("symbol")),
+                "alpaca_get_crypto_quote": lambda p: self.mcp_client.get_crypto_quote(
+                    p.get("symbol")
+                ),
             }
 
             handler = mcp_handlers.get(tool_name)
@@ -433,9 +448,11 @@ class ClaudeBotIntelligence:
         try:
             # Try Schwab fast polling cache first (real-time)
             try:
-                from schwab_fast_polling import get_cached_quote as get_fast_poll_quote
+                from schwab_fast_polling import \
+                    get_cached_quote as get_fast_poll_quote
+
                 fast_quote = get_fast_poll_quote(symbol)
-                if fast_quote and fast_quote.get('last', 0) > 0:
+                if fast_quote and fast_quote.get("last", 0) > 0:
                     return {
                         "symbol": symbol,
                         "price": fast_quote["last"],
@@ -447,14 +464,16 @@ class ClaudeBotIntelligence:
                         "volume": fast_quote.get("volume", 0),
                         "change": fast_quote.get("change", 0),
                         "change_pct": fast_quote.get("change_percent", 0),
-                        "source": "schwab_realtime"
+                        "source": "schwab_realtime",
                     }
             except ImportError:
                 pass
 
             # Try Schwab HTTP API
             try:
-                from schwab_market_data import get_schwab_quote, is_schwab_available
+                from schwab_market_data import (get_schwab_quote,
+                                                is_schwab_available)
+
                 if is_schwab_available():
                     schwab_quote = get_schwab_quote(symbol)
                     if schwab_quote:
@@ -469,13 +488,14 @@ class ClaudeBotIntelligence:
                             "volume": schwab_quote.get("volume", 0),
                             "change": schwab_quote.get("change", 0),
                             "change_pct": schwab_quote.get("change_percent", 0),
-                            "source": "schwab"
+                            "source": "schwab",
                         }
             except ImportError:
                 pass
 
             # Fallback to Alpaca
             from alpaca_market_data import get_alpaca_market_data
+
             market_data = get_alpaca_market_data()
 
             # Get quote
@@ -493,7 +513,7 @@ class ClaudeBotIntelligence:
                     "change": snapshot.get("change", 0),
                     "change_pct": snapshot.get("change_percent", 0),
                     "vwap": snapshot.get("vwap", 0),
-                    "source": "alpaca_live"
+                    "source": "alpaca_live",
                 }
             elif quote:
                 return {
@@ -501,7 +521,7 @@ class ClaudeBotIntelligence:
                     "price": quote.get("last", quote.get("bid", 0)),
                     "bid": quote.get("bid", 0),
                     "ask": quote.get("ask", 0),
-                    "source": "alpaca_quote"
+                    "source": "alpaca_quote",
                 }
             else:
                 return {"symbol": symbol, "error": "No data available"}
@@ -514,7 +534,9 @@ class ClaudeBotIntelligence:
         try:
             # Try Schwab first (if user wants Schwab as primary)
             try:
-                from schwab_trading import get_schwab_trading, is_schwab_trading_available
+                from schwab_trading import (get_schwab_trading,
+                                            is_schwab_trading_available)
+
                 if is_schwab_trading_available():
                     trading = get_schwab_trading()
                     if trading:
@@ -523,20 +545,28 @@ class ClaudeBotIntelligence:
                             return {
                                 "equity": float(account.get("total_equity", 0)),
                                 "buying_power": float(account.get("buying_power", 0)),
-                                "cash": float(account.get("cash_available_for_trading", 0)),
-                                "portfolio_value": float(account.get("total_equity", 0)),
+                                "cash": float(
+                                    account.get("cash_available_for_trading", 0)
+                                ),
+                                "portfolio_value": float(
+                                    account.get("total_equity", 0)
+                                ),
                                 "daily_pnl": float(account.get("daily_pl", 0)),
-                                "daytrade_count": 3 - account.get("round_trips", 0),  # PDT tracking
-                                "pattern_day_trader": account.get("is_day_trader", False),
+                                "daytrade_count": 3
+                                - account.get("round_trips", 0),  # PDT tracking
+                                "pattern_day_trader": account.get(
+                                    "is_day_trader", False
+                                ),
                                 "status": "ACTIVE",
                                 "account_type": account.get("account_type", "UNKNOWN"),
-                                "source": "schwab_live"
+                                "source": "schwab_live",
                             }
             except ImportError:
                 pass
 
             # Fallback to Alpaca
             from alpaca_integration import get_alpaca_connector
+
             connector = get_alpaca_connector()
             account = connector.get_account()
 
@@ -545,11 +575,12 @@ class ClaudeBotIntelligence:
                 "buying_power": float(account.get("buying_power", 0)),
                 "cash": float(account.get("cash", 0)),
                 "portfolio_value": float(account.get("portfolio_value", 0)),
-                "daily_pnl": float(account.get("equity", 0)) - float(account.get("last_equity", account.get("equity", 0))),
+                "daily_pnl": float(account.get("equity", 0))
+                - float(account.get("last_equity", account.get("equity", 0))),
                 "daytrade_count": account.get("daytrade_count", 0),
                 "pattern_day_trader": account.get("pattern_day_trader", False),
                 "status": account.get("status", "UNKNOWN"),
-                "source": "alpaca_live"
+                "source": "alpaca_live",
             }
         except Exception as e:
             logger.error(f"Account status error: {e}")
@@ -559,6 +590,7 @@ class ClaudeBotIntelligence:
         """Get REAL performance metrics from portfolio analytics"""
         try:
             from portfolio_analytics import get_portfolio_analytics
+
             analytics = get_portfolio_analytics()
             metrics = analytics.get_portfolio_metrics()
 
@@ -571,7 +603,7 @@ class ClaudeBotIntelligence:
                 "avg_win": metrics.get("avg_win", 0),
                 "avg_loss": metrics.get("avg_loss", 0),
                 "max_drawdown": metrics.get("max_drawdown", 0),
-                "source": "portfolio_analytics"
+                "source": "portfolio_analytics",
             }
         except Exception as e:
             logger.error(f"Performance metrics error: {e}")
@@ -582,26 +614,33 @@ class ClaudeBotIntelligence:
         try:
             # Try Schwab first
             try:
-                from schwab_trading import get_schwab_trading, is_schwab_trading_available
+                from schwab_trading import (get_schwab_trading,
+                                            is_schwab_trading_available)
+
                 if is_schwab_trading_available():
                     trading = get_schwab_trading()
                     if trading:
                         positions = trading.get_positions()
                         if positions is not None:
-                            total_value = sum(float(p.get("market_value", 0)) for p in positions)
-                            unrealized_pnl = sum(float(p.get("unrealized_pl", 0)) for p in positions)
+                            total_value = sum(
+                                float(p.get("market_value", 0)) for p in positions
+                            )
+                            unrealized_pnl = sum(
+                                float(p.get("unrealized_pl", 0)) for p in positions
+                            )
                             return {
                                 "positions": positions,
                                 "count": len(positions),
                                 "total_value": total_value,
                                 "unrealized_pnl": unrealized_pnl,
-                                "source": "schwab_live"
+                                "source": "schwab_live",
                             }
             except ImportError:
                 pass
 
             # Fallback to Alpaca
             from alpaca_integration import get_alpaca_connector
+
             connector = get_alpaca_connector()
             positions = connector.get_positions()
 
@@ -613,7 +652,7 @@ class ClaudeBotIntelligence:
                 "count": len(positions),
                 "total_value": total_value,
                 "unrealized_pnl": unrealized_pnl,
-                "source": "alpaca_live"
+                "source": "alpaca_live",
             }
         except Exception as e:
             logger.error(f"Positions error: {e}")
@@ -623,15 +662,24 @@ class ClaudeBotIntelligence:
         """Get REAL recent trades from bot manager"""
         try:
             from bot_manager import get_bot_manager
+
             bot = get_bot_manager()
-            trades = bot.trades_today[-params.get("limit", 10):]
+            trades = bot.trades_today[-params.get("limit", 10) :]
 
             return {
-                "trades": [{"symbol": t.symbol, "side": t.side, "quantity": t.quantity,
-                           "price": t.price, "confidence": t.confidence, "timestamp": t.timestamp}
-                          for t in trades],
+                "trades": [
+                    {
+                        "symbol": t.symbol,
+                        "side": t.side,
+                        "quantity": t.quantity,
+                        "price": t.price,
+                        "confidence": t.confidence,
+                        "timestamp": t.timestamp,
+                    }
+                    for t in trades
+                ],
                 "count": len(trades),
-                "source": "bot_manager"
+                "source": "bot_manager",
             }
         except Exception as e:
             logger.error(f"Recent trades error: {e}")
@@ -641,6 +689,7 @@ class ClaudeBotIntelligence:
         """Get REAL watchlist from watchlist manager"""
         try:
             from watchlist_manager import get_watchlist_manager
+
             mgr = get_watchlist_manager()
             watchlist = mgr.get_default_watchlist()
 
@@ -648,7 +697,7 @@ class ClaudeBotIntelligence:
                 "name": watchlist.get("name", "default"),
                 "symbols": watchlist.get("symbols", []),
                 "count": len(watchlist.get("symbols", [])),
-                "source": "watchlist_manager"
+                "source": "watchlist_manager",
             }
         except Exception as e:
             logger.error(f"Watchlist error: {e}")
@@ -658,6 +707,7 @@ class ClaudeBotIntelligence:
         """Get REAL AI prediction for a symbol"""
         try:
             from ai.alpaca_ai_predictor import get_alpaca_predictor
+
             predictor = get_alpaca_predictor()
             prediction = predictor.predict(params.get("symbol", "SPY"))
 
@@ -667,7 +717,7 @@ class ClaudeBotIntelligence:
                 "action": prediction.get("action", "HOLD"),
                 "confidence": prediction.get("confidence", 0.5),
                 "features": prediction.get("features", {}),
-                "source": "ai_predictor"
+                "source": "ai_predictor",
             }
         except Exception as e:
             logger.error(f"Symbol analysis error: {e}")
@@ -676,8 +726,9 @@ class ClaudeBotIntelligence:
     def _tool_get_market_sentiment(self, params: Dict) -> Dict:
         """Get REAL market sentiment from sentiment analyzer"""
         try:
-            from ai.warrior_sentiment_analyzer import get_sentiment_analyzer
             import asyncio
+
+            from ai.warrior_sentiment_analyzer import get_sentiment_analyzer
 
             analyzer = get_sentiment_analyzer()
 
@@ -694,13 +745,17 @@ class ClaudeBotIntelligence:
 
             if sentiment:
                 return {
-                    "overall": "bullish" if sentiment.overall_score > 0.2 else "bearish" if sentiment.overall_score < -0.2 else "neutral",
+                    "overall": (
+                        "bullish"
+                        if sentiment.overall_score > 0.2
+                        else "bearish" if sentiment.overall_score < -0.2 else "neutral"
+                    ),
                     "score": sentiment.overall_score,
                     "confidence": sentiment.confidence,
                     "is_trending": sentiment.is_trending,
                     "momentum": sentiment.momentum,
                     "signal_count": sentiment.signal_count,
-                    "source": "sentiment_analyzer"
+                    "source": "sentiment_analyzer",
                 }
             else:
                 return {"overall": "neutral", "note": "No recent sentiment data"}
@@ -712,14 +767,20 @@ class ClaudeBotIntelligence:
         """Inject real data provider for tool execution"""
         self.data_provider = provider
         # Override tool handlers with real data
-        if hasattr(provider, 'get_market_data'):
-            self._tool_get_market_data = lambda p: provider.get_market_data(p.get("symbol"))
-        if hasattr(provider, 'get_account_status'):
+        if hasattr(provider, "get_market_data"):
+            self._tool_get_market_data = lambda p: provider.get_market_data(
+                p.get("symbol")
+            )
+        if hasattr(provider, "get_account_status"):
             self._tool_get_account_status = lambda p: provider.get_account_status()
-        if hasattr(provider, 'get_positions'):
-            self._tool_get_open_positions = lambda p: {"positions": provider.get_positions()}
-        if hasattr(provider, 'get_recent_trades'):
-            self._tool_get_recent_trades = lambda p: {"trades": provider.get_recent_trades(p.get("limit", 10))}
+        if hasattr(provider, "get_positions"):
+            self._tool_get_open_positions = lambda p: {
+                "positions": provider.get_positions()
+            }
+        if hasattr(provider, "get_recent_trades"):
+            self._tool_get_recent_trades = lambda p: {
+                "trades": provider.get_recent_trades(p.get("limit", 10))
+            }
 
     def _execute_tools_parallel(self, tool_calls: List[Dict]) -> List[Dict]:
         """Execute multiple tool calls in parallel"""
@@ -733,7 +794,7 @@ class ClaudeBotIntelligence:
             return {
                 "type": "tool_result",
                 "tool_use_id": tool_id,
-                "content": json.dumps(result)
+                "content": json.dumps(result),
             }
 
         # Execute tools in parallel using thread pool
@@ -742,8 +803,13 @@ class ClaudeBotIntelligence:
 
         return results
 
-    def _get_claude_response_with_tools(self, system_prompt: str, user_prompt: str,
-                                         max_tokens: int = None, use_tools: bool = True) -> str:
+    def _get_claude_response_with_tools(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = None,
+        use_tools: bool = True,
+    ) -> str:
         """Get Claude response with tool use support for parallel data fetching"""
         if not self.ai_available:
             return self._get_fallback_response(user_prompt)
@@ -757,7 +823,7 @@ class ClaudeBotIntelligence:
                 max_tokens=max_tokens or self.max_tokens,
                 system=system_prompt,
                 tools=self.tools if use_tools else [],
-                messages=messages
+                messages=messages,
             )
 
             # Handle tool use loop
@@ -773,18 +839,18 @@ class ClaudeBotIntelligence:
 
                 for block in response.content:
                     if block.type == "tool_use":
-                        tool_calls.append({
-                            "id": block.id,
-                            "name": block.name,
-                            "input": block.input
-                        })
+                        tool_calls.append(
+                            {"id": block.id, "name": block.name, "input": block.input}
+                        )
                     elif block.type == "text":
                         text_content.append(block.text)
 
                 if not tool_calls:
                     break
 
-                logger.info(f"Executing {len(tool_calls)} tools in parallel: {[t['name'] for t in tool_calls]}")
+                logger.info(
+                    f"Executing {len(tool_calls)} tools in parallel: {[t['name'] for t in tool_calls]}"
+                )
 
                 # Execute all tools in parallel
                 tool_results = self._execute_tools_parallel(tool_calls)
@@ -799,13 +865,13 @@ class ClaudeBotIntelligence:
                     max_tokens=max_tokens or self.max_tokens,
                     system=system_prompt,
                     tools=self.tools if use_tools else [],
-                    messages=messages
+                    messages=messages,
                 )
 
             # Extract final text response
             final_text = ""
             for block in response.content:
-                if hasattr(block, 'text'):
+                if hasattr(block, "text"):
                     final_text += block.text
 
             return final_text if final_text else "Analysis complete."
@@ -814,8 +880,13 @@ class ClaudeBotIntelligence:
             logger.error(f"Claude API error with tools: {e}")
             return self._get_fallback_response(user_prompt)
 
-    def _get_claude_response(self, system_prompt: str, user_prompt: str,
-                              max_tokens: int = None, original_message: str = None) -> str:
+    def _get_claude_response(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = None,
+        original_message: str = None,
+    ) -> str:
         """Get response from Claude AI"""
         if not self.ai_available:
             # Use original message for fallback if available, otherwise use full prompt
@@ -826,7 +897,7 @@ class ClaudeBotIntelligence:
                 model=self.model,
                 max_tokens=max_tokens or self.max_tokens,
                 system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}]
+                messages=[{"role": "user", "content": user_prompt}],
             )
             return message.content[0].text
         except Exception as e:
@@ -838,62 +909,83 @@ class ClaudeBotIntelligence:
         prompt_lower = prompt.lower()
 
         # Context-aware responses based on prompt content (check specific terms first)
-        if 'warrior' in prompt_lower or 'momentum' in prompt_lower:
-            return "⚔️ Warrior Trading Mode Tips:\n" \
-                   "• Focus on stocks with high relative volume (2x+ average)\n" \
-                   "• Look for gap-ups with catalyst (news, earnings)\n" \
-                   "• Entry on first pullback to VWAP or moving average\n" \
-                   "• Quick profits - don't hold for extended moves\n" \
-                   "• Risk max 1-2% of account per trade"
+        if "warrior" in prompt_lower or "momentum" in prompt_lower:
+            return (
+                "⚔️ Warrior Trading Mode Tips:\n"
+                "• Focus on stocks with high relative volume (2x+ average)\n"
+                "• Look for gap-ups with catalyst (news, earnings)\n"
+                "• Entry on first pullback to VWAP or moving average\n"
+                "• Quick profits - don't hold for extended moves\n"
+                "• Risk max 1-2% of account per trade"
+            )
 
-        elif 'market' in prompt_lower or 'regime' in prompt_lower:
-            return "📊 Market Analysis (Rule-Based): Currently operating in range-bound conditions. " \
-                   "Volatility is normal. Recommend maintaining conservative position sizes " \
-                   "and waiting for clear breakout signals before increasing exposure."
+        elif "market" in prompt_lower or "regime" in prompt_lower:
+            return (
+                "📊 Market Analysis (Rule-Based): Currently operating in range-bound conditions. "
+                "Volatility is normal. Recommend maintaining conservative position sizes "
+                "and waiting for clear breakout signals before increasing exposure."
+            )
 
-        elif 'performance' in prompt_lower:
-            return "📈 Performance Summary: No recent trades to analyze. " \
-                   "When trading begins, I'll track win rate, P&L, and risk metrics. " \
-                   "Recommendation: Start with small position sizes to build a track record."
+        elif "performance" in prompt_lower:
+            return (
+                "📈 Performance Summary: No recent trades to analyze. "
+                "When trading begins, I'll track win rate, P&L, and risk metrics. "
+                "Recommendation: Start with small position sizes to build a track record."
+            )
 
-        elif 'adjustment' in prompt_lower or 'recommend' in prompt_lower or 'suggest' in prompt_lower:
-            return "💡 Strategy Recommendations:\n" \
-                   "• Keep confidence threshold at 0.65+ for entries\n" \
-                   "• Use 1-2% position sizing per trade\n" \
-                   "• Set stop losses at 2-3% below entry\n" \
-                   "• Take partial profits at 1:1 risk/reward\n" \
-                   "• Avoid trading first 15 min and last 30 min of session"
+        elif (
+            "adjustment" in prompt_lower
+            or "recommend" in prompt_lower
+            or "suggest" in prompt_lower
+        ):
+            return (
+                "💡 Strategy Recommendations:\n"
+                "• Keep confidence threshold at 0.65+ for entries\n"
+                "• Use 1-2% position sizing per trade\n"
+                "• Set stop losses at 2-3% below entry\n"
+                "• Take partial profits at 1:1 risk/reward\n"
+                "• Avoid trading first 15 min and last 30 min of session"
+            )
 
-        elif 'issue' in prompt_lower or 'problem' in prompt_lower or 'error' in prompt_lower:
-            return "🔧 System Diagnostic:\n" \
-                   "• API connections: Operational\n" \
-                   "• Market data: Active\n" \
-                   "• AI model: Loaded\n" \
-                   "• Note: Claude AI rate limited until Dec 1st - using rule-based analysis"
+        elif (
+            "issue" in prompt_lower
+            or "problem" in prompt_lower
+            or "error" in prompt_lower
+        ):
+            return (
+                "🔧 System Diagnostic:\n"
+                "• API connections: Operational\n"
+                "• Market data: Active\n"
+                "• AI model: Loaded\n"
+                "• Note: Claude AI rate limited until Dec 1st - using rule-based analysis"
+            )
 
-        elif 'hello' in prompt_lower or 'hi' in prompt_lower:
-            return "👋 Hello! I'm your AI trading assistant. I can help with:\n" \
-                   "• Market regime analysis\n" \
-                   "• Performance tracking\n" \
-                   "• Strategy adjustments\n" \
-                   "• Risk management\n" \
-                   "Note: Full AI capabilities resume Dec 1st (rate limit reached)"
+        elif "hello" in prompt_lower or "hi" in prompt_lower:
+            return (
+                "👋 Hello! I'm your AI trading assistant. I can help with:\n"
+                "• Market regime analysis\n"
+                "• Performance tracking\n"
+                "• Strategy adjustments\n"
+                "• Risk management\n"
+                "Note: Full AI capabilities resume Dec 1st (rate limit reached)"
+            )
 
         else:
-            return f"🤖 I received your message about: '{prompt[:50]}...'\n\n" \
-                   "Currently using rule-based analysis (Claude AI rate limited until Dec 1st).\n" \
-                   "I can still help with:\n" \
-                   "• 'market' - Market regime analysis\n" \
-                   "• 'performance' - Trading performance\n" \
-                   "• 'recommendations' - Strategy suggestions\n" \
-                   "• 'warrior mode' - Momentum trading tips"
+            return (
+                f"🤖 I received your message about: '{prompt[:50]}...'\n\n"
+                "Currently using rule-based analysis (Claude AI rate limited until Dec 1st).\n"
+                "I can still help with:\n"
+                "• 'market' - Market regime analysis\n"
+                "• 'performance' - Trading performance\n"
+                "• 'recommendations' - Strategy suggestions\n"
+                "• 'warrior mode' - Momentum trading tips"
+            )
 
     # ========================================================================
     # SELF-MONITORING AND PERFORMANCE ANALYSIS
     # ========================================================================
 
-    def analyze_performance(self, trades: List[Dict],
-                           account_equity: float) -> Dict:
+    def analyze_performance(self, trades: List[Dict], account_equity: float) -> Dict:
         """
         Analyze bot trading performance and generate insights
 
@@ -952,8 +1044,12 @@ What mood should the bot adopt? (aggressive/conservative/defensive/opportunistic
             insight=analysis.get("summary", response[:500]),
             severity="info" if metrics.win_rate > 0.5 else "warning",
             action_required=metrics.consecutive_losses >= 3,
-            suggested_action=analysis.get("recommendations", ["Review strategy"])[0] if isinstance(analysis.get("recommendations"), list) else str(analysis.get("recommendations", "Continue monitoring")),
-            timestamp=datetime.now().isoformat()
+            suggested_action=(
+                analysis.get("recommendations", ["Review strategy"])[0]
+                if isinstance(analysis.get("recommendations"), list)
+                else str(analysis.get("recommendations", "Continue monitoring"))
+            ),
+            timestamp=datetime.now().isoformat(),
         )
         self.insights_history.append(insight)
         self._save_state()
@@ -962,11 +1058,14 @@ What mood should the bot adopt? (aggressive/conservative/defensive/opportunistic
             "metrics": asdict(metrics),
             "analysis": analysis,
             "insight": asdict(insight),
-            "mood_recommendation": analysis.get("mood_recommendation", self.current_mood.value)
+            "mood_recommendation": analysis.get(
+                "mood_recommendation", self.current_mood.value
+            ),
         }
 
-    def _calculate_metrics(self, trades: List[Dict],
-                           account_equity: float) -> PerformanceMetrics:
+    def _calculate_metrics(
+        self, trades: List[Dict], account_equity: float
+    ) -> PerformanceMetrics:
         """Calculate performance metrics from trades"""
         if not trades:
             return PerformanceMetrics()
@@ -994,7 +1093,9 @@ What mood should the bot adopt? (aggressive/conservative/defensive/opportunistic
 
         return PerformanceMetrics(
             win_rate=len(wins) / len(trades) if trades else 0,
-            profit_factor=total_wins / total_losses if total_losses > 0 else float('inf'),
+            profit_factor=(
+                total_wins / total_losses if total_losses > 0 else float("inf")
+            ),
             avg_win=total_wins / len(wins) if wins else 0,
             avg_loss=total_losses / len(losses) if losses else 0,
             total_trades=len(trades),
@@ -1004,7 +1105,7 @@ What mood should the bot adopt? (aggressive/conservative/defensive/opportunistic
             best_trade=max(t.get("pnl", 0) for t in trades) if trades else 0,
             worst_trade=min(t.get("pnl", 0) for t in trades) if trades else 0,
             consecutive_wins=consecutive_wins,
-            consecutive_losses=consecutive_losses
+            consecutive_losses=consecutive_losses,
         )
 
     # ========================================================================
@@ -1042,7 +1143,9 @@ MARKET DATA:
 
 Classify the current market regime and provide trading recommendations."""
 
-        response = self._get_claude_response(system_prompt, user_prompt, max_tokens=1000)
+        response = self._get_claude_response(
+            system_prompt, user_prompt, max_tokens=1000
+        )
 
         try:
             analysis = json.loads(response)
@@ -1055,7 +1158,7 @@ Classify the current market regime and provide trading recommendations."""
                 sentiment=analysis.get("sentiment", "neutral"),
                 risk_level=analysis.get("risk_level", "medium"),
                 key_levels=analysis.get("key_levels", {}),
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().isoformat(),
             )
 
             # Update current regime
@@ -1071,9 +1174,12 @@ Classify the current market regime and provide trading recommendations."""
             logger.error(f"Error parsing market conditions: {e}")
             return MarketConditions(timestamp=datetime.now().isoformat())
 
-    def suggest_strategy_adjustments(self, current_config: Dict,
-                                     performance: Dict,
-                                     market_conditions: MarketConditions) -> List[StrategyAdjustment]:
+    def suggest_strategy_adjustments(
+        self,
+        current_config: Dict,
+        performance: Dict,
+        market_conditions: MarketConditions,
+    ) -> List[StrategyAdjustment]:
         """
         Suggest strategy parameter adjustments based on performance and market conditions
 
@@ -1122,7 +1228,9 @@ MARKET CONDITIONS:
 
 Should any parameters be adjusted? If so, what specific changes do you recommend?"""
 
-        response = self._get_claude_response(system_prompt, user_prompt, max_tokens=1500)
+        response = self._get_claude_response(
+            system_prompt, user_prompt, max_tokens=1500
+        )
 
         adjustments = []
         try:
@@ -1135,7 +1243,7 @@ Should any parameters be adjusted? If so, what specific changes do you recommend
                         recommended_value=s.get("recommended_value"),
                         reason=s.get("reason", ""),
                         confidence=s.get("confidence", 0.5),
-                        timestamp=datetime.now().isoformat()
+                        timestamp=datetime.now().isoformat(),
                     )
                     adjustments.append(adj)
                     self.adjustment_history.append(adj)
@@ -1145,8 +1253,9 @@ Should any parameters be adjusted? If so, what specific changes do you recommend
         self._save_state()
         return adjustments
 
-    def auto_adjust_mood(self, performance: Dict,
-                         market_conditions: MarketConditions) -> Tuple[BotMood, str]:
+    def auto_adjust_mood(
+        self, performance: Dict, market_conditions: MarketConditions
+    ) -> Tuple[BotMood, str]:
         """
         Automatically adjust bot mood based on conditions
 
@@ -1185,7 +1294,10 @@ Should any parameters be adjusted? If so, what specific changes do you recommend
         elif consecutive_wins >= 3 and win_rate > 0.6:
             self.current_mood = BotMood.AGGRESSIVE
             reason = f"Hot streak ({consecutive_wins} wins). Capitalizing on momentum."
-        elif market_conditions.regime in [MarketRegime.TRENDING_BULL.value, MarketRegime.BREAKOUT.value]:
+        elif market_conditions.regime in [
+            MarketRegime.TRENDING_BULL.value,
+            MarketRegime.BREAKOUT.value,
+        ]:
             if win_rate > 0.5:
                 self.current_mood = BotMood.AGGRESSIVE
                 reason = "Strong bullish trend with good win rate. Increasing activity."
@@ -1196,7 +1308,9 @@ Should any parameters be adjusted? If so, what specific changes do you recommend
             reason = "Normal conditions. Waiting for high-probability setups."
 
         if old_mood != self.current_mood:
-            logger.info(f"Bot mood changed: {old_mood.value} -> {self.current_mood.value}. Reason: {reason}")
+            logger.info(
+                f"Bot mood changed: {old_mood.value} -> {self.current_mood.value}. Reason: {reason}"
+            )
             self._save_state()
 
         return self.current_mood, reason
@@ -1241,13 +1355,17 @@ Respond helpfully. If the user wants to change settings or perform an action,
 include the appropriate action in your response."""
 
         # Add to conversation history
-        self.conversation_history.append({
-            "role": "user",
-            "content": user_message,
-            "timestamp": datetime.now().isoformat()
-        })
+        self.conversation_history.append(
+            {
+                "role": "user",
+                "content": user_message,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
-        response = self._get_claude_response(system_prompt, user_prompt, max_tokens=1000, original_message=user_message)
+        response = self._get_claude_response(
+            system_prompt, user_prompt, max_tokens=1000, original_message=user_message
+        )
 
         # Parse response
         try:
@@ -1261,12 +1379,14 @@ include the appropriate action in your response."""
             parameters = {}
 
         # Add to conversation history
-        self.conversation_history.append({
-            "role": "assistant",
-            "content": bot_response,
-            "action": action,
-            "timestamp": datetime.now().isoformat()
-        })
+        self.conversation_history.append(
+            {
+                "role": "assistant",
+                "content": bot_response,
+                "action": action,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         # Keep only last 20 messages
         self.conversation_history = self.conversation_history[-20:]
@@ -1276,7 +1396,7 @@ include the appropriate action in your response."""
             "action": action,
             "parameters": parameters,
             "mood": self.current_mood.value,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     def chat_with_tools(self, user_message: str, use_tools: bool = True) -> Dict:
@@ -1312,26 +1432,27 @@ Be concise but thorough. Reference specific data from your tool calls."""
         user_prompt = f"User: {user_message}"
 
         # Add to conversation history
-        self.conversation_history.append({
-            "role": "user",
-            "content": user_message,
-            "timestamp": datetime.now().isoformat()
-        })
+        self.conversation_history.append(
+            {
+                "role": "user",
+                "content": user_message,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         # Use tool-enabled response
         response = self._get_claude_response_with_tools(
-            system_prompt,
-            user_prompt,
-            max_tokens=2000,
-            use_tools=use_tools
+            system_prompt, user_prompt, max_tokens=2000, use_tools=use_tools
         )
 
         # Add to conversation history
-        self.conversation_history.append({
-            "role": "assistant",
-            "content": response,
-            "timestamp": datetime.now().isoformat()
-        })
+        self.conversation_history.append(
+            {
+                "role": "assistant",
+                "content": response,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         # Keep only last 20 messages
         self.conversation_history = self.conversation_history[-20:]
@@ -1340,7 +1461,7 @@ Be concise but thorough. Reference specific data from your tool calls."""
             "response": response,
             "mood": self.current_mood.value,
             "timestamp": datetime.now().isoformat(),
-            "tools_used": use_tools
+            "tools_used": use_tools,
         }
 
     def comprehensive_analysis(self, symbols: List[str] = None) -> Dict:
@@ -1392,10 +1513,7 @@ Gather all relevant data and provide:
 Use your tools to fetch real-time data before analyzing."""
 
         response = self._get_claude_response_with_tools(
-            system_prompt,
-            user_prompt,
-            max_tokens=3000,
-            use_tools=True
+            system_prompt, user_prompt, max_tokens=3000, use_tools=True
         )
 
         # Create insight from analysis
@@ -1405,7 +1523,7 @@ Use your tools to fetch real-time data before analyzing."""
             severity="info",
             action_required=False,
             suggested_action="Review analysis and act on recommendations",
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
         self.insights_history.append(insight)
         self._save_state()
@@ -1414,7 +1532,7 @@ Use your tools to fetch real-time data before analyzing."""
             "analysis": response,
             "timestamp": datetime.now().isoformat(),
             "symbols_analyzed": symbols or [],
-            "mood": self.current_mood.value
+            "mood": self.current_mood.value,
         }
 
     def quick_market_scan(self, symbols: List[str]) -> Dict:
@@ -1441,16 +1559,13 @@ Be extremely concise. Format as a table."""
         user_prompt = f"Quick scan these symbols: {symbols_list}. Get their market data and provide rapid assessments."
 
         response = self._get_claude_response_with_tools(
-            system_prompt,
-            user_prompt,
-            max_tokens=1500,
-            use_tools=True
+            system_prompt, user_prompt, max_tokens=1500, use_tools=True
         )
 
         return {
             "scan_results": response,
             "symbols": symbols[:10],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     def interpret_command(self, command: str) -> Dict:
@@ -1499,7 +1614,7 @@ Respond in JSON format:
                 "parameters": {},
                 "confidence": 0.0,
                 "clarification_needed": True,
-                "clarification_question": "I didn't understand that command. Could you rephrase?"
+                "clarification_question": "I didn't understand that command. Could you rephrase?",
             }
 
     # ========================================================================
@@ -1530,32 +1645,40 @@ Respond in JSON format:
             "timestamp": datetime.now().isoformat(),
             "healed": False,
             "actions_taken": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         try:
             # Pattern 1: Connection errors - retry with backoff
             if "connection" in error_str.lower() or "timeout" in error_str.lower():
                 healing_result["actions_taken"].append("Detected connection issue")
-                healing_result["actions_taken"].append("Will retry with exponential backoff")
+                healing_result["actions_taken"].append(
+                    "Will retry with exponential backoff"
+                )
                 healing_result["healed"] = True
                 healing_result["retry_delay"] = 5
 
             # Pattern 2: API rate limits - pause and retry
             elif "rate" in error_str.lower() or "429" in error_str:
                 healing_result["actions_taken"].append("Detected rate limit")
-                healing_result["actions_taken"].append("Switching to fallback mode for 60s")
+                healing_result["actions_taken"].append(
+                    "Switching to fallback mode for 60s"
+                )
                 healing_result["healed"] = True
                 healing_result["retry_delay"] = 60
 
             # Pattern 3: Data errors - use cached/fallback data
             elif "data" in error_str.lower() or "none" in error_str.lower():
-                healing_result["actions_taken"].append("Detected data availability issue")
+                healing_result["actions_taken"].append(
+                    "Detected data availability issue"
+                )
                 healing_result["actions_taken"].append("Using cached data if available")
                 healing_result["healed"] = True
 
             # Pattern 4: Authentication errors - attempt re-auth
-            elif "auth" in error_str.lower() or "401" in error_str or "403" in error_str:
+            elif (
+                "auth" in error_str.lower() or "401" in error_str or "403" in error_str
+            ):
                 healing_result["actions_taken"].append("Detected authentication issue")
                 healing_result["recommendations"].append("Check API keys in .env file")
                 healing_result["healed"] = False
@@ -1563,19 +1686,29 @@ Respond in JSON format:
             # Pattern 5: Market closed - adjust behavior
             elif "market" in error_str.lower() and "closed" in error_str.lower():
                 healing_result["actions_taken"].append("Market is closed")
-                healing_result["actions_taken"].append("Switching to analysis-only mode")
+                healing_result["actions_taken"].append(
+                    "Switching to analysis-only mode"
+                )
                 healing_result["healed"] = True
 
             # Use AI to diagnose unknown errors
             else:
                 diagnosis = self.diagnose_issue(error_str, context)
                 healing_result["ai_diagnosis"] = diagnosis
-                healing_result["actions_taken"].append(f"AI diagnosis: {diagnosis.get('diagnosis', 'Unknown')[:100]}")
-                healing_result["healed"] = diagnosis.get("should_continue_trading", True)
-                healing_result["recommendations"] = [diagnosis.get("immediate_fix", "Review logs")]
+                healing_result["actions_taken"].append(
+                    f"AI diagnosis: {diagnosis.get('diagnosis', 'Unknown')[:100]}"
+                )
+                healing_result["healed"] = diagnosis.get(
+                    "should_continue_trading", True
+                )
+                healing_result["recommendations"] = [
+                    diagnosis.get("immediate_fix", "Review logs")
+                ]
 
             # Log healing attempt
-            logger.info(f"🔧 SELF-HEALING: {'SUCCESS' if healing_result['healed'] else 'NEEDS ATTENTION'}")
+            logger.info(
+                f"🔧 SELF-HEALING: {'SUCCESS' if healing_result['healed'] else 'NEEDS ATTENTION'}"
+            )
             for action in healing_result["actions_taken"]:
                 logger.info(f"   - {action}")
 
@@ -1585,8 +1718,12 @@ Respond in JSON format:
                 insight=f"Auto-healed from {error_type}: {error_str[:100]}",
                 severity="warning" if healing_result["healed"] else "critical",
                 action_required=not healing_result["healed"],
-                suggested_action=healing_result["recommendations"][0] if healing_result["recommendations"] else "Monitor system",
-                timestamp=datetime.now().isoformat()
+                suggested_action=(
+                    healing_result["recommendations"][0]
+                    if healing_result["recommendations"]
+                    else "Monitor system"
+                ),
+                timestamp=datetime.now().isoformat(),
             )
             self.insights_history.append(insight)
             self._save_state()
@@ -1615,7 +1752,7 @@ Respond in JSON format:
             "timestamp": datetime.now().isoformat(),
             "changes": [],
             "reason": "",
-            "new_config": {}
+            "new_config": {},
         }
 
         try:
@@ -1632,76 +1769,101 @@ Respond in JSON format:
 
             # Rule 1: High volatility - reduce position size, increase confidence threshold
             if conditions.volatility in ["high", "extreme"]:
-                adaptations["changes"].append({
-                    "parameter": "position_size",
-                    "change": "reduce by 50%",
-                    "reason": "High volatility detected"
-                })
-                adaptations["changes"].append({
-                    "parameter": "confidence_threshold",
-                    "change": "increase to 0.7",
-                    "reason": "Require higher confidence in volatile markets"
-                })
+                adaptations["changes"].append(
+                    {
+                        "parameter": "position_size",
+                        "change": "reduce by 50%",
+                        "reason": "High volatility detected",
+                    }
+                )
+                adaptations["changes"].append(
+                    {
+                        "parameter": "confidence_threshold",
+                        "change": "increase to 0.7",
+                        "reason": "Require higher confidence in volatile markets",
+                    }
+                )
                 adaptations["new_config"]["confidence_threshold"] = 0.7
 
             # Rule 2: Losing streak - become defensive
             if consecutive_losses >= 3:
-                adaptations["changes"].append({
-                    "parameter": "mood",
-                    "change": "DEFENSIVE",
-                    "reason": f"{consecutive_losses} consecutive losses"
-                })
-                adaptations["changes"].append({
-                    "parameter": "max_daily_trades",
-                    "change": "reduce to 3",
-                    "reason": "Limit exposure during losing streak"
-                })
+                adaptations["changes"].append(
+                    {
+                        "parameter": "mood",
+                        "change": "DEFENSIVE",
+                        "reason": f"{consecutive_losses} consecutive losses",
+                    }
+                )
+                adaptations["changes"].append(
+                    {
+                        "parameter": "max_daily_trades",
+                        "change": "reduce to 3",
+                        "reason": "Limit exposure during losing streak",
+                    }
+                )
                 adaptations["new_config"]["max_daily_trades"] = 3
                 self.current_mood = BotMood.DEFENSIVE
 
             # Rule 3: Low win rate - increase selectivity
             elif win_rate < 0.4 and total_trades >= 10:
-                adaptations["changes"].append({
-                    "parameter": "confidence_threshold",
-                    "change": "increase to 0.75",
-                    "reason": f"Low win rate ({win_rate:.1%})"
-                })
+                adaptations["changes"].append(
+                    {
+                        "parameter": "confidence_threshold",
+                        "change": "increase to 0.75",
+                        "reason": f"Low win rate ({win_rate:.1%})",
+                    }
+                )
                 adaptations["new_config"]["confidence_threshold"] = 0.75
 
             # Rule 4: Strong performance - gradually increase activity
             elif win_rate > 0.6 and profit_factor > 1.5:
-                adaptations["changes"].append({
-                    "parameter": "mood",
-                    "change": "AGGRESSIVE",
-                    "reason": f"Strong performance (WR: {win_rate:.1%}, PF: {profit_factor:.2f})"
-                })
+                adaptations["changes"].append(
+                    {
+                        "parameter": "mood",
+                        "change": "AGGRESSIVE",
+                        "reason": f"Strong performance (WR: {win_rate:.1%}, PF: {profit_factor:.2f})",
+                    }
+                )
                 self.current_mood = BotMood.AGGRESSIVE
 
             # Rule 5: Trending market - follow the trend
-            if conditions.regime in [MarketRegime.TRENDING_BULL.value, MarketRegime.TRENDING_BEAR.value]:
-                adaptations["changes"].append({
-                    "parameter": "strategy",
-                    "change": "trend_following",
-                    "reason": f"Market is trending: {conditions.regime}"
-                })
+            if conditions.regime in [
+                MarketRegime.TRENDING_BULL.value,
+                MarketRegime.TRENDING_BEAR.value,
+            ]:
+                adaptations["changes"].append(
+                    {
+                        "parameter": "strategy",
+                        "change": "trend_following",
+                        "reason": f"Market is trending: {conditions.regime}",
+                    }
+                )
 
             # Rule 6: Range-bound market - wait for breakouts
             elif conditions.regime == MarketRegime.RANGE_BOUND.value:
-                adaptations["changes"].append({
-                    "parameter": "strategy",
-                    "change": "breakout_watch",
-                    "reason": "Range-bound market - waiting for breakout"
-                })
+                adaptations["changes"].append(
+                    {
+                        "parameter": "strategy",
+                        "change": "breakout_watch",
+                        "reason": "Range-bound market - waiting for breakout",
+                    }
+                )
                 self.current_mood = BotMood.OPPORTUNISTIC
 
-            adaptations["reason"] = f"Adapted to {conditions.regime} market with {conditions.volatility} volatility"
+            adaptations["reason"] = (
+                f"Adapted to {conditions.regime} market with {conditions.volatility} volatility"
+            )
 
             # Apply adaptations to bot if available
             self._apply_adaptations(adaptations)
 
-            logger.info(f"🧬 MORPHIC ADAPTATION: Made {len(adaptations['changes'])} changes")
+            logger.info(
+                f"🧬 MORPHIC ADAPTATION: Made {len(adaptations['changes'])} changes"
+            )
             for change in adaptations["changes"]:
-                logger.info(f"   - {change['parameter']}: {change['change']} ({change['reason']})")
+                logger.info(
+                    f"   - {change['parameter']}: {change['change']} ({change['reason']})"
+                )
 
             self._save_state()
 
@@ -1715,6 +1877,7 @@ Respond in JSON format:
         """Apply morphic adaptations to the bot manager"""
         try:
             from bot_manager import get_bot_manager
+
             bot = get_bot_manager()
 
             new_config = adaptations.get("new_config", {})
@@ -1745,7 +1908,7 @@ Respond in JSON format:
             "timestamp": datetime.now().isoformat(),
             "phases": [],
             "optimizations": [],
-            "status": "started"
+            "status": "started",
         }
 
         try:
@@ -1764,7 +1927,7 @@ Respond in JSON format:
             market_data = {
                 "sentiment": sentiment,
                 "account": account,
-                "positions": positions
+                "positions": positions,
             }
             adaptations = self.morphic_adapt(market_data, performance)
             results["optimizations"].extend(adaptations.get("changes", []))
@@ -1772,12 +1935,13 @@ Respond in JSON format:
             # Phase 4: Auto-adjust mood
             results["phases"].append("Phase 4: Mood adjustment")
             from dataclasses import asdict
+
             conditions = MarketConditions(
                 regime=self.current_regime.value,
                 volatility="normal",
                 trend="neutral",
                 risk_level="medium",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().isoformat(),
             )
             new_mood, reason = self.auto_adjust_mood(performance, conditions)
             results["new_mood"] = new_mood.value
@@ -1787,7 +1951,9 @@ Respond in JSON format:
             results["phases"].append("Phase 5: Generating insights")
 
             results["status"] = "completed"
-            results["summary"] = f"Optimized {len(results['optimizations'])} parameters. Mood: {new_mood.value}"
+            results["summary"] = (
+                f"Optimized {len(results['optimizations'])} parameters. Mood: {new_mood.value}"
+            )
 
             logger.info(f"🚀 AUTO-OPTIMIZATION: Complete - {results['summary']}")
 
@@ -1818,16 +1984,20 @@ Respond in JSON format:
                     logger.info("🔄 Continuous improvement cycle starting...")
                     self.auto_optimize()
                     import time
+
                     time.sleep(interval_minutes * 60)
                 except Exception as e:
                     logger.error(f"Improvement cycle error: {e}")
                     self.self_heal(e, {"context": "continuous_improvement"})
                     import time
+
                     time.sleep(60)  # Wait 1 minute before retry
 
         thread = threading.Thread(target=improvement_cycle, daemon=True)
         thread.start()
-        logger.info(f"🔄 Continuous improvement loop started (every {interval_minutes} min)")
+        logger.info(
+            f"🔄 Continuous improvement loop started (every {interval_minutes} min)"
+        )
 
     def diagnose_issue(self, error_message: str, context: Dict) -> Dict:
         """
@@ -1866,7 +2036,9 @@ CONTEXT:
 
 What went wrong and how should we fix it?"""
 
-        response = self._get_claude_response(system_prompt, user_prompt, max_tokens=1000)
+        response = self._get_claude_response(
+            system_prompt, user_prompt, max_tokens=1000
+        )
 
         try:
             diagnosis = json.loads(response)
@@ -1874,7 +2046,7 @@ What went wrong and how should we fix it?"""
             diagnosis = {
                 "diagnosis": response,
                 "severity": "medium",
-                "should_continue_trading": True
+                "should_continue_trading": True,
             }
 
         # Create insight
@@ -1884,7 +2056,7 @@ What went wrong and how should we fix it?"""
             severity=diagnosis.get("severity", "medium"),
             action_required=diagnosis.get("severity") in ["high", "critical"],
             suggested_action=diagnosis.get("immediate_fix", "Review error logs"),
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
         self.insights_history.append(insight)
         self._save_state()
@@ -1935,7 +2107,9 @@ MARKET CONDITIONS AT ENTRY:
 
 Grade this trade and extract lessons for future improvement."""
 
-        response = self._get_claude_response(system_prompt, user_prompt, max_tokens=1000)
+        response = self._get_claude_response(
+            system_prompt, user_prompt, max_tokens=1000
+        )
 
         try:
             return json.loads(response)
@@ -1949,7 +2123,9 @@ Grade this trade and extract lessons for future improvement."""
     def get_status(self) -> Dict:
         """Get current intelligence status"""
         # Count MCP tools separately
-        mcp_tool_count = sum(1 for t in self.tools if t.get("name", "").startswith("alpaca_"))
+        mcp_tool_count = sum(
+            1 for t in self.tools if t.get("name", "").startswith("alpaca_")
+        )
         base_tool_count = len(self.tools) - mcp_tool_count
 
         return {
@@ -1960,13 +2136,17 @@ Grade this trade and extract lessons for future improvement."""
                 "parallel_tools": True,
                 "tool_count": len(self.tools),
                 "base_tools": base_tool_count,
-                "max_tokens": self.max_tokens
+                "max_tokens": self.max_tokens,
             },
             "mcp_integration": {
                 "available": self.mcp_client is not None,
-                "initialized": self.mcp_client.initialized if self.mcp_client else False,
+                "initialized": (
+                    self.mcp_client.initialized if self.mcp_client else False
+                ),
                 "mcp_tools": mcp_tool_count,
-                "direct_trading": self.mcp_client.initialized if self.mcp_client else False
+                "direct_trading": (
+                    self.mcp_client.initialized if self.mcp_client else False
+                ),
             },
             "current_mood": self.current_mood.value,
             "current_regime": self.current_regime.value,
@@ -1974,11 +2154,19 @@ Grade this trade and extract lessons for future improvement."""
             "adjustments_count": len(self.adjustment_history),
             "conversation_length": len(self.conversation_history),
             "capabilities": [
-                "chat", "chat_with_tools", "comprehensive_analysis",
-                "quick_market_scan", "analyze_performance", "diagnose_issue",
-                "mcp_direct_trading" if (self.mcp_client and self.mcp_client.initialized) else None
+                "chat",
+                "chat_with_tools",
+                "comprehensive_analysis",
+                "quick_market_scan",
+                "analyze_performance",
+                "diagnose_issue",
+                (
+                    "mcp_direct_trading"
+                    if (self.mcp_client and self.mcp_client.initialized)
+                    else None
+                ),
             ],
-            "last_updated": datetime.now().isoformat()
+            "last_updated": datetime.now().isoformat(),
         }
 
     def get_recent_insights(self, limit: int = 10) -> List[Dict]:

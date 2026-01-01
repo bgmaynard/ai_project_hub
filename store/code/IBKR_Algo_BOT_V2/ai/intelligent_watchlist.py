@@ -14,35 +14,38 @@ Workflow:
 This is the brain that connects all our trading modules.
 """
 
-import requests
-import logging
-import time
-import threading
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable
+import logging
+import threading
+import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
+from typing import Callable, Dict, List, Optional
+
 import pytz
+import requests
 
 logger = logging.getLogger(__name__)
 
 
 class StockStatus(Enum):
     """Status of a stock in the watchlist"""
-    QUALIFYING = "qualifying"      # Just detected, being evaluated
-    WATCHLIST = "watchlist"        # Passed qualification, on active watch
-    TRAINING = "training"          # ML model being trained
-    READY = "ready"                # Trained and ready to trade
-    IN_POSITION = "in_position"    # Currently holding
-    COOLDOWN = "cooldown"          # Recently exited, avoiding whipsaw
-    REMOVED = "removed"            # Jacknife/reversal - don't trade
+
+    QUALIFYING = "qualifying"  # Just detected, being evaluated
+    WATCHLIST = "watchlist"  # Passed qualification, on active watch
+    TRAINING = "training"  # ML model being trained
+    READY = "ready"  # Trained and ready to trade
+    IN_POSITION = "in_position"  # Currently holding
+    COOLDOWN = "cooldown"  # Recently exited, avoiding whipsaw
+    REMOVED = "removed"  # Jacknife/reversal - don't trade
 
 
 @dataclass
 class WatchlistEntry:
     """A stock on the intelligent watchlist"""
+
     symbol: str
     status: StockStatus
 
@@ -115,16 +118,17 @@ class WatchlistEntry:
             "in_position": self.status == StockStatus.IN_POSITION,
             "position_size": self.position_size,
             "unrealized_pnl": f"${self.unrealized_pnl:.2f}",
-            "trade_count": self.trade_count
+            "trade_count": self.trade_count,
         }
 
 
 @dataclass
 class JacknifeAlert:
     """Alert when stock jacknifes (sharp reversal)"""
+
     symbol: str
     alert_type: str  # "jacknife", "reversal", "breakdown", "volume_dry"
-    severity: str    # "warning", "danger", "critical"
+    severity: str  # "warning", "danger", "critical"
     message: str
     price_before: float
     price_after: float
@@ -142,30 +146,30 @@ class IntelligentWatchlistManager:
 
     def __init__(self, api_url: str = "http://localhost:9100/api/alpaca"):
         self.api_url = api_url
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # Watchlist storage
         self.watchlist: Dict[str, WatchlistEntry] = {}
         self.max_watchlist_size = 50
 
         # Qualification thresholds
-        self.min_price = 1.00   # Warrior method: $1 minimum
+        self.min_price = 1.00  # Warrior method: $1 minimum
         self.max_price = 20.00  # Warrior method: $20 maximum
         self.min_volume_ratio = 1.5  # 1.5x average volume
-        self.min_spike_pct = 2.0     # 2% move to qualify
+        self.min_spike_pct = 2.0  # 2% move to qualify
 
         # Jacknife / Reversal Detection
-        self.jacknife_drop_pct = 5.0       # 5% drop = jacknife
-        self.jacknife_time_seconds = 60    # Within 60 seconds
-        self.reversal_threshold = 3.0      # 3% reversal from high
-        self.max_jacknife_count = 2        # Remove after 2 jacknifes
+        self.jacknife_drop_pct = 5.0  # 5% drop = jacknife
+        self.jacknife_time_seconds = 60  # Within 60 seconds
+        self.reversal_threshold = 3.0  # 3% reversal from high
+        self.max_jacknife_count = 2  # Remove after 2 jacknifes
 
         # Cooldown settings
-        self.cooldown_minutes = 15         # 15 min cooldown after whipsaw
+        self.cooldown_minutes = 15  # 15 min cooldown after whipsaw
 
         # Spike re-entry
-        self.spike_reentry_pct = 2.0       # 2% spike for re-entry consideration
-        self.max_trades_per_stock = 5      # Max 5 trades per stock per day
+        self.spike_reentry_pct = 2.0  # 2% spike for re-entry consideration
+        self.max_trades_per_stock = 5  # Max 5 trades per stock per day
 
         # Position limits
         self.max_position_value = 1000
@@ -217,7 +221,7 @@ class IntelligentWatchlistManager:
                                 discovery_price=entry_data.get("discovery_price", 0),
                                 high_of_day=entry_data.get("high_of_day", 0),
                                 spike_count=entry_data.get("spike_count", 0),
-                                model_trained=entry_data.get("model_trained", False)
+                                model_trained=entry_data.get("model_trained", False),
                             )
                             self.watchlist[entry.symbol] = entry
                     logger.info(f"Loaded {len(self.watchlist)} stocks from watchlist")
@@ -232,21 +236,25 @@ class IntelligentWatchlistManager:
 
             entries = []
             for sym, entry in self.watchlist.items():
-                entries.append({
-                    "symbol": entry.symbol,
-                    "status": entry.status.value,
-                    "discovery_time": entry.discovery_time.isoformat(),
-                    "discovery_source": entry.discovery_source,
-                    "catalyst": entry.catalyst,
-                    "headline": entry.headline,
-                    "discovery_price": entry.discovery_price,
-                    "high_of_day": entry.high_of_day,
-                    "spike_count": entry.spike_count,
-                    "model_trained": entry.model_trained
-                })
+                entries.append(
+                    {
+                        "symbol": entry.symbol,
+                        "status": entry.status.value,
+                        "discovery_time": entry.discovery_time.isoformat(),
+                        "discovery_source": entry.discovery_source,
+                        "catalyst": entry.catalyst,
+                        "headline": entry.headline,
+                        "discovery_price": entry.discovery_price,
+                        "high_of_day": entry.high_of_day,
+                        "spike_count": entry.spike_count,
+                        "model_trained": entry.model_trained,
+                    }
+                )
 
-            with open(path, 'w') as f:
-                json.dump({"entries": entries, "saved_at": datetime.now().isoformat()}, f)
+            with open(path, "w") as f:
+                json.dump(
+                    {"entries": entries, "saved_at": datetime.now().isoformat()}, f
+                )
 
         except Exception as e:
             logger.error(f"Could not save watchlist: {e}")
@@ -268,8 +276,13 @@ class IntelligentWatchlistManager:
     # QUALIFICATION
     # =========================================================================
 
-    def qualify_stock(self, symbol: str, source: str = "manual",
-                     catalyst: str = "", headline: str = "") -> bool:
+    def qualify_stock(
+        self,
+        symbol: str,
+        source: str = "manual",
+        catalyst: str = "",
+        headline: str = "",
+    ) -> bool:
         """
         Qualify a stock for the watchlist.
         Checks price, volume, and momentum.
@@ -281,8 +294,8 @@ class IntelligentWatchlistManager:
                 return False
 
             q = r.json()
-            price = float(q.get('last', 0)) or float(q.get('ask', 0))
-            volume = int(q.get('volume', 0) or 0)
+            price = float(q.get("last", 0)) or float(q.get("ask", 0))
+            volume = int(q.get("volume", 0) or 0)
 
             if price <= 0:
                 return False
@@ -293,11 +306,13 @@ class IntelligentWatchlistManager:
                 return False
 
             # Volume check (if we have avg volume)
-            avg_vol = int(q.get('avg_volume', volume) or volume)
+            avg_vol = int(q.get("avg_volume", volume) or volume)
             volume_ratio = volume / avg_vol if avg_vol > 0 else 1.0
 
             if volume_ratio < self.min_volume_ratio:
-                logger.info(f"{symbol} failed: volume ratio {volume_ratio:.1f}x < {self.min_volume_ratio}x")
+                logger.info(
+                    f"{symbol} failed: volume ratio {volume_ratio:.1f}x < {self.min_volume_ratio}x"
+                )
                 return False
 
             # Passed qualification!
@@ -318,13 +333,15 @@ class IntelligentWatchlistManager:
                 current_volume=volume,
                 avg_volume=avg_vol,
                 volume_ratio=volume_ratio,
-                last_update=now
+                last_update=now,
             )
 
             self.watchlist[symbol] = entry
             self._save_watchlist()
 
-            logger.warning(f"QUALIFIED: {symbol} @ ${price:.2f} | Vol: {volume_ratio:.1f}x | Source: {source}")
+            logger.warning(
+                f"QUALIFIED: {symbol} @ ${price:.2f} | Vol: {volume_ratio:.1f}x | Source: {source}"
+            )
 
             if self.on_stock_qualified:
                 self.on_stock_qualified(entry)
@@ -338,8 +355,14 @@ class IntelligentWatchlistManager:
             logger.error(f"Error qualifying {symbol}: {e}")
             return False
 
-    def add_from_news(self, symbol: str, headline: str, catalyst: str,
-                     confidence: float, validation_score: int) -> bool:
+    def add_from_news(
+        self,
+        symbol: str,
+        headline: str,
+        catalyst: str,
+        confidence: float,
+        validation_score: int,
+    ) -> bool:
         """Add a stock from news detection pipeline"""
 
         # Skip if already on watchlist
@@ -385,9 +408,7 @@ class IntelligentWatchlistManager:
             logger.info(f"Triggering training for {symbol}...")
 
             threading.Thread(
-                target=self._do_training,
-                args=(symbol,),
-                daemon=True
+                target=self._do_training, args=(symbol,), daemon=True
             ).start()
 
         except Exception as e:
@@ -400,7 +421,7 @@ class IntelligentWatchlistManager:
             r = requests.post(
                 "http://localhost:9100/api/ai/train",
                 json={"symbol": symbol, "quick": True},
-                timeout=120
+                timeout=120,
             )
 
             entry = self.watchlist.get(symbol)
@@ -415,8 +436,7 @@ class IntelligentWatchlistManager:
                 # Try to get backtest results
                 try:
                     bt = requests.get(
-                        f"http://localhost:9100/api/ai/backtest/{symbol}",
-                        timeout=30
+                        f"http://localhost:9100/api/ai/backtest/{symbol}", timeout=30
                     )
                     if bt.status_code == 200:
                         bt_data = bt.json()
@@ -424,7 +444,9 @@ class IntelligentWatchlistManager:
                 except:
                     pass
 
-                logger.info(f"Training complete for {symbol} - win rate: {entry.backtest_win_rate:.0%}")
+                logger.info(
+                    f"Training complete for {symbol} - win rate: {entry.backtest_win_rate:.0%}"
+                )
 
                 # Get prediction
                 self._get_prediction(symbol)
@@ -441,8 +463,7 @@ class IntelligentWatchlistManager:
         """Get prediction for a symbol"""
         try:
             r = requests.get(
-                f"http://localhost:9100/api/ai/predict/{symbol}",
-                timeout=10
+                f"http://localhost:9100/api/ai/predict/{symbol}", timeout=10
             )
 
             entry = self.watchlist.get(symbol)
@@ -500,8 +521,8 @@ class IntelligentWatchlistManager:
                     continue
 
                 q = r.json()
-                price = float(q.get('last', 0)) or float(q.get('ask', 0))
-                volume = int(q.get('volume', 0) or 0)
+                price = float(q.get("last", 0)) or float(q.get("ask", 0))
+                volume = int(q.get("volume", 0) or 0)
 
                 if price <= 0:
                     continue
@@ -525,19 +546,21 @@ class IntelligentWatchlistManager:
                 if symbol not in self.price_history:
                     self.price_history[symbol] = []
 
-                self.price_history[symbol].append({
-                    "price": price,
-                    "time": now,
-                    "volume": volume
-                })
+                self.price_history[symbol].append(
+                    {"price": price, "time": now, "volume": volume}
+                )
 
                 # Trim history
                 if len(self.price_history[symbol]) > self.price_history_max:
-                    self.price_history[symbol] = self.price_history[symbol][-self.price_history_max:]
+                    self.price_history[symbol] = self.price_history[symbol][
+                        -self.price_history_max :
+                    ]
 
                 # Update position P/L if in position
                 if entry.status == StockStatus.IN_POSITION and entry.entry_price > 0:
-                    entry.unrealized_pnl = (price - entry.entry_price) * entry.position_size
+                    entry.unrealized_pnl = (
+                        price - entry.entry_price
+                    ) * entry.position_size
 
             except Exception as e:
                 pass  # Ignore individual quote failures
@@ -559,7 +582,7 @@ class IntelligentWatchlistManager:
 
             # Look back for jacknife (big drop in short time)
             for i in range(min(self.jacknife_time_seconds, len(history))):
-                past = history[-(i+1)]
+                past = history[-(i + 1)]
                 past_price = past["price"]
                 past_time = past["time"]
 
@@ -582,7 +605,7 @@ class IntelligentWatchlistManager:
                         price_after=current_price,
                         drop_pct=drop_pct,
                         time_seconds=int(time_diff),
-                        timestamp=now
+                        timestamp=now,
                     )
 
                     self._handle_jacknife(entry, alert)
@@ -590,7 +613,9 @@ class IntelligentWatchlistManager:
 
             # Check for reversal from high
             if entry.high_of_day > 0:
-                reversal_pct = (entry.high_of_day - current_price) / entry.high_of_day * 100
+                reversal_pct = (
+                    (entry.high_of_day - current_price) / entry.high_of_day * 100
+                )
 
                 if reversal_pct >= self.reversal_threshold:
                     entry.reversal_count += 1
@@ -606,26 +631,25 @@ class IntelligentWatchlistManager:
                             price_after=current_price,
                             drop_pct=reversal_pct,
                             time_seconds=0,
-                            timestamp=now
+                            timestamp=now,
                         )
 
                         self.alerts.append(alert)
                         if len(self.alerts) > self.max_alerts:
-                            self.alerts = self.alerts[-self.max_alerts:]
+                            self.alerts = self.alerts[-self.max_alerts :]
 
                         logger.warning(f"REVERSAL: {alert.message}")
 
             # Calculate whipsaw risk
-            entry.whipsaw_risk = min(1.0,
-                (entry.jacknife_count * 0.3) +
-                (entry.reversal_count * 0.1)
+            entry.whipsaw_risk = min(
+                1.0, (entry.jacknife_count * 0.3) + (entry.reversal_count * 0.1)
             )
 
     def _handle_jacknife(self, entry: WatchlistEntry, alert: JacknifeAlert):
         """Handle a jacknife detection"""
         self.alerts.append(alert)
         if len(self.alerts) > self.max_alerts:
-            self.alerts = self.alerts[-self.max_alerts:]
+            self.alerts = self.alerts[-self.max_alerts :]
 
         logger.warning(f"JACKNIFE: {alert.message}")
 
@@ -640,7 +664,9 @@ class IntelligentWatchlistManager:
 
         # Remove from watchlist if too many jacknifes
         if entry.jacknife_count >= self.max_jacknife_count:
-            logger.warning(f"REMOVING {entry.symbol} - too many jacknifes ({entry.jacknife_count})")
+            logger.warning(
+                f"REMOVING {entry.symbol} - too many jacknifes ({entry.jacknife_count})"
+            )
             entry.status = StockStatus.REMOVED
             alert.action_taken = "removed"
             self._save_watchlist()
@@ -652,20 +678,24 @@ class IntelligentWatchlistManager:
                 return
 
             order = {
-                'symbol': entry.symbol,
-                'quantity': entry.position_size,
-                'action': 'sell',
-                'order_type': 'market',
-                'time_in_force': 'day'
+                "symbol": entry.symbol,
+                "quantity": entry.position_size,
+                "action": "sell",
+                "order_type": "market",
+                "time_in_force": "day",
             }
 
             r = requests.post(f"{self.api_url}/place-order", json=order, timeout=5)
             result = r.json()
 
-            if result.get('success'):
-                logger.warning(f"EMERGENCY EXIT: Sold {entry.position_size} {entry.symbol} - reason: {reason}")
+            if result.get("success"):
+                logger.warning(
+                    f"EMERGENCY EXIT: Sold {entry.position_size} {entry.symbol} - reason: {reason}"
+                )
                 entry.status = StockStatus.COOLDOWN
-                entry.cooldown_until = datetime.now(self.et_tz) + timedelta(minutes=self.cooldown_minutes)
+                entry.cooldown_until = datetime.now(self.et_tz) + timedelta(
+                    minutes=self.cooldown_minutes
+                )
                 entry.position_size = 0
             else:
                 logger.error(f"Emergency exit failed for {entry.symbol}: {result}")
@@ -696,18 +726,22 @@ class IntelligentWatchlistManager:
             recent_low = min(prices[:-3])  # Exclude last 3
             current = prices[-1]
 
-            spike_pct = (current - recent_low) / recent_low * 100 if recent_low > 0 else 0
+            spike_pct = (
+                (current - recent_low) / recent_low * 100 if recent_low > 0 else 0
+            )
 
             if spike_pct >= self.spike_reentry_pct:
                 entry.spike_count += 1
                 entry.last_spike_time = now
 
-                entry.spike_history.append({
-                    "time": now.isoformat(),
-                    "low": recent_low,
-                    "high": current,
-                    "spike_pct": spike_pct
-                })
+                entry.spike_history.append(
+                    {
+                        "time": now.isoformat(),
+                        "low": recent_low,
+                        "high": current,
+                        "spike_pct": spike_pct,
+                    }
+                )
 
                 logger.info(f"SPIKE RE-ENTRY opportunity: {symbol} +{spike_pct:.1f}%")
 
@@ -745,7 +779,7 @@ class IntelligentWatchlistManager:
             "prediction_direction": entry.prediction_direction,
             "whipsaw_risk": entry.whipsaw_risk,
             "spike_count": entry.spike_count,
-            "timestamp": datetime.now(self.et_tz).isoformat()
+            "timestamp": datetime.now(self.et_tz).isoformat(),
         }
 
         logger.warning(f"TRADE SIGNAL: {signal}")
@@ -766,12 +800,13 @@ class IntelligentWatchlistManager:
         try:
             # GATING ENFORCEMENT: Route through Signal Gating Engine first
             from ai.gated_trading import get_gated_trading_manager
+
             manager = get_gated_trading_manager()
 
             approved, exec_request, reason = manager.gate_trade_attempt(
                 symbol=symbol,
                 trigger_type="intelligent_watchlist",
-                quote={"price": entry.current_price}
+                quote={"price": entry.current_price},
             )
 
             if not approved:
@@ -785,26 +820,28 @@ class IntelligentWatchlistManager:
             size = max(1, int(self.max_position_value / entry.current_price))
 
             order = {
-                'symbol': symbol,
-                'quantity': size,
-                'action': action,
-                'order_type': 'market',
-                'time_in_force': 'day',
-                'extended_hours': True,
-                'gating_token': gating_token
+                "symbol": symbol,
+                "quantity": size,
+                "action": action,
+                "order_type": "market",
+                "time_in_force": "day",
+                "extended_hours": True,
+                "gating_token": gating_token,
             }
 
             r = requests.post(f"{self.api_url}/place-order", json=order, timeout=5)
             result = r.json()
 
-            if result.get('success'):
+            if result.get("success"):
                 entry.status = StockStatus.IN_POSITION
                 entry.entry_price = entry.current_price
                 entry.entry_time = datetime.now(self.et_tz)
                 entry.position_size = size
                 entry.trade_count += 1
 
-                logger.warning(f"TRADE EXECUTED (GATED): {action.upper()} {size} {symbol} @ ${entry.current_price:.2f}")
+                logger.warning(
+                    f"TRADE EXECUTED (GATED): {action.upper()} {size} {symbol} @ ${entry.current_price:.2f}"
+                )
                 return True
             else:
                 logger.error(f"Trade failed: {result}")
@@ -830,15 +867,18 @@ class IntelligentWatchlistManager:
     def get_alerts(self, limit: int = 20) -> List[Dict]:
         """Get recent alerts"""
         alerts = self.alerts[-limit:]
-        return [{
-            "symbol": a.symbol,
-            "type": a.alert_type,
-            "severity": a.severity,
-            "message": a.message,
-            "drop_pct": f"{a.drop_pct:.1f}%",
-            "action": a.action_taken,
-            "time": a.timestamp.isoformat()
-        } for a in alerts]
+        return [
+            {
+                "symbol": a.symbol,
+                "type": a.alert_type,
+                "severity": a.severity,
+                "message": a.message,
+                "drop_pct": f"{a.drop_pct:.1f}%",
+                "action": a.action_taken,
+                "time": a.timestamp.isoformat(),
+            }
+            for a in alerts
+        ]
 
     def get_status(self) -> Dict:
         """Get manager status"""
@@ -852,7 +892,7 @@ class IntelligentWatchlistManager:
             "total_stocks": len(self.watchlist),
             "status_breakdown": status_counts,
             "alert_count": len(self.alerts),
-            "max_watchlist_size": self.max_watchlist_size
+            "max_watchlist_size": self.max_watchlist_size,
         }
 
     def remove_stock(self, symbol: str, reason: str = "manual"):
@@ -879,7 +919,7 @@ def start_intelligent_watchlist(
     on_qualified: Callable = None,
     on_jacknife: Callable = None,
     on_spike: Callable = None,
-    on_signal: Callable = None
+    on_signal: Callable = None,
 ) -> IntelligentWatchlistManager:
     """Start the intelligent watchlist"""
     manager = get_intelligent_watchlist()
@@ -898,7 +938,7 @@ def start_intelligent_watchlist(
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(message)s")
 
     def on_qualified(entry):
         print(f"\n*** QUALIFIED: {entry.symbol} @ ${entry.current_price:.2f} ***")
@@ -916,11 +956,11 @@ if __name__ == "__main__":
         on_qualified=on_qualified,
         on_jacknife=on_jacknife,
         on_spike=on_spike,
-        on_signal=on_signal
+        on_signal=on_signal,
     )
 
     # Test qualification
-    test_symbols = ['SOFI', 'PLTR', 'NIO', 'LCID']
+    test_symbols = ["SOFI", "PLTR", "NIO", "LCID"]
     for sym in test_symbols:
         manager.qualify_stock(sym, "test")
 

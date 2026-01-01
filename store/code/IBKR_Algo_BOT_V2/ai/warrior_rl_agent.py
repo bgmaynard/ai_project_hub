@@ -14,19 +14,21 @@ Reward: Risk-adjusted returns (Sharpe ratio)
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Deque
-from dataclasses import dataclass
-from collections import deque
-from datetime import datetime
-import numpy as np
 import random
+from collections import deque
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Deque, Dict, List, Optional, Tuple
+
+import numpy as np
 
 # Deep Learning
 try:
     import torch
     import torch.nn as nn
-    import torch.optim as optim
     import torch.nn.functional as F
+    import torch.optim as optim
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -39,6 +41,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TradingState:
     """Current trading state representation"""
+
     # Market data
     price: float
     volume: float
@@ -64,6 +67,7 @@ class TradingState:
 @dataclass
 class TradingAction:
     """Trading action"""
+
     action_type: str  # 'enter', 'hold', 'exit', 'size_up', 'size_down'
     size_change: float  # Position size change (-1 to 1)
     confidence: float  # Action confidence (0 to 1)
@@ -98,7 +102,7 @@ class DQNetwork(nn.Module):
         self,
         state_dim: int = 12,  # TradingState features
         num_actions: int = 5,  # enter, hold, exit, size_up, size_down
-        hidden_dims: List[int] = [256, 128, 64]
+        hidden_dims: List[int] = [256, 128, 64],
     ):
         super().__init__()
 
@@ -140,10 +144,7 @@ class DuelingDQNetwork(nn.Module):
     """
 
     def __init__(
-        self,
-        state_dim: int = 12,
-        num_actions: int = 5,
-        hidden_dim: int = 256
+        self, state_dim: int = 12, num_actions: int = 5, hidden_dim: int = 256
     ):
         super().__init__()
 
@@ -152,21 +153,17 @@ class DuelingDQNetwork(nn.Module):
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU()
+            nn.ReLU(),
         )
 
         # Value stream
         self.value_stream = nn.Sequential(
-            nn.Linear(hidden_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 1)
+            nn.Linear(hidden_dim, 128), nn.ReLU(), nn.Linear(128, 1)
         )
 
         # Advantage stream
         self.advantage_stream = nn.Sequential(
-            nn.Linear(hidden_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, num_actions)
+            nn.Linear(hidden_dim, 128), nn.ReLU(), nn.Linear(128, num_actions)
         )
 
     def forward(self, state):
@@ -194,7 +191,7 @@ class WarriorRLAgent:
     Uses Double DQN with Dueling architecture and Prioritized Experience Replay
     """
 
-    ACTIONS = ['enter', 'hold', 'exit', 'size_up', 'size_down']
+    ACTIONS = ["enter", "hold", "exit", "size_up", "size_down"]
 
     def __init__(
         self,
@@ -204,23 +201,21 @@ class WarriorRLAgent:
         epsilon_start: float = 1.0,  # Exploration rate
         epsilon_end: float = 0.01,
         epsilon_decay: float = 0.995,
-        device: str = None
+        device: str = None,
     ):
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch required for RL Agent")
 
-        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.num_actions = len(self.ACTIONS)
 
         # Q-Networks (Double DQN)
         self.policy_net = DuelingDQNetwork(
-            state_dim=state_dim,
-            num_actions=self.num_actions
+            state_dim=state_dim, num_actions=self.num_actions
         ).to(self.device)
 
         self.target_net = DuelingDQNetwork(
-            state_dim=state_dim,
-            num_actions=self.num_actions
+            state_dim=state_dim, num_actions=self.num_actions
         ).to(self.device)
 
         self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -258,15 +253,13 @@ class WarriorRLAgent:
             state.pattern_confidence,
             state.time_in_position / 100.0,
             state.current_drawdown,
-            state.sharpe_ratio / 3.0  # Normalize assuming max ~3
+            state.sharpe_ratio / 3.0,  # Normalize assuming max ~3
         ]
 
         return torch.tensor(features, dtype=torch.float32, device=self.device)
 
     def select_action(
-        self,
-        state: TradingState,
-        training: bool = True
+        self, state: TradingState, training: bool = True
     ) -> TradingAction:
         """
         Select action using epsilon-greedy policy
@@ -297,28 +290,23 @@ class WarriorRLAgent:
         action_type = self.ACTIONS[action_idx]
 
         # Determine size change based on action
-        if action_type == 'enter':
+        if action_type == "enter":
             size_change = 0.3  # Enter with 30% of capital
-        elif action_type == 'size_up':
+        elif action_type == "size_up":
             size_change = 0.1  # Increase by 10%
-        elif action_type == 'size_down':
+        elif action_type == "size_down":
             size_change = -0.1  # Decrease by 10%
-        elif action_type == 'exit':
+        elif action_type == "exit":
             size_change = -1.0  # Exit fully
         else:  # hold
             size_change = 0.0
 
         return TradingAction(
-            action_type=action_type,
-            size_change=size_change,
-            confidence=confidence
+            action_type=action_type, size_change=size_change, confidence=confidence
         )
 
     def calculate_reward(
-        self,
-        state: TradingState,
-        action: TradingAction,
-        next_state: TradingState
+        self, state: TradingState, action: TradingAction, next_state: TradingState
     ) -> float:
         """
         Calculate reward for state transition
@@ -331,7 +319,9 @@ class WarriorRLAgent:
         """
         # P&L reward (risk-adjusted by position size)
         pnl_change = next_state.unrealized_pnl - state.unrealized_pnl
-        risk_adjusted_pnl = pnl_change / (state.position_size + 0.01)  # Avoid div by zero
+        risk_adjusted_pnl = pnl_change / (
+            state.position_size + 0.01
+        )  # Avoid div by zero
 
         # Sharpe ratio improvement
         sharpe_change = next_state.sharpe_ratio - state.sharpe_ratio
@@ -344,14 +334,14 @@ class WarriorRLAgent:
 
         # Combine rewards
         reward = (
-            risk_adjusted_pnl * 10.0 +  # Primary: P&L
-            sharpe_change * 5.0 +        # Sharpe improvement
-            win_rate_bonus +             # Win rate
-            drawdown_penalty             # Drawdown penalty
+            risk_adjusted_pnl * 10.0  # Primary: P&L
+            + sharpe_change * 5.0  # Sharpe improvement
+            + win_rate_bonus  # Win rate
+            + drawdown_penalty  # Drawdown penalty
         )
 
         # Bonus for exiting profitable trades
-        if action.action_type == 'exit' and state.unrealized_pnl > 0:
+        if action.action_type == "exit" and state.unrealized_pnl > 0:
             reward += 2.0
 
         # Penalty for holding losers too long
@@ -377,27 +367,38 @@ class WarriorRLAgent:
 
         # Unpack batch
         state_batch = torch.stack([self.state_to_tensor(s) for s, _, _, _, _ in batch])
-        action_batch = torch.tensor([self.ACTIONS.index(a.action_type)
-                                     for _, a, _, _, _ in batch], device=self.device)
-        reward_batch = torch.tensor([r for _, _, r, _, _ in batch],
-                                    dtype=torch.float32, device=self.device)
-        next_state_batch = torch.stack([self.state_to_tensor(s)
-                                        for _, _, _, s, _ in batch])
-        done_batch = torch.tensor([d for _, _, _, _, d in batch],
-                                  dtype=torch.float32, device=self.device)
+        action_batch = torch.tensor(
+            [self.ACTIONS.index(a.action_type) for _, a, _, _, _ in batch],
+            device=self.device,
+        )
+        reward_batch = torch.tensor(
+            [r for _, _, r, _, _ in batch], dtype=torch.float32, device=self.device
+        )
+        next_state_batch = torch.stack(
+            [self.state_to_tensor(s) for _, _, _, s, _ in batch]
+        )
+        done_batch = torch.tensor(
+            [d for _, _, _, _, d in batch], dtype=torch.float32, device=self.device
+        )
 
         # Current Q values
-        current_q_values = self.policy_net(state_batch).gather(1, action_batch.unsqueeze(1))
+        current_q_values = self.policy_net(state_batch).gather(
+            1, action_batch.unsqueeze(1)
+        )
 
         # Double DQN: use policy net to select action, target net to evaluate
         with torch.no_grad():
             next_actions = self.policy_net(next_state_batch).argmax(1)
-            next_q_values = self.target_net(next_state_batch).gather(
-                1, next_actions.unsqueeze(1)
-            ).squeeze()
+            next_q_values = (
+                self.target_net(next_state_batch)
+                .gather(1, next_actions.unsqueeze(1))
+                .squeeze()
+            )
 
             # Target Q values
-            target_q_values = reward_batch + (1 - done_batch) * self.gamma * next_q_values
+            target_q_values = (
+                reward_batch + (1 - done_batch) * self.gamma * next_q_values
+            )
 
         # Loss (Huber loss for stability)
         loss = F.smooth_l1_loss(current_q_values.squeeze(), target_q_values)
@@ -422,23 +423,26 @@ class WarriorRLAgent:
 
     def save(self, path: str):
         """Save agent state"""
-        torch.save({
-            'policy_net': self.policy_net.state_dict(),
-            'target_net': self.target_net.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
-            'epsilon': self.epsilon,
-            'steps': self.steps_done
-        }, path)
+        torch.save(
+            {
+                "policy_net": self.policy_net.state_dict(),
+                "target_net": self.target_net.state_dict(),
+                "optimizer": self.optimizer.state_dict(),
+                "epsilon": self.epsilon,
+                "steps": self.steps_done,
+            },
+            path,
+        )
         logger.info(f"Agent saved to {path}")
 
     def load(self, path: str):
         """Load agent state"""
         checkpoint = torch.load(path, map_location=self.device)
-        self.policy_net.load_state_dict(checkpoint['policy_net'])
-        self.target_net.load_state_dict(checkpoint['target_net'])
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-        self.epsilon = checkpoint['epsilon']
-        self.steps_done = checkpoint['steps']
+        self.policy_net.load_state_dict(checkpoint["policy_net"])
+        self.target_net.load_state_dict(checkpoint["target_net"])
+        self.optimizer.load_state_dict(checkpoint["optimizer"])
+        self.epsilon = checkpoint["epsilon"]
+        self.steps_done = checkpoint["steps"]
         logger.info(f"Agent loaded from {path}")
 
 
@@ -480,7 +484,7 @@ if __name__ == "__main__":
         time_in_position=0,
         current_drawdown=0.0,
         sharpe_ratio=1.5,
-        win_rate=0.6
+        win_rate=0.6,
     )
 
     # Select action

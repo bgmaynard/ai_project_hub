@@ -15,16 +15,17 @@ Features:
 - Comprehensive error handling
 """
 
-import os
-import json
-import time
 import hashlib
-from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from pathlib import Path
+import json
 import logging
-from anthropic import Anthropic, APIError, APIConnectionError, RateLimitError
+import os
+import time
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from anthropic import Anthropic, APIConnectionError, APIError, RateLimitError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ClaudeRequest:
     """Represents a Claude API request"""
+
     request_type: str
     prompt: str
     max_tokens: int = 4096
@@ -44,6 +46,7 @@ class ClaudeRequest:
 @dataclass
 class ClaudeResponse:
     """Represents a Claude API response"""
+
     content: str
     tokens_used: int
     cost_usd: float
@@ -55,6 +58,7 @@ class ClaudeResponse:
 @dataclass
 class UsageStats:
     """Tracks API usage and costs"""
+
     total_requests: int = 0
     total_tokens: int = 0
     total_cost_usd: float = 0.0
@@ -66,6 +70,7 @@ class UsageStats:
 
 class CostLimitExceeded(Exception):
     """Raised when cost limits are exceeded"""
+
     pass
 
 
@@ -91,7 +96,7 @@ class ClaudeIntegration:
         daily_cost_limit: float = 10.00,
         monthly_cost_limit: float = 200.00,
         cache_enabled: bool = True,
-        cache_ttl_seconds: int = 300
+        cache_ttl_seconds: int = 300,
     ):
         """
         Initialize Claude integration
@@ -106,7 +111,9 @@ class ClaudeIntegration:
         """
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
-            logger.warning("No Anthropic API key found - Claude features will be disabled")
+            logger.warning(
+                "No Anthropic API key found - Claude features will be disabled"
+            )
             self.client = None
         else:
             self.client = Anthropic(api_key=self.api_key)
@@ -137,7 +144,7 @@ class ClaudeIntegration:
         stats_file = Path("data/claude_usage_stats.json")
         if stats_file.exists():
             try:
-                with open(stats_file, 'r') as f:
+                with open(stats_file, "r") as f:
                     data = json.load(f)
                     self.usage_stats = UsageStats(**data)
 
@@ -149,7 +156,9 @@ class ClaudeIntegration:
                     self.usage_stats.last_reset_date = today
                     self._save_usage_stats()
 
-                logger.info(f"Loaded usage stats: {self.usage_stats.total_requests} requests, ${self.usage_stats.total_cost_usd:.2f} total")
+                logger.info(
+                    f"Loaded usage stats: {self.usage_stats.total_requests} requests, ${self.usage_stats.total_cost_usd:.2f} total"
+                )
             except Exception as e:
                 logger.error(f"Error loading usage stats: {e}")
 
@@ -159,7 +168,7 @@ class ClaudeIntegration:
         stats_file.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            with open(stats_file, 'w') as f:
+            with open(stats_file, "w") as f:
                 json.dump(asdict(self.usage_stats), f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Error saving usage stats: {e}")
@@ -169,10 +178,7 @@ class ClaudeIntegration:
         current_time = time.time()
 
         # Remove requests older than 1 minute
-        self.request_times = [
-            t for t in self.request_times
-            if current_time - t < 60
-        ]
+        self.request_times = [t for t in self.request_times if current_time - t < 60]
 
         # Check if we've hit the limit
         if len(self.request_times) >= self.max_requests_per_minute:
@@ -268,10 +274,7 @@ class ClaudeIntegration:
         self._save_usage_stats()
 
     def request(
-        self,
-        request: ClaudeRequest,
-        use_cache: bool = True,
-        max_retries: int = 3
+        self, request: ClaudeRequest, use_cache: bool = True, max_retries: int = 3
     ) -> ClaudeResponse:
         """
         Make a request to Claude API
@@ -295,7 +298,7 @@ class ClaudeIntegration:
                 cost_usd=0.0,
                 response_time_ms=0,
                 success=False,
-                error="API key not configured"
+                error="API key not configured",
             )
 
         # Check cache first
@@ -326,7 +329,7 @@ class ClaudeIntegration:
                     max_tokens=request.max_tokens,
                     temperature=request.temperature,
                     system=request.system_prompt if request.system_prompt else "",
-                    messages=messages
+                    messages=messages,
                 )
 
                 # Calculate metrics
@@ -345,7 +348,7 @@ class ClaudeIntegration:
                     tokens_used=total_tokens,
                     cost_usd=cost,
                     response_time_ms=response_time_ms,
-                    success=True
+                    success=True,
                 )
 
                 # Update usage stats
@@ -363,7 +366,9 @@ class ClaudeIntegration:
                 return claude_response
 
             except RateLimitError as e:
-                logger.warning(f"Rate limit hit, waiting before retry {attempt + 1}/{max_retries}")
+                logger.warning(
+                    f"Rate limit hit, waiting before retry {attempt + 1}/{max_retries}"
+                )
                 time.sleep(5 * (attempt + 1))  # Exponential backoff
                 last_error = e
 
@@ -385,13 +390,11 @@ class ClaudeIntegration:
             cost_usd=0.0,
             response_time_ms=0,
             success=False,
-            error=str(last_error)
+            error=str(last_error),
         )
 
     def analyze_performance(
-        self,
-        trades: List[Dict[str, Any]],
-        stats: Dict[str, Any]
+        self, trades: List[Dict[str, Any]], stats: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Analyze trading performance and provide insights
@@ -407,7 +410,7 @@ class ClaudeIntegration:
         context = {
             "total_trades": len(trades),
             "stats": stats,
-            "recent_trades": trades[-10:] if len(trades) > 10 else trades
+            "recent_trades": trades[-10:] if len(trades) > 10 else trades,
         }
 
         prompt = f"""Analyze this Warrior Trading day trading performance:
@@ -437,7 +440,7 @@ Format as JSON with keys: summary, strengths, weaknesses, recommendations, tomor
         request = ClaudeRequest(
             request_type="performance_analysis",
             prompt=prompt,
-            system_prompt="You are an expert day trading coach analyzing Warrior Trading strategy performance. Provide actionable, specific feedback."
+            system_prompt="You are an expert day trading coach analyzing Warrior Trading strategy performance. Provide actionable, specific feedback.",
         )
 
         response = self.request(request)
@@ -450,10 +453,7 @@ Format as JSON with keys: summary, strengths, weaknesses, recommendations, tomor
         else:
             return {"error": response.error}
 
-    def detect_market_regime(
-        self,
-        market_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def detect_market_regime(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detect current market regime and suggest adjustments
 
@@ -492,7 +492,7 @@ Provide JSON response with:
         request = ClaudeRequest(
             request_type="market_regime",
             prompt=prompt,
-            system_prompt="You are a market structure expert. Analyze conditions and provide regime classification."
+            system_prompt="You are a market structure expert. Analyze conditions and provide regime classification.",
         )
 
         response = self.request(request)
@@ -506,9 +506,7 @@ Provide JSON response with:
             return {"error": response.error}
 
     def suggest_optimizations(
-        self,
-        current_config: Dict[str, Any],
-        performance_history: Dict[str, Any]
+        self, current_config: Dict[str, Any], performance_history: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """
         Suggest parameter optimizations based on performance
@@ -544,7 +542,7 @@ Return as JSON array of suggestions."""
         request = ClaudeRequest(
             request_type="optimization_suggestions",
             prompt=prompt,
-            system_prompt="You are a quantitative trading strategist. Suggest data-driven optimizations."
+            system_prompt="You are a quantitative trading strategist. Suggest data-driven optimizations.",
         )
 
         response = self.request(request)
@@ -557,10 +555,7 @@ Return as JSON array of suggestions."""
         else:
             return [{"error": response.error}]
 
-    def diagnose_error(
-        self,
-        error_context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def diagnose_error(self, error_context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Diagnose system error and suggest recovery
 
@@ -589,7 +584,7 @@ Provide JSON response with:
             request_type="error_diagnosis",
             prompt=prompt,
             temperature=0.3,  # Lower temperature for more focused diagnosis
-            system_prompt="You are a system reliability engineer. Diagnose errors and provide recovery steps."
+            system_prompt="You are a system reliability engineer. Diagnose errors and provide recovery steps.",
         )
 
         response = self.request(request, use_cache=False)  # Don't cache error diagnoses
@@ -603,9 +598,7 @@ Provide JSON response with:
             return {"error": response.error}
 
     def generate_insights(
-        self,
-        context: Dict[str, Any],
-        insight_type: str = "general"
+        self, context: Dict[str, Any], insight_type: str = "general"
     ) -> List[str]:
         """
         Generate real-time trading insights
@@ -621,7 +614,7 @@ Provide JSON response with:
             "general": "Provide 3-5 actionable insights based on current context",
             "risk": "Analyze risk factors and provide warnings",
             "opportunity": "Identify potential trading opportunities",
-            "improvement": "Suggest specific improvements to trading approach"
+            "improvement": "Suggest specific improvements to trading approach",
         }
 
         prompt = f"""{prompts.get(insight_type, prompts['general'])}:
@@ -635,7 +628,7 @@ Return as JSON array of insight strings. Each should be specific and actionable.
             request_type=f"insights_{insight_type}",
             prompt=prompt,
             max_tokens=1024,
-            system_prompt="You are a day trading mentor. Provide concise, actionable insights."
+            system_prompt="You are a day trading mentor. Provide concise, actionable insights.",
         )
 
         response = self.request(request)
@@ -645,7 +638,11 @@ Return as JSON array of insight strings. Each should be specific and actionable.
                 return json.loads(response.content)
             except json.JSONDecodeError:
                 # Try to extract insights from raw text
-                return [line.strip() for line in response.content.split('\n') if line.strip()]
+                return [
+                    line.strip()
+                    for line in response.content.split("\n")
+                    if line.strip()
+                ]
         else:
             return [f"Error generating insights: {response.error}"]
 
@@ -660,7 +657,11 @@ Return as JSON array of insight strings. Each should be specific and actionable.
             "daily_limit_usd": self.daily_cost_limit,
             "monthly_limit_usd": self.monthly_cost_limit,
             "cache_size": len(self.response_cache),
-            "last_request": self.usage_stats.last_request_time.isoformat() if self.usage_stats.last_request_time else None
+            "last_request": (
+                self.usage_stats.last_request_time.isoformat()
+                if self.usage_stats.last_request_time
+                else None
+            ),
         }
 
     def reset_daily_stats(self):
@@ -708,7 +709,7 @@ if __name__ == "__main__":
         request = ClaudeRequest(
             request_type="test",
             prompt="Explain the Warrior Trading Bull Flag pattern in 2 sentences.",
-            max_tokens=256
+            max_tokens=256,
         )
         response = claude.request(request)
         print(f"Success: {response.success}")

@@ -9,14 +9,14 @@ Collects and stores market data from Schwab for:
 Data is stored in SQLite for persistence and fast querying.
 """
 
-import os
-import json
-import sqlite3
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from pathlib import Path
 import asyncio
+import json
+import logging
+import os
+import sqlite3
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,8 @@ class UnifiedDataCollector:
         cursor = conn.cursor()
 
         # Minute bars table (historical + live)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS minute_bars (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 symbol TEXT NOT NULL,
@@ -64,10 +65,12 @@ class UnifiedDataCollector:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(symbol, timestamp)
             )
-        """)
+        """
+        )
 
         # Daily bars table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS daily_bars (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 symbol TEXT NOT NULL,
@@ -81,10 +84,12 @@ class UnifiedDataCollector:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(symbol, date)
             )
-        """)
+        """
+        )
 
         # Live quotes capture (tick-level during sessions)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS live_quotes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 symbol TEXT NOT NULL,
@@ -97,10 +102,12 @@ class UnifiedDataCollector:
                 session_id TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Trade signals captured
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS trade_signals (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 symbol TEXT NOT NULL,
@@ -120,10 +127,12 @@ class UnifiedDataCollector:
                 pnl REAL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Session summary
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT UNIQUE,
@@ -138,13 +147,22 @@ class UnifiedDataCollector:
                 notes TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Create indexes for faster queries
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_minute_symbol_ts ON minute_bars(symbol, timestamp)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_symbol_date ON daily_bars(symbol, date)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_quotes_symbol_ts ON live_quotes(symbol, timestamp)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_symbol ON trade_signals(symbol)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_minute_symbol_ts ON minute_bars(symbol, timestamp)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_daily_symbol_date ON daily_bars(symbol, date)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_quotes_symbol_ts ON live_quotes(symbol, timestamp)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_signals_symbol ON trade_signals(symbol)"
+        )
 
         conn.commit()
         conn.close()
@@ -170,7 +188,7 @@ class UnifiedDataCollector:
                 response = await client.get(
                     f"http://localhost:9100/api/schwab/history/{symbol}",
                     params={"days": days, "frequency": "minute"},
-                    timeout=30.0
+                    timeout=30.0,
                 )
                 if response.status_code == 200:
                     data = response.json()
@@ -192,20 +210,23 @@ class UnifiedDataCollector:
         inserted = 0
         for bar in bars:
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT OR REPLACE INTO minute_bars
                     (symbol, timestamp, open, high, low, close, volume, source)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    symbol.upper(),
-                    bar.get("timestamp") or bar.get("datetime"),
-                    bar.get("open"),
-                    bar.get("high"),
-                    bar.get("low"),
-                    bar.get("close"),
-                    bar.get("volume"),
-                    source
-                ))
+                """,
+                    (
+                        symbol.upper(),
+                        bar.get("timestamp") or bar.get("datetime"),
+                        bar.get("open"),
+                        bar.get("high"),
+                        bar.get("low"),
+                        bar.get("close"),
+                        bar.get("volume"),
+                        source,
+                    ),
+                )
                 inserted += 1
             except Exception as e:
                 logger.debug(f"Bar insert error: {e}")
@@ -221,20 +242,23 @@ class UnifiedDataCollector:
         cursor = conn.cursor()
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO live_quotes
                 (symbol, timestamp, price, bid, ask, volume, change_percent, session_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                symbol.upper(),
-                datetime.now().isoformat(),
-                quote.get("price") or quote.get("last"),
-                quote.get("bid"),
-                quote.get("ask"),
-                quote.get("volume"),
-                quote.get("change_percent"),
-                session_id or datetime.now().strftime("%Y%m%d")
-            ))
+            """,
+                (
+                    symbol.upper(),
+                    datetime.now().isoformat(),
+                    quote.get("price") or quote.get("last"),
+                    quote.get("bid"),
+                    quote.get("ask"),
+                    quote.get("volume"),
+                    quote.get("change_percent"),
+                    session_id or datetime.now().strftime("%Y%m%d"),
+                ),
+            )
             conn.commit()
         except Exception as e:
             logger.debug(f"Quote capture error: {e}")
@@ -247,29 +271,32 @@ class UnifiedDataCollector:
         cursor = conn.cursor()
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO trade_signals
                 (symbol, timestamp, signal_type, price, momentum, volume_surge,
                  spread_percent, rsi, vwap_position, spy_direction, time_of_day,
                  float_shares, float_rotation, outcome, pnl)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                signal.get("symbol"),
-                signal.get("timestamp") or datetime.now().isoformat(),
-                signal.get("signal_type") or signal.get("type"),
-                signal.get("price"),
-                signal.get("momentum"),
-                signal.get("volume_surge"),
-                signal.get("spread_percent") or signal.get("spread_at_entry"),
-                signal.get("rsi") or signal.get("rsi_at_entry"),
-                signal.get("vwap_position"),
-                signal.get("spy_direction"),
-                signal.get("time_of_day"),
-                signal.get("float_shares"),
-                signal.get("float_rotation"),
-                signal.get("outcome"),
-                signal.get("pnl")
-            ))
+            """,
+                (
+                    signal.get("symbol"),
+                    signal.get("timestamp") or datetime.now().isoformat(),
+                    signal.get("signal_type") or signal.get("type"),
+                    signal.get("price"),
+                    signal.get("momentum"),
+                    signal.get("volume_surge"),
+                    signal.get("spread_percent") or signal.get("spread_at_entry"),
+                    signal.get("rsi") or signal.get("rsi_at_entry"),
+                    signal.get("vwap_position"),
+                    signal.get("spy_direction"),
+                    signal.get("time_of_day"),
+                    signal.get("float_shares"),
+                    signal.get("float_rotation"),
+                    signal.get("outcome"),
+                    signal.get("pnl"),
+                ),
+            )
             conn.commit()
             logger.debug(f"Stored trade signal for {signal.get('symbol')}")
         except Exception as e:
@@ -277,7 +304,9 @@ class UnifiedDataCollector:
         finally:
             conn.close()
 
-    def get_minute_bars(self, symbol: str, start_date: str = None, end_date: str = None) -> List[Dict]:
+    def get_minute_bars(
+        self, symbol: str, start_date: str = None, end_date: str = None
+    ) -> List[Dict]:
         """
         Get minute bars from database for backtesting.
 
@@ -320,12 +349,11 @@ class UnifiedDataCollector:
         if symbol:
             cursor.execute(
                 "SELECT * FROM trade_signals WHERE symbol = ? ORDER BY timestamp DESC LIMIT ?",
-                (symbol.upper(), limit)
+                (symbol.upper(), limit),
             )
         else:
             cursor.execute(
-                "SELECT * FROM trade_signals ORDER BY timestamp DESC LIMIT ?",
-                (limit,)
+                "SELECT * FROM trade_signals ORDER BY timestamp DESC LIMIT ?", (limit,)
             )
 
         rows = cursor.fetchall()
@@ -341,7 +369,10 @@ class UnifiedDataCollector:
         signals = self.get_trade_signals(limit=1000)
 
         if len(signals) < 10:
-            return {"message": "Need at least 10 signals for analysis", "count": len(signals)}
+            return {
+                "message": "Need at least 10 signals for analysis",
+                "count": len(signals),
+            }
 
         wins = [s for s in signals if (s.get("pnl") or 0) > 0]
         losses = [s for s in signals if (s.get("pnl") or 0) <= 0]
@@ -351,17 +382,23 @@ class UnifiedDataCollector:
             "wins": len(wins),
             "losses": len(losses),
             "win_rate": round(len(wins) / len(signals) * 100, 1) if signals else 0,
-            "correlations": {}
+            "correlations": {},
         }
 
         # Momentum analysis
         if wins and losses:
             avg_win_momentum = sum(s.get("momentum") or 0 for s in wins) / len(wins)
-            avg_loss_momentum = sum(s.get("momentum") or 0 for s in losses) / len(losses)
+            avg_loss_momentum = sum(s.get("momentum") or 0 for s in losses) / len(
+                losses
+            )
             analysis["correlations"]["momentum"] = {
                 "avg_winning": round(avg_win_momentum, 2),
                 "avg_losing": round(avg_loss_momentum, 2),
-                "insight": "Higher momentum better" if avg_win_momentum > avg_loss_momentum else "Check momentum threshold"
+                "insight": (
+                    "Higher momentum better"
+                    if avg_win_momentum > avg_loss_momentum
+                    else "Check momentum threshold"
+                ),
             }
 
         # Time of day analysis
@@ -378,7 +415,9 @@ class UnifiedDataCollector:
 
         for tod, stats in time_stats.items():
             total = stats["wins"] + stats["losses"]
-            stats["win_rate"] = round(stats["wins"] / total * 100, 1) if total > 0 else 0
+            stats["win_rate"] = (
+                round(stats["wins"] / total * 100, 1) if total > 0 else 0
+            )
             stats["avg_pnl"] = round(stats["pnl"] / total, 2) if total > 0 else 0
 
         analysis["correlations"]["time_of_day"] = time_stats
@@ -396,7 +435,9 @@ class UnifiedDataCollector:
 
         for direction, stats in spy_stats.items():
             total = stats["wins"] + stats["losses"]
-            stats["win_rate"] = round(stats["wins"] / total * 100, 1) if total > 0 else 0
+            stats["win_rate"] = (
+                round(stats["wins"] / total * 100, 1) if total > 0 else 0
+            )
 
         analysis["correlations"]["spy_direction"] = spy_stats
 
@@ -442,12 +483,14 @@ class UnifiedDataCollector:
             "symbols_with_signals": symbols_with_signals,
             "data_range": {
                 "start": bar_range[0] if bar_range else None,
-                "end": bar_range[1] if bar_range else None
+                "end": bar_range[1] if bar_range else None,
             },
-            "db_path": str(self.db_path)
+            "db_path": str(self.db_path),
         }
 
-    def export_for_pybroker(self, symbols: List[str], start_date: str, end_date: str) -> Dict:
+    def export_for_pybroker(
+        self, symbols: List[str], start_date: str, end_date: str
+    ) -> Dict:
         """
         Export data in format suitable for PyBroker backtesting.
 
@@ -460,9 +503,9 @@ class UnifiedDataCollector:
             bars = self.get_minute_bars(symbol, start_date, end_date)
             if bars:
                 df = pd.DataFrame(bars)
-                df['date'] = pd.to_datetime(df['timestamp'])
-                df = df.set_index('date')
-                df = df[['open', 'high', 'low', 'close', 'volume']]
+                df["date"] = pd.to_datetime(df["timestamp"])
+                df = df.set_index("date")
+                df = df[["open", "high", "low", "close", "volume"]]
                 result[symbol] = df
                 logger.info(f"Exported {len(df)} bars for {symbol}")
 
@@ -516,7 +559,7 @@ if __name__ == "__main__":
         "volume_surge": 3.2,
         "time_of_day": "pre_market_late",
         "spy_direction": "up",
-        "pnl": 15.50
+        "pnl": 15.50,
     }
     collector.store_trade_signal(test_signal)
 

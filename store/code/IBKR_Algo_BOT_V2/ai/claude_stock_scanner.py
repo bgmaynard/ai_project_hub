@@ -13,14 +13,15 @@ Scanner Types:
 """
 
 import asyncio
-import logging
 import json
+import logging
 import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, asdict, field
 from enum import Enum
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
 import aiohttp
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ class ScannerType(Enum):
 @dataclass
 class ScannerPreset:
     """Scanner preset configuration"""
+
     id: str
     name: str
     scanner_type: ScannerType
@@ -54,6 +56,7 @@ class ScannerPreset:
 @dataclass
 class ScanResult:
     """Individual scan result"""
+
     symbol: str
     name: str
     price: float
@@ -101,6 +104,7 @@ class ClaudeStockScanner:
 
         try:
             import anthropic
+
             if self.api_key:
                 self.client = anthropic.Anthropic(api_key=self.api_key)
                 self.ai_available = True
@@ -123,7 +127,7 @@ class ClaudeStockScanner:
                     "min_volume": 0,  # No minimum - use volume ratio instead
                     "min_change_percent": 0.5,  # Just 0.5% move
                     "min_volume_ratio": 0.5,  # Even below average ok
-                }
+                },
             ),
             ScannerPreset(
                 id="gap_and_go",
@@ -136,7 +140,7 @@ class ClaudeStockScanner:
                     "min_gap_percent": 0.5,  # Any gap 0.5%+
                     "max_gap_percent": 50,  # Allow big gaps
                     "min_volume_ratio": 0.3,
-                }
+                },
             ),
             ScannerPreset(
                 id="breakout_hunter",
@@ -148,7 +152,7 @@ class ClaudeStockScanner:
                     "max_price": 2000,
                     "near_52_week_high_percent": 20,  # Within 20% of high
                     "min_volume_ratio": 0.3,
-                }
+                },
             ),
             ScannerPreset(
                 id="oversold_bounce",
@@ -160,7 +164,7 @@ class ClaudeStockScanner:
                     "max_price": 2000,
                     "max_rsi": 70,  # Most stocks qualify
                     "min_change_percent": 0,  # Any change ok
-                }
+                },
             ),
             ScannerPreset(
                 id="volume_explosion",
@@ -171,7 +175,7 @@ class ClaudeStockScanner:
                     "min_price": 1,
                     "max_price": 2000,
                     "min_volume_ratio": 0.8,  # Just slightly below average
-                }
+                },
             ),
             ScannerPreset(
                 id="after_hours_movers",
@@ -183,7 +187,7 @@ class ClaudeStockScanner:
                     "max_price": 2000,
                     "min_ah_change_percent": 0,  # Any movement
                     "min_volume_ratio": 0.1,
-                }
+                },
             ),
             ScannerPreset(
                 id="new_52_week_high",
@@ -195,7 +199,7 @@ class ClaudeStockScanner:
                     "max_price": 2000,
                     "near_52_week_high_percent": 15,  # Within 15% of high
                     "min_volume_ratio": 0.3,
-                }
+                },
             ),
         ]
 
@@ -212,6 +216,7 @@ class ClaudeStockScanner:
         try:
             # Try to get stock universe from broker
             from unified_broker import get_unified_broker
+
             broker = get_unified_broker()
 
             # Use default popular stocks - Schwab doesn't have a universe API
@@ -223,44 +228,154 @@ class ClaudeStockScanner:
         # Fallback to hardcoded popular stocks
         self.stock_universe = self._get_fallback_universe()
         self.universe_loaded = True
-        logger.info(f"[SCANNER] Using fallback universe of {len(self.stock_universe)} stocks")
+        logger.info(
+            f"[SCANNER] Using fallback universe of {len(self.stock_universe)} stocks"
+        )
         return len(self.stock_universe)
 
     def _get_fallback_universe(self) -> List[Dict]:
         """Fallback list of popular stocks if API fails"""
         symbols = [
             # Tech Giants
-            "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA",
-            "AMD", "INTC", "CRM", "ADBE", "ORCL", "CSCO", "IBM", "QCOM",
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "GOOG",
+            "AMZN",
+            "META",
+            "NVDA",
+            "TSLA",
+            "AMD",
+            "INTC",
+            "CRM",
+            "ADBE",
+            "ORCL",
+            "CSCO",
+            "IBM",
+            "QCOM",
             # Semiconductors
-            "AVGO", "TXN", "AMAT", "LRCX", "KLAC", "MRVL", "MU", "ON",
+            "AVGO",
+            "TXN",
+            "AMAT",
+            "LRCX",
+            "KLAC",
+            "MRVL",
+            "MU",
+            "ON",
             # Software/Cloud
-            "NOW", "SNOW", "PLTR", "DDOG", "CRWD", "ZS", "PANW", "FTNT",
+            "NOW",
+            "SNOW",
+            "PLTR",
+            "DDOG",
+            "CRWD",
+            "ZS",
+            "PANW",
+            "FTNT",
             # E-commerce/Internet
-            "SHOP", "PYPL", "SQ", "COIN", "HOOD", "ABNB", "UBER", "LYFT",
+            "SHOP",
+            "PYPL",
+            "SQ",
+            "COIN",
+            "HOOD",
+            "ABNB",
+            "UBER",
+            "LYFT",
             # Biotech/Healthcare
-            "JNJ", "UNH", "PFE", "ABBV", "MRK", "LLY", "BMY", "GILD",
-            "MRNA", "BNTX", "VRTX", "REGN", "BIIB", "AMGN", "ISRG",
+            "JNJ",
+            "UNH",
+            "PFE",
+            "ABBV",
+            "MRK",
+            "LLY",
+            "BMY",
+            "GILD",
+            "MRNA",
+            "BNTX",
+            "VRTX",
+            "REGN",
+            "BIIB",
+            "AMGN",
+            "ISRG",
             # Finance
-            "JPM", "BAC", "WFC", "GS", "MS", "C", "BLK", "SCHW",
-            "V", "MA", "AXP",
+            "JPM",
+            "BAC",
+            "WFC",
+            "GS",
+            "MS",
+            "C",
+            "BLK",
+            "SCHW",
+            "V",
+            "MA",
+            "AXP",
             # Consumer
-            "WMT", "COST", "TGT", "HD", "LOW", "NKE", "SBUX", "MCD",
-            "DIS", "NFLX", "CMCSA", "T", "VZ",
+            "WMT",
+            "COST",
+            "TGT",
+            "HD",
+            "LOW",
+            "NKE",
+            "SBUX",
+            "MCD",
+            "DIS",
+            "NFLX",
+            "CMCSA",
+            "T",
+            "VZ",
             # Industrial/Energy
-            "XOM", "CVX", "COP", "SLB", "BA", "CAT", "DE", "GE",
-            "LMT", "RTX", "HON", "UPS", "FDX",
+            "XOM",
+            "CVX",
+            "COP",
+            "SLB",
+            "BA",
+            "CAT",
+            "DE",
+            "GE",
+            "LMT",
+            "RTX",
+            "HON",
+            "UPS",
+            "FDX",
             # EV/Clean Energy
-            "RIVN", "LCID", "NIO", "XPEV", "LI", "ENPH", "SEDG", "FSLR",
+            "RIVN",
+            "LCID",
+            "NIO",
+            "XPEV",
+            "LI",
+            "ENPH",
+            "SEDG",
+            "FSLR",
             # Hot Momentum Stocks
-            "SMCI", "ARM", "MSTR", "IONQ", "RGTI", "QUBT", "RKLB", "LUNR",
+            "SMCI",
+            "ARM",
+            "MSTR",
+            "IONQ",
+            "RGTI",
+            "QUBT",
+            "RKLB",
+            "LUNR",
             # SPACs/Growth
-            "SOFI", "CHPT", "PLUG", "SPCE", "DKNG", "PENN",
+            "SOFI",
+            "CHPT",
+            "PLUG",
+            "SPCE",
+            "DKNG",
+            "PENN",
             # ETFs for reference
-            "SPY", "QQQ", "IWM", "DIA", "XLF", "XLE", "XLK", "XLV"
+            "SPY",
+            "QQQ",
+            "IWM",
+            "DIA",
+            "XLF",
+            "XLE",
+            "XLK",
+            "XLV",
         ]
 
-        return [{"symbol": s, "name": s, "exchange": "NASDAQ", "tradable": True} for s in symbols]
+        return [
+            {"symbol": s, "name": s, "exchange": "NASDAQ", "tradable": True}
+            for s in symbols
+        ]
 
     async def get_stock_data(self, symbol: str, session=None) -> Optional[Dict]:
         """Get current data for a single stock - uses main API for reliable data"""
@@ -278,7 +393,7 @@ class ClaudeStockScanner:
                 # Try the main price API which works reliably
                 async with session.get(
                     f"http://localhost:9100/api/price/{symbol}",
-                    timeout=aiohttp.ClientTimeout(total=5)
+                    timeout=aiohttp.ClientTimeout(total=5),
                 ) as resp:
                     if resp.status == 200:
                         data = await resp.json()
@@ -291,9 +406,13 @@ class ClaudeStockScanner:
                             # Calculate change percent from close
                             close_price = d.get("close", current_price)
                             if close_price > 0:
-                                change_pct = ((current_price - close_price) / close_price) * 100
+                                change_pct = (
+                                    (current_price - close_price) / close_price
+                                ) * 100
                             else:
-                                change_pct = d.get("change_percent", 0) or d.get("change", 0)
+                                change_pct = d.get("change_percent", 0) or d.get(
+                                    "change", 0
+                                )
 
                             return {
                                 "symbol": symbol,
@@ -346,7 +465,7 @@ class ClaudeStockScanner:
         connector = aiohttp.TCPConnector(limit=20, limit_per_host=10)
         async with aiohttp.ClientSession(connector=connector) as session:
             for i in range(0, len(symbols), batch_size):
-                batch = symbols[i:i + batch_size]
+                batch = symbols[i : i + batch_size]
 
                 # Get data for batch in parallel using shared session
                 tasks = [self.get_stock_data(symbol, session) for symbol in batch]
@@ -368,21 +487,23 @@ class ClaudeStockScanner:
                     # Generate signals
                     signals = self._generate_signals(data, preset.scanner_type)
 
-                    results.append(ScanResult(
-                        symbol=symbol,
-                        name=symbol,
-                        price=data["price"],
-                        change_percent=data["change_percent"],
-                        volume=data["volume"],
-                        avg_volume=data["avg_volume"],
-                        volume_ratio=data["volume_ratio"],
-                        market_cap=data.get("market_cap", 0),
-                        sector="",
-                        scanner_type=preset.scanner_type.value,
-                        score=score,
-                        signals=signals,
-                        timestamp=datetime.now().isoformat()
-                    ))
+                    results.append(
+                        ScanResult(
+                            symbol=symbol,
+                            name=symbol,
+                            price=data["price"],
+                            change_percent=data["change_percent"],
+                            volume=data["volume"],
+                            avg_volume=data["avg_volume"],
+                            volume_ratio=data["volume_ratio"],
+                            market_cap=data.get("market_cap", 0),
+                            sector="",
+                            scanner_type=preset.scanner_type.value,
+                            score=score,
+                            signals=signals,
+                            timestamp=datetime.now().isoformat(),
+                        )
+                    )
 
                 # Yield control and add small delay between batches
                 await asyncio.sleep(0.2)
@@ -402,11 +523,15 @@ class ClaudeStockScanner:
         # Save results
         self._save_results(preset_id, results)
 
-        logger.info(f"[SCANNER] {preset.name}: Scanned {scan_count} stocks, found {len(results)} matches")
+        logger.info(
+            f"[SCANNER] {preset.name}: Scanned {scan_count} stocks, found {len(results)} matches"
+        )
 
         return results
 
-    def _matches_criteria(self, data: Dict, criteria: Dict, scanner_type: ScannerType) -> bool:
+    def _matches_criteria(
+        self, data: Dict, criteria: Dict, scanner_type: ScannerType
+    ) -> bool:
         """Check if stock matches the criteria - LENIENT VERSION"""
         price = data.get("price", 0)
         volume = data.get("volume", 0)
@@ -419,13 +544,21 @@ class ClaudeStockScanner:
             return False
 
         # Price filter
-        if "min_price" in criteria and criteria["min_price"] > 0 and price < criteria["min_price"]:
+        if (
+            "min_price" in criteria
+            and criteria["min_price"] > 0
+            and price < criteria["min_price"]
+        ):
             return False
         if "max_price" in criteria and price > criteria["max_price"]:
             return False
 
         # Volume filter - skip if 0 requirement
-        if "min_volume" in criteria and criteria["min_volume"] > 0 and volume < criteria["min_volume"]:
+        if (
+            "min_volume" in criteria
+            and criteria["min_volume"] > 0
+            and volume < criteria["min_volume"]
+        ):
             return False
 
         # Volume ratio filter - be lenient, treat missing as 1.0
@@ -443,7 +576,10 @@ class ClaudeStockScanner:
         if "min_gap_percent" in criteria and criteria["min_gap_percent"] > 0:
             if abs(change_pct) < criteria["min_gap_percent"]:
                 return False
-        if "max_gap_percent" in criteria and abs(change_pct) > criteria["max_gap_percent"]:
+        if (
+            "max_gap_percent" in criteria
+            and abs(change_pct) > criteria["max_gap_percent"]
+        ):
             return False
 
         # RSI filter
@@ -547,9 +683,9 @@ class ClaudeStockScanner:
                 "preset_id": preset_id,
                 "timestamp": datetime.now().isoformat(),
                 "count": len(results),
-                "results": [r.to_dict() for r in results]
+                "results": [r.to_dict() for r in results],
             }
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"[SCANNER] Error saving results: {e}")
@@ -565,8 +701,9 @@ class ClaudeStockScanner:
 
         return all_results
 
-    async def claude_analyze_scan_results(self, preset_id: str,
-                                          add_to_watchlist: bool = True) -> Dict:
+    async def claude_analyze_scan_results(
+        self, preset_id: str, add_to_watchlist: bool = True
+    ) -> Dict:
         """Have Claude analyze scan results and optionally add to watchlist"""
         if preset_id not in self.scan_results:
             return {"error": "No scan results for this preset"}
@@ -580,15 +717,17 @@ class ClaudeStockScanner:
             top_symbols = [r.symbol for r in results[:5]]
             return {
                 "selected": top_symbols,
-                "analysis": "AI not available - returning top 5 by score"
+                "analysis": "AI not available - returning top 5 by score",
             }
 
         # Prepare data for Claude
-        results_text = "\n".join([
-            f"- {r.symbol}: ${r.price:.2f}, {r.change_percent:+.1f}%, "
-            f"Vol {r.volume_ratio:.1f}x, Score: {r.score}, Signals: {', '.join(r.signals)}"
-            for r in results[:20]
-        ])
+        results_text = "\n".join(
+            [
+                f"- {r.symbol}: ${r.price:.2f}, {r.change_percent:+.1f}%, "
+                f"Vol {r.volume_ratio:.1f}x, Score: {r.score}, Signals: {', '.join(r.signals)}"
+                for r in results[:20]
+            ]
+        )
 
         preset = self.presets[preset_id]
 
@@ -620,20 +759,22 @@ Return your response in JSON format:
             response = self.client.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=2000,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
 
             response_text = response.content[0].text
 
             # Parse JSON from response
             import re
-            json_match = re.search(r'\{[\s\S]*\}', response_text)
+
+            json_match = re.search(r"\{[\s\S]*\}", response_text)
             if json_match:
                 result = json.loads(json_match.group())
 
                 # Add to watchlist if requested
                 if add_to_watchlist:
                     from .claude_watchlist_manager import get_watchlist_manager
+
                     manager = get_watchlist_manager()
 
                     for sel in result.get("selected", []):
@@ -642,7 +783,7 @@ Return your response in JSON format:
                             manager.add_to_working_list(
                                 symbol=symbol,
                                 reason=f"Scanner: {preset.name} - {sel.get('reason', '')}",
-                                added_by="scanner"
+                                added_by="scanner",
                             )
 
                 return result
@@ -662,7 +803,7 @@ Return your response in JSON format:
                 "description": p.description,
                 "enabled": p.enabled,
                 "last_run": p.last_run,
-                "results_count": p.results_count
+                "results_count": p.results_count,
             }
             for p in self.presets.values()
         ]
@@ -693,6 +834,7 @@ async def run_momentum_scan():
 
 
 if __name__ == "__main__":
+
     async def test():
         scanner = get_stock_scanner()
         await scanner.load_stock_universe()
@@ -702,7 +844,9 @@ if __name__ == "__main__":
 
         print(f"\nFound {len(results)} momentum stocks:")
         for r in results:
-            print(f"  {r.symbol}: ${r.price:.2f} ({r.change_percent:+.1f}%) "
-                  f"Vol: {r.volume_ratio:.1f}x, Score: {r.score}")
+            print(
+                f"  {r.symbol}: ${r.price:.2f} ({r.change_percent:+.1f}%) "
+                f"Vol: {r.volume_ratio:.1f}x, Score: {r.score}"
+            )
 
     asyncio.run(test())

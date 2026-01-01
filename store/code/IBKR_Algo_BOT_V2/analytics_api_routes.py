@@ -2,9 +2,11 @@
 Analytics API Routes
 Trade journaling, analytics, and account management endpoints
 """
+
 import logging
 from datetime import date, datetime, timedelta
-from typing import Optional, List
+from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -15,6 +17,7 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 # Trade Analytics
 try:
     from trade_analytics import get_trade_analytics
+
     HAS_ANALYTICS = True
 except ImportError as e:
     logger.warning(f"Trade analytics not available: {e}")
@@ -23,6 +26,7 @@ except ImportError as e:
 # Schwab Trading
 try:
     from schwab_trading import get_schwab_trading
+
     HAS_SCHWAB = True
 except ImportError as e:
     logger.warning(f"Schwab trading not available: {e}")
@@ -31,6 +35,7 @@ except ImportError as e:
 
 class TradeRecord(BaseModel):
     """Trade record for manual entry"""
+
     symbol: str
     side: str
     quantity: float
@@ -49,6 +54,7 @@ class TradeRecord(BaseModel):
 # ACCOUNT MANAGEMENT
 # ============================================================================
 
+
 @router.get("/accounts")
 async def get_accounts():
     """Get all available trading accounts"""
@@ -59,11 +65,7 @@ async def get_accounts():
     accounts = schwab.get_accounts()
     selected = schwab.get_selected_account()
 
-    return {
-        "accounts": accounts,
-        "selected": selected,
-        "count": len(accounts)
-    }
+    return {"accounts": accounts, "selected": selected, "count": len(accounts)}
 
 
 @router.post("/accounts/select/{account_number}")
@@ -76,10 +78,12 @@ async def select_account(account_number: str):
 
     # Verify account exists
     accounts = schwab.get_accounts()
-    valid_accounts = [a['account_number'] for a in accounts]
+    valid_accounts = [a["account_number"] for a in accounts]
 
     if account_number not in valid_accounts:
-        raise HTTPException(status_code=404, detail=f"Account {account_number} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Account {account_number} not found"
+        )
 
     success = schwab.select_account(account_number)
 
@@ -87,7 +91,7 @@ async def select_account(account_number: str):
         return {
             "success": True,
             "selected_account": account_number,
-            "message": f"Switched to account {account_number}"
+            "message": f"Switched to account {account_number}",
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to switch account")
@@ -108,24 +112,26 @@ async def get_all_accounts_summary():
     total_pnl = 0
 
     for acc in accounts:
-        acc_num = acc['account_number']
+        acc_num = acc["account_number"]
         schwab.select_account(acc_num)
         info = schwab.get_account_info()
         positions = schwab.get_positions()
 
         if info:
-            summaries.append({
-                "account": acc_num,
-                "type": info.get('type', 'N/A'),
-                "cash": info.get('cash', 0),
-                "market_value": info.get('market_value', 0),
-                "daily_pnl": info.get('daily_pl', 0),
-                "daily_pnl_pct": info.get('daily_pl_pct', 0),
-                "positions_count": len(positions) if positions else 0,
-                "buying_power": info.get('buying_power', 0)
-            })
-            total_value += info.get('market_value', 0)
-            total_pnl += info.get('daily_pl', 0)
+            summaries.append(
+                {
+                    "account": acc_num,
+                    "type": info.get("type", "N/A"),
+                    "cash": info.get("cash", 0),
+                    "market_value": info.get("market_value", 0),
+                    "daily_pnl": info.get("daily_pl", 0),
+                    "daily_pnl_pct": info.get("daily_pl_pct", 0),
+                    "positions_count": len(positions) if positions else 0,
+                    "buying_power": info.get("buying_power", 0),
+                }
+            )
+            total_value += info.get("market_value", 0)
+            total_pnl += info.get("daily_pl", 0)
 
     # Restore original account selection
     if original_account:
@@ -136,14 +142,15 @@ async def get_all_accounts_summary():
         "totals": {
             "total_value": round(total_value, 2),
             "total_daily_pnl": round(total_pnl, 2),
-            "account_count": len(summaries)
-        }
+            "account_count": len(summaries),
+        },
     }
 
 
 # ============================================================================
 # TRADE SYNC & RECORDING
 # ============================================================================
+
 
 @router.post("/trades/sync")
 async def sync_trades_from_schwab():
@@ -161,7 +168,7 @@ async def sync_trades_from_schwab():
     results = []
 
     for acc in accounts:
-        acc_num = acc['account_number']
+        acc_num = acc["account_number"]
         schwab.select_account(acc_num)
 
         # Get filled orders from last 7 days
@@ -170,21 +177,15 @@ async def sync_trades_from_schwab():
         imported = analytics.sync_from_schwab(orders, acc_num)
         total_imported += imported
 
-        results.append({
-            "account": acc_num,
-            "orders_found": len(orders),
-            "imported": imported
-        })
+        results.append(
+            {"account": acc_num, "orders_found": len(orders), "imported": imported}
+        )
 
     # Restore original account
     if original_account:
         schwab.select_account(original_account)
 
-    return {
-        "success": True,
-        "total_imported": total_imported,
-        "by_account": results
-    }
+    return {"success": True, "total_imported": total_imported, "by_account": results}
 
 
 @router.post("/trades/record")
@@ -211,7 +212,7 @@ async def record_trade(trade: TradeRecord):
         "setup": trade.setup,
         "notes": trade.notes,
         "tags": trade.tags,
-        "trade_date": date.today().isoformat()
+        "trade_date": date.today().isoformat(),
     }
 
     success = analytics.record_trade(trade_data)
@@ -231,15 +232,13 @@ async def get_recent_trades(limit: int = Query(default=50, le=200)):
     analytics = get_trade_analytics()
     trades = analytics.get_recent_trades(limit)
 
-    return {
-        "trades": trades,
-        "count": len(trades)
-    }
+    return {"trades": trades, "count": len(trades)}
 
 
 # ============================================================================
 # ANALYTICS & STATISTICS
 # ============================================================================
+
 
 @router.get("/daily")
 async def get_daily_summary(target_date: Optional[str] = None):
@@ -253,7 +252,9 @@ async def get_daily_summary(target_date: Optional[str] = None):
         try:
             dt = datetime.strptime(target_date, "%Y-%m-%d").date()
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD"
+            )
     else:
         dt = date.today()
 
@@ -277,9 +278,7 @@ async def get_symbol_performance(limit: int = Query(default=20, le=100)):
         raise HTTPException(status_code=503, detail="Analytics not available")
 
     analytics = get_trade_analytics()
-    return {
-        "symbols": analytics.get_symbol_performance(limit)
-    }
+    return {"symbols": analytics.get_symbol_performance(limit)}
 
 
 @router.get("/strategies")
@@ -289,9 +288,7 @@ async def get_strategy_performance():
         raise HTTPException(status_code=503, detail="Analytics not available")
 
     analytics = get_trade_analytics()
-    return {
-        "strategies": analytics.get_strategy_performance()
-    }
+    return {"strategies": analytics.get_strategy_performance()}
 
 
 @router.get("/time-analysis")
@@ -330,5 +327,5 @@ async def get_comprehensive_report(days: int = Query(default=30, ge=1, le=365)):
         "top_symbols": analytics.get_symbol_performance(10),
         "strategy_performance": analytics.get_strategy_performance(),
         "time_analysis": analytics.get_time_analysis(),
-        "insights": analytics.get_insights()
+        "insights": analytics.get_insights(),
     }

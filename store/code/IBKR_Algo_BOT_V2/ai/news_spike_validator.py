@@ -18,15 +18,16 @@ Validation Flow:
 Ross Cameron: "The first move is for the algos, the second move is for us"
 """
 
-import requests
 import logging
-import time
 import threading
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable
-from dataclasses import dataclass
+import time
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Callable, Dict, List, Optional
+
 import pytz
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SpikeValidation:
     """Result of spike validation"""
+
     symbol: str
     news_headline: str
     news_catalyst: str
@@ -84,12 +86,12 @@ class SpikeValidation:
                 "price_action": self.price_action_score,
                 "news_quality": self.news_quality_score,
                 "timing": self.timing_score,
-                "overall": self.overall_score
+                "overall": self.overall_score,
             },
             "verdict": self.verdict,
             "confidence": f"{self.confidence:.0%}",
             "reason": self.reason,
-            "timestamp": self.timestamp.isoformat()
+            "timestamp": self.timestamp.isoformat(),
         }
 
 
@@ -100,7 +102,7 @@ class NewsSpikeValidator:
 
     def __init__(self, api_url: str = "http://localhost:9100/api/alpaca"):
         self.api_url = api_url
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # Price tracking for validation
         self.pre_news_prices: Dict[str, float] = {}
@@ -121,24 +123,24 @@ class NewsSpikeValidator:
 
         # News quality keywords
         self.high_quality_catalysts = {
-            'fda_approval': 100,
-            'merger': 95,
-            'acquisition': 95,
-            'buyout': 95,
-            'earnings_beat': 85,
-            'guidance_raise': 80,
-            'upgrade': 75,
-            'contract_win': 70,
-            'partnership': 65,
+            "fda_approval": 100,
+            "merger": 95,
+            "acquisition": 95,
+            "buyout": 95,
+            "earnings_beat": 85,
+            "guidance_raise": 80,
+            "upgrade": 75,
+            "contract_win": 70,
+            "partnership": 65,
         }
 
         self.low_quality_catalysts = {
-            'rumor': 30,
-            'speculation': 25,
-            'analyst_comment': 40,
-            'social_media': 20,
-            'reddit': 15,
-            'meme': 10,
+            "rumor": 30,
+            "speculation": 25,
+            "analyst_comment": 40,
+            "social_media": 20,
+            "reddit": 15,
+            "meme": 10,
         }
 
         logger.info("NewsSpikeValidator initialized")
@@ -153,8 +155,9 @@ class NewsSpikeValidator:
         self.spike_prices[symbol] = price
         self.price_history[symbol].append((datetime.now(self.et_tz), price))
 
-    async def validate_spike(self, symbol: str, headline: str,
-                            catalyst_type: str, wait_seconds: int = 10) -> SpikeValidation:
+    async def validate_spike(
+        self, symbol: str, headline: str, catalyst_type: str, wait_seconds: int = 10
+    ) -> SpikeValidation:
         """
         Full spike validation - waits and analyzes price action.
         """
@@ -164,10 +167,14 @@ class NewsSpikeValidator:
         # Get initial snapshot
         initial_data = self._get_quote(symbol)
         if not initial_data:
-            return self._create_avoid_validation(symbol, headline, "Cannot get quote data")
+            return self._create_avoid_validation(
+                symbol, headline, "Cannot get quote data"
+            )
 
-        pre_price = self.pre_news_prices.get(symbol, initial_data['price'])
-        spike_price = max(self.spike_prices.get(symbol, initial_data['price']), initial_data['price'])
+        pre_price = self.pre_news_prices.get(symbol, initial_data["price"])
+        spike_price = max(
+            self.spike_prices.get(symbol, initial_data["price"]), initial_data["price"]
+        )
 
         # Record initial spike
         self.spike_prices[symbol] = spike_price
@@ -188,21 +195,22 @@ class NewsSpikeValidator:
             catalyst_type=catalyst_type,
             pre_price=pre_price,
             spike_price=spike_price,
-            current_data=current_data
+            current_data=current_data,
         )
 
         # Store and return
         self.validations.append(validation)
         if len(self.validations) > self.max_validations:
-            self.validations = self.validations[-self.max_validations:]
+            self.validations = self.validations[-self.max_validations :]
 
         # Trigger callbacks
         self._trigger_callbacks(validation)
 
         return validation
 
-    def validate_spike_sync(self, symbol: str, headline: str,
-                           catalyst_type: str, wait_seconds: int = 10) -> SpikeValidation:
+    def validate_spike_sync(
+        self, symbol: str, headline: str, catalyst_type: str, wait_seconds: int = 10
+    ) -> SpikeValidation:
         """Synchronous version of validate_spike"""
         symbol = symbol.upper()
         now = datetime.now(self.et_tz)
@@ -210,10 +218,14 @@ class NewsSpikeValidator:
         # Get initial snapshot
         initial_data = self._get_quote(symbol)
         if not initial_data:
-            return self._create_avoid_validation(symbol, headline, "Cannot get quote data")
+            return self._create_avoid_validation(
+                symbol, headline, "Cannot get quote data"
+            )
 
-        pre_price = self.pre_news_prices.get(symbol, initial_data['price'])
-        spike_price = max(self.spike_prices.get(symbol, initial_data['price']), initial_data['price'])
+        pre_price = self.pre_news_prices.get(symbol, initial_data["price"])
+        spike_price = max(
+            self.spike_prices.get(symbol, initial_data["price"]), initial_data["price"]
+        )
 
         # Track price during wait period
         prices_during_wait = [spike_price]
@@ -221,9 +233,9 @@ class NewsSpikeValidator:
             time.sleep(1)
             data = self._get_quote(symbol)
             if data:
-                prices_during_wait.append(data['price'])
-                if data['price'] > spike_price:
-                    spike_price = data['price']
+                prices_during_wait.append(data["price"])
+                if data["price"] > spike_price:
+                    spike_price = data["price"]
 
         # Get final state
         current_data = self._get_quote(symbol)
@@ -240,21 +252,22 @@ class NewsSpikeValidator:
             catalyst_type=catalyst_type,
             pre_price=pre_price,
             spike_price=spike_price,
-            current_data=current_data
+            current_data=current_data,
         )
 
         # Store
         self.validations.append(validation)
         if len(self.validations) > self.max_validations:
-            self.validations = self.validations[-self.max_validations:]
+            self.validations = self.validations[-self.max_validations :]
 
         # Callbacks
         self._trigger_callbacks(validation)
 
         return validation
 
-    def quick_validate(self, symbol: str, headline: str = "",
-                      catalyst_type: str = "unknown") -> SpikeValidation:
+    def quick_validate(
+        self, symbol: str, headline: str = "", catalyst_type: str = "unknown"
+    ) -> SpikeValidation:
         """
         Quick validation without waiting - for immediate decision.
         Uses current price action and volume.
@@ -265,8 +278,8 @@ class NewsSpikeValidator:
         if not current_data:
             return self._create_avoid_validation(symbol, headline, "Cannot get quote")
 
-        pre_price = self.pre_news_prices.get(symbol, current_data['price'] * 0.95)
-        spike_price = self.spike_prices.get(symbol, current_data['price'])
+        pre_price = self.pre_news_prices.get(symbol, current_data["price"] * 0.95)
+        spike_price = self.spike_prices.get(symbol, current_data["price"])
 
         return self._run_validation(
             symbol=symbol,
@@ -274,26 +287,34 @@ class NewsSpikeValidator:
             catalyst_type=catalyst_type,
             pre_price=pre_price,
             spike_price=spike_price,
-            current_data=current_data
+            current_data=current_data,
         )
 
-    def _run_validation(self, symbol: str, headline: str, catalyst_type: str,
-                       pre_price: float, spike_price: float,
-                       current_data: Dict) -> SpikeValidation:
+    def _run_validation(
+        self,
+        symbol: str,
+        headline: str,
+        catalyst_type: str,
+        pre_price: float,
+        spike_price: float,
+        current_data: Dict,
+    ) -> SpikeValidation:
         """Run all validation checks and generate verdict"""
 
         now = datetime.now(self.et_tz)
-        current_price = current_data['price']
-        bid = current_data.get('bid', current_price)
-        ask = current_data.get('ask', current_price)
-        volume = current_data.get('volume', 0)
+        current_price = current_data["price"]
+        bid = current_data.get("bid", current_price)
+        ask = current_data.get("ask", current_price)
+        volume = current_data.get("volume", 0)
 
         # Calculate metrics
-        spike_pct = ((spike_price - pre_price) / pre_price * 100) if pre_price > 0 else 0
+        spike_pct = (
+            ((spike_price - pre_price) / pre_price * 100) if pre_price > 0 else 0
+        )
 
         # How much of the spike is holding?
         if spike_price > pre_price:
-            holding_pct = ((current_price - pre_price) / (spike_price - pre_price) * 100)
+            holding_pct = (current_price - pre_price) / (spike_price - pre_price) * 100
             holding_pct = max(0, min(100, holding_pct))
         else:
             holding_pct = 100 if current_price >= pre_price else 0
@@ -326,13 +347,13 @@ class NewsSpikeValidator:
         if holding_pct >= 90:
             price_action_score = 100  # Holding all gains
         elif holding_pct >= 70:
-            price_action_score = 85   # Holding most
+            price_action_score = 85  # Holding most
         elif holding_pct >= 50:
-            price_action_score = 60   # Holding half
+            price_action_score = 60  # Holding half
         elif holding_pct >= 30:
-            price_action_score = 40   # Fading
+            price_action_score = 40  # Fading
         else:
-            price_action_score = 20   # Dumping
+            price_action_score = 20  # Dumping
 
         # Bonus for making new highs
         if current_price > spike_price:
@@ -371,10 +392,10 @@ class NewsSpikeValidator:
 
         # === OVERALL SCORE ===
         overall_score = int(
-            volume_score * 0.30 +
-            price_action_score * 0.35 +
-            news_quality_score * 0.25 +
-            timing_score * 0.10
+            volume_score * 0.30
+            + price_action_score * 0.35
+            + news_quality_score * 0.25
+            + timing_score * 0.10
         )
 
         # === VERDICT ===
@@ -387,7 +408,9 @@ class NewsSpikeValidator:
             if holding_pct >= 50:
                 verdict = "BUY_NOW"
                 confidence = min(0.80, overall_score / 100)
-                reason = f"Good setup - {holding_pct:.0f}% holding, {volume_ratio:.1f}x vol"
+                reason = (
+                    f"Good setup - {holding_pct:.0f}% holding, {volume_ratio:.1f}x vol"
+                )
             else:
                 verdict = "WAIT_PULLBACK"
                 confidence = 0.60
@@ -434,7 +457,7 @@ class NewsSpikeValidator:
             verdict=verdict,
             confidence=confidence,
             reason=reason,
-            timestamp=now
+            timestamp=now,
         )
 
     def _get_quote(self, symbol: str) -> Optional[Dict]:
@@ -445,20 +468,21 @@ class NewsSpikeValidator:
                 return None
 
             q = r.json()
-            price = float(q.get('last', 0)) or float(q.get('ask', 0))
+            price = float(q.get("last", 0)) or float(q.get("ask", 0))
 
             return {
-                'price': price,
-                'bid': float(q.get('bid', 0)),
-                'ask': float(q.get('ask', 0)),
-                'volume': int(q.get('volume', 0) or 0)
+                "price": price,
+                "bid": float(q.get("bid", 0)),
+                "ask": float(q.get("ask", 0)),
+                "volume": int(q.get("volume", 0) or 0),
             }
         except Exception as e:
             logger.debug(f"Quote error for {symbol}: {e}")
             return None
 
-    def _create_avoid_validation(self, symbol: str, headline: str,
-                                reason: str) -> SpikeValidation:
+    def _create_avoid_validation(
+        self, symbol: str, headline: str, reason: str
+    ) -> SpikeValidation:
         """Create an AVOID validation"""
         return SpikeValidation(
             symbol=symbol,
@@ -481,12 +505,13 @@ class NewsSpikeValidator:
             verdict="AVOID",
             confidence=0,
             reason=reason,
-            timestamp=datetime.now(self.et_tz)
+            timestamp=datetime.now(self.et_tz),
         )
 
     async def _async_sleep(self, seconds: int):
         """Async sleep"""
         import asyncio
+
         await asyncio.sleep(seconds)
 
     def _trigger_callbacks(self, validation: SpikeValidation):
@@ -508,8 +533,11 @@ class NewsSpikeValidator:
     def get_buy_signals(self) -> List[Dict]:
         """Get recent BUY_NOW signals"""
         cutoff = datetime.now(self.et_tz) - timedelta(minutes=5)
-        return [v.to_dict() for v in self.validations
-                if v.verdict == "BUY_NOW" and v.timestamp >= cutoff]
+        return [
+            v.to_dict()
+            for v in self.validations
+            if v.verdict == "BUY_NOW" and v.timestamp >= cutoff
+        ]
 
 
 # Singleton
@@ -524,8 +552,9 @@ def get_spike_validator() -> NewsSpikeValidator:
     return _validator
 
 
-def validate_news_spike(symbol: str, headline: str, catalyst: str,
-                       wait_seconds: int = 10) -> SpikeValidation:
+def validate_news_spike(
+    symbol: str, headline: str, catalyst: str, wait_seconds: int = 10
+) -> SpikeValidation:
     """Convenience function to validate a spike"""
     validator = get_spike_validator()
     return validator.validate_spike_sync(symbol, headline, catalyst, wait_seconds)
@@ -543,7 +572,7 @@ if __name__ == "__main__":
     result = validator.quick_validate(
         symbol="AAPL",
         headline="Apple FDA approval for health device",
-        catalyst_type="fda_approval"
+        catalyst_type="fda_approval",
     )
 
     print(f"\nValidation Result:")

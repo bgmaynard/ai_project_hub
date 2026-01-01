@@ -2,15 +2,16 @@
 Trade Analytics Module - TraderVue-style analysis
 Comprehensive trade journaling, statistical analysis, and pattern recognition
 """
-import sqlite3
+
 import json
 import logging
-from datetime import datetime, timedelta, date
-from typing import Optional, Dict, List, Any, Tuple
-from pathlib import Path
-from dataclasses import dataclass, asdict
-from collections import defaultdict
+import sqlite3
 import statistics
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ DB_PATH = Path(__file__).parent / "store" / "trade_journal.db"
 @dataclass
 class Trade:
     """Trade record"""
+
     trade_id: str
     account: str
     symbol: str
@@ -58,7 +60,8 @@ class TradeAnalytics:
         cursor = conn.cursor()
 
         # Create comprehensive trades table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS trade_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 trade_id TEXT UNIQUE,
@@ -93,10 +96,12 @@ class TradeAnalytics:
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Create daily performance table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS daily_performance (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date DATE UNIQUE,
@@ -120,10 +125,12 @@ class TradeAnalytics:
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Create strategy performance table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS strategy_stats (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 strategy TEXT,
@@ -140,10 +147,12 @@ class TradeAnalytics:
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(strategy, setup)
             )
-        """)
+        """
+        )
 
         # Create symbol performance table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS symbol_stats (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 symbol TEXT UNIQUE,
@@ -157,10 +166,12 @@ class TradeAnalytics:
                 avg_hold_time INTEGER DEFAULT 0,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Create time analysis table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS time_analysis (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 time_slot TEXT,
@@ -173,12 +184,19 @@ class TradeAnalytics:
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(time_slot, day_of_week)
             )
-        """)
+        """
+        )
 
         # Create indexes for performance
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trade_date ON trade_history(trade_date)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trade_symbol ON trade_history(symbol)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trade_account ON trade_history(account)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_trade_date ON trade_history(trade_date)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_trade_symbol ON trade_history(symbol)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_trade_account ON trade_history(account)"
+        )
 
         conn.commit()
         conn.close()
@@ -191,13 +209,13 @@ class TradeAnalytics:
             cursor = conn.cursor()
 
             # Calculate derived fields
-            entry_time = trade.get('entry_time')
-            exit_time = trade.get('exit_time')
+            entry_time = trade.get("entry_time")
+            exit_time = trade.get("exit_time")
 
             if isinstance(entry_time, str):
-                entry_time = datetime.fromisoformat(entry_time.replace('Z', '+00:00'))
+                entry_time = datetime.fromisoformat(entry_time.replace("Z", "+00:00"))
             if isinstance(exit_time, str) and exit_time:
-                exit_time = datetime.fromisoformat(exit_time.replace('Z', '+00:00'))
+                exit_time = datetime.fromisoformat(exit_time.replace("Z", "+00:00"))
 
             # Calculate hold time
             hold_time = 0
@@ -220,14 +238,15 @@ class TradeAnalytics:
                     time_of_day = "after_hours"
 
             # Determine winner/loser/scratch
-            pnl = trade.get('pnl', 0)
+            pnl = trade.get("pnl", 0)
             is_winner = 1 if pnl > 0.50 else 0
             is_scratch = 1 if abs(pnl) <= 0.50 else 0
 
             # Day of week
-            dow = entry_time.strftime('%A') if entry_time else 'Unknown'
+            dow = entry_time.strftime("%A") if entry_time else "Unknown"
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO trade_history (
                     trade_id, account, trade_date, symbol, side, quantity,
                     entry_price, entry_time, exit_price, exit_time,
@@ -236,33 +255,35 @@ class TradeAnalytics:
                     is_winner, is_scratch, notes, tags,
                     ai_signal, ai_confidence, market_condition
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                trade.get('trade_id'),
-                trade.get('account', ''),
-                trade.get('trade_date', date.today().isoformat()),
-                trade.get('symbol', ''),
-                trade.get('side', ''),
-                trade.get('quantity', 0),
-                trade.get('entry_price', 0),
-                entry_time.isoformat() if entry_time else None,
-                trade.get('exit_price'),
-                exit_time.isoformat() if exit_time else None,
-                pnl,
-                trade.get('pnl_percent', 0),
-                trade.get('commission', 0),
-                hold_time,
-                trade.get('strategy', ''),
-                trade.get('setup', ''),
-                time_of_day,
-                dow,
-                is_winner,
-                is_scratch,
-                trade.get('notes', ''),
-                json.dumps(trade.get('tags', [])),
-                trade.get('ai_signal', ''),
-                trade.get('ai_confidence', 0),
-                trade.get('market_condition', '')
-            ))
+            """,
+                (
+                    trade.get("trade_id"),
+                    trade.get("account", ""),
+                    trade.get("trade_date", date.today().isoformat()),
+                    trade.get("symbol", ""),
+                    trade.get("side", ""),
+                    trade.get("quantity", 0),
+                    trade.get("entry_price", 0),
+                    entry_time.isoformat() if entry_time else None,
+                    trade.get("exit_price"),
+                    exit_time.isoformat() if exit_time else None,
+                    pnl,
+                    trade.get("pnl_percent", 0),
+                    trade.get("commission", 0),
+                    hold_time,
+                    trade.get("strategy", ""),
+                    trade.get("setup", ""),
+                    time_of_day,
+                    dow,
+                    is_winner,
+                    is_scratch,
+                    trade.get("notes", ""),
+                    json.dumps(trade.get("tags", [])),
+                    trade.get("ai_signal", ""),
+                    trade.get("ai_confidence", 0),
+                    trade.get("market_condition", ""),
+                ),
+            )
 
             conn.commit()
             conn.close()
@@ -280,7 +301,7 @@ class TradeAnalytics:
         imported = 0
 
         for order in schwab_orders:
-            if order.get('status') != 'FILLED':
+            if order.get("status") != "FILLED":
                 continue
 
             trade_id = f"{account}-{order.get('order_id')}"
@@ -288,7 +309,9 @@ class TradeAnalytics:
             # Check if already exists
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            cursor.execute("SELECT 1 FROM trade_history WHERE trade_id = ?", (trade_id,))
+            cursor.execute(
+                "SELECT 1 FROM trade_history WHERE trade_id = ?", (trade_id,)
+            )
             if cursor.fetchone():
                 conn.close()
                 continue
@@ -296,15 +319,15 @@ class TradeAnalytics:
 
             # Create trade record
             trade = {
-                'trade_id': trade_id,
-                'account': account,
-                'symbol': order.get('symbol'),
-                'side': order.get('side'),
-                'quantity': order.get('filled_qty', order.get('quantity', 0)),
-                'entry_price': order.get('price', 0),
-                'entry_time': order.get('entered_time'),
-                'exit_time': order.get('close_time'),
-                'trade_date': datetime.now().date().isoformat()
+                "trade_id": trade_id,
+                "account": account,
+                "symbol": order.get("symbol"),
+                "side": order.get("side"),
+                "quantity": order.get("filled_qty", order.get("quantity", 0)),
+                "entry_price": order.get("price", 0),
+                "entry_time": order.get("entered_time"),
+                "exit_time": order.get("close_time"),
+                "trade_date": datetime.now().date().isoformat(),
             }
 
             if self.record_trade(trade):
@@ -320,7 +343,8 @@ class TradeAnalytics:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 COUNT(*) as total_trades,
                 SUM(CASE WHEN is_winner = 1 THEN 1 ELSE 0 END) as winners,
@@ -335,7 +359,9 @@ class TradeAnalytics:
                 AVG(hold_time_minutes) as avg_hold_time
             FROM trade_history
             WHERE trade_date = ?
-        """, (target_date.isoformat(),))
+        """,
+            (target_date.isoformat(),),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -344,18 +370,36 @@ class TradeAnalytics:
             return {
                 "date": target_date.isoformat(),
                 "total_trades": 0,
-                "message": "No trades recorded for this day"
+                "message": "No trades recorded for this day",
             }
 
-        total, winners, losers, scratches, total_pnl, commission, largest_win, largest_loss, avg_win, avg_loss, avg_hold = row
+        (
+            total,
+            winners,
+            losers,
+            scratches,
+            total_pnl,
+            commission,
+            largest_win,
+            largest_loss,
+            avg_win,
+            avg_loss,
+            avg_hold,
+        ) = row
 
         win_rate = (winners / total * 100) if total > 0 else 0
         gross_wins = (avg_win or 0) * (winners or 0)
         gross_losses = abs(avg_loss or 0) * (losers or 0)
-        profit_factor = (gross_wins / gross_losses) if gross_losses > 0 else float('inf') if gross_wins > 0 else 0
+        profit_factor = (
+            (gross_wins / gross_losses)
+            if gross_losses > 0
+            else float("inf") if gross_wins > 0 else 0
+        )
 
         # Expectancy = (Win Rate × Avg Win) - (Loss Rate × Avg Loss)
-        expectancy = (win_rate/100 * (avg_win or 0)) - ((100-win_rate)/100 * abs(avg_loss or 0))
+        expectancy = (win_rate / 100 * (avg_win or 0)) - (
+            (100 - win_rate) / 100 * abs(avg_loss or 0)
+        )
 
         return {
             "date": target_date.isoformat(),
@@ -371,9 +415,11 @@ class TradeAnalytics:
             "largest_loss": round(largest_loss or 0, 2),
             "avg_win": round(avg_win or 0, 2),
             "avg_loss": round(avg_loss or 0, 2),
-            "profit_factor": round(profit_factor, 2) if profit_factor != float('inf') else "∞",
+            "profit_factor": (
+                round(profit_factor, 2) if profit_factor != float("inf") else "∞"
+            ),
             "expectancy": round(expectancy, 2),
-            "avg_hold_time_minutes": round(avg_hold or 0, 1)
+            "avg_hold_time_minutes": round(avg_hold or 0, 1),
         }
 
     def get_overall_stats(self, days: int = 30) -> Dict:
@@ -383,7 +429,8 @@ class TradeAnalytics:
 
         start_date = (date.today() - timedelta(days=days)).isoformat()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 COUNT(*) as total_trades,
                 COUNT(DISTINCT trade_date) as trading_days,
@@ -398,7 +445,9 @@ class TradeAnalytics:
                 AVG(hold_time_minutes) as avg_hold_time
             FROM trade_history
             WHERE trade_date >= ?
-        """, (start_date,))
+        """,
+            (start_date,),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -406,14 +455,30 @@ class TradeAnalytics:
         if not row or row[0] == 0:
             return {"message": "No trades in the specified period", "days": days}
 
-        total, days_traded, winners, losers, total_pnl, avg_pnl, best, worst, avg_win, avg_loss, avg_hold = row
+        (
+            total,
+            days_traded,
+            winners,
+            losers,
+            total_pnl,
+            avg_pnl,
+            best,
+            worst,
+            avg_win,
+            avg_loss,
+            avg_hold,
+        ) = row
 
         win_rate = (winners / total * 100) if total > 0 else 0
         avg_trades_per_day = total / days_traded if days_traded > 0 else 0
 
         gross_wins = (avg_win or 0) * (winners or 0)
         gross_losses = abs(avg_loss or 0) * (losers or 0)
-        profit_factor = (gross_wins / gross_losses) if gross_losses > 0 else float('inf') if gross_wins > 0 else 0
+        profit_factor = (
+            (gross_wins / gross_losses)
+            if gross_losses > 0
+            else float("inf") if gross_wins > 0 else 0
+        )
 
         return {
             "period_days": days,
@@ -429,8 +494,10 @@ class TradeAnalytics:
             "worst_trade": round(worst or 0, 2),
             "avg_win": round(avg_win or 0, 2),
             "avg_loss": round(avg_loss or 0, 2),
-            "profit_factor": round(profit_factor, 2) if profit_factor != float('inf') else "∞",
-            "avg_hold_time_minutes": round(avg_hold or 0, 1)
+            "profit_factor": (
+                round(profit_factor, 2) if profit_factor != float("inf") else "∞"
+            ),
+            "avg_hold_time_minutes": round(avg_hold or 0, 1),
         }
 
     def get_symbol_performance(self, limit: int = 20) -> List[Dict]:
@@ -438,7 +505,8 @@ class TradeAnalytics:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 symbol,
                 COUNT(*) as trades,
@@ -451,19 +519,23 @@ class TradeAnalytics:
             GROUP BY symbol
             ORDER BY total_pnl DESC
             LIMIT ?
-        """, (limit,))
+        """,
+            (limit,),
+        )
 
         results = []
         for row in cursor.fetchall():
-            results.append({
-                "symbol": row[0],
-                "trades": row[1],
-                "winners": row[2],
-                "win_rate": row[3],
-                "total_pnl": round(row[4] or 0, 2),
-                "avg_pnl": round(row[5] or 0, 2),
-                "avg_hold_minutes": round(row[6] or 0, 1)
-            })
+            results.append(
+                {
+                    "symbol": row[0],
+                    "trades": row[1],
+                    "winners": row[2],
+                    "win_rate": row[3],
+                    "total_pnl": round(row[4] or 0, 2),
+                    "avg_pnl": round(row[5] or 0, 2),
+                    "avg_hold_minutes": round(row[6] or 0, 1),
+                }
+            )
 
         conn.close()
         return results
@@ -473,7 +545,8 @@ class TradeAnalytics:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 COALESCE(strategy, 'Unknown') as strategy,
                 COALESCE(setup, 'Unknown') as setup,
@@ -486,19 +559,22 @@ class TradeAnalytics:
             WHERE strategy IS NOT NULL AND strategy != ''
             GROUP BY strategy, setup
             ORDER BY total_pnl DESC
-        """)
+        """
+        )
 
         results = []
         for row in cursor.fetchall():
-            results.append({
-                "strategy": row[0],
-                "setup": row[1],
-                "trades": row[2],
-                "winners": row[3],
-                "win_rate": row[4],
-                "total_pnl": round(row[5] or 0, 2),
-                "avg_pnl": round(row[6] or 0, 2)
-            })
+            results.append(
+                {
+                    "strategy": row[0],
+                    "setup": row[1],
+                    "trades": row[2],
+                    "winners": row[3],
+                    "win_rate": row[4],
+                    "total_pnl": round(row[5] or 0, 2),
+                    "avg_pnl": round(row[6] or 0, 2),
+                }
+            )
 
         conn.close()
         return results
@@ -509,7 +585,8 @@ class TradeAnalytics:
         cursor = conn.cursor()
 
         # By time of day
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 time_of_day,
                 COUNT(*) as trades,
@@ -520,20 +597,24 @@ class TradeAnalytics:
             WHERE time_of_day IS NOT NULL
             GROUP BY time_of_day
             ORDER BY total_pnl DESC
-        """)
+        """
+        )
 
         by_time = []
         for row in cursor.fetchall():
-            by_time.append({
-                "time_slot": row[0],
-                "trades": row[1],
-                "winners": row[2],
-                "win_rate": row[3],
-                "total_pnl": round(row[4] or 0, 2)
-            })
+            by_time.append(
+                {
+                    "time_slot": row[0],
+                    "trades": row[1],
+                    "winners": row[2],
+                    "win_rate": row[3],
+                    "total_pnl": round(row[4] or 0, 2),
+                }
+            )
 
         # By day of week
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 day_of_week,
                 COUNT(*) as trades,
@@ -552,32 +633,28 @@ class TradeAnalytics:
                     WHEN 'Friday' THEN 5
                     ELSE 6
                 END
-        """)
+        """
+        )
 
         by_day = []
         for row in cursor.fetchall():
-            by_day.append({
-                "day": row[0],
-                "trades": row[1],
-                "winners": row[2],
-                "win_rate": row[3],
-                "total_pnl": round(row[4] or 0, 2)
-            })
+            by_day.append(
+                {
+                    "day": row[0],
+                    "trades": row[1],
+                    "winners": row[2],
+                    "win_rate": row[3],
+                    "total_pnl": round(row[4] or 0, 2),
+                }
+            )
 
         conn.close()
 
-        return {
-            "by_time_of_day": by_time,
-            "by_day_of_week": by_day
-        }
+        return {"by_time_of_day": by_time, "by_day_of_week": by_day}
 
     def get_insights(self) -> Dict:
         """Generate actionable insights from trade data"""
-        insights = {
-            "strengths": [],
-            "weaknesses": [],
-            "recommendations": []
-        }
+        insights = {"strengths": [], "weaknesses": [], "recommendations": []}
 
         # Get various stats
         overall = self.get_overall_stats(30)
@@ -585,60 +662,76 @@ class TradeAnalytics:
         strategies = self.get_strategy_performance()
         time_analysis = self.get_time_analysis()
 
-        if overall.get('total_trades', 0) < 5:
-            insights["recommendations"].append("Need more trade data for meaningful analysis (minimum 5 trades)")
+        if overall.get("total_trades", 0) < 5:
+            insights["recommendations"].append(
+                "Need more trade data for meaningful analysis (minimum 5 trades)"
+            )
             return insights
 
         # Analyze win rate
-        win_rate = overall.get('win_rate', 0)
+        win_rate = overall.get("win_rate", 0)
         if win_rate >= 60:
             insights["strengths"].append(f"Strong win rate of {win_rate}%")
         elif win_rate < 40:
-            insights["weaknesses"].append(f"Low win rate of {win_rate}% - focus on trade selection")
+            insights["weaknesses"].append(
+                f"Low win rate of {win_rate}% - focus on trade selection"
+            )
 
         # Analyze profit factor
-        pf = overall.get('profit_factor', 0)
+        pf = overall.get("profit_factor", 0)
         if isinstance(pf, (int, float)) and pf >= 2.0:
             insights["strengths"].append(f"Excellent profit factor of {pf}")
         elif isinstance(pf, (int, float)) and pf < 1.0:
-            insights["weaknesses"].append(f"Profit factor below 1.0 ({pf}) - losing money overall")
+            insights["weaknesses"].append(
+                f"Profit factor below 1.0 ({pf}) - losing money overall"
+            )
 
         # Best performing symbols
         if symbols:
-            best_symbols = [s for s in symbols if s['total_pnl'] > 0][:3]
+            best_symbols = [s for s in symbols if s["total_pnl"] > 0][:3]
             if best_symbols:
-                names = ", ".join([s['symbol'] for s in best_symbols])
+                names = ", ".join([s["symbol"] for s in best_symbols])
                 insights["strengths"].append(f"Best performing symbols: {names}")
 
-            worst_symbols = [s for s in symbols if s['total_pnl'] < 0][-3:]
+            worst_symbols = [s for s in symbols if s["total_pnl"] < 0][-3:]
             if worst_symbols:
-                names = ", ".join([s['symbol'] for s in worst_symbols])
+                names = ", ".join([s["symbol"] for s in worst_symbols])
                 insights["weaknesses"].append(f"Avoid or improve: {names}")
 
         # Time analysis
-        by_time = time_analysis.get('by_time_of_day', [])
+        by_time = time_analysis.get("by_time_of_day", [])
         if by_time:
-            best_time = max(by_time, key=lambda x: x.get('total_pnl', 0))
-            worst_time = min(by_time, key=lambda x: x.get('total_pnl', 0))
+            best_time = max(by_time, key=lambda x: x.get("total_pnl", 0))
+            worst_time = min(by_time, key=lambda x: x.get("total_pnl", 0))
 
-            if best_time['total_pnl'] > 0:
-                insights["strengths"].append(f"Best performance during {best_time['time_slot']} (${best_time['total_pnl']})")
+            if best_time["total_pnl"] > 0:
+                insights["strengths"].append(
+                    f"Best performance during {best_time['time_slot']} (${best_time['total_pnl']})"
+                )
 
-            if worst_time['total_pnl'] < 0:
-                insights["weaknesses"].append(f"Struggling during {worst_time['time_slot']} (${worst_time['total_pnl']})")
-                insights["recommendations"].append(f"Consider reducing size or avoiding trades during {worst_time['time_slot']}")
+            if worst_time["total_pnl"] < 0:
+                insights["weaknesses"].append(
+                    f"Struggling during {worst_time['time_slot']} (${worst_time['total_pnl']})"
+                )
+                insights["recommendations"].append(
+                    f"Consider reducing size or avoiding trades during {worst_time['time_slot']}"
+                )
 
         # Day analysis
-        by_day = time_analysis.get('by_day_of_week', [])
+        by_day = time_analysis.get("by_day_of_week", [])
         if by_day:
-            best_day = max(by_day, key=lambda x: x.get('total_pnl', 0))
-            worst_day = min(by_day, key=lambda x: x.get('total_pnl', 0))
+            best_day = max(by_day, key=lambda x: x.get("total_pnl", 0))
+            worst_day = min(by_day, key=lambda x: x.get("total_pnl", 0))
 
-            if best_day['total_pnl'] > 0:
-                insights["strengths"].append(f"Best day: {best_day['day']} (${best_day['total_pnl']})")
+            if best_day["total_pnl"] > 0:
+                insights["strengths"].append(
+                    f"Best day: {best_day['day']} (${best_day['total_pnl']})"
+                )
 
-            if worst_day['total_pnl'] < 0:
-                insights["recommendations"].append(f"Review {worst_day['day']} trades - currently losing ${abs(worst_day['total_pnl'])}")
+            if worst_day["total_pnl"] < 0:
+                insights["recommendations"].append(
+                    f"Review {worst_day['day']} trades - currently losing ${abs(worst_day['total_pnl'])}"
+                )
 
         return insights
 
@@ -647,7 +740,8 @@ class TradeAnalytics:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 trade_id, account, trade_date, symbol, side, quantity,
                 entry_price, exit_price, pnl, pnl_percent,
@@ -655,27 +749,31 @@ class TradeAnalytics:
             FROM trade_history
             ORDER BY entry_time DESC
             LIMIT ?
-        """, (limit,))
+        """,
+            (limit,),
+        )
 
         results = []
         for row in cursor.fetchall():
-            results.append({
-                "trade_id": row[0],
-                "account": row[1],
-                "date": row[2],
-                "symbol": row[3],
-                "side": row[4],
-                "quantity": row[5],
-                "entry_price": row[6],
-                "exit_price": row[7],
-                "pnl": round(row[8] or 0, 2),
-                "pnl_percent": round(row[9] or 0, 2),
-                "strategy": row[10],
-                "setup": row[11],
-                "hold_time": row[12],
-                "is_winner": bool(row[13]),
-                "notes": row[14]
-            })
+            results.append(
+                {
+                    "trade_id": row[0],
+                    "account": row[1],
+                    "date": row[2],
+                    "symbol": row[3],
+                    "side": row[4],
+                    "quantity": row[5],
+                    "entry_price": row[6],
+                    "exit_price": row[7],
+                    "pnl": round(row[8] or 0, 2),
+                    "pnl_percent": round(row[9] or 0, 2),
+                    "strategy": row[10],
+                    "setup": row[11],
+                    "hold_time": row[12],
+                    "is_winner": bool(row[13]),
+                    "notes": row[14],
+                }
+            )
 
         conn.close()
         return results
@@ -691,26 +789,25 @@ class TradeAnalytics:
         cursor = conn.cursor()
 
         # Get all trades grouped by account and symbol
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, account, symbol, side, quantity, entry_price, entry_time
             FROM trade_history
             ORDER BY account, symbol, entry_time
-        """)
+        """
+        )
 
         trades = cursor.fetchall()
 
         # Group by account + symbol
         from collections import defaultdict
+
         grouped = defaultdict(list)
         for t in trades:
             key = (t[1], t[2])  # account, symbol
-            grouped[key].append({
-                'id': t[0],
-                'side': t[3],
-                'qty': t[4],
-                'price': t[5],
-                'time': t[6]
-            })
+            grouped[key].append(
+                {"id": t[0], "side": t[3], "qty": t[4], "price": t[5], "time": t[6]}
+            )
 
         total_pnl = 0
         matched_trades = 0
@@ -719,37 +816,42 @@ class TradeAnalytics:
             buys = []
 
             for fill in fills:
-                if fill['side'] == 'BUY':
-                    buys.append({'qty': fill['qty'], 'price': fill['price'], 'id': fill['id']})
-                elif fill['side'] == 'SELL' and buys:
+                if fill["side"] == "BUY":
+                    buys.append(
+                        {"qty": fill["qty"], "price": fill["price"], "id": fill["id"]}
+                    )
+                elif fill["side"] == "SELL" and buys:
                     # Match FIFO
-                    sell_qty = fill['qty']
-                    sell_price = fill['price']
+                    sell_qty = fill["qty"]
+                    sell_price = fill["price"]
 
                     while sell_qty > 0 and buys:
                         buy = buys[0]
-                        match_qty = min(buy['qty'], sell_qty)
+                        match_qty = min(buy["qty"], sell_qty)
 
                         # Calculate P&L for this match
-                        pnl = (sell_price - buy['price']) * match_qty
+                        pnl = (sell_price - buy["price"]) * match_qty
                         total_pnl += pnl
 
                         # Update the sell trade's P&L in DB
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             UPDATE trade_history
                             SET pnl = pnl + ?,
                                 exit_price = ?,
                                 is_winner = CASE WHEN (pnl + ?) > 0.50 THEN 1 ELSE 0 END,
                                 is_scratch = CASE WHEN ABS(pnl + ?) <= 0.50 THEN 1 ELSE 0 END
                             WHERE id = ?
-                        """, (pnl, buy['price'], pnl, pnl, fill['id']))
+                        """,
+                            (pnl, buy["price"], pnl, pnl, fill["id"]),
+                        )
 
                         matched_trades += 1
 
-                        buy['qty'] -= match_qty
+                        buy["qty"] -= match_qty
                         sell_qty -= match_qty
 
-                        if buy['qty'] <= 0:
+                        if buy["qty"] <= 0:
                             buys.pop(0)
 
         conn.commit()
@@ -758,12 +860,13 @@ class TradeAnalytics:
         return {
             "total_pnl_calculated": round(total_pnl, 2),
             "matched_round_trips": matched_trades,
-            "message": "P&L calculated from matched buy/sell fills"
+            "message": "P&L calculated from matched buy/sell fills",
         }
 
 
 # Singleton instance
 _analytics_instance = None
+
 
 def get_trade_analytics() -> TradeAnalytics:
     """Get singleton instance of trade analytics"""

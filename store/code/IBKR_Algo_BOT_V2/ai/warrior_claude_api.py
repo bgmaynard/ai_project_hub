@@ -11,28 +11,20 @@ FastAPI endpoints for Claude AI features:
 Integrates with existing dashboard_api.py
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel, Field
-from typing import Dict, List, Any, Optional
-from datetime import datetime, date, timedelta
-import logging
 import json
+import logging
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 from claude_integration import get_claude_integration
-from warrior_strategy_optimizer import StrategyOptimizer
-from warrior_market_regime import (
-    MarketRegimeDetector,
-    MarketIndicators,
-    get_regime_detector
-)
-from warrior_self_healing import (
-    SelfHealingSystem,
-    ErrorContext,
-    ErrorCategory,
-    ErrorSeverity,
-    get_self_healing
-)
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel, Field
 from warrior_database import WarriorDatabase
+from warrior_market_regime import (MarketIndicators, MarketRegimeDetector,
+                                   get_regime_detector)
+from warrior_self_healing import (ErrorCategory, ErrorContext, ErrorSeverity,
+                                  SelfHealingSystem, get_self_healing)
+from warrior_strategy_optimizer import StrategyOptimizer
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +35,10 @@ router = APIRouter(prefix="/api/warrior/ai", tags=["Claude AI"])
 #                           REQUEST MODELS
 # ═════════════════════════════════════════════════════════════════
 
+
 class MarketIndicatorsRequest(BaseModel):
     """Market indicators for regime detection"""
+
     spy_price: float
     spy_change_percent: float
     spy_20sma: Optional[float] = None
@@ -61,12 +55,14 @@ class MarketIndicatorsRequest(BaseModel):
 
 class OptimizationRequest(BaseModel):
     """Request for strategy optimization"""
+
     days: int = Field(default=30, ge=7, le=90)
     current_config: Optional[Dict[str, Any]] = None
 
 
 class ErrorDetectionRequest(BaseModel):
     """Manual error detection request"""
+
     error_type: str
     error_message: str
     component: str
@@ -77,10 +73,10 @@ class ErrorDetectionRequest(BaseModel):
 #                       STRATEGY OPTIMIZATION
 # ═════════════════════════════════════════════════════════════════
 
+
 @router.get("/optimize/suggest")
 async def get_optimization_suggestions(
-    days: int = 30,
-    background_tasks: BackgroundTasks = None
+    days: int = 30, background_tasks: BackgroundTasks = None
 ):
     """
     Get AI-powered strategy optimization suggestions
@@ -102,33 +98,34 @@ async def get_optimization_suggestions(
             "max_daily_trades": 5,
             "halt_on_consecutive_losses": 3,
             "daily_profit_goal": 200.0,
-            "daily_loss_limit": -100.0
+            "daily_loss_limit": -100.0,
         }
 
         suggestions = optimizer.generate_optimization_suggestions(
-            current_config=current_config,
-            days=days
+            current_config=current_config, days=days
         )
 
         # Convert to dicts
         suggestions_data = []
         for suggestion in suggestions:
-            suggestions_data.append({
-                "parameter": suggestion.parameter,
-                "current_value": suggestion.current_value,
-                "suggested_value": suggestion.suggested_value,
-                "reasoning": suggestion.reasoning,
-                "expected_impact": suggestion.expected_impact,
-                "confidence": suggestion.confidence,
-                "priority": suggestion.priority,
-                "status": suggestion.status
-            })
+            suggestions_data.append(
+                {
+                    "parameter": suggestion.parameter,
+                    "current_value": suggestion.current_value,
+                    "suggested_value": suggestion.suggested_value,
+                    "reasoning": suggestion.reasoning,
+                    "expected_impact": suggestion.expected_impact,
+                    "confidence": suggestion.confidence,
+                    "priority": suggestion.priority,
+                    "status": suggestion.status,
+                }
+            )
 
         return {
             "success": True,
             "suggestions": suggestions_data,
             "analysis_period_days": days,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -151,10 +148,7 @@ async def get_performance_summary(days: int = 30):
         optimizer = StrategyOptimizer()
         summary = optimizer.get_performance_summary(days=days)
 
-        return {
-            "success": True,
-            **summary
-        }
+        return {"success": True, **summary}
 
     except Exception as e:
         logger.error(f"Error getting performance summary: {e}")
@@ -183,10 +177,7 @@ async def get_daily_review(review_date: Optional[str] = None):
 
         review = optimizer.generate_daily_review(review_date=target_date)
 
-        return {
-            "success": True,
-            **review
-        }
+        return {"success": True, **review}
 
     except Exception as e:
         logger.error(f"Error generating daily review: {e}")
@@ -196,6 +187,7 @@ async def get_daily_review(review_date: Optional[str] = None):
 # ═════════════════════════════════════════════════════════════════
 #                        MARKET REGIME DETECTION
 # ═════════════════════════════════════════════════════════════════
+
 
 @router.post("/regime/detect")
 async def detect_market_regime(indicators: MarketIndicatorsRequest):
@@ -224,16 +216,13 @@ async def detect_market_regime(indicators: MarketIndicatorsRequest):
             advance_decline_ratio=indicators.advance_decline_ratio,
             volume_ratio=indicators.volume_ratio,
             gap_up_count=indicators.gap_up_count,
-            gap_down_count=indicators.gap_down_count
+            gap_down_count=indicators.gap_down_count,
         )
 
         # Detect regime (use AI if available)
         detection = detector.detect_regime(market_indicators, use_ai=True)
 
-        return {
-            "success": True,
-            **detector.to_dict()
-        }
+        return {"success": True, **detector.to_dict()}
 
     except Exception as e:
         logger.error(f"Error detecting market regime: {e}")
@@ -253,16 +242,13 @@ async def get_current_regime():
         current = detector.get_current_regime()
 
         if current:
-            return {
-                "success": True,
-                **detector.to_dict()
-            }
+            return {"success": True, **detector.to_dict()}
         else:
             return {
                 "success": True,
                 "regime": "UNKNOWN",
                 "detected": False,
-                "message": "No regime detected yet"
+                "message": "No regime detected yet",
             }
 
     except Exception as e:
@@ -287,19 +273,17 @@ async def get_regime_history(hours: int = 4):
 
         history_data = []
         for detection in history:
-            history_data.append({
-                "regime": detection.regime.value,
-                "confidence": detection.confidence,
-                "reasoning": detection.reasoning,
-                "detection_time": detection.detection_time.isoformat(),
-                "warnings": detection.warnings
-            })
+            history_data.append(
+                {
+                    "regime": detection.regime.value,
+                    "confidence": detection.confidence,
+                    "reasoning": detection.reasoning,
+                    "detection_time": detection.detection_time.isoformat(),
+                    "warnings": detection.warnings,
+                }
+            )
 
-        return {
-            "success": True,
-            "history": history_data,
-            "period_hours": hours
-        }
+        return {"success": True, "history": history_data, "period_hours": hours}
 
     except Exception as e:
         logger.error(f"Error getting regime history: {e}")
@@ -309,6 +293,7 @@ async def get_regime_history(hours: int = 4):
 # ═════════════════════════════════════════════════════════════════
 #                           SELF-HEALING
 # ═════════════════════════════════════════════════════════════════
+
 
 @router.get("/health/status")
 async def get_system_health():
@@ -322,10 +307,7 @@ async def get_system_health():
         healing = get_self_healing()
         health = healing.get_system_health()
 
-        return {
-            "success": True,
-            **health
-        }
+        return {"success": True, **health}
 
     except Exception as e:
         logger.error(f"Error getting system health: {e}")
@@ -345,20 +327,22 @@ async def get_active_errors():
 
         active_errors = []
         for error_key, context in healing.active_errors.items():
-            active_errors.append({
-                "key": error_key,
-                "type": context.error_type,
-                "message": context.error_message,
-                "category": context.category.value,
-                "severity": context.severity.value,
-                "component": context.component,
-                "timestamp": context.timestamp.isoformat()
-            })
+            active_errors.append(
+                {
+                    "key": error_key,
+                    "type": context.error_type,
+                    "message": context.error_message,
+                    "category": context.category.value,
+                    "severity": context.severity.value,
+                    "component": context.component,
+                    "timestamp": context.timestamp.isoformat(),
+                }
+            )
 
         return {
             "success": True,
             "active_errors": active_errors,
-            "count": len(active_errors)
+            "count": len(active_errors),
         }
 
     except Exception as e:
@@ -383,24 +367,26 @@ async def get_error_history(hours: int = 24):
 
         history_data = []
         for result in history:
-            history_data.append({
-                "error_type": result.error_context.error_type,
-                "error_message": result.error_context.error_message,
-                "category": result.error_context.category.value,
-                "severity": result.error_context.severity.value,
-                "diagnosis": result.diagnosis,
-                "recovery_status": result.status.value,
-                "attempted_actions": result.attempted_actions,
-                "recovery_time_seconds": result.recovery_time_seconds,
-                "requires_manual": result.requires_manual_intervention,
-                "timestamp": result.timestamp.isoformat()
-            })
+            history_data.append(
+                {
+                    "error_type": result.error_context.error_type,
+                    "error_message": result.error_context.error_message,
+                    "category": result.error_context.category.value,
+                    "severity": result.error_context.severity.value,
+                    "diagnosis": result.diagnosis,
+                    "recovery_status": result.status.value,
+                    "attempted_actions": result.attempted_actions,
+                    "recovery_time_seconds": result.recovery_time_seconds,
+                    "requires_manual": result.requires_manual_intervention,
+                    "timestamp": result.timestamp.isoformat(),
+                }
+            )
 
         return {
             "success": True,
             "history": history_data,
             "period_hours": hours,
-            "count": len(history_data)
+            "count": len(history_data),
         }
 
     except Exception as e:
@@ -430,16 +416,13 @@ async def detect_error(request: ErrorDetectionRequest):
             severity=ErrorSeverity.MEDIUM,  # Default severity
             timestamp=datetime.now(),
             component=request.component,
-            additional_data=request.additional_data
+            additional_data=request.additional_data,
         )
 
         # Diagnose
         diagnosis = healing.diagnose_error(context, use_ai=True)
 
-        return {
-            "success": True,
-            "diagnosis": diagnosis
-        }
+        return {"success": True, "diagnosis": diagnosis}
 
     except Exception as e:
         logger.error(f"Error detecting/diagnosing error: {e}")
@@ -468,7 +451,7 @@ async def recover_from_error(request: ErrorDetectionRequest):
             severity=ErrorSeverity.MEDIUM,
             timestamp=datetime.now(),
             component=request.component,
-            additional_data=request.additional_data
+            additional_data=request.additional_data,
         )
 
         # Attempt recovery
@@ -481,7 +464,7 @@ async def recover_from_error(request: ErrorDetectionRequest):
             "attempted_actions": result.attempted_actions,
             "recovery_time_seconds": result.recovery_time_seconds,
             "requires_manual": result.requires_manual_intervention,
-            "resolution_notes": result.resolution_notes
+            "resolution_notes": result.resolution_notes,
         }
 
     except Exception as e:
@@ -492,6 +475,7 @@ async def recover_from_error(request: ErrorDetectionRequest):
 # ═════════════════════════════════════════════════════════════════
 #                         CLAUDE AI CONFIG
 # ═════════════════════════════════════════════════════════════════
+
 
 @router.get("/config")
 async def get_claude_config():
@@ -513,7 +497,7 @@ async def get_claude_config():
             "monthly_limit_usd": claude.monthly_cost_limit,
             "cache_enabled": claude.cache_enabled,
             "cache_ttl_seconds": claude.cache_ttl_seconds,
-            "usage_stats": usage_stats
+            "usage_stats": usage_stats,
         }
 
     except Exception as e:
@@ -533,10 +517,7 @@ async def clear_claude_cache():
         claude = get_claude_integration()
         claude.clear_cache()
 
-        return {
-            "success": True,
-            "message": "Claude response cache cleared"
-        }
+        return {"success": True, "message": "Claude response cache cleared"}
 
     except Exception as e:
         logger.error(f"Error clearing cache: {e}")
@@ -555,10 +536,7 @@ async def reset_daily_stats():
         claude = get_claude_integration()
         claude.reset_daily_stats()
 
-        return {
-            "success": True,
-            "message": "Daily statistics reset"
-        }
+        return {"success": True, "message": "Daily statistics reset"}
 
     except Exception as e:
         logger.error(f"Error resetting daily stats: {e}")
@@ -568,6 +546,7 @@ async def reset_daily_stats():
 # ═════════════════════════════════════════════════════════════════
 #                         UTILITY ENDPOINTS
 # ═════════════════════════════════════════════════════════════════
+
 
 @router.get("/insights/realtime")
 async def get_realtime_insights(insight_type: str = "general"):
@@ -588,19 +567,16 @@ async def get_realtime_insights(insight_type: str = "general"):
             "current_time": datetime.now().isoformat(),
             "market_hours": True,  # Would determine from actual market hours
             "active_trades": 0,  # Would get from risk manager
-            "daily_pnl": 0.0  # Would get from risk manager
+            "daily_pnl": 0.0,  # Would get from risk manager
         }
 
-        insights = claude.generate_insights(
-            context=context,
-            insight_type=insight_type
-        )
+        insights = claude.generate_insights(context=context, insight_type=insight_type)
 
         return {
             "success": True,
             "insights": insights,
             "insight_type": insight_type,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -609,7 +585,7 @@ async def get_realtime_insights(insight_type: str = "general"):
 
 
 # Export router
-__all__ = ['router']
+__all__ = ["router"]
 
 
 if __name__ == "__main__":

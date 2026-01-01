@@ -16,20 +16,21 @@ Sources (in order of speed):
 """
 
 import asyncio
-import aiohttp
-import feedparser
-import logging
-import threading
-import time
+import hashlib
 import json
+import logging
 import os
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable, Set
-from dataclasses import dataclass
+import threading
+import time
 from collections import deque
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Callable, Dict, List, Optional, Set
+
+import aiohttp
+import feedparser
 import pytz
-import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BreakingNews:
     """Breaking news alert"""
+
     id: str
     headline: str
     symbols: List[str]
@@ -47,11 +49,11 @@ class BreakingNews:
 
     # Analysis
     sentiment: str  # bullish, bearish, neutral
-    urgency: str    # critical, high, medium, low
+    urgency: str  # critical, high, medium, low
     catalyst_type: str  # fda, earnings, merger, upgrade, etc.
 
     # Trading signal
-    action: str     # buy, sell, watch, avoid
+    action: str  # buy, sell, watch, avoid
     confidence: float
 
     def to_dict(self) -> Dict:
@@ -60,38 +62,92 @@ class BreakingNews:
             "headline": self.headline,
             "symbols": self.symbols,
             "source": self.source,
-            "published_at": self.published_at.isoformat() if self.published_at else None,
+            "published_at": (
+                self.published_at.isoformat() if self.published_at else None
+            ),
             "detected_at": self.detected_at.isoformat(),
             "latency_ms": self.latency_ms,
             "sentiment": self.sentiment,
             "urgency": self.urgency,
             "catalyst_type": self.catalyst_type,
             "action": self.action,
-            "confidence": self.confidence
+            "confidence": self.confidence,
         }
 
 
 # Catalyst keywords for instant detection
 CRITICAL_CATALYSTS = {
-    'fda': ['fda approval', 'fda approves', 'fda grants', 'breakthrough therapy',
-            'fda clears', 'fda accepts', 'pdufa', 'nda approved'],
-    'merger': ['acquisition', 'merger', 'buyout', 'takeover bid', 'acquire',
-               'all-cash deal', 'tender offer'],
-    'earnings_beat': ['beats estimates', 'eps beat', 'revenue beat', 'earnings surprise',
-                      'profit surge', 'record earnings', 'guidance raise'],
-    'upgrade': ['upgrade', 'price target raised', 'buy rating', 'outperform',
-                'strong buy', 'initiated coverage buy'],
+    "fda": [
+        "fda approval",
+        "fda approves",
+        "fda grants",
+        "breakthrough therapy",
+        "fda clears",
+        "fda accepts",
+        "pdufa",
+        "nda approved",
+    ],
+    "merger": [
+        "acquisition",
+        "merger",
+        "buyout",
+        "takeover bid",
+        "acquire",
+        "all-cash deal",
+        "tender offer",
+    ],
+    "earnings_beat": [
+        "beats estimates",
+        "eps beat",
+        "revenue beat",
+        "earnings surprise",
+        "profit surge",
+        "record earnings",
+        "guidance raise",
+    ],
+    "upgrade": [
+        "upgrade",
+        "price target raised",
+        "buy rating",
+        "outperform",
+        "strong buy",
+        "initiated coverage buy",
+    ],
 }
 
 BEARISH_CATALYSTS = {
-    'fda_reject': ['fda rejects', 'fda denies', 'crl issued', 'trial fails',
-                   'clinical hold', 'safety concerns'],
-    'earnings_miss': ['misses estimates', 'eps miss', 'revenue miss', 'earnings warning',
-                      'profit warning', 'guidance cut', 'lowers outlook'],
-    'downgrade': ['downgrade', 'price target cut', 'sell rating', 'underperform',
-                  'initiated coverage sell'],
-    'legal': ['sec investigation', 'lawsuit', 'fraud', 'subpoena', 'indictment',
-              'accounting irregularities'],
+    "fda_reject": [
+        "fda rejects",
+        "fda denies",
+        "crl issued",
+        "trial fails",
+        "clinical hold",
+        "safety concerns",
+    ],
+    "earnings_miss": [
+        "misses estimates",
+        "eps miss",
+        "revenue miss",
+        "earnings warning",
+        "profit warning",
+        "guidance cut",
+        "lowers outlook",
+    ],
+    "downgrade": [
+        "downgrade",
+        "price target cut",
+        "sell rating",
+        "underperform",
+        "initiated coverage sell",
+    ],
+    "legal": [
+        "sec investigation",
+        "lawsuit",
+        "fraud",
+        "subpoena",
+        "indictment",
+        "accounting irregularities",
+    ],
 }
 
 
@@ -109,7 +165,7 @@ class BenzingaFastNews:
     YAHOO_RSS = "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US"
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # Track seen news to avoid duplicates
         self.seen_ids: Set[str] = set()
@@ -129,7 +185,9 @@ class BenzingaFastNews:
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
         # Benzinga API key - USE REAL API FOR SPEED
-        self.benzinga_api_key = os.getenv("BENZINGA_API_KEY", "bz.MUTADSLMPPPHDWEGOYUMSFHUGH5TS7TD")
+        self.benzinga_api_key = os.getenv(
+            "BENZINGA_API_KEY", "bz.MUTADSLMPPPHDWEGOYUMSFHUGH5TS7TD"
+        )
 
         # Benzinga API endpoints (much faster than RSS!)
         self.BENZINGA_NEWS_API = "https://api.benzinga.com/api/v2/news"
@@ -141,17 +199,17 @@ class BenzingaFastNews:
         # Polling intervals (in seconds)
         # API mode = faster polling possible (1 sec), RSS = slower (2 sec)
         self.benzinga_interval = 1.0 if self.use_api else 2.0
-        self.yahoo_interval = 5.0     # Backup, less frequent
+        self.yahoo_interval = 5.0  # Backup, less frequent
 
         # Watchlist - symbols to monitor for news
         self.watchlist: List[str] = []
 
         # Small Cap Filter - only show news for penny/small cap stocks
         self.small_cap_only: bool = True  # Filter to small caps only
-        self.min_price: float = 0.50      # Min price for alerts
-        self.max_price: float = 20.0      # Max price for alerts (excludes large caps)
+        self.min_price: float = 0.50  # Min price for alerts
+        self.max_price: float = 20.0  # Max price for alerts (excludes large caps)
         self.price_cache: Dict[str, tuple] = {}  # symbol -> (price, timestamp)
-        self.price_cache_ttl: int = 60    # Cache prices for 60 seconds
+        self.price_cache_ttl: int = 60  # Cache prices for 60 seconds
 
         # Stats
         self.news_detected = 0
@@ -159,7 +217,9 @@ class BenzingaFastNews:
         self.avg_latency_ms = 0
         self.filtered_count = 0  # How many filtered out by small cap filter
 
-        logger.info(f"BenzingaFastNews initialized - {'REAL API' if self.use_api else 'RSS'} mode, small_cap_only={self.small_cap_only}")
+        logger.info(
+            f"BenzingaFastNews initialized - {'REAL API' if self.use_api else 'RSS'} mode, small_cap_only={self.small_cap_only}"
+        )
 
     def start(self, watchlist: List[str] = None):
         """Start the news scanner"""
@@ -173,7 +233,9 @@ class BenzingaFastNews:
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
 
-        logger.info(f"BenzingaFastNews STARTED - watching {len(self.watchlist)} symbols")
+        logger.info(
+            f"BenzingaFastNews STARTED - watching {len(self.watchlist)} symbols"
+        )
 
     def stop(self):
         """Stop the scanner"""
@@ -236,7 +298,7 @@ class BenzingaFastNews:
                 "token": self.benzinga_api_key,
                 "pageSize": 20,
                 "displayOutput": "full",
-                "sort": "created:desc"
+                "sort": "created:desc",
             }
 
             # Add tickers filter if watchlist exists
@@ -248,11 +310,13 @@ class BenzingaFastNews:
                     self.BENZINGA_NEWS_API,
                     headers=headers,
                     params=params,
-                    timeout=aiohttp.ClientTimeout(total=5)
+                    timeout=aiohttp.ClientTimeout(total=5),
                 ) as response:
                     if response.status != 200:
                         # Fallback to RSS on API error
-                        logger.debug(f"Benzinga API returned {response.status}, falling back to RSS")
+                        logger.debug(
+                            f"Benzinga API returned {response.status}, falling back to RSS"
+                        )
                         await self._scan_benzinga_rss()
                         return
 
@@ -268,12 +332,12 @@ class BenzingaFastNews:
         detected_at = datetime.now(self.et_tz)
 
         # API returns list directly or in 'data' key
-        articles = data if isinstance(data, list) else data.get('data', [])
+        articles = data if isinstance(data, list) else data.get("data", [])
 
         for article in articles[:20]:
             try:
                 # Benzinga API fields
-                news_id = str(article.get('id', ''))
+                news_id = str(article.get("id", ""))
                 if not news_id:
                     continue
 
@@ -283,24 +347,24 @@ class BenzingaFastNews:
 
                 self.seen_ids.add(news_id)
                 if len(self.seen_ids) > self.max_seen:
-                    self.seen_ids = set(list(self.seen_ids)[-self.max_seen:])
+                    self.seen_ids = set(list(self.seen_ids)[-self.max_seen :])
 
-                headline = article.get('title', article.get('headline', ''))
-                teaser = article.get('teaser', '')
+                headline = article.get("title", article.get("headline", ""))
+                teaser = article.get("teaser", "")
                 full_text = f"{headline} {teaser}".lower()
 
                 # Extract symbols from API response (Benzinga provides them!)
                 symbols = []
-                stocks = article.get('stocks', [])
+                stocks = article.get("stocks", [])
                 if stocks:
-                    symbols = [s.get('name', '') for s in stocks if s.get('name')]
+                    symbols = [s.get("name", "") for s in stocks if s.get("name")]
 
                 # Fallback to extraction from headline
                 if not symbols:
                     symbols = self._extract_symbols(headline)
 
                 # Parse time - Benzinga uses ISO format
-                created = article.get('created', article.get('updated', ''))
+                created = article.get("created", article.get("updated", ""))
                 published_at = self._parse_time(created)
 
                 # Calculate latency - API is much faster!
@@ -310,7 +374,7 @@ class BenzingaFastNews:
                 sentiment, urgency, catalyst_type = self._analyze_catalyst(full_text)
 
                 # Skip low urgency
-                if urgency == 'low':
+                if urgency == "low":
                     continue
 
                 # Generate trading signal
@@ -331,7 +395,7 @@ class BenzingaFastNews:
                     urgency=urgency,
                     catalyst_type=catalyst_type,
                     action=action,
-                    confidence=confidence
+                    confidence=confidence,
                 )
 
                 self.alerts.append(alert)
@@ -374,7 +438,9 @@ class BenzingaFastNews:
                 except:
                     continue
 
-    async def _parse_rss(self, content: str, source: str, default_symbols: List[str] = None):
+    async def _parse_rss(
+        self, content: str, source: str, default_symbols: List[str] = None
+    ):
         """Parse RSS feed and detect breaking news"""
         detected_at = datetime.now(self.et_tz)
 
@@ -394,17 +460,17 @@ class BenzingaFastNews:
                 self.seen_ids.add(news_id)
                 if len(self.seen_ids) > self.max_seen:
                     # Clear oldest
-                    self.seen_ids = set(list(self.seen_ids)[-self.max_seen:])
+                    self.seen_ids = set(list(self.seen_ids)[-self.max_seen :])
 
-                headline = entry.get('title', '')
-                summary = entry.get('summary', '')
+                headline = entry.get("title", "")
+                summary = entry.get("summary", "")
                 full_text = f"{headline} {summary}".lower()
 
                 # Extract symbols from headline
                 symbols = self._extract_symbols(headline) or default_symbols or []
 
                 # Parse published time
-                published_at = self._parse_time(entry.get('published'))
+                published_at = self._parse_time(entry.get("published"))
 
                 # Calculate latency
                 latency_ms = (detected_at - published_at).total_seconds() * 1000
@@ -413,7 +479,7 @@ class BenzingaFastNews:
                 sentiment, urgency, catalyst_type = self._analyze_catalyst(full_text)
 
                 # Skip low urgency
-                if urgency == 'low':
+                if urgency == "low":
                     continue
 
                 # Generate trading signal
@@ -434,7 +500,7 @@ class BenzingaFastNews:
                     urgency=urgency,
                     catalyst_type=catalyst_type,
                     action=action,
-                    confidence=confidence
+                    confidence=confidence,
                 )
 
                 self.alerts.append(alert)
@@ -452,15 +518,15 @@ class BenzingaFastNews:
         symbols = []
 
         # Look for $SYMBOL pattern
-        dollar_tickers = re.findall(r'\$([A-Z]{1,5})\b', text)
+        dollar_tickers = re.findall(r"\$([A-Z]{1,5})\b", text)
         symbols.extend(dollar_tickers)
 
         # Look for (SYMBOL) pattern
-        paren_tickers = re.findall(r'\(([A-Z]{1,5})\)', text)
+        paren_tickers = re.findall(r"\(([A-Z]{1,5})\)", text)
         symbols.extend(paren_tickers)
 
         # Look for SYMBOL: pattern
-        colon_tickers = re.findall(r'\b([A-Z]{2,5}):', text)
+        colon_tickers = re.findall(r"\b([A-Z]{2,5}):", text)
         symbols.extend(colon_tickers)
 
         return list(set(symbols))
@@ -473,10 +539,10 @@ class BenzingaFastNews:
         try:
             # Try common RSS formats
             for fmt in [
-                '%a, %d %b %Y %H:%M:%S %z',
-                '%a, %d %b %Y %H:%M:%S %Z',
-                '%Y-%m-%dT%H:%M:%S%z',
-                '%Y-%m-%dT%H:%M:%SZ',
+                "%a, %d %b %Y %H:%M:%S %z",
+                "%a, %d %b %Y %H:%M:%S %Z",
+                "%Y-%m-%dT%H:%M:%S%z",
+                "%Y-%m-%dT%H:%M:%SZ",
             ]:
                 try:
                     dt = datetime.strptime(time_str, fmt)
@@ -488,6 +554,7 @@ class BenzingaFastNews:
 
             # Fallback to feedparser's parsed time
             import email.utils
+
             parsed = email.utils.parsedate_to_datetime(time_str)
             return parsed.astimezone(self.et_tz)
 
@@ -502,74 +569,95 @@ class BenzingaFastNews:
         for catalyst_type, keywords in CRITICAL_CATALYSTS.items():
             for kw in keywords:
                 if kw in text_lower:
-                    urgency = 'critical' if catalyst_type in ['fda', 'merger'] else 'high'
-                    return 'bullish', urgency, catalyst_type
+                    urgency = (
+                        "critical" if catalyst_type in ["fda", "merger"] else "high"
+                    )
+                    return "bullish", urgency, catalyst_type
 
         # Check bearish catalysts
         for catalyst_type, keywords in BEARISH_CATALYSTS.items():
             for kw in keywords:
                 if kw in text_lower:
-                    urgency = 'critical' if catalyst_type in ['fda_reject', 'legal'] else 'high'
-                    return 'bearish', urgency, catalyst_type
+                    urgency = (
+                        "critical"
+                        if catalyst_type in ["fda_reject", "legal"]
+                        else "high"
+                    )
+                    return "bearish", urgency, catalyst_type
 
         # General sentiment analysis
-        bullish_words = ['surge', 'soar', 'rally', 'jump', 'gain', 'up', 'rise', 'beat', 'strong']
-        bearish_words = ['crash', 'plunge', 'drop', 'fall', 'down', 'miss', 'weak', 'decline']
+        bullish_words = [
+            "surge",
+            "soar",
+            "rally",
+            "jump",
+            "gain",
+            "up",
+            "rise",
+            "beat",
+            "strong",
+        ]
+        bearish_words = [
+            "crash",
+            "plunge",
+            "drop",
+            "fall",
+            "down",
+            "miss",
+            "weak",
+            "decline",
+        ]
 
         bull_count = sum(1 for w in bullish_words if w in text_lower)
         bear_count = sum(1 for w in bearish_words if w in text_lower)
 
         if bull_count > bear_count + 1:
-            return 'bullish', 'medium', 'momentum'
+            return "bullish", "medium", "momentum"
         elif bear_count > bull_count + 1:
-            return 'bearish', 'medium', 'momentum'
+            return "bearish", "medium", "momentum"
 
-        return 'neutral', 'low', 'none'
+        return "neutral", "low", "none"
 
-    def _generate_signal(self, sentiment: str, urgency: str,
-                         catalyst_type: str, latency_ms: float) -> tuple:
+    def _generate_signal(
+        self, sentiment: str, urgency: str, catalyst_type: str, latency_ms: float
+    ) -> tuple:
         """Generate trading signal from analysis"""
 
         # Too stale - no signal
         if latency_ms > 60000:  # > 60 seconds
-            return 'watch', 0.3
+            return "watch", 0.3
 
         # Critical bullish = BUY NOW
-        if urgency == 'critical' and sentiment == 'bullish':
+        if urgency == "critical" and sentiment == "bullish":
             conf = 0.9 if latency_ms < 5000 else 0.7
-            return 'buy', conf
+            return "buy", conf
 
         # Critical bearish = SELL/SHORT NOW
-        if urgency == 'critical' and sentiment == 'bearish':
+        if urgency == "critical" and sentiment == "bearish":
             conf = 0.9 if latency_ms < 5000 else 0.7
-            return 'sell', conf
+            return "sell", conf
 
         # High urgency
-        if urgency == 'high':
+        if urgency == "high":
             conf = 0.7 if latency_ms < 10000 else 0.5
-            return 'buy' if sentiment == 'bullish' else 'sell', conf
+            return "buy" if sentiment == "bullish" else "sell", conf
 
         # Medium urgency - watch
-        if urgency == 'medium':
-            return 'watch', 0.4
+        if urgency == "medium":
+            return "watch", 0.4
 
-        return 'avoid', 0.0
+        return "avoid", 0.0
 
     def _handle_alert(self, alert: BreakingNews):
         """Handle a breaking news alert"""
 
-        urgency_emoji = {
-            'critical': '🚨🚨🚨',
-            'high': '🚨',
-            'medium': '📰',
-            'low': ''
-        }
+        urgency_emoji = {"critical": "🚨🚨🚨", "high": "🚨", "medium": "📰", "low": ""}
 
         action_emoji = {
-            'buy': '🟢 BUY',
-            'sell': '🔴 SELL',
-            'watch': '👀 WATCH',
-            'avoid': '⚪ SKIP'
+            "buy": "🟢 BUY",
+            "sell": "🔴 SELL",
+            "watch": "👀 WATCH",
+            "avoid": "⚪ SKIP",
         }
 
         # Log it
@@ -589,14 +677,14 @@ class BenzingaFastNews:
             except Exception as e:
                 logger.error(f"Breaking news callback error: {e}")
 
-        if alert.action == 'buy' and alert.confidence >= 0.7 and self.on_buy_signal:
+        if alert.action == "buy" and alert.confidence >= 0.7 and self.on_buy_signal:
             self.signals_generated += 1
             try:
                 self.on_buy_signal(alert)
             except Exception as e:
                 logger.error(f"Buy signal callback error: {e}")
 
-        if alert.action == 'sell' and alert.confidence >= 0.7 and self.on_sell_signal:
+        if alert.action == "sell" and alert.confidence >= 0.7 and self.on_sell_signal:
             self.signals_generated += 1
             try:
                 self.on_sell_signal(alert)
@@ -608,7 +696,7 @@ class BenzingaFastNews:
         alerts = list(self.alerts)
 
         if min_urgency:
-            urgency_order = ['low', 'medium', 'high', 'critical']
+            urgency_order = ["low", "medium", "high", "critical"]
             min_idx = urgency_order.index(min_urgency)
             alerts = [a for a in alerts if urgency_order.index(a.urgency) >= min_idx]
 
@@ -622,7 +710,7 @@ class BenzingaFastNews:
         actionable = []
         for alert in self.alerts:
             if alert.detected_at >= cutoff:
-                if alert.action in ['buy', 'sell'] and alert.confidence >= 0.7:
+                if alert.action in ["buy", "sell"] and alert.confidence >= 0.7:
                     actionable.append(alert.to_dict())
 
         return actionable
@@ -646,7 +734,7 @@ class BenzingaFastNews:
             "news_detected": self.news_detected,
             "signals_generated": self.signals_generated,
             "avg_latency_ms": round(self.avg_latency_ms, 1),
-            "recent_alerts": len(self.alerts)
+            "recent_alerts": len(self.alerts),
         }
 
 
@@ -662,9 +750,9 @@ def get_fast_news() -> BenzingaFastNews:
     return _fast_news
 
 
-def start_fast_news(watchlist: List[str] = None,
-                    on_buy: Callable = None,
-                    on_sell: Callable = None):
+def start_fast_news(
+    watchlist: List[str] = None, on_buy: Callable = None, on_sell: Callable = None
+):
     """Start fast news scanner with optional callbacks"""
     scanner = get_fast_news()
 
@@ -694,9 +782,7 @@ if __name__ == "__main__":
         print(f"\n*** SELL SIGNAL: {alert.symbols} - {alert.headline[:50]} ***\n")
 
     scanner = start_fast_news(
-        watchlist=['AAPL', 'TSLA', 'NVDA', 'SPY'],
-        on_buy=on_buy,
-        on_sell=on_sell
+        watchlist=["AAPL", "TSLA", "NVDA", "SPY"], on_buy=on_buy, on_sell=on_sell
     )
 
     print("Fast news scanner running... Press Ctrl+C to stop")
@@ -705,7 +791,9 @@ if __name__ == "__main__":
         while True:
             time.sleep(10)
             status = scanner.get_status()
-            print(f"Status: {status['news_detected']} news, {status['signals_generated']} signals")
+            print(
+                f"Status: {status['news_detected']} news, {status['signals_generated']} signals"
+            )
     except KeyboardInterrupt:
         stop_fast_news()
         print("Stopped")

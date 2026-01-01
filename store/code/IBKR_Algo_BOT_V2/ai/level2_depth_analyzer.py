@@ -18,11 +18,12 @@ Key Insights:
 """
 
 import logging
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from enum import Enum
-from collections import deque
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -30,27 +31,30 @@ logger = logging.getLogger(__name__)
 
 class WallType(Enum):
     """Type of order wall"""
-    BID_WALL = "BID_WALL"       # Large buy order (support)
-    ASK_WALL = "ASK_WALL"       # Large sell order (resistance)
+
+    BID_WALL = "BID_WALL"  # Large buy order (support)
+    ASK_WALL = "ASK_WALL"  # Large sell order (resistance)
 
 
 class WallStatus(Enum):
     """Status of a detected wall"""
-    ACTIVE = "ACTIVE"           # Wall is present
-    ABSORBING = "ABSORBING"     # Wall being eaten
-    ABSORBED = "ABSORBED"       # Wall was fully eaten (breakout)
-    DISAPPEARED = "DISAPPEARED" # Wall vanished (spoofing)
-    REINFORCED = "REINFORCED"   # Wall got bigger
+
+    ACTIVE = "ACTIVE"  # Wall is present
+    ABSORBING = "ABSORBING"  # Wall being eaten
+    ABSORBED = "ABSORBED"  # Wall was fully eaten (breakout)
+    DISAPPEARED = "DISAPPEARED"  # Wall vanished (spoofing)
+    REINFORCED = "REINFORCED"  # Wall got bigger
 
 
 class DepthSignal(Enum):
     """Trading signals from depth analysis"""
-    STRONG_BID = "STRONG_BID"           # Strong bid wall support
-    WEAK_BID = "WEAK_BID"               # Bid wall weakening
-    STRONG_ASK = "STRONG_ASK"           # Strong ask wall resistance
-    WEAK_ASK = "WEAK_ASK"               # Ask wall weakening
-    BID_ABSORPTION = "BID_ABSORPTION"   # Bids being eaten (bearish)
-    ASK_ABSORPTION = "ASK_ABSORPTION"   # Asks being eaten (bullish breakout)
+
+    STRONG_BID = "STRONG_BID"  # Strong bid wall support
+    WEAK_BID = "WEAK_BID"  # Bid wall weakening
+    STRONG_ASK = "STRONG_ASK"  # Strong ask wall resistance
+    WEAK_ASK = "WEAK_ASK"  # Ask wall weakening
+    BID_ABSORPTION = "BID_ABSORPTION"  # Bids being eaten (bearish)
+    ASK_ABSORPTION = "ASK_ABSORPTION"  # Asks being eaten (bullish breakout)
     BULLISH_IMBALANCE = "BULLISH_IMBALANCE"  # More bids than asks
     BEARISH_IMBALANCE = "BEARISH_IMBALANCE"  # More asks than bids
     SPOOFING_DETECTED = "SPOOFING_DETECTED"  # Fake wall detected
@@ -60,19 +64,20 @@ class DepthSignal(Enum):
 @dataclass
 class OrderWall:
     """A detected order wall"""
+
     symbol: str
     wall_type: WallType
     price: float
-    size: int                   # Total shares at this level
+    size: int  # Total shares at this level
     status: WallStatus = WallStatus.ACTIVE
 
     # Tracking
-    initial_size: int = 0       # Size when first detected
-    peak_size: int = 0          # Maximum size observed
-    current_size: int = 0       # Current size
+    initial_size: int = 0  # Size when first detected
+    peak_size: int = 0  # Maximum size observed
+    current_size: int = 0  # Current size
 
     # Absorption tracking
-    absorbed_volume: int = 0    # Volume eaten from wall
+    absorbed_volume: int = 0  # Volume eaten from wall
     absorption_rate: float = 0  # Shares/second being absorbed
 
     # Timing
@@ -81,7 +86,7 @@ class OrderWall:
     duration_seconds: float = 0
 
     # Quality
-    is_significant: bool = False    # Large enough to matter
+    is_significant: bool = False  # Large enough to matter
     distance_from_price: float = 0  # % distance from current price
 
     def to_dict(self) -> Dict:
@@ -97,13 +102,14 @@ class OrderWall:
             "absorption_rate": round(self.absorption_rate, 1),
             "duration_seconds": round(self.duration_seconds, 1),
             "is_significant": self.is_significant,
-            "distance_from_price": round(self.distance_from_price, 2)
+            "distance_from_price": round(self.distance_from_price, 2),
         }
 
 
 @dataclass
 class DepthLevel:
     """A single price level in the order book"""
+
     price: float
     size: int
     order_count: int = 1
@@ -113,6 +119,7 @@ class DepthLevel:
 @dataclass
 class DepthSnapshot:
     """Snapshot of order book depth"""
+
     symbol: str
     timestamp: datetime
 
@@ -145,20 +152,21 @@ class DepthSnapshot:
             "bid_levels": len(self.bids),
             "ask_levels": len(self.asks),
             "bid_walls": [w.to_dict() for w in self.bid_walls],
-            "ask_walls": [w.to_dict() for w in self.ask_walls]
+            "ask_walls": [w.to_dict() for w in self.ask_walls],
         }
 
 
 @dataclass
 class DepthAnalysis:
     """Analysis result for a symbol"""
+
     symbol: str
     signal: DepthSignal
-    confidence: float           # 0-100%
+    confidence: float  # 0-100%
 
     # Imbalance
-    imbalance_ratio: float      # >1 = bullish, <1 = bearish
-    imbalance_strength: str     # STRONG, MODERATE, WEAK
+    imbalance_ratio: float  # >1 = bullish, <1 = bearish
+    imbalance_strength: str  # STRONG, MODERATE, WEAK
 
     # Walls
     nearest_bid_wall: Optional[OrderWall] = None
@@ -171,8 +179,8 @@ class DepthAnalysis:
     # Entry/exit recommendation
     entry_valid: bool = True
     entry_reason: str = ""
-    suggested_stop: float = 0   # Based on bid wall
-    suggested_target: float = 0 # Based on ask wall
+    suggested_stop: float = 0  # Based on bid wall
+    suggested_target: float = 0  # Based on ask wall
 
     timestamp: str = ""
 
@@ -183,15 +191,23 @@ class DepthAnalysis:
             "confidence": round(self.confidence, 1),
             "imbalance_ratio": round(self.imbalance_ratio, 2),
             "imbalance_strength": self.imbalance_strength,
-            "nearest_bid_wall": self.nearest_bid_wall.to_dict() if self.nearest_bid_wall else None,
-            "nearest_ask_wall": self.nearest_ask_wall.to_dict() if self.nearest_ask_wall else None,
+            "nearest_bid_wall": (
+                self.nearest_bid_wall.to_dict() if self.nearest_bid_wall else None
+            ),
+            "nearest_ask_wall": (
+                self.nearest_ask_wall.to_dict() if self.nearest_ask_wall else None
+            ),
             "active_absorption": self.active_absorption,
             "absorption_progress": round(self.absorption_progress, 1),
             "entry_valid": self.entry_valid,
             "entry_reason": self.entry_reason,
-            "suggested_stop": round(self.suggested_stop, 4) if self.suggested_stop else None,
-            "suggested_target": round(self.suggested_target, 4) if self.suggested_target else None,
-            "timestamp": self.timestamp
+            "suggested_stop": (
+                round(self.suggested_stop, 4) if self.suggested_stop else None
+            ),
+            "suggested_target": (
+                round(self.suggested_target, 4) if self.suggested_target else None
+            ),
+            "timestamp": self.timestamp,
         }
 
 
@@ -222,29 +238,30 @@ class Level2DepthAnalyzer:
         # Configuration
         self.config = {
             # Wall detection
-            "wall_size_multiplier": 3.0,    # Wall = X times average level size
-            "min_wall_size": 5000,          # Minimum shares to be a wall
-            "wall_proximity_pct": 2.0,      # Consider walls within 2% of price
-
+            "wall_size_multiplier": 3.0,  # Wall = X times average level size
+            "min_wall_size": 5000,  # Minimum shares to be a wall
+            "wall_proximity_pct": 2.0,  # Consider walls within 2% of price
             # Absorption detection
-            "absorption_threshold": 0.3,     # 30% eaten = absorbing
-            "absorbed_threshold": 0.8,       # 80% eaten = absorbed
-
+            "absorption_threshold": 0.3,  # 30% eaten = absorbing
+            "absorbed_threshold": 0.8,  # 80% eaten = absorbed
             # Spoofing detection
-            "spoof_time_threshold": 5.0,     # Wall disappears within 5 seconds
-            "spoof_size_threshold": 0.5,     # Wall drops by 50%+ suddenly
-
+            "spoof_time_threshold": 5.0,  # Wall disappears within 5 seconds
+            "spoof_size_threshold": 0.5,  # Wall drops by 50%+ suddenly
             # Imbalance
-            "strong_imbalance": 2.0,         # 2:1 ratio = strong
-            "moderate_imbalance": 1.5,       # 1.5:1 = moderate
-
+            "strong_imbalance": 2.0,  # 2:1 ratio = strong
+            "moderate_imbalance": 1.5,  # 1.5:1 = moderate
             # History
             "max_snapshots": 100,
-            "max_wall_history": 50
+            "max_wall_history": 50,
         }
 
-    def update_depth(self, symbol: str, bids: List[Dict], asks: List[Dict],
-                     current_price: float = None) -> DepthAnalysis:
+    def update_depth(
+        self,
+        symbol: str,
+        bids: List[Dict],
+        asks: List[Dict],
+        current_price: float = None,
+    ) -> DepthAnalysis:
         """
         Update order book depth for a symbol.
 
@@ -263,22 +280,24 @@ class Level2DepthAnalyzer:
         # Parse bid/ask levels
         bid_levels = [
             DepthLevel(
-                price=b.get('price', b.get('p', 0)),
-                size=b.get('size', b.get('s', 0)),
-                order_count=b.get('count', 1),
-                timestamp=now
+                price=b.get("price", b.get("p", 0)),
+                size=b.get("size", b.get("s", 0)),
+                order_count=b.get("count", 1),
+                timestamp=now,
             )
-            for b in bids if b.get('price', b.get('p', 0)) > 0
+            for b in bids
+            if b.get("price", b.get("p", 0)) > 0
         ]
 
         ask_levels = [
             DepthLevel(
-                price=a.get('price', a.get('p', 0)),
-                size=a.get('size', a.get('s', 0)),
-                order_count=a.get('count', 1),
-                timestamp=now
+                price=a.get("price", a.get("p", 0)),
+                size=a.get("size", a.get("s", 0)),
+                order_count=a.get("count", 1),
+                timestamp=now,
             )
-            for a in asks if a.get('price', a.get('p', 0)) > 0
+            for a in asks
+            if a.get("price", a.get("p", 0)) > 0
         ]
 
         # Sort by price
@@ -293,7 +312,9 @@ class Level2DepthAnalyzer:
         best_ask = ask_levels[0].price if ask_levels else 0
 
         spread = best_ask - best_bid if best_bid and best_ask else 0
-        mid_price = (best_bid + best_ask) / 2 if best_bid and best_ask else current_price or 0
+        mid_price = (
+            (best_bid + best_ask) / 2 if best_bid and best_ask else current_price or 0
+        )
         spread_pct = (spread / mid_price * 100) if mid_price > 0 else 0
 
         ratio = total_bid / total_ask if total_ask > 0 else 1.0
@@ -309,7 +330,7 @@ class Level2DepthAnalyzer:
             bid_ask_ratio=ratio,
             spread=spread,
             spread_pct=spread_pct,
-            mid_price=mid_price
+            mid_price=mid_price,
         )
 
         # Store snapshot
@@ -339,8 +360,13 @@ class Level2DepthAnalyzer:
         # Generate analysis
         return self._analyze(symbol, snapshot, current_price or mid_price)
 
-    def _detect_walls(self, symbol: str, levels: List[DepthLevel],
-                      wall_type: WallType, current_price: float) -> List[OrderWall]:
+    def _detect_walls(
+        self,
+        symbol: str,
+        levels: List[DepthLevel],
+        wall_type: WallType,
+        current_price: float,
+    ) -> List[OrderWall]:
         """Detect order walls in price levels"""
         if not levels:
             return []
@@ -353,14 +379,17 @@ class Level2DepthAnalyzer:
 
         # Wall threshold
         min_wall = max(
-            self.config["min_wall_size"],
-            avg_size * self.config["wall_size_multiplier"]
+            self.config["min_wall_size"], avg_size * self.config["wall_size_multiplier"]
         )
 
         for level in levels:
             if level.size >= min_wall:
                 # Calculate distance from price
-                distance = abs(level.price - current_price) / current_price * 100 if current_price > 0 else 0
+                distance = (
+                    abs(level.price - current_price) / current_price * 100
+                    if current_price > 0
+                    else 0
+                )
 
                 # Only consider walls within proximity
                 if distance <= self.config["wall_proximity_pct"]:
@@ -373,7 +402,7 @@ class Level2DepthAnalyzer:
                         peak_size=level.size,
                         current_size=level.size,
                         is_significant=level.size >= min_wall * 1.5,
-                        distance_from_price=distance
+                        distance_from_price=distance,
                     )
                     walls.append(wall)
 
@@ -382,8 +411,12 @@ class Level2DepthAnalyzer:
 
         return walls[:5]  # Keep top 5 walls per side
 
-    def _track_walls(self, symbol: str, new_walls: List[OrderWall],
-                     prev_depth: Optional[DepthSnapshot]):
+    def _track_walls(
+        self,
+        symbol: str,
+        new_walls: List[OrderWall],
+        prev_depth: Optional[DepthSnapshot],
+    ):
         """Track wall changes over time for absorption/spoofing detection"""
         if symbol not in self.active_walls:
             self.active_walls[symbol] = []
@@ -395,8 +428,10 @@ class Level2DepthAnalyzer:
             # Find matching existing wall
             existing = None
             for aw in self.active_walls[symbol]:
-                if (aw.wall_type == new_wall.wall_type and
-                    abs(aw.price - new_wall.price) < 0.01):  # Same price level
+                if (
+                    aw.wall_type == new_wall.wall_type
+                    and abs(aw.price - new_wall.price) < 0.01
+                ):  # Same price level
                     existing = aw
                     break
 
@@ -412,7 +447,11 @@ class Level2DepthAnalyzer:
                     existing.status = WallStatus.REINFORCED
 
                 # Check absorption
-                absorbed_pct = 1 - (new_wall.size / existing.peak_size) if existing.peak_size > 0 else 0
+                absorbed_pct = (
+                    1 - (new_wall.size / existing.peak_size)
+                    if existing.peak_size > 0
+                    else 0
+                )
                 existing.absorbed_volume = existing.peak_size - new_wall.size
 
                 if absorbed_pct >= self.config["absorbed_threshold"]:
@@ -421,7 +460,9 @@ class Level2DepthAnalyzer:
                     existing.status = WallStatus.ABSORBING
                     # Calculate absorption rate
                     if existing.duration_seconds > 0:
-                        existing.absorption_rate = existing.absorbed_volume / existing.duration_seconds
+                        existing.absorption_rate = (
+                            existing.absorbed_volume / existing.duration_seconds
+                        )
 
                 updated_walls.append(existing)
             else:
@@ -442,19 +483,24 @@ class Level2DepthAnalyzer:
                 if duration < self.config["spoof_time_threshold"]:
                     # Likely spoofing
                     aw.status = WallStatus.DISAPPEARED
-                    logger.warning(f"SPOOF DETECTED: {symbol} {aw.wall_type.value} at ${aw.price:.2f} disappeared after {duration:.1f}s")
+                    logger.warning(
+                        f"SPOOF DETECTED: {symbol} {aw.wall_type.value} at ${aw.price:.2f} disappeared after {duration:.1f}s"
+                    )
 
                     # Add to history
                     if symbol not in self.wall_history:
                         self.wall_history[symbol] = []
                     self.wall_history[symbol].append(aw)
                     if len(self.wall_history[symbol]) > self.config["max_wall_history"]:
-                        self.wall_history[symbol] = self.wall_history[symbol][-self.config["max_wall_history"]:]
+                        self.wall_history[symbol] = self.wall_history[symbol][
+                            -self.config["max_wall_history"] :
+                        ]
 
         self.active_walls[symbol] = updated_walls
 
-    def _analyze(self, symbol: str, snapshot: DepthSnapshot,
-                 current_price: float) -> DepthAnalysis:
+    def _analyze(
+        self, symbol: str, snapshot: DepthSnapshot, current_price: float
+    ) -> DepthAnalysis:
         """Generate trading analysis from depth data"""
 
         # Determine imbalance strength
@@ -480,11 +526,13 @@ class Level2DepthAnalyzer:
         nearest_ask_wall = None
 
         if snapshot.bid_walls:
-            nearest_bid_wall = min(snapshot.bid_walls,
-                                   key=lambda w: w.distance_from_price)
+            nearest_bid_wall = min(
+                snapshot.bid_walls, key=lambda w: w.distance_from_price
+            )
         if snapshot.ask_walls:
-            nearest_ask_wall = min(snapshot.ask_walls,
-                                   key=lambda w: w.distance_from_price)
+            nearest_ask_wall = min(
+                snapshot.ask_walls, key=lambda w: w.distance_from_price
+            )
 
         # Check for absorption
         active_absorption = None
@@ -505,9 +553,10 @@ class Level2DepthAnalyzer:
 
         # Check for spoofing
         recent_spoofs = [
-            w for w in self.wall_history.get(symbol, [])
-            if w.status == WallStatus.DISAPPEARED and
-            (datetime.now() - w.last_update).total_seconds() < 60
+            w
+            for w in self.wall_history.get(symbol, [])
+            if w.status == WallStatus.DISAPPEARED
+            and (datetime.now() - w.last_update).total_seconds() < 60
         ]
         if recent_spoofs:
             signal = DepthSignal.SPOOFING_DETECTED
@@ -573,7 +622,7 @@ class Level2DepthAnalyzer:
             entry_reason=entry_reason,
             suggested_stop=suggested_stop,
             suggested_target=suggested_target,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
     def get_depth(self, symbol: str) -> Optional[DepthSnapshot]:
@@ -601,7 +650,9 @@ class Level2DepthAnalyzer:
             "symbol": symbol,
             "bid_walls": [w.to_dict() for w in bid_walls],
             "ask_walls": [w.to_dict() for w in ask_walls],
-            "absorbing": [w.to_dict() for w in walls if w.status == WallStatus.ABSORBING]
+            "absorbing": [
+                w.to_dict() for w in walls if w.status == WallStatus.ABSORBING
+            ],
         }
 
     def get_imbalance_trend(self, symbol: str) -> Dict:
@@ -631,7 +682,7 @@ class Level2DepthAnalyzer:
             "trend": trend,
             "current_ratio": round(history[-1], 2) if history else 1.0,
             "avg_ratio": round(np.mean(history), 2),
-            "samples": len(history)
+            "samples": len(history),
         }
 
     def is_entry_valid(self, symbol: str) -> Tuple[bool, str]:
@@ -677,15 +728,18 @@ class Level2DepthAnalyzer:
         return {
             "symbols_tracked": len(self.current_depth),
             "total_walls": sum(len(w) for w in self.active_walls.values()),
-            "symbols_with_absorption": len([
-                s for s, walls in self.active_walls.items()
-                if any(w.status == WallStatus.ABSORBING for w in walls)
-            ]),
+            "symbols_with_absorption": len(
+                [
+                    s
+                    for s, walls in self.active_walls.items()
+                    if any(w.status == WallStatus.ABSORBING for w in walls)
+                ]
+            ),
             "recent_spoofs": sum(
                 len([w for w in walls if w.status == WallStatus.DISAPPEARED])
                 for walls in self.wall_history.values()
             ),
-            "config": self.config
+            "config": self.config,
         }
 
 
@@ -702,8 +756,9 @@ def get_depth_analyzer() -> Level2DepthAnalyzer:
 
 
 # Convenience functions
-def analyze_depth(symbol: str, bids: List[Dict], asks: List[Dict],
-                  price: float = None) -> DepthAnalysis:
+def analyze_depth(
+    symbol: str, bids: List[Dict], asks: List[Dict], price: float = None
+) -> DepthAnalysis:
     """Analyze order book depth"""
     return get_depth_analyzer().update_depth(symbol, bids, asks, price)
 

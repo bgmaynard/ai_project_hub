@@ -4,59 +4,62 @@ Manages the AI auto-trading bot lifecycle and provides status tracking
 Includes PDT compliance, account type rules, trading restrictions,
 and Claude AI integration for adaptive self-improvement.
 """
+
 import asyncio
+import json
 import logging
 import threading
-from datetime import datetime, date, timedelta
-from typing import Dict, Optional, List
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime, timedelta
 from enum import Enum
-import json
 from pathlib import Path
+from typing import Dict, List, Optional
 
+from portfolio_analytics import get_portfolio_analytics
+from trade_execution import get_execution_tracker
 # Import trading dependencies at module level for faster execution
 from unified_broker import get_unified_broker
 from unified_market_data import get_unified_market_data
 from watchlist_manager import get_watchlist_manager
-from portfolio_analytics import get_portfolio_analytics
-from trade_execution import get_execution_tracker
 
 # AI predictor (Claude-based)
 try:
     from ai.claude_stock_scanner import get_ai_scanner
+
     HAS_AI_SCANNER = True
 except ImportError:
     HAS_AI_SCANNER = False
 
-# Claude AI Intelligence for adaptive behavior
-from ai.claude_bot_intelligence import get_bot_intelligence, BotMood
-
-# Next-Gen AI Logic Blueprint Modules
-from ai.regime_classifier import get_regime_classifier, MarketRegime
-from ai.trade_narrative import get_narrative_generator
-from ai.kelly_sizer import get_kelly_sizer
 from ai.brier_tracker import get_brier_tracker
+# Claude AI Intelligence for adaptive behavior
+from ai.claude_bot_intelligence import BotMood, get_bot_intelligence
+from ai.kelly_sizer import get_kelly_sizer
+# Next-Gen AI Logic Blueprint Modules
+from ai.regime_classifier import MarketRegime, get_regime_classifier
+from ai.trade_narrative import get_narrative_generator
 
 logger = logging.getLogger(__name__)
 
 
 class AccountType(str, Enum):
     """Supported account types with different trading rules"""
-    CASH = "cash"           # No margin, T+2 settlement, no PDT concerns
-    MARGIN = "margin"       # Margin available, PDT rules apply if < $25k
-    IRA = "ira"             # No shorting, no margin, tax-advantaged
-    ROTH_IRA = "roth_ira"   # No shorting, no margin, tax-free growth
+
+    CASH = "cash"  # No margin, T+2 settlement, no PDT concerns
+    MARGIN = "margin"  # Margin available, PDT rules apply if < $25k
+    IRA = "ira"  # No shorting, no margin, tax-advantaged
+    ROTH_IRA = "roth_ira"  # No shorting, no margin, tax-free growth
 
 
 @dataclass
 class PDTStatus:
     """Pattern Day Trader status tracking"""
-    day_trades_count: int = 0           # Day trades in rolling 5-day window
-    day_trades_remaining: int = 3       # Remaining before PDT flag
-    is_pdt_flagged: bool = False        # Currently flagged as PDT
-    equity: float = 0.0                 # Current account equity
-    pdt_threshold: float = 25000.0      # PDT equity threshold
-    is_pdt_restricted: bool = False     # Trading restricted due to PDT
+
+    day_trades_count: int = 0  # Day trades in rolling 5-day window
+    day_trades_remaining: int = 3  # Remaining before PDT flag
+    is_pdt_flagged: bool = False  # Currently flagged as PDT
+    equity: float = 0.0  # Current account equity
+    pdt_threshold: float = 25000.0  # PDT equity threshold
+    is_pdt_restricted: bool = False  # Trading restricted due to PDT
     last_updated: str = ""
 
     # Track day trades with timestamps for rolling window
@@ -66,6 +69,7 @@ class PDTStatus:
 @dataclass
 class BotTrade:
     """Record of a bot trade"""
+
     symbol: str
     side: str
     quantity: int
@@ -80,6 +84,7 @@ class BotTrade:
 @dataclass
 class BotConfig:
     """Bot configuration with compliance settings and AI integration"""
+
     # Trading parameters
     confidence_threshold: float = 0.15
     max_positions: int = 3
@@ -89,48 +94,56 @@ class BotConfig:
     cycle_interval_seconds: int = 120
 
     # Account type and compliance
-    account_type: str = "margin"        # cash, margin, ira, roth_ira
-    long_only: bool = False             # If True, no shorting allowed
-    enforce_pdt_rules: bool = True      # Enforce PDT compliance
-    max_day_trades: int = 3             # Max day trades in 5-day window (PDT limit)
+    account_type: str = "margin"  # cash, margin, ira, roth_ira
+    long_only: bool = False  # If True, no shorting allowed
+    enforce_pdt_rules: bool = True  # Enforce PDT compliance
+    max_day_trades: int = 3  # Max day trades in 5-day window (PDT limit)
 
     # Settlement tracking (for cash accounts)
-    respect_settlement: bool = True     # Wait for T+2 settlement in cash accounts
-    settled_cash_only: bool = False     # Only use settled funds (cash accounts)
+    respect_settlement: bool = True  # Wait for T+2 settlement in cash accounts
+    settled_cash_only: bool = False  # Only use settled funds (cash accounts)
 
     # NEWS CATALYST TRADING (Ross Cameron's Warrior Trading)
-    news_trigger_enabled: bool = True   # Trigger trades on breaking news
-    news_min_severity: float = 0.5      # Minimum news severity to trigger (0.0-1.0)
+    news_trigger_enabled: bool = True  # Trigger trades on breaking news
+    news_min_severity: float = 0.5  # Minimum news severity to trigger (0.0-1.0)
     news_boost_confidence: float = 0.2  # Boost to AI confidence when news present
-    news_scan_interval: int = 60        # Check for news every N seconds
+    news_scan_interval: int = 60  # Check for news every N seconds
 
     # RISK MANAGEMENT - TRAILING STOPS
-    trailing_stop_enabled: bool = True   # Enable trailing stop protection
-    trailing_stop_percent: float = 3.0   # Trailing stop percentage (e.g., 3.0 = 3%)
-    initial_stop_percent: float = 5.0    # Initial stop loss percentage
-    take_profit_percent: float = 8.0     # Take profit threshold
-    lock_in_profit_at: float = 2.0       # Lock in profit once gain reaches this %
-    lock_in_trail_percent: float = 1.5   # Tighter trailing stop after locking profit
+    trailing_stop_enabled: bool = True  # Enable trailing stop protection
+    trailing_stop_percent: float = 3.0  # Trailing stop percentage (e.g., 3.0 = 3%)
+    initial_stop_percent: float = 5.0  # Initial stop loss percentage
+    take_profit_percent: float = 8.0  # Take profit threshold
+    lock_in_profit_at: float = 2.0  # Lock in profit once gain reaches this %
+    lock_in_trail_percent: float = 1.5  # Tighter trailing stop after locking profit
 
     # END-OF-DAY LIQUIDATION (Small Cap Momentum Strategy)
     # Close all positions before market close to avoid overnight gap risk
     eod_liquidation_enabled: bool = True  # Enable end-of-day position closing
-    eod_liquidation_time: str = "15:45"   # Time to start liquidation (ET) - 15 min before close
-    no_new_entries_after: str = "15:30"   # Stop opening new positions after this time (ET)
-    friday_early_close: bool = True       # Close even earlier on Fridays (avoid weekend risk)
-    friday_liquidation_time: str = "15:30" # Friday liquidation time (ET)
+    eod_liquidation_time: str = (
+        "15:45"  # Time to start liquidation (ET) - 15 min before close
+    )
+    no_new_entries_after: str = (
+        "15:30"  # Stop opening new positions after this time (ET)
+    )
+    friday_early_close: bool = (
+        True  # Close even earlier on Fridays (avoid weekend risk)
+    )
+    friday_liquidation_time: str = "15:30"  # Friday liquidation time (ET)
 
     # ORDER RATE LIMITING
-    min_order_interval_seconds: int = 5  # Minimum seconds between orders for same symbol
-    max_orders_per_symbol: int = 2       # Maximum pending orders per symbol
+    min_order_interval_seconds: int = (
+        5  # Minimum seconds between orders for same symbol
+    )
+    max_orders_per_symbol: int = 2  # Maximum pending orders per symbol
 
     # Claude AI Integration
-    ai_enabled: bool = True             # Enable Claude AI intelligence
-    ai_adaptive_mode: bool = True       # Allow AI to adjust parameters
-    ai_mood_control: bool = True        # Let AI control trading mood
-    ai_self_healing: bool = True        # Enable AI error recovery
-    ai_analysis_interval: int = 10      # Analyze performance every N trades
-    ai_market_analysis: bool = True     # Analyze market conditions
+    ai_enabled: bool = True  # Enable Claude AI intelligence
+    ai_adaptive_mode: bool = True  # Allow AI to adjust parameters
+    ai_mood_control: bool = True  # Let AI control trading mood
+    ai_self_healing: bool = True  # Enable AI error recovery
+    ai_analysis_interval: int = 10  # Analyze performance every N trades
+    ai_market_analysis: bool = True  # Analyze market conditions
 
 
 class BotManager:
@@ -154,11 +167,13 @@ class BotManager:
         self.last_signals: Dict[str, dict] = {}
 
         # Position tracking for trailing stops
-        self.position_high_watermarks: Dict[str, float] = {}  # symbol -> highest price seen
-        self.position_entry_prices: Dict[str, float] = {}     # symbol -> entry price
-        self.profit_locked: Dict[str, bool] = {}              # symbol -> has profit been locked
-        self.last_order_time: Dict[str, datetime] = {}        # symbol -> last order timestamp
-        self.pending_orders_count: Dict[str, int] = {}        # symbol -> pending order count
+        self.position_high_watermarks: Dict[str, float] = (
+            {}
+        )  # symbol -> highest price seen
+        self.position_entry_prices: Dict[str, float] = {}  # symbol -> entry price
+        self.profit_locked: Dict[str, bool] = {}  # symbol -> has profit been locked
+        self.last_order_time: Dict[str, datetime] = {}  # symbol -> last order timestamp
+        self.pending_orders_count: Dict[str, int] = {}  # symbol -> pending order count
 
         # PDT and compliance tracking
         self.pdt_status = PDTStatus()
@@ -203,11 +218,19 @@ class BotManager:
         # Initialize Next-Gen AI Logic modules
         self._init_nextgen_ai_modules()
 
-        logger.info("BotManager initialized with account type: %s, AI enabled: %s, News triggers: %s",
-                   self.config.account_type, self.config.ai_enabled, self.config.news_trigger_enabled)
+        logger.info(
+            "BotManager initialized with account type: %s, AI enabled: %s, News triggers: %s",
+            self.config.account_type,
+            self.config.ai_enabled,
+            self.config.news_trigger_enabled,
+        )
 
         # Start continuous improvement if AI is enabled
-        if self.config.ai_enabled and self.config.ai_adaptive_mode and self.ai_intelligence:
+        if (
+            self.config.ai_enabled
+            and self.config.ai_adaptive_mode
+            and self.ai_intelligence
+        ):
             try:
                 self.ai_intelligence.continuous_improvement_loop(interval_minutes=30)
                 logger.info("🧬 Morphic self-improvement loop started")
@@ -218,7 +241,7 @@ class BotManager:
         """Load bot configuration from file"""
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r') as f:
+                with open(self.config_file, "r") as f:
                     data = json.load(f)
                     self.config = BotConfig(**data)
                 logger.info("Bot config loaded from file")
@@ -228,7 +251,7 @@ class BotManager:
     def _save_config(self):
         """Save bot configuration to file"""
         try:
-            with open(self.config_file, 'w') as f:
+            with open(self.config_file, "w") as f:
                 json.dump(asdict(self.config), f, indent=2)
         except Exception as e:
             logger.error(f"Could not save bot config: {e}")
@@ -237,7 +260,7 @@ class BotManager:
         """Load today's trades from file"""
         if self.trades_file.exists():
             try:
-                with open(self.trades_file, 'r') as f:
+                with open(self.trades_file, "r") as f:
                     data = json.load(f)
 
                 # Only load today's trades
@@ -248,8 +271,10 @@ class BotManager:
                     if trade_date == today:
                         self.trades_today.append(BotTrade(**trade_data))
 
-                self.pnl_today = sum(t.price * t.quantity * (1 if t.side == "SELL" else -1)
-                                     for t in self.trades_today)
+                self.pnl_today = sum(
+                    t.price * t.quantity * (1 if t.side == "SELL" else -1)
+                    for t in self.trades_today
+                )
                 logger.info(f"Loaded {len(self.trades_today)} trades for today")
             except Exception as e:
                 logger.warning(f"Could not load trades: {e}")
@@ -258,23 +283,27 @@ class BotManager:
         """Load PDT status from file"""
         if self.pdt_file.exists():
             try:
-                with open(self.pdt_file, 'r') as f:
+                with open(self.pdt_file, "r") as f:
                     data = json.load(f)
                     # Filter day trade history to last 5 trading days
                     history = data.get("day_trade_history", [])
                     cutoff = (datetime.now() - timedelta(days=5)).isoformat()
-                    filtered_history = [t for t in history if t.get("timestamp", "") > cutoff]
+                    filtered_history = [
+                        t for t in history if t.get("timestamp", "") > cutoff
+                    ]
                     data["day_trade_history"] = filtered_history
                     data["day_trades_count"] = len(filtered_history)
                     self.pdt_status = PDTStatus(**data)
-                logger.info(f"PDT status loaded: {self.pdt_status.day_trades_count} day trades in window")
+                logger.info(
+                    f"PDT status loaded: {self.pdt_status.day_trades_count} day trades in window"
+                )
             except Exception as e:
                 logger.warning(f"Could not load PDT status: {e}")
 
     def _save_pdt_status(self):
         """Save PDT status to file"""
         try:
-            with open(self.pdt_file, 'w') as f:
+            with open(self.pdt_file, "w") as f:
                 json.dump(asdict(self.pdt_status), f, indent=2)
         except Exception as e:
             logger.error(f"Could not save PDT status: {e}")
@@ -289,7 +318,9 @@ class BotManager:
             try:
                 self.ai_intelligence = get_bot_intelligence()
                 self.ai_mood = self.ai_intelligence.current_mood
-                logger.info(f"Claude AI Intelligence initialized. Mood: {self.ai_mood.value}")
+                logger.info(
+                    f"Claude AI Intelligence initialized. Mood: {self.ai_mood.value}"
+                )
             except Exception as e:
                 logger.warning(f"Could not initialize AI Intelligence: {e}")
                 self.ai_intelligence = None
@@ -298,11 +329,15 @@ class BotManager:
         """Initialize Sentiment Analyzer for news catalyst triggers"""
         if self.config.news_trigger_enabled:
             try:
-                from ai.warrior_sentiment_analyzer import get_sentiment_analyzer
+                from ai.warrior_sentiment_analyzer import \
+                    get_sentiment_analyzer
+
                 self.sentiment_analyzer = get_sentiment_analyzer()
                 logger.info("Sentiment Analyzer initialized for news triggers")
             except ImportError:
-                logger.warning("Sentiment analyzer not available - news triggers disabled")
+                logger.warning(
+                    "Sentiment analyzer not available - news triggers disabled"
+                )
                 self.sentiment_analyzer = None
             except Exception as e:
                 logger.warning(f"Could not initialize Sentiment Analyzer: {e}")
@@ -357,7 +392,7 @@ class BotManager:
                 highs=highs,
                 lows=lows,
                 volumes=volumes,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
             self.current_regime = analysis.regime
@@ -371,15 +406,16 @@ class BotManager:
                 "volatility_percentile": analysis.volatility_percentile,
                 "recommendation": analysis.recommendation,
                 "adjustments": adjustments,
-                "details": analysis.details
+                "details": analysis.details,
             }
 
         except Exception as e:
             logger.warning(f"Regime classification failed: {e}")
             return {"regime": "unknown", "adjustments": {}}
 
-    def generate_trade_narrative(self, symbol: str, action: str, price: float,
-                                 factors: Dict) -> Dict:
+    def generate_trade_narrative(
+        self, symbol: str, action: str, price: float, factors: Dict
+    ) -> Dict:
         """Generate a plain-English narrative for a trade decision"""
         if not self.narrative_generator:
             return {"narrative": "Narrative generation unavailable"}
@@ -393,7 +429,7 @@ class BotManager:
                 price=price,
                 factors=factors,
                 regime=regime_info.get("regime", "unknown"),
-                session=regime_info.get("session", "unknown")
+                session=regime_info.get("session", "unknown"),
             )
 
             return narrative.to_dict()
@@ -402,9 +438,13 @@ class BotManager:
             logger.warning(f"Narrative generation failed: {e}")
             return {"narrative": f"Error: {e}"}
 
-    def calculate_position_size(self, symbol: str, price: float,
-                                confidence: float = 0.5,
-                                stop_loss_percent: float = None) -> Dict:
+    def calculate_position_size(
+        self,
+        symbol: str,
+        price: float,
+        confidence: float = 0.5,
+        stop_loss_percent: float = None,
+    ) -> Dict:
         """
         Calculate optimal position size using Kelly criterion.
 
@@ -413,7 +453,7 @@ class BotManager:
         if not self.kelly_sizer:
             return {
                 "recommended_shares": self.config.position_size,
-                "reasoning": "Kelly sizer unavailable, using default"
+                "reasoning": "Kelly sizer unavailable, using default",
             }
 
         try:
@@ -425,7 +465,9 @@ class BotManager:
 
             # Get regime adjustments
             regime_info = self.classify_market_regime()
-            regime_multiplier = regime_info.get("adjustments", {}).get("position_size_multiplier", 1.0)
+            regime_multiplier = regime_info.get("adjustments", {}).get(
+                "position_size_multiplier", 1.0
+            )
 
             # Calculate size
             stop_pct = stop_loss_percent or self.config.initial_stop_percent
@@ -435,8 +477,9 @@ class BotManager:
                 price=price,
                 confidence=confidence,
                 stop_loss_percent=stop_pct,
-                volatility_factor=regime_info.get("volatility_percentile", 50) / 50,  # Normalize around 1.0
-                regime_multiplier=regime_multiplier
+                volatility_factor=regime_info.get("volatility_percentile", 50)
+                / 50,  # Normalize around 1.0
+                regime_multiplier=regime_multiplier,
             )
 
             return {
@@ -445,18 +488,23 @@ class BotManager:
                 "kelly_fraction": result.kelly_fraction,
                 "position_percent": result.position_percent,
                 "reasoning": result.reasoning,
-                "expected_value": result.expected_value
+                "expected_value": result.expected_value,
             }
 
         except Exception as e:
             logger.warning(f"Position sizing failed: {e}")
             return {
                 "recommended_shares": self.config.position_size,
-                "reasoning": f"Error: {e}, using default"
+                "reasoning": f"Error: {e}, using default",
             }
 
-    def record_prediction_outcome(self, symbol: str, entry_price: float,
-                                   exit_price: float, model_name: str = "default"):
+    def record_prediction_outcome(
+        self,
+        symbol: str,
+        entry_price: float,
+        exit_price: float,
+        model_name: str = "default",
+    ):
         """Record a prediction outcome for Brier score tracking"""
         if not self.brier_tracker:
             return
@@ -464,9 +512,7 @@ class BotManager:
         try:
             # Resolve any pending predictions for this symbol
             resolved = self.brier_tracker.resolve_by_symbol(
-                symbol=symbol,
-                exit_price=exit_price,
-                model_name=model_name
+                symbol=symbol, exit_price=exit_price, model_name=model_name
             )
 
             if resolved:
@@ -481,7 +527,7 @@ class BotManager:
                             entry_price=entry_price,
                             exit_price=exit_price,
                             quantity=1,  # Normalized
-                            side=side
+                            side=side,
                         )
 
         except Exception as e:
@@ -502,7 +548,7 @@ class BotManager:
                         "accuracy": health.accuracy,
                         "is_degraded": health.is_degraded,
                         "degradation_reason": health.degradation_reason,
-                        "total_predictions": health.total_predictions
+                        "total_predictions": health.total_predictions,
                     }
             else:
                 summary = self.brier_tracker.get_summary()
@@ -530,7 +576,7 @@ class BotManager:
         try:
             for symbol in symbols:
                 # Check for breaking news
-                if hasattr(self.sentiment_analyzer, 'detect_breaking_news'):
+                if hasattr(self.sentiment_analyzer, "detect_breaking_news"):
                     alert = await self.sentiment_analyzer.detect_breaking_news(symbol)
 
                     if alert and alert.severity >= self.config.news_min_severity:
@@ -542,17 +588,25 @@ class BotManager:
                         else:
                             continue  # Skip neutral news
 
-                        news_signals.append({
-                            "symbol": symbol,
-                            "action": action,
-                            "confidence": min(0.95, alert.confidence + self.config.news_boost_confidence),
-                            "signal": f"NEWS_{alert.alert_type.upper()}",
-                            "news_headline": alert.headline,
-                            "news_severity": alert.severity,
-                            "news_sentiment": alert.sentiment_score,
-                            "trigger": "breaking_news"
-                        })
-                        logger.info(f"📰 NEWS TRIGGER: {symbol} - {action} (Severity: {alert.severity:.2f}, Sentiment: {alert.sentiment_score:+.2f})")
+                        news_signals.append(
+                            {
+                                "symbol": symbol,
+                                "action": action,
+                                "confidence": min(
+                                    0.95,
+                                    alert.confidence
+                                    + self.config.news_boost_confidence,
+                                ),
+                                "signal": f"NEWS_{alert.alert_type.upper()}",
+                                "news_headline": alert.headline,
+                                "news_severity": alert.severity,
+                                "news_sentiment": alert.sentiment_score,
+                                "trigger": "breaking_news",
+                            }
+                        )
+                        logger.info(
+                            f"📰 NEWS TRIGGER: {symbol} - {action} (Severity: {alert.severity:.2f}, Sentiment: {alert.sentiment_score:+.2f})"
+                        )
 
         except Exception as e:
             logger.error(f"Error checking breaking news: {e}")
@@ -617,9 +671,9 @@ class BotManager:
                         # Convert quote dict values to JSON-serializable types
                         serializable_quote = {}
                         for k, v in quote.items():
-                            if hasattr(v, 'isoformat'):  # datetime objects
+                            if hasattr(v, "isoformat"):  # datetime objects
                                 serializable_quote[k] = v.isoformat()
-                            elif hasattr(v, '__dict__'):  # objects
+                            elif hasattr(v, "__dict__"):  # objects
                                 serializable_quote[k] = str(v)
                             else:
                                 serializable_quote[k] = v
@@ -631,7 +685,7 @@ class BotManager:
             conditions = self.ai_intelligence.analyze_market_conditions(market_snapshot)
 
             # Convert conditions to dict, handling datetime fields
-            if hasattr(conditions, '__dict__'):
+            if hasattr(conditions, "__dict__"):
                 conditions_dict = asdict(conditions)
             elif isinstance(conditions, dict):
                 conditions_dict = conditions
@@ -641,7 +695,7 @@ class BotManager:
             return {
                 "conditions": conditions_dict,
                 "regime": self.ai_intelligence.current_regime.value,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
         except Exception as e:
@@ -660,13 +714,14 @@ class BotManager:
             # Get market conditions
             market = self.ai_analyze_market()
             from ai.claude_bot_intelligence import MarketConditions
+
             conditions = MarketConditions(**market.get("conditions", {}))
 
             # Get suggestions
             adjustments = self.ai_intelligence.suggest_strategy_adjustments(
                 current_config=asdict(self.config),
                 performance=performance,
-                market_conditions=conditions
+                market_conditions=conditions,
             )
 
             return [asdict(a) for a in adjustments]
@@ -682,7 +737,9 @@ class BotManager:
 
         applied = []
         for adj in adjustments:
-            if adj.get("confidence", 0) >= 0.7:  # Only apply high-confidence adjustments
+            if (
+                adj.get("confidence", 0) >= 0.7
+            ):  # Only apply high-confidence adjustments
                 param = adj.get("parameter")
                 new_value = adj.get("recommended_value")
 
@@ -690,7 +747,9 @@ class BotManager:
                     if hasattr(self.config, param):
                         setattr(self.config, param, new_value)
                         applied.append(adj)
-                        logger.info(f"AI adjusted {param}: {adj.get('current_value')} -> {new_value}")
+                        logger.info(
+                            f"AI adjusted {param}: {adj.get('current_value')} -> {new_value}"
+                        )
 
         if applied:
             self._save_config()
@@ -698,7 +757,7 @@ class BotManager:
         return {
             "applied": applied,
             "skipped": len(adjustments) - len(applied),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     def ai_chat(self, message: str) -> Dict:
@@ -714,7 +773,7 @@ class BotManager:
             "trades_today": len(self.trades_today),
             "pnl_today": self.pnl_today,
             "positions": len(self.current_positions),
-            "config": asdict(self.config)
+            "config": asdict(self.config),
         }
 
         response = self.ai_intelligence.chat(message, context)
@@ -743,7 +802,7 @@ class BotManager:
         context = context or {
             "running": self.running,
             "positions": len(self.current_positions),
-            "last_trade": asdict(self.trades_today[-1]) if self.trades_today else None
+            "last_trade": asdict(self.trades_today[-1]) if self.trades_today else None,
         }
 
         return self.ai_intelligence.diagnose_issue(error, context)
@@ -754,38 +813,48 @@ class BotManager:
             BotMood.AGGRESSIVE: {
                 "confidence_multiplier": 0.8,  # Lower threshold
                 "position_multiplier": 1.5,
-                "max_positions_multiplier": 1.5
+                "max_positions_multiplier": 1.5,
             },
             BotMood.CONSERVATIVE: {
                 "confidence_multiplier": 1.2,  # Higher threshold
                 "position_multiplier": 0.7,
-                "max_positions_multiplier": 0.7
+                "max_positions_multiplier": 0.7,
             },
             BotMood.DEFENSIVE: {
                 "confidence_multiplier": 1.5,  # Much higher threshold
                 "position_multiplier": 0.5,
-                "max_positions_multiplier": 0.5
+                "max_positions_multiplier": 0.5,
             },
             BotMood.OPPORTUNISTIC: {
                 "confidence_multiplier": 1.0,
                 "position_multiplier": 1.0,
-                "max_positions_multiplier": 1.0
+                "max_positions_multiplier": 1.0,
             },
             BotMood.LEARNING: {
                 "confidence_multiplier": 1.3,
                 "position_multiplier": 0.5,
-                "max_positions_multiplier": 0.5
-            }
+                "max_positions_multiplier": 0.5,
+            },
         }
 
-        adjustments = mood_adjustments.get(self.ai_mood, mood_adjustments[BotMood.CONSERVATIVE])
+        adjustments = mood_adjustments.get(
+            self.ai_mood, mood_adjustments[BotMood.CONSERVATIVE]
+        )
 
         return {
             "mood": self.ai_mood.value,
-            "effective_confidence_threshold": self.config.confidence_threshold * adjustments["confidence_multiplier"],
-            "effective_position_size": max(1, int(self.config.position_size * adjustments["position_multiplier"])),
-            "effective_max_positions": max(1, int(self.config.max_positions * adjustments["max_positions_multiplier"])),
-            "adjustments": adjustments
+            "effective_confidence_threshold": self.config.confidence_threshold
+            * adjustments["confidence_multiplier"],
+            "effective_position_size": max(
+                1, int(self.config.position_size * adjustments["position_multiplier"])
+            ),
+            "effective_max_positions": max(
+                1,
+                int(
+                    self.config.max_positions * adjustments["max_positions_multiplier"]
+                ),
+            ),
+            "adjustments": adjustments,
         }
 
     # ========================================================================
@@ -801,7 +870,9 @@ class BotManager:
         if last_time:
             elapsed = (now - last_time).total_seconds()
             if elapsed < self.config.min_order_interval_seconds:
-                logger.debug(f"Order rate limited for {symbol}: {elapsed:.1f}s < {self.config.min_order_interval_seconds}s")
+                logger.debug(
+                    f"Order rate limited for {symbol}: {elapsed:.1f}s < {self.config.min_order_interval_seconds}s"
+                )
                 return False
 
         # CRITICAL: Check ACTUAL open orders from broker, not stale counter
@@ -812,11 +883,15 @@ class BotManager:
 
             # Sync our counter with reality
             if actual_pending != self.pending_orders_count.get(symbol, 0):
-                logger.debug(f"Syncing pending orders for {symbol}: counter={self.pending_orders_count.get(symbol, 0)} actual={actual_pending}")
+                logger.debug(
+                    f"Syncing pending orders for {symbol}: counter={self.pending_orders_count.get(symbol, 0)} actual={actual_pending}"
+                )
                 self.pending_orders_count[symbol] = actual_pending
 
             if actual_pending >= self.config.max_orders_per_symbol:
-                logger.debug(f"Max pending orders for {symbol}: {actual_pending} >= {self.config.max_orders_per_symbol}")
+                logger.debug(
+                    f"Max pending orders for {symbol}: {actual_pending} >= {self.config.max_orders_per_symbol}"
+                )
                 return False
         except Exception as e:
             logger.warning(f"Could not check open orders for {symbol}: {e}")
@@ -834,7 +909,9 @@ class BotManager:
 
     def _record_order_filled(self, symbol: str):
         """Record that an order was filled"""
-        self.pending_orders_count[symbol] = max(0, self.pending_orders_count.get(symbol, 0) - 1)
+        self.pending_orders_count[symbol] = max(
+            0, self.pending_orders_count.get(symbol, 0) - 1
+        )
 
     # ========================================================================
     # END-OF-DAY LIQUIDATION (Small Cap Momentum - No Overnight Risk)
@@ -843,7 +920,8 @@ class BotManager:
     def _get_current_et_time(self):
         """Get current time in Eastern timezone"""
         import pytz
-        et_tz = pytz.timezone('US/Eastern')
+
+        et_tz = pytz.timezone("US/Eastern")
         return datetime.now(et_tz)
 
     def _is_eod_liquidation_time(self) -> bool:
@@ -879,7 +957,9 @@ class BotManager:
 
         return current_time >= self.config.no_new_entries_after
 
-    async def _liquidate_all_positions(self, connector, reason: str = "eod_liquidation") -> List[Dict]:
+    async def _liquidate_all_positions(
+        self, connector, reason: str = "eod_liquidation"
+    ) -> List[Dict]:
         """
         Liquidate all positions for end-of-day.
         Uses EMERGENCY sell (market order during regular hours) for fast execution.
@@ -891,11 +971,15 @@ class BotManager:
             logger.info(f"📤 EOD Liquidation: No positions to close")
             return results
 
-        logger.warning(f"🌙 EOD LIQUIDATION TRIGGERED: Closing {len(positions)} positions - {reason}")
+        logger.warning(
+            f"🌙 EOD LIQUIDATION TRIGGERED: Closing {len(positions)} positions - {reason}"
+        )
 
         for position in positions:
             symbol = position.get("symbol")
-            quantity = int(abs(float(position.get("qty") or position.get("quantity", 0))))
+            quantity = int(
+                abs(float(position.get("qty") or position.get("quantity", 0)))
+            )
 
             if quantity <= 0:
                 continue
@@ -906,7 +990,7 @@ class BotManager:
                     symbol=symbol,
                     quantity=quantity,
                     side="SELL",
-                    emergency=True  # Fast execution - use market order if possible
+                    emergency=True,  # Fast execution - use market order if possible
                 )
 
                 if order and order.get("order_id"):
@@ -916,33 +1000,41 @@ class BotManager:
                         "order_id": order.get("order_id"),
                         "status": "submitted",
                         "reason": reason,
-                        "order_type": order.get("order_type", "unknown")
+                        "order_type": order.get("order_type", "unknown"),
                     }
                     results.append(result)
-                    logger.info(f"🌙 EOD SELL: {symbol} x{quantity} - {order.get('order_type', 'unknown')} order")
+                    logger.info(
+                        f"🌙 EOD SELL: {symbol} x{quantity} - {order.get('order_type', 'unknown')} order"
+                    )
 
                     # Cleanup tracking
                     self._cleanup_position_tracking(symbol)
 
             except Exception as e:
                 logger.error(f"EOD Liquidation failed for {symbol}: {e}")
-                results.append({
-                    "symbol": symbol,
-                    "quantity": quantity,
-                    "status": "error",
-                    "error": str(e)
-                })
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "quantity": quantity,
+                        "status": "error",
+                        "error": str(e),
+                    }
+                )
 
         return results
 
-    def _update_position_tracking(self, symbol: str, current_price: float, entry_price: float):
+    def _update_position_tracking(
+        self, symbol: str, current_price: float, entry_price: float
+    ):
         """Update position tracking for trailing stops"""
         # Store entry price if not already stored
         if symbol not in self.position_entry_prices:
             self.position_entry_prices[symbol] = entry_price
             self.position_high_watermarks[symbol] = current_price
             self.profit_locked[symbol] = False
-            logger.info(f"📊 Position tracking started for {symbol}: entry=${entry_price:.2f}")
+            logger.info(
+                f"📊 Position tracking started for {symbol}: entry=${entry_price:.2f}"
+            )
 
         # Update high watermark
         if current_price > self.position_high_watermarks.get(symbol, 0):
@@ -953,9 +1045,13 @@ class BotManager:
         entry = self.position_entry_prices[symbol]
         gain_pct = ((current_price - entry) / entry) * 100
 
-        if gain_pct >= self.config.lock_in_profit_at and not self.profit_locked.get(symbol):
+        if gain_pct >= self.config.lock_in_profit_at and not self.profit_locked.get(
+            symbol
+        ):
             self.profit_locked[symbol] = True
-            logger.info(f"🔒 Profit LOCKED for {symbol}: +{gain_pct:.1f}% (threshold: {self.config.lock_in_profit_at}%)")
+            logger.info(
+                f"🔒 Profit LOCKED for {symbol}: +{gain_pct:.1f}% (threshold: {self.config.lock_in_profit_at}%)"
+            )
 
     def _check_trailing_stop(self, symbol: str, current_price: float) -> Dict:
         """
@@ -981,8 +1077,16 @@ class BotManager:
 
         # Calculate percentages
         current_gain_pct = ((current_price - entry_price) / entry_price) * 100
-        gain_from_entry_at_high = ((high_watermark - entry_price) / entry_price) * 100 if entry_price > 0 else 0
-        drop_from_high_pct = ((high_watermark - current_price) / high_watermark) * 100 if high_watermark > 0 else 0
+        gain_from_entry_at_high = (
+            ((high_watermark - entry_price) / entry_price) * 100
+            if entry_price > 0
+            else 0
+        )
+        drop_from_high_pct = (
+            ((high_watermark - current_price) / high_watermark) * 100
+            if high_watermark > 0
+            else 0
+        )
 
         # 1. CHECK INITIAL STOP LOSS (from entry price - only safety net)
         if current_gain_pct <= -self.config.initial_stop_percent:
@@ -990,7 +1094,7 @@ class BotManager:
                 "action": "SELL",
                 "reason": "initial_stop_loss",
                 "details": f"Loss of {current_gain_pct:.1f}% exceeds initial stop of -{self.config.initial_stop_percent}%",
-                "urgency": "HIGH"
+                "urgency": "HIGH",
             }
 
         # 2. CHECK TAKE PROFIT (optional auto-exit at target)
@@ -999,7 +1103,7 @@ class BotManager:
                 "action": "SELL",
                 "reason": "take_profit",
                 "details": f"Profit of +{current_gain_pct:.1f}% reached take profit of +{self.config.take_profit_percent}%",
-                "urgency": "MEDIUM"
+                "urgency": "MEDIUM",
             }
 
         # 3. DYNAMIC TRAILING STOP (% from HIGH WATERMARK)
@@ -1039,7 +1143,7 @@ class BotManager:
                 "urgency": "HIGH",
                 "trail_mode": trail_mode,
                 "profit_at_exit": profit_locked_in,
-                "high_watermark": high_watermark
+                "high_watermark": high_watermark,
             }
 
         return {
@@ -1050,10 +1154,12 @@ class BotManager:
             "drop_from_high_pct": drop_from_high_pct,
             "trail_pct": trail_pct,
             "trail_mode": trail_mode,
-            "high_watermark": high_watermark
+            "high_watermark": high_watermark,
         }
 
-    def _detect_reversal(self, symbol: str, current_price: float, bars: List[Dict] = None) -> Dict:
+    def _detect_reversal(
+        self, symbol: str, current_price: float, bars: List[Dict] = None
+    ) -> Dict:
         """
         Detect potential reversal patterns for quick exit.
         Uses price action and momentum to identify reversals.
@@ -1081,15 +1187,16 @@ class BotManager:
 
             # Previous was green (close > open), current is red and engulfs
             if prev_body > 0 and curr_body < 0:
-                if curr_bar.get("open", 0) >= prev_bar.get("close", 0) and curr_bar.get("close", 0) <= prev_bar.get("open", 0):
+                if curr_bar.get("open", 0) >= prev_bar.get("close", 0) and curr_bar.get(
+                    "close", 0
+                ) <= prev_bar.get("open", 0):
                     reversal_signals.append("bearish_engulfing")
                     confidence += 30
 
         # 2. THREE CONSECUTIVE RED CANDLES
         if len(bars) >= 3:
             last_three_red = all(
-                bars[i].get("close", 0) < bars[i].get("open", 0)
-                for i in range(-3, 0)
+                bars[i].get("close", 0) < bars[i].get("open", 0) for i in range(-3, 0)
             )
             if last_three_red:
                 reversal_signals.append("three_red_candles")
@@ -1114,7 +1221,10 @@ class BotManager:
         # 5. SHARP DROP (>2% in single bar)
         if len(bars) >= 1:
             last_bar = bars[-1]
-            bar_change = ((last_bar.get("close", 0) - last_bar.get("open", 0)) / last_bar.get("open", 1)) * 100
+            bar_change = (
+                (last_bar.get("close", 0) - last_bar.get("open", 0))
+                / last_bar.get("open", 1)
+            ) * 100
             if bar_change <= -2.0:
                 reversal_signals.append("sharp_drop")
                 confidence += 20
@@ -1125,7 +1235,7 @@ class BotManager:
             "reversal_detected": reversal_detected,
             "confidence": min(100, confidence),
             "signals": reversal_signals,
-            "recommendation": "EXIT" if reversal_detected else "HOLD"
+            "recommendation": "EXIT" if reversal_detected else "HOLD",
         }
 
     def _cleanup_position_tracking(self, symbol: str):
@@ -1147,6 +1257,7 @@ class BotManager:
 
         # USE CENTRALIZED DATA BUS FOR ALL MARKET DATA (ORDER INTEGRITY!)
         from market_data_bus import get_market_data_bus
+
         data_bus = get_market_data_bus()
 
         for symbol, position in self.current_positions.items():
@@ -1155,7 +1266,9 @@ class BotManager:
                 quote = data_bus.get_quote(symbol, require_bid_ask=True)
 
                 if not quote:
-                    logger.warning(f"No valid quote from data bus for {symbol} - skipping exit check")
+                    logger.warning(
+                        f"No valid quote from data bus for {symbol} - skipping exit check"
+                    )
                     continue
 
                 # Use bid price for exits (what buyers are offering)
@@ -1164,7 +1277,11 @@ class BotManager:
                     continue
 
                 # Get entry price from position data - use avg_price field
-                entry_price = float(position.get("avg_price") or position.get("avg_entry_price") or current_price)
+                entry_price = float(
+                    position.get("avg_price")
+                    or position.get("avg_entry_price")
+                    or current_price
+                )
 
                 # Update tracking (this will initialize if needed)
                 self._update_position_tracking(symbol, current_price, entry_price)
@@ -1172,34 +1289,46 @@ class BotManager:
                 # EMERGENCY CHECK: If already down more than initial_stop_percent, EXIT IMMEDIATELY!
                 loss_pct = ((current_price - entry_price) / entry_price) * 100
                 if loss_pct <= -self.config.initial_stop_percent:
-                    logger.error(f"🚨 EMERGENCY STOP for {symbol}: Loss of {loss_pct:.1f}% exceeds -{self.config.initial_stop_percent}%!")
-                    exit_signals.append({
-                        "symbol": symbol,
-                        "action": "SELL",
-                        "reason": "emergency_stop",
-                        "details": f"Loss of {loss_pct:.1f}% exceeds initial stop of -{self.config.initial_stop_percent}%",
-                        "urgency": "HIGH",
-                        "current_price": current_price,
-                        "entry_price": entry_price,
-                        "quantity": int(position.get("qty") or position.get("quantity", 0))
-                    })
+                    logger.error(
+                        f"🚨 EMERGENCY STOP for {symbol}: Loss of {loss_pct:.1f}% exceeds -{self.config.initial_stop_percent}%!"
+                    )
+                    exit_signals.append(
+                        {
+                            "symbol": symbol,
+                            "action": "SELL",
+                            "reason": "emergency_stop",
+                            "details": f"Loss of {loss_pct:.1f}% exceeds initial stop of -{self.config.initial_stop_percent}%",
+                            "urgency": "HIGH",
+                            "current_price": current_price,
+                            "entry_price": entry_price,
+                            "quantity": int(
+                                position.get("qty") or position.get("quantity", 0)
+                            ),
+                        }
+                    )
                     continue
 
                 # Check trailing stop
                 stop_check = self._check_trailing_stop(symbol, current_price)
 
                 if stop_check["action"] == "SELL":
-                    logger.warning(f"🛑 TRAILING STOP TRIGGERED for {symbol}: {stop_check['reason']} - {stop_check.get('details', '')}")
-                    exit_signals.append({
-                        "symbol": symbol,
-                        "action": "SELL",
-                        "reason": stop_check["reason"],
-                        "details": stop_check.get("details", ""),
-                        "urgency": stop_check.get("urgency", "MEDIUM"),
-                        "current_price": current_price,
-                        "entry_price": entry_price,
-                        "quantity": int(position.get("qty") or position.get("quantity", 0))
-                    })
+                    logger.warning(
+                        f"🛑 TRAILING STOP TRIGGERED for {symbol}: {stop_check['reason']} - {stop_check.get('details', '')}"
+                    )
+                    exit_signals.append(
+                        {
+                            "symbol": symbol,
+                            "action": "SELL",
+                            "reason": stop_check["reason"],
+                            "details": stop_check.get("details", ""),
+                            "urgency": stop_check.get("urgency", "MEDIUM"),
+                            "current_price": current_price,
+                            "entry_price": entry_price,
+                            "quantity": int(
+                                position.get("qty") or position.get("quantity", 0)
+                            ),
+                        }
+                    )
                     continue
 
                 # Check for reversal (if we have bars)
@@ -1207,23 +1336,32 @@ class BotManager:
                     bars = market_data.get_bars(symbol, timeframe="1Min", limit=10)
                     if bars:
                         reversal = self._detect_reversal(symbol, current_price, bars)
-                        if reversal["reversal_detected"] and reversal["confidence"] >= 60:
-                            logger.warning(f"⚠️ REVERSAL DETECTED for {symbol}: {reversal['signals']} (confidence: {reversal['confidence']}%)")
+                        if (
+                            reversal["reversal_detected"]
+                            and reversal["confidence"] >= 60
+                        ):
+                            logger.warning(
+                                f"⚠️ REVERSAL DETECTED for {symbol}: {reversal['signals']} (confidence: {reversal['confidence']}%)"
+                            )
 
                             # Only exit on reversal if we're in profit or near break-even
-                            gain_pct = ((current_price - entry_price) / entry_price) * 100
+                            gain_pct = (
+                                (current_price - entry_price) / entry_price
+                            ) * 100
                             if gain_pct >= -1.0:  # Only exit if not already at big loss
-                                exit_signals.append({
-                                    "symbol": symbol,
-                                    "action": "SELL",
-                                    "reason": "reversal_detected",
-                                    "details": f"Reversal signals: {reversal['signals']}",
-                                    "urgency": "MEDIUM",
-                                    "current_price": current_price,
-                                    "entry_price": entry_price,
-                                    "quantity": int(position.get("qty", 0)),
-                                    "reversal_confidence": reversal["confidence"]
-                                })
+                                exit_signals.append(
+                                    {
+                                        "symbol": symbol,
+                                        "action": "SELL",
+                                        "reason": "reversal_detected",
+                                        "details": f"Reversal signals: {reversal['signals']}",
+                                        "urgency": "MEDIUM",
+                                        "current_price": current_price,
+                                        "entry_price": entry_price,
+                                        "quantity": int(position.get("qty", 0)),
+                                        "reversal_confidence": reversal["confidence"],
+                                    }
+                                )
                 except Exception as e:
                     logger.debug(f"Could not check reversal for {symbol}: {e}")
 
@@ -1238,7 +1376,7 @@ class BotManager:
             # Load existing trades first
             all_trades = []
             if self.trades_file.exists():
-                with open(self.trades_file, 'r') as f:
+                with open(self.trades_file, "r") as f:
                     data = json.load(f)
                     all_trades = data.get("trades", [])
 
@@ -1248,7 +1386,7 @@ class BotManager:
                 if trade.order_id not in existing_ids:
                     all_trades.append(asdict(trade))
 
-            with open(self.trades_file, 'w') as f:
+            with open(self.trades_file, "w") as f:
                 json.dump({"trades": all_trades}, f, indent=2)
         except Exception as e:
             logger.error(f"Could not save trades: {e}")
@@ -1261,21 +1399,29 @@ class BotManager:
             if not account:
                 return
 
-            self.pdt_status.equity = account.get("market_value", account.get("equity", 0.0))
+            self.pdt_status.equity = account.get(
+                "market_value", account.get("equity", 0.0)
+            )
             self.pdt_status.is_pdt_flagged = account.get("pattern_day_trader", False)
             self.pdt_status.last_updated = datetime.now().isoformat()
 
             # Clean up old day trades (older than 5 trading days)
             cutoff = (datetime.now() - timedelta(days=5)).isoformat()
             self.pdt_status.day_trade_history = [
-                t for t in self.pdt_status.day_trade_history
+                t
+                for t in self.pdt_status.day_trade_history
                 if t.get("timestamp", "") > cutoff
             ]
             self.pdt_status.day_trades_count = len(self.pdt_status.day_trade_history)
-            self.pdt_status.day_trades_remaining = max(0, self.config.max_day_trades - self.pdt_status.day_trades_count)
+            self.pdt_status.day_trades_remaining = max(
+                0, self.config.max_day_trades - self.pdt_status.day_trades_count
+            )
 
             # Check if PDT restricted (flagged but under $25k)
-            if self.pdt_status.is_pdt_flagged and self.pdt_status.equity < self.pdt_status.pdt_threshold:
+            if (
+                self.pdt_status.is_pdt_flagged
+                and self.pdt_status.equity < self.pdt_status.pdt_threshold
+            ):
                 self.pdt_status.is_pdt_restricted = True
             else:
                 self.pdt_status.is_pdt_restricted = False
@@ -1287,15 +1433,17 @@ class BotManager:
 
     def _record_day_trade(self, symbol: str, side: str):
         """Record a day trade for PDT tracking"""
-        self.pdt_status.day_trade_history.append({
-            "symbol": symbol,
-            "side": side,
-            "timestamp": datetime.now().isoformat()
-        })
+        self.pdt_status.day_trade_history.append(
+            {"symbol": symbol, "side": side, "timestamp": datetime.now().isoformat()}
+        )
         self.pdt_status.day_trades_count = len(self.pdt_status.day_trade_history)
-        self.pdt_status.day_trades_remaining = max(0, self.config.max_day_trades - self.pdt_status.day_trades_count)
+        self.pdt_status.day_trades_remaining = max(
+            0, self.config.max_day_trades - self.pdt_status.day_trades_count
+        )
         self._save_pdt_status()
-        logger.info(f"Day trade recorded: {symbol}. Remaining: {self.pdt_status.day_trades_remaining}")
+        logger.info(
+            f"Day trade recorded: {symbol}. Remaining: {self.pdt_status.day_trades_remaining}"
+        )
 
     def _is_day_trade(self, symbol: str, side: str) -> bool:
         """
@@ -1335,7 +1483,7 @@ class BotManager:
                 return {
                     "allowed": False,
                     "reason": "Long-only mode enabled. Short selling is not permitted.",
-                    "rule": "LONG_ONLY"
+                    "rule": "LONG_ONLY",
                 }
 
         # 2. Check IRA/Roth IRA restrictions (no shorting)
@@ -1344,7 +1492,7 @@ class BotManager:
                 return {
                     "allowed": False,
                     "reason": f"{account_type.value.upper()} accounts cannot short sell.",
-                    "rule": "IRA_NO_SHORT"
+                    "rule": "IRA_NO_SHORT",
                 }
 
         # 3. Check PDT rules for margin accounts
@@ -1356,7 +1504,7 @@ class BotManager:
                 return {
                     "allowed": False,
                     "reason": "Account is PDT restricted. Equity must be >= $25,000 to day trade.",
-                    "rule": "PDT_RESTRICTED"
+                    "rule": "PDT_RESTRICTED",
                 }
 
             # Check if this would be a day trade
@@ -1367,7 +1515,7 @@ class BotManager:
                         return {
                             "allowed": False,
                             "reason": f"PDT limit reached. {self.pdt_status.day_trades_count}/3 day trades used in 5-day window. Equity: ${self.pdt_status.equity:,.2f} (need $25,000+)",
-                            "rule": "PDT_LIMIT"
+                            "rule": "PDT_LIMIT",
                         }
                     else:
                         self.compliance_warnings.append(
@@ -1389,8 +1537,8 @@ class BotManager:
                 "day_trades_used": self.pdt_status.day_trades_count,
                 "day_trades_remaining": self.pdt_status.day_trades_remaining,
                 "equity": self.pdt_status.equity,
-                "is_day_trade": self._is_day_trade(symbol, side)
-            }
+                "is_day_trade": self._is_day_trade(symbol, side),
+            },
         }
 
     def get_account_rules(self) -> Dict:
@@ -1400,11 +1548,13 @@ class BotManager:
         rules = {
             "account_type": account_type.value,
             "long_only": self.config.long_only,
-            "can_short": not self.config.long_only and account_type not in [AccountType.IRA, AccountType.ROTH_IRA],
+            "can_short": not self.config.long_only
+            and account_type not in [AccountType.IRA, AccountType.ROTH_IRA],
             "can_use_margin": account_type == AccountType.MARGIN,
-            "pdt_applies": account_type == AccountType.MARGIN and self.config.enforce_pdt_rules,
+            "pdt_applies": account_type == AccountType.MARGIN
+            and self.config.enforce_pdt_rules,
             "settlement_rules": account_type == AccountType.CASH,
-            "restrictions": []
+            "restrictions": [],
         }
 
         if self.config.long_only:
@@ -1417,7 +1567,9 @@ class BotManager:
             rules["restrictions"].append("Cash account - T+2 settlement applies")
 
         if rules["pdt_applies"]:
-            rules["restrictions"].append(f"PDT rules enforced - max {self.config.max_day_trades} day trades per 5 days if equity < $25k")
+            rules["restrictions"].append(
+                f"PDT rules enforced - max {self.config.max_day_trades} day trades per 5 days if equity < $25k"
+            )
 
         return rules
 
@@ -1425,11 +1577,21 @@ class BotManager:
         """Initialize the bot with optional configuration"""
         if config:
             # Trading parameters
-            self.config.confidence_threshold = config.get("confidence_threshold", self.config.confidence_threshold)
-            self.config.max_positions = config.get("max_positions", self.config.max_positions)
-            self.config.max_daily_trades = config.get("max_daily_trades", self.config.max_daily_trades)
-            self.config.position_size = config.get("position_size", self.config.position_size)
-            self.config.cycle_interval_seconds = config.get("cycle_interval", self.config.cycle_interval_seconds)
+            self.config.confidence_threshold = config.get(
+                "confidence_threshold", self.config.confidence_threshold
+            )
+            self.config.max_positions = config.get(
+                "max_positions", self.config.max_positions
+            )
+            self.config.max_daily_trades = config.get(
+                "max_daily_trades", self.config.max_daily_trades
+            )
+            self.config.position_size = config.get(
+                "position_size", self.config.position_size
+            )
+            self.config.cycle_interval_seconds = config.get(
+                "cycle_interval", self.config.cycle_interval_seconds
+            )
 
             # Account type and compliance settings
             if "account_type" in config:
@@ -1456,7 +1618,7 @@ class BotManager:
             "message": "Bot initialized",
             "config": asdict(self.config),
             "account_rules": self.get_account_rules(),
-            "pdt_status": asdict(self.pdt_status)
+            "pdt_status": asdict(self.pdt_status),
         }
 
     async def _trading_loop(self):
@@ -1479,7 +1641,9 @@ class BotManager:
 
                 # Check daily trade limit
                 if len(self.trades_today) >= self.config.max_daily_trades:
-                    logger.info(f"Daily trade limit reached: {len(self.trades_today)}/{self.config.max_daily_trades}")
+                    logger.info(
+                        f"Daily trade limit reached: {len(self.trades_today)}/{self.config.max_daily_trades}"
+                    )
                     await asyncio.sleep(self.config.cycle_interval_seconds)
                     continue
 
@@ -1492,10 +1656,16 @@ class BotManager:
                 # Close all positions before market close to avoid overnight gap risk
                 # ============================================================
                 if self._is_eod_liquidation_time() and positions:
-                    logger.warning("🌙 EOD LIQUIDATION TIME - Closing all positions to avoid overnight risk")
-                    liquidation_results = await self._liquidate_all_positions(broker, reason="eod_close")
+                    logger.warning(
+                        "🌙 EOD LIQUIDATION TIME - Closing all positions to avoid overnight risk"
+                    )
+                    liquidation_results = await self._liquidate_all_positions(
+                        broker, reason="eod_close"
+                    )
                     if liquidation_results:
-                        logger.info(f"EOD Liquidation: {len(liquidation_results)} positions closed")
+                        logger.info(
+                            f"EOD Liquidation: {len(liquidation_results)} positions closed"
+                        )
                         for result in liquidation_results:
                             logger.info(f"  - {result['symbol']}: {result['status']}")
                     # After liquidation, continue loop to let orders fill
@@ -1507,7 +1677,9 @@ class BotManager:
                 # ============================================================
                 if self.config.trailing_stop_enabled and positions:
                     market_data = get_unified_market_data()
-                    exit_signals = await self._check_positions_for_exits(broker, market_data)
+                    exit_signals = await self._check_positions_for_exits(
+                        broker, market_data
+                    )
 
                     for exit_sig in exit_signals:
                         symbol = exit_sig["symbol"]
@@ -1529,13 +1701,19 @@ class BotManager:
                                 symbol=symbol,
                                 quantity=exit_sig["quantity"],
                                 side="SELL",
-                                emergency=is_emergency
+                                emergency=is_emergency,
                             )
-                            order = {"order_id": order_result.order_id} if order_result.success else None
+                            order = (
+                                {"order_id": order_result.order_id}
+                                if order_result.success
+                                else None
+                            )
 
                             if order and order.get("order_id"):
                                 self._record_order_placed(symbol)
-                                logger.info(f"🛑 EXIT ORDER PLACED: SELL {exit_sig['quantity']} {symbol} - {exit_sig['reason']}")
+                                logger.info(
+                                    f"🛑 EXIT ORDER PLACED: SELL {exit_sig['quantity']} {symbol} - {exit_sig['reason']}"
+                                )
 
                                 # Record trade
                                 trade = BotTrade(
@@ -1546,7 +1724,7 @@ class BotManager:
                                     confidence=0.99,
                                     signal=f"EXIT_{exit_sig['reason'].upper()}",
                                     order_id=order["order_id"],
-                                    timestamp=datetime.now().isoformat()
+                                    timestamp=datetime.now().isoformat(),
                                 )
                                 self.trades_today.append(trade)
                                 self._save_trades()
@@ -1558,7 +1736,9 @@ class BotManager:
                             logger.error(f"Exit order failed for {symbol}: {e}")
 
                 if len(positions) >= self.config.max_positions:
-                    logger.info(f"Max positions reached: {len(positions)}/{self.config.max_positions}")
+                    logger.info(
+                        f"Max positions reached: {len(positions)}/{self.config.max_positions}"
+                    )
                     await asyncio.sleep(self.config.cycle_interval_seconds)
                     continue
 
@@ -1587,12 +1767,18 @@ class BotManager:
                         news_signals = await self.check_breaking_news(available_symbols)
                         for ns in news_signals:
                             # Check compliance for news-triggered trades
-                            compliance = self.check_compliance(ns["symbol"], ns["action"], self.config.position_size)
+                            compliance = self.check_compliance(
+                                ns["symbol"], ns["action"], self.config.position_size
+                            )
                             if compliance["allowed"]:
                                 ns["compliance"] = compliance
-                                logger.info(f"📰 NEWS SIGNAL: {ns['symbol']} - {ns['action']} ({ns['confidence']*100:.1f}%)")
+                                logger.info(
+                                    f"📰 NEWS SIGNAL: {ns['symbol']} - {ns['action']} ({ns['confidence']*100:.1f}%)"
+                                )
                             else:
-                                logger.warning(f"News signal blocked for {ns['symbol']}: {compliance.get('reason')}")
+                                logger.warning(
+                                    f"News signal blocked for {ns['symbol']}: {compliance.get('reason')}"
+                                )
                                 news_signals.remove(ns)
                     except Exception as e:
                         logger.warning(f"News trigger check failed: {e}")
@@ -1612,27 +1798,38 @@ class BotManager:
                             "signal": signal,
                             "action": action,
                             "confidence": confidence,
-                            "timestamp": datetime.now().isoformat()
+                            "timestamp": datetime.now().isoformat(),
                         }
 
-                        if confidence >= self.config.confidence_threshold and action in ["BUY", "SELL"]:
+                        if (
+                            confidence >= self.config.confidence_threshold
+                            and action in ["BUY", "SELL"]
+                        ):
                             # Check compliance before adding to signals
-                            compliance = self.check_compliance(symbol, action, self.config.position_size)
+                            compliance = self.check_compliance(
+                                symbol, action, self.config.position_size
+                            )
                             if compliance["allowed"]:
-                                signals.append({
-                                    "symbol": symbol,
-                                    "confidence": confidence,
-                                    "action": action,
-                                    "signal": signal,
-                                    "compliance": compliance,
-                                    "trigger": "ai_prediction"
-                                })
-                                logger.info(f"Signal: {symbol} - {signal} ({confidence*100:.1f}% confidence)")
+                                signals.append(
+                                    {
+                                        "symbol": symbol,
+                                        "confidence": confidence,
+                                        "action": action,
+                                        "signal": signal,
+                                        "compliance": compliance,
+                                        "trigger": "ai_prediction",
+                                    }
+                                )
+                                logger.info(
+                                    f"Signal: {symbol} - {signal} ({confidence*100:.1f}% confidence)"
+                                )
                                 if compliance.get("warnings"):
                                     for warning in compliance["warnings"]:
                                         logger.warning(warning)
                             else:
-                                logger.warning(f"Signal blocked for {symbol}: {compliance.get('reason')} [Rule: {compliance.get('rule')}]")
+                                logger.warning(
+                                    f"Signal blocked for {symbol}: {compliance.get('reason')} [Rule: {compliance.get('rule')}]"
+                                )
                     except Exception as e:
                         logger.warning(f"Prediction failed for {symbol}: {e}")
 
@@ -1642,7 +1839,9 @@ class BotManager:
                 # ============================================================
                 if self._should_block_new_entries():
                     now_et = self._get_current_et_time()
-                    logger.info(f"⏰ Blocking new entries after {self.config.no_new_entries_after} ET (current: {now_et.strftime('%H:%M')})")
+                    logger.info(
+                        f"⏰ Blocking new entries after {self.config.no_new_entries_after} ET (current: {now_et.strftime('%H:%M')})"
+                    )
                     # Still process exit signals (trailing stops, take profit) but skip new entries
                     await asyncio.sleep(self.config.cycle_interval_seconds)
                     continue
@@ -1663,16 +1862,24 @@ class BotManager:
 
                 trigger_type = best.get("trigger", "unknown")
                 if trigger_type == "breaking_news":
-                    logger.info(f"📰 BEST SIGNAL (NEWS): {best['symbol']} - {best['action']} ({best['confidence']*100:.1f}%)")
-                    logger.info(f"   Headline: {best.get('news_headline', 'N/A')[:60]}...")
+                    logger.info(
+                        f"📰 BEST SIGNAL (NEWS): {best['symbol']} - {best['action']} ({best['confidence']*100:.1f}%)"
+                    )
+                    logger.info(
+                        f"   Headline: {best.get('news_headline', 'N/A')[:60]}..."
+                    )
                 else:
-                    logger.info(f"Best signal (AI): {best['symbol']} - {best['action']} ({best['confidence']*100:.1f}%)")
+                    logger.info(
+                        f"Best signal (AI): {best['symbol']} - {best['action']} ({best['confidence']*100:.1f}%)"
+                    )
 
                 # Execute the trade (with rate limiting)
                 try:
                     # Check rate limiting before placing order
                     if not self._can_place_order(best["symbol"]):
-                        logger.info(f"Order rate-limited for {best['symbol']}, skipping this cycle")
+                        logger.info(
+                            f"Order rate-limited for {best['symbol']}, skipping this cycle"
+                        )
                         await asyncio.sleep(self.config.cycle_interval_seconds)
                         continue
 
@@ -1684,33 +1891,46 @@ class BotManager:
                     # - Pricing handled inside place_smart_order from Schwab data bus
                     # ============================================================
                     from market_data_bus import get_market_data_bus
+
                     data_bus = get_market_data_bus()
 
                     # Get quote for logging/tracking (order uses quote internally)
                     quote = data_bus.get_quote(best["symbol"])
                     if not quote:
-                        logger.error(f"No valid quote from data bus for {best['symbol']} - SKIPPING ORDER")
+                        logger.error(
+                            f"No valid quote from data bus for {best['symbol']} - SKIPPING ORDER"
+                        )
                         await asyncio.sleep(self.config.cycle_interval_seconds)
                         continue
 
-                    market_price = quote.get("ask") if best["action"].upper() == "BUY" else quote.get("bid")
+                    market_price = (
+                        quote.get("ask")
+                        if best["action"].upper() == "BUY"
+                        else quote.get("bid")
+                    )
                     if not market_price or market_price < 0.50:
-                        logger.error(f"Invalid price ${market_price} for {best['symbol']} - SKIPPING ORDER")
+                        logger.error(
+                            f"Invalid price ${market_price} for {best['symbol']} - SKIPPING ORDER"
+                        )
                         await asyncio.sleep(self.config.cycle_interval_seconds)
                         continue
 
-                    logger.info(f"Entry order for {best['symbol']}: bid=${quote.get('bid', 0):.2f} ask=${quote.get('ask', 0):.2f} (source: {quote.get('source', 'schwab')})")
+                    logger.info(
+                        f"Entry order for {best['symbol']}: bid=${quote.get('bid', 0):.2f} ask=${quote.get('ask', 0):.2f} (source: {quote.get('source', 'schwab')})"
+                    )
 
                     # Place smart order - handles pricing strategy internally
                     order_result = broker.place_smart_order(
                         symbol=best["symbol"],
                         quantity=self.config.position_size,
                         side=best["action"].upper(),
-                        emergency=False  # Normal entry, not emergency
+                        emergency=False,  # Normal entry, not emergency
                     )
 
                     # Get limit price from order response for tracking
-                    limit_price = order_result.price if order_result.price else market_price
+                    limit_price = (
+                        order_result.price if order_result.price else market_price
+                    )
 
                     if order_result.success and order_result.order_id:
                         order_id = order_result.order_id
@@ -1726,7 +1946,7 @@ class BotManager:
                             quantity=self.config.position_size,
                             order_type="LMT",
                             market_price=market_price,
-                            limit_price=limit_price
+                            limit_price=limit_price,
                         )
 
                         # Record trade
@@ -1738,7 +1958,7 @@ class BotManager:
                             confidence=best["confidence"],
                             signal=best["signal"],
                             order_id=order_id,
-                            timestamp=datetime.now().isoformat()
+                            timestamp=datetime.now().isoformat(),
                         )
                         self.trades_today.append(trade)
                         self._save_trades()
@@ -1751,14 +1971,20 @@ class BotManager:
                             price=market_price,
                             order_id=order_id,
                             ai_signal=best["signal"],
-                            ai_confidence=best["confidence"]
+                            ai_confidence=best["confidence"],
                         )
 
                         # Record day trade if applicable (for PDT tracking)
-                        if best.get("compliance", {}).get("pdt_status", {}).get("is_day_trade"):
+                        if (
+                            best.get("compliance", {})
+                            .get("pdt_status", {})
+                            .get("is_day_trade")
+                        ):
                             self._record_day_trade(best["symbol"], best["action"])
 
-                        logger.info(f"Trade executed: {best['action']} {self.config.position_size} {best['symbol']} @ ${limit_price:.2f} LIMIT (Order ID: {order_id})")
+                        logger.info(
+                            f"Trade executed: {best['action']} {self.config.position_size} {best['symbol']} @ ${limit_price:.2f} LIMIT (Order ID: {order_id})"
+                        )
 
                 except Exception as e:
                     logger.error(f"Trade execution failed: {e}")
@@ -1775,11 +2001,14 @@ class BotManager:
                 # MORPHIC SELF-HEALING: Attempt to recover from errors
                 if self.config.ai_self_healing and self.ai_intelligence:
                     try:
-                        healing_result = self.ai_intelligence.self_heal(e, {
-                            "phase": "trading_loop",
-                            "last_cycle": self.last_cycle_time,
-                            "trades_today": len(self.trades_today)
-                        })
+                        healing_result = self.ai_intelligence.self_heal(
+                            e,
+                            {
+                                "phase": "trading_loop",
+                                "last_cycle": self.last_cycle_time,
+                                "trades_today": len(self.trades_today),
+                            },
+                        )
 
                         if healing_result.get("healed"):
                             retry_delay = healing_result.get("retry_delay", 30)
@@ -1787,7 +2016,9 @@ class BotManager:
                             await asyncio.sleep(retry_delay)
                             continue
                         else:
-                            logger.warning(f"🔧 Self-healing needs attention: {healing_result.get('recommendations')}")
+                            logger.warning(
+                                f"🔧 Self-healing needs attention: {healing_result.get('recommendations')}"
+                            )
                     except Exception as heal_error:
                         logger.error(f"Self-healing failed: {heal_error}")
 
@@ -1828,11 +2059,7 @@ class BotManager:
 
         logger.info("Bot started")
 
-        return {
-            "success": True,
-            "message": "Bot started",
-            "status": "running"
-        }
+        return {"success": True, "message": "Bot started", "status": "running"}
 
     def stop(self) -> dict:
         """Stop the trading bot"""
@@ -1847,11 +2074,7 @@ class BotManager:
 
         logger.info("Bot stopped")
 
-        return {
-            "success": True,
-            "message": "Bot stopped",
-            "status": "stopped"
-        }
+        return {"success": True, "message": "Bot stopped", "status": "stopped"}
 
     def enable(self) -> dict:
         """Enable trading (bot must be started)"""
@@ -1880,7 +2103,9 @@ class BotManager:
             "narrative_generator": self.narrative_generator is not None,
             "kelly_sizer": self.kelly_sizer is not None,
             "brier_tracker": self.brier_tracker is not None,
-            "current_regime": self.current_regime.value if self.current_regime else "unknown"
+            "current_regime": (
+                self.current_regime.value if self.current_regime else "unknown"
+            ),
         }
 
         # Get model health summary if available
@@ -1907,12 +2132,12 @@ class BotManager:
                 "is_pdt_restricted": self.pdt_status.is_pdt_restricted,
                 "equity": self.pdt_status.equity,
                 "pdt_threshold": self.pdt_status.pdt_threshold,
-                "last_updated": self.pdt_status.last_updated
+                "last_updated": self.pdt_status.last_updated,
             },
             "compliance_warnings": self.compliance_warnings,
             # Next-Gen AI Logic Blueprint
             "nextgen_ai": nextgen_ai_status,
-            "model_health": model_health
+            "model_health": model_health,
         }
 
     def get_trades(self) -> List[dict]:
@@ -1943,7 +2168,10 @@ class BotManager:
             if config["account_type"] in valid_types:
                 self.config.account_type = config["account_type"]
             else:
-                return {"success": False, "message": f"Invalid account_type. Must be one of: {valid_types}"}
+                return {
+                    "success": False,
+                    "message": f"Invalid account_type. Must be one of: {valid_types}",
+                }
         if "long_only" in config:
             self.config.long_only = bool(config["long_only"])
         if "enforce_pdt_rules" in config:
@@ -1961,7 +2189,7 @@ class BotManager:
             "success": True,
             "message": "Configuration updated",
             "config": asdict(self.config),
-            "account_rules": self.get_account_rules()
+            "account_rules": self.get_account_rules(),
         }
 
 

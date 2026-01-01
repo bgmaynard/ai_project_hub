@@ -13,19 +13,20 @@ to identify high-probability trading signals.
 
 import logging
 import sys
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-import yfinance as yf
 import ta
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass, asdict
+import yfinance as yf
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
@@ -33,10 +34,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TechnicalSignal:
     """Technical indicator signal"""
+
     indicator: str
     signal_type: str  # BREAKOUT, REVERSION, NEUTRAL
-    direction: str    # BULLISH, BEARISH, NEUTRAL
-    strength: float   # 0-1
+    direction: str  # BULLISH, BEARISH, NEUTRAL
+    strength: float  # 0-1
     value: float
     trigger_price: float
 
@@ -44,6 +46,7 @@ class TechnicalSignal:
 @dataclass
 class TriggerPoint:
     """Buy/sell trigger point"""
+
     timestamp: str
     symbol: str
     action: str  # BUY, SELL
@@ -80,62 +83,62 @@ class TechnicalAnalyzer:
 
         df = df.reset_index(drop=True)
 
-        close = pd.Series(df['Close'].values.flatten(), index=df.index)
-        high = pd.Series(df['High'].values.flatten(), index=df.index)
-        low = pd.Series(df['Low'].values.flatten(), index=df.index)
-        volume = pd.Series(df['Volume'].values.flatten(), index=df.index)
+        close = pd.Series(df["Close"].values.flatten(), index=df.index)
+        high = pd.Series(df["High"].values.flatten(), index=df.index)
+        low = pd.Series(df["Low"].values.flatten(), index=df.index)
+        volume = pd.Series(df["Volume"].values.flatten(), index=df.index)
 
         # RSI
-        df['RSI'] = ta.momentum.rsi(close, window=14)
-        df['RSI_SMA'] = df['RSI'].rolling(window=5).mean()
+        df["RSI"] = ta.momentum.rsi(close, window=14)
+        df["RSI_SMA"] = df["RSI"].rolling(window=5).mean()
 
         # MACD
-        df['MACD'] = ta.trend.macd(close)
-        df['MACD_Signal'] = ta.trend.macd_signal(close)
-        df['MACD_Hist'] = ta.trend.macd_diff(close)
+        df["MACD"] = ta.trend.macd(close)
+        df["MACD_Signal"] = ta.trend.macd_signal(close)
+        df["MACD_Hist"] = ta.trend.macd_diff(close)
 
         # Bollinger Bands
-        df['BB_High'] = ta.volatility.bollinger_hband(close, window=20)
-        df['BB_Low'] = ta.volatility.bollinger_lband(close, window=20)
-        df['BB_Mid'] = ta.volatility.bollinger_mavg(close, window=20)
-        df['BB_Width'] = (df['BB_High'] - df['BB_Low']) / df['BB_Mid']
-        df['BB_Pct'] = (close - df['BB_Low']) / (df['BB_High'] - df['BB_Low'])
+        df["BB_High"] = ta.volatility.bollinger_hband(close, window=20)
+        df["BB_Low"] = ta.volatility.bollinger_lband(close, window=20)
+        df["BB_Mid"] = ta.volatility.bollinger_mavg(close, window=20)
+        df["BB_Width"] = (df["BB_High"] - df["BB_Low"]) / df["BB_Mid"]
+        df["BB_Pct"] = (close - df["BB_Low"]) / (df["BB_High"] - df["BB_Low"])
 
         # ATR for volatility
-        df['ATR'] = ta.volatility.average_true_range(high, low, close, window=14)
-        df['ATR_Pct'] = df['ATR'] / close * 100
+        df["ATR"] = ta.volatility.average_true_range(high, low, close, window=14)
+        df["ATR_Pct"] = df["ATR"] / close * 100
 
         # Momentum
-        df['MOM'] = ta.momentum.roc(close, window=10)
-        df['MOM_5'] = ta.momentum.roc(close, window=5)
+        df["MOM"] = ta.momentum.roc(close, window=10)
+        df["MOM_5"] = ta.momentum.roc(close, window=5)
 
         # Stochastic
-        df['Stoch_K'] = ta.momentum.stoch(high, low, close, window=14)
-        df['Stoch_D'] = ta.momentum.stoch_signal(high, low, close, window=14)
+        df["Stoch_K"] = ta.momentum.stoch(high, low, close, window=14)
+        df["Stoch_D"] = ta.momentum.stoch_signal(high, low, close, window=14)
 
         # ADX for trend strength
-        df['ADX'] = ta.trend.adx(high, low, close, window=14)
-        df['DI_Plus'] = ta.trend.adx_pos(high, low, close, window=14)
-        df['DI_Minus'] = ta.trend.adx_neg(high, low, close, window=14)
+        df["ADX"] = ta.trend.adx(high, low, close, window=14)
+        df["DI_Plus"] = ta.trend.adx_pos(high, low, close, window=14)
+        df["DI_Minus"] = ta.trend.adx_neg(high, low, close, window=14)
 
         # Volume analysis
-        df['Volume_SMA'] = volume.rolling(window=20).mean()
-        df['Volume_Ratio'] = volume / df['Volume_SMA']
+        df["Volume_SMA"] = volume.rolling(window=20).mean()
+        df["Volume_Ratio"] = volume / df["Volume_SMA"]
 
         # Price action
-        df['Returns'] = close.pct_change()
-        df['Returns_5d'] = close.pct_change(5)
-        df['SMA_20'] = close.rolling(window=20).mean()
-        df['SMA_50'] = close.rolling(window=50).mean()
-        df['Price_vs_SMA20'] = (close - df['SMA_20']) / df['SMA_20'] * 100
+        df["Returns"] = close.pct_change()
+        df["Returns_5d"] = close.pct_change(5)
+        df["SMA_20"] = close.rolling(window=20).mean()
+        df["SMA_50"] = close.rolling(window=50).mean()
+        df["Price_vs_SMA20"] = (close - df["SMA_20"]) / df["SMA_20"] * 100
 
         return df
 
     def get_rsi_signal(self, data: pd.DataFrame, idx: int) -> TechnicalSignal:
         """Analyze RSI for breakout/reversion"""
-        rsi = data['RSI'].iloc[idx]
-        rsi_prev = data['RSI'].iloc[idx-1] if idx > 0 else rsi
-        close = data['Close'].iloc[idx]
+        rsi = data["RSI"].iloc[idx]
+        rsi_prev = data["RSI"].iloc[idx - 1] if idx > 0 else rsi
+        close = data["Close"].iloc[idx]
 
         # Mean reversion signals
         if rsi <= self.rsi_extreme_oversold:
@@ -145,7 +148,7 @@ class TechnicalAnalyzer:
                 direction="BULLISH",
                 strength=min(1.0, (self.rsi_extreme_oversold - rsi) / 10),
                 value=rsi,
-                trigger_price=close
+                trigger_price=close,
             )
         elif rsi >= self.rsi_extreme_overbought:
             return TechnicalSignal(
@@ -154,7 +157,7 @@ class TechnicalAnalyzer:
                 direction="BEARISH",
                 strength=min(1.0, (rsi - self.rsi_extreme_overbought) / 10),
                 value=rsi,
-                trigger_price=close
+                trigger_price=close,
             )
 
         # RSI breakout from oversold/overbought
@@ -165,7 +168,7 @@ class TechnicalAnalyzer:
                 direction="BULLISH",
                 strength=0.7,
                 value=rsi,
-                trigger_price=close
+                trigger_price=close,
             )
         elif rsi_prev >= self.rsi_overbought and rsi < self.rsi_overbought:
             return TechnicalSignal(
@@ -174,7 +177,7 @@ class TechnicalAnalyzer:
                 direction="BEARISH",
                 strength=0.7,
                 value=rsi,
-                trigger_price=close
+                trigger_price=close,
             )
 
         return TechnicalSignal(
@@ -183,16 +186,16 @@ class TechnicalAnalyzer:
             direction="NEUTRAL",
             strength=0.0,
             value=rsi,
-            trigger_price=close
+            trigger_price=close,
         )
 
     def get_macd_signal(self, data: pd.DataFrame, idx: int) -> TechnicalSignal:
         """Analyze MACD for breakout signals"""
-        macd = data['MACD'].iloc[idx]
-        signal = data['MACD_Signal'].iloc[idx]
-        hist = data['MACD_Hist'].iloc[idx]
-        hist_prev = data['MACD_Hist'].iloc[idx-1] if idx > 0 else hist
-        close = data['Close'].iloc[idx]
+        macd = data["MACD"].iloc[idx]
+        signal = data["MACD_Signal"].iloc[idx]
+        hist = data["MACD_Hist"].iloc[idx]
+        hist_prev = data["MACD_Hist"].iloc[idx - 1] if idx > 0 else hist
+        close = data["Close"].iloc[idx]
 
         # MACD histogram crossover (momentum shift)
         if hist_prev < 0 and hist > 0:
@@ -202,7 +205,7 @@ class TechnicalAnalyzer:
                 direction="BULLISH",
                 strength=min(1.0, abs(hist) * 50),
                 value=hist,
-                trigger_price=close
+                trigger_price=close,
             )
         elif hist_prev > 0 and hist < 0:
             return TechnicalSignal(
@@ -211,7 +214,7 @@ class TechnicalAnalyzer:
                 direction="BEARISH",
                 strength=min(1.0, abs(hist) * 50),
                 value=hist,
-                trigger_price=close
+                trigger_price=close,
             )
 
         # Strong trend continuation
@@ -222,7 +225,7 @@ class TechnicalAnalyzer:
                 direction="BULLISH",
                 strength=min(0.6, abs(hist) * 30),
                 value=hist,
-                trigger_price=close
+                trigger_price=close,
             )
         elif hist < 0 and hist < hist_prev:
             return TechnicalSignal(
@@ -231,7 +234,7 @@ class TechnicalAnalyzer:
                 direction="BEARISH",
                 strength=min(0.6, abs(hist) * 30),
                 value=hist,
-                trigger_price=close
+                trigger_price=close,
             )
 
         return TechnicalSignal(
@@ -240,15 +243,15 @@ class TechnicalAnalyzer:
             direction="NEUTRAL",
             strength=0.0,
             value=hist,
-            trigger_price=close
+            trigger_price=close,
         )
 
     def get_bollinger_signal(self, data: pd.DataFrame, idx: int) -> TechnicalSignal:
         """Analyze Bollinger Bands for breakout/reversion"""
-        bb_pct = data['BB_Pct'].iloc[idx]
-        close = data['Close'].iloc[idx]
-        bb_high = data['BB_High'].iloc[idx]
-        bb_low = data['BB_Low'].iloc[idx]
+        bb_pct = data["BB_Pct"].iloc[idx]
+        close = data["Close"].iloc[idx]
+        bb_high = data["BB_High"].iloc[idx]
+        bb_low = data["BB_Low"].iloc[idx]
 
         # Mean reversion at bands
         if bb_pct <= 0.0:  # Below lower band
@@ -258,7 +261,7 @@ class TechnicalAnalyzer:
                 direction="BULLISH",
                 strength=min(1.0, abs(bb_pct)),
                 value=bb_pct,
-                trigger_price=bb_low
+                trigger_price=bb_low,
             )
         elif bb_pct >= 1.0:  # Above upper band
             return TechnicalSignal(
@@ -267,7 +270,7 @@ class TechnicalAnalyzer:
                 direction="BEARISH",
                 strength=min(1.0, bb_pct - 1.0),
                 value=bb_pct,
-                trigger_price=bb_high
+                trigger_price=bb_high,
             )
 
         # Breakout from bands
@@ -278,7 +281,7 @@ class TechnicalAnalyzer:
                 direction="BULLISH",
                 strength=0.5,
                 value=bb_pct,
-                trigger_price=close
+                trigger_price=close,
             )
         elif bb_pct > 0.8:
             return TechnicalSignal(
@@ -287,7 +290,7 @@ class TechnicalAnalyzer:
                 direction="BEARISH",
                 strength=0.5,
                 value=bb_pct,
-                trigger_price=close
+                trigger_price=close,
             )
 
         return TechnicalSignal(
@@ -296,15 +299,15 @@ class TechnicalAnalyzer:
             direction="NEUTRAL",
             strength=0.0,
             value=bb_pct,
-            trigger_price=close
+            trigger_price=close,
         )
 
     def analyze_all(self, data: pd.DataFrame, idx: int) -> Dict[str, TechnicalSignal]:
         """Get all technical signals"""
         return {
-            'RSI': self.get_rsi_signal(data, idx),
-            'MACD': self.get_macd_signal(data, idx),
-            'BB': self.get_bollinger_signal(data, idx)
+            "RSI": self.get_rsi_signal(data, idx),
+            "MACD": self.get_macd_signal(data, idx),
+            "BB": self.get_bollinger_signal(data, idx),
         }
 
 
@@ -324,29 +327,35 @@ class TriggerFinder:
 
         try:
             from ai.cnn_stock_predictor import get_cnn_predictor
+
             self.cnn = get_cnn_predictor()
         except Exception as e:
             logger.warning(f"Could not load CNN model: {e}")
 
         try:
             from ai.lstm_stock_predictor import get_lstm_predictor
+
             self.lstm = get_lstm_predictor("lstm")
         except Exception as e:
             logger.warning(f"Could not load LSTM model: {e}")
 
         try:
             from ai.lstm_stock_predictor import get_lstm_predictor
+
             self.convlstm = get_lstm_predictor("convlstm")
         except Exception as e:
             logger.warning(f"Could not load ConvLSTM model: {e}")
 
         try:
             from ai.alpaca_ai_predictor import get_alpaca_predictor
+
             self.lgb = get_alpaca_predictor()
         except Exception as e:
             logger.warning(f"Could not load LightGBM model: {e}")
 
-        loaded = sum([1 for m in [self.cnn, self.lstm, self.convlstm, self.lgb] if m is not None])
+        loaded = sum(
+            [1 for m in [self.cnn, self.lstm, self.convlstm, self.lgb] if m is not None]
+        )
         logger.info(f"Models loaded successfully: {loaded}/4")
         return loaded > 0
 
@@ -357,54 +366,59 @@ class TriggerFinder:
         if self.cnn:
             try:
                 cnn_pred = self.cnn.predict(symbol, data)
-                predictions['CNN'] = {
-                    'action': cnn_pred.get('action', 'HOLD'),
-                    'confidence': cnn_pred.get('confidence', 0),
-                    'momentum': cnn_pred.get('momentum_score', 0)
+                predictions["CNN"] = {
+                    "action": cnn_pred.get("action", "HOLD"),
+                    "confidence": cnn_pred.get("confidence", 0),
+                    "momentum": cnn_pred.get("momentum_score", 0),
                 }
             except:
-                predictions['CNN'] = {'action': 'HOLD', 'confidence': 0, 'momentum': 0}
+                predictions["CNN"] = {"action": "HOLD", "confidence": 0, "momentum": 0}
 
         if self.lstm:
             try:
                 lstm_pred = self.lstm.predict(symbol, data)
-                predictions['LSTM'] = {
-                    'action': lstm_pred.get('action', 'HOLD'),
-                    'confidence': lstm_pred.get('confidence', 0),
-                    'momentum': lstm_pred.get('momentum_score', 0)
+                predictions["LSTM"] = {
+                    "action": lstm_pred.get("action", "HOLD"),
+                    "confidence": lstm_pred.get("confidence", 0),
+                    "momentum": lstm_pred.get("momentum_score", 0),
                 }
             except:
-                predictions['LSTM'] = {'action': 'HOLD', 'confidence': 0, 'momentum': 0}
+                predictions["LSTM"] = {"action": "HOLD", "confidence": 0, "momentum": 0}
 
         if self.convlstm:
             try:
                 convlstm_pred = self.convlstm.predict(symbol, data)
-                predictions['ConvLSTM'] = {
-                    'action': convlstm_pred.get('action', 'HOLD'),
-                    'confidence': convlstm_pred.get('confidence', 0),
-                    'momentum': convlstm_pred.get('momentum_score', 0)
+                predictions["ConvLSTM"] = {
+                    "action": convlstm_pred.get("action", "HOLD"),
+                    "confidence": convlstm_pred.get("confidence", 0),
+                    "momentum": convlstm_pred.get("momentum_score", 0),
                 }
             except:
-                predictions['ConvLSTM'] = {'action': 'HOLD', 'confidence': 0, 'momentum': 0}
+                predictions["ConvLSTM"] = {
+                    "action": "HOLD",
+                    "confidence": 0,
+                    "momentum": 0,
+                }
 
         if self.lgb:
             try:
                 lgb_pred = self.lgb.predict(symbol)
-                predictions['LightGBM'] = {
-                    'action': lgb_pred.get('action', 'HOLD'),
-                    'confidence': lgb_pred.get('confidence', 0),
-                    'momentum': 0
+                predictions["LightGBM"] = {
+                    "action": lgb_pred.get("action", "HOLD"),
+                    "confidence": lgb_pred.get("confidence", 0),
+                    "momentum": 0,
                 }
             except:
-                predictions['LightGBM'] = {'action': 'HOLD', 'confidence': 0, 'momentum': 0}
+                predictions["LightGBM"] = {
+                    "action": "HOLD",
+                    "confidence": 0,
+                    "momentum": 0,
+                }
 
         return predictions
 
     def find_triggers(
-        self,
-        symbol: str,
-        data: pd.DataFrame,
-        lookback: int = 60
+        self, symbol: str, data: pd.DataFrame, lookback: int = 60
     ) -> List[TriggerPoint]:
         """Find buy/sell triggers by combining ML + technicals"""
         triggers = []
@@ -416,8 +430,8 @@ class TriggerFinder:
         if len(data) < lookback + 10:
             return triggers
 
-        close = data['Close'].values
-        if hasattr(close, 'flatten'):
+        close = data["Close"].values
+        if hasattr(close, "flatten"):
             close = close.flatten()
 
         # Walk through data
@@ -426,7 +440,7 @@ class TriggerFinder:
             tech_signals = self.tech_analyzer.analyze_all(data, i)
 
             # Get ML predictions using data up to this point
-            subset = data.iloc[:i+1].copy()
+            subset = data.iloc[: i + 1].copy()
             ml_preds = self.get_model_predictions(symbol, subset)
 
             # Current price
@@ -438,8 +452,7 @@ class TriggerFinder:
 
             # Find trigger conditions
             trigger = self._evaluate_trigger(
-                symbol, i, data, current_price,
-                tech_signals, ml_preds, actual_return
+                symbol, i, data, current_price, tech_signals, ml_preds, actual_return
             )
 
             if trigger:
@@ -456,13 +469,13 @@ class TriggerFinder:
         price: float,
         tech_signals: Dict[str, TechnicalSignal],
         ml_preds: Dict,
-        actual_return: float
+        actual_return: float,
     ) -> Optional[TriggerPoint]:
         """Evaluate if conditions warrant a trigger"""
 
-        rsi_sig = tech_signals['RSI']
-        macd_sig = tech_signals['MACD']
-        bb_sig = tech_signals['BB']
+        rsi_sig = tech_signals["RSI"]
+        macd_sig = tech_signals["MACD"]
+        bb_sig = tech_signals["BB"]
 
         # Count bullish/bearish signals
         bullish_count = 0
@@ -485,12 +498,12 @@ class TriggerFinder:
         ml_confidence = 0
 
         for name, pred in ml_preds.items():
-            if pred['action'] == 'BUY':
+            if pred["action"] == "BUY":
                 ml_bullish += 1
-                ml_confidence += pred['confidence']
-            elif pred['action'] == 'SELL':
+                ml_confidence += pred["confidence"]
+            elif pred["action"] == "SELL":
                 ml_bearish += 1
-                ml_confidence += pred['confidence']
+                ml_confidence += pred["confidence"]
 
         # Determine trigger conditions
         num_ml_models = len(ml_preds)  # How many models we actually have
@@ -498,36 +511,48 @@ class TriggerFinder:
 
         # BREAKOUT BUY: MACD strong bullish crossover + RSI momentum zone (40-60)
         # Only trigger on actual histogram crossovers (high strength), not just continuation
-        if (macd_sig.signal_type == "BREAKOUT" and macd_sig.direction == "BULLISH" and
-            macd_sig.strength >= 0.8 and  # Only strong MACD crossovers
-            40 < rsi_sig.value < 65):  # RSI in momentum zone, room to run
+        if (
+            macd_sig.signal_type == "BREAKOUT"
+            and macd_sig.direction == "BULLISH"
+            and macd_sig.strength >= 0.8  # Only strong MACD crossovers
+            and 40 < rsi_sig.value < 65
+        ):  # RSI in momentum zone, room to run
             ml_boost = 0.2 if ml_bullish >= ml_thresh else 0
             trigger_type = "BREAKOUT"
             action = "BUY"
             confidence = min(1.0, macd_sig.strength + ml_boost)
 
         # REVERSION BUY: RSI oversold (< 30) + BB at lower band
-        elif (rsi_sig.signal_type == "REVERSION" and rsi_sig.direction == "BULLISH" and
-              rsi_sig.value < 30 and  # True oversold
-              bb_sig.direction == "BULLISH"):
+        elif (
+            rsi_sig.signal_type == "REVERSION"
+            and rsi_sig.direction == "BULLISH"
+            and rsi_sig.value < 30  # True oversold
+            and bb_sig.direction == "BULLISH"
+        ):
             ml_boost = 0.2 if ml_bullish >= 1 else 0
             trigger_type = "REVERSION"
             action = "BUY"
             confidence = min(1.0, (rsi_sig.strength + bb_sig.strength) / 2 + ml_boost)
 
         # BREAKOUT SELL: MACD strong bearish crossover + RSI momentum zone
-        elif (macd_sig.signal_type == "BREAKOUT" and macd_sig.direction == "BEARISH" and
-              macd_sig.strength >= 0.8 and  # Only strong MACD crossovers
-              35 < rsi_sig.value < 60):  # RSI in momentum zone, room to fall
+        elif (
+            macd_sig.signal_type == "BREAKOUT"
+            and macd_sig.direction == "BEARISH"
+            and macd_sig.strength >= 0.8  # Only strong MACD crossovers
+            and 35 < rsi_sig.value < 60
+        ):  # RSI in momentum zone, room to fall
             ml_boost = 0.2 if ml_bearish >= ml_thresh else 0
             trigger_type = "BREAKOUT"
             action = "SELL"
             confidence = min(1.0, macd_sig.strength + ml_boost)
 
         # REVERSION SELL: RSI overbought (> 70) + BB at upper band
-        elif (rsi_sig.signal_type == "REVERSION" and rsi_sig.direction == "BEARISH" and
-              rsi_sig.value > 70 and  # True overbought
-              bb_sig.direction == "BEARISH"):
+        elif (
+            rsi_sig.signal_type == "REVERSION"
+            and rsi_sig.direction == "BEARISH"
+            and rsi_sig.value > 70  # True overbought
+            and bb_sig.direction == "BEARISH"
+        ):
             ml_boost = 0.2 if ml_bearish >= 1 else 0
             trigger_type = "REVERSION"
             action = "SELL"
@@ -540,12 +565,20 @@ class TriggerFinder:
             confidence = rsi_sig.strength
 
         # ML CONSENSUS: All loaded models agree with high confidence
-        elif num_ml_models >= 2 and ml_bullish == num_ml_models and ml_confidence / num_ml_models > 0.6:
+        elif (
+            num_ml_models >= 2
+            and ml_bullish == num_ml_models
+            and ml_confidence / num_ml_models > 0.6
+        ):
             trigger_type = "MODEL_AGREE"
             action = "BUY"
             confidence = ml_confidence / num_ml_models
 
-        elif num_ml_models >= 2 and ml_bearish == num_ml_models and ml_confidence / num_ml_models > 0.6:
+        elif (
+            num_ml_models >= 2
+            and ml_bearish == num_ml_models
+            and ml_confidence / num_ml_models > 0.6
+        ):
             trigger_type = "MODEL_AGREE"
             action = "SELL"
             confidence = ml_confidence / num_ml_models
@@ -554,18 +587,30 @@ class TriggerFinder:
             return None
 
         # Calculate stop loss and take profit based on ATR
-        atr = data['ATR'].iloc[idx]
+        atr = data["ATR"].iloc[idx]
         if action == "BUY":
             stop_loss = price - (2.0 * atr)
             take_profit = price + (3.0 * atr)
-            outcome = "WIN" if actual_return > 0.01 else ("LOSS" if actual_return < -0.01 else "NEUTRAL")
+            outcome = (
+                "WIN"
+                if actual_return > 0.01
+                else ("LOSS" if actual_return < -0.01 else "NEUTRAL")
+            )
         else:
             stop_loss = price + (2.0 * atr)
             take_profit = price - (3.0 * atr)
-            outcome = "WIN" if actual_return < -0.01 else ("LOSS" if actual_return > 0.01 else "NEUTRAL")
+            outcome = (
+                "WIN"
+                if actual_return < -0.01
+                else ("LOSS" if actual_return > 0.01 else "NEUTRAL")
+            )
 
         return TriggerPoint(
-            timestamp=str(data.index[idx]) if hasattr(data.index[idx], 'strftime') else str(idx),
+            timestamp=(
+                str(data.index[idx])
+                if hasattr(data.index[idx], "strftime")
+                else str(idx)
+            ),
             symbol=symbol,
             action=action,
             trigger_type=trigger_type,
@@ -574,13 +619,13 @@ class TriggerFinder:
             stop_loss=stop_loss,
             take_profit=take_profit,
             signals={
-                'RSI': asdict(rsi_sig),
-                'MACD': asdict(macd_sig),
-                'BB': asdict(bb_sig),
-                'ML': ml_preds
+                "RSI": asdict(rsi_sig),
+                "MACD": asdict(macd_sig),
+                "BB": asdict(bb_sig),
+                "ML": ml_preds,
             },
             outcome=outcome,
-            actual_return=actual_return
+            actual_return=actual_return,
         )
 
     def analyze_trigger_performance(self, triggers: List[TriggerPoint]) -> Dict:
@@ -589,67 +634,79 @@ class TriggerFinder:
             return {}
 
         results = {
-            'total_triggers': len(triggers),
-            'by_type': {},
-            'by_action': {},
-            'overall': {}
+            "total_triggers": len(triggers),
+            "by_type": {},
+            "by_action": {},
+            "overall": {},
         }
 
         # By trigger type
-        for ttype in ['BREAKOUT', 'REVERSION', 'MODEL_AGREE']:
+        for ttype in ["BREAKOUT", "REVERSION", "MODEL_AGREE"]:
             type_triggers = [t for t in triggers if t.trigger_type == ttype]
             if type_triggers:
-                wins = len([t for t in type_triggers if t.outcome == 'WIN'])
-                losses = len([t for t in type_triggers if t.outcome == 'LOSS'])
+                wins = len([t for t in type_triggers if t.outcome == "WIN"])
+                losses = len([t for t in type_triggers if t.outcome == "LOSS"])
                 total = len(type_triggers)
-                returns = [t.actual_return for t in type_triggers if t.actual_return is not None]
+                returns = [
+                    t.actual_return
+                    for t in type_triggers
+                    if t.actual_return is not None
+                ]
 
-                results['by_type'][ttype] = {
-                    'count': total,
-                    'wins': wins,
-                    'losses': losses,
-                    'win_rate': wins / total if total > 0 else 0,
-                    'avg_return': np.mean(returns) * 100 if returns else 0,
-                    'total_return': np.sum(returns) * 100 if returns else 0
+                results["by_type"][ttype] = {
+                    "count": total,
+                    "wins": wins,
+                    "losses": losses,
+                    "win_rate": wins / total if total > 0 else 0,
+                    "avg_return": np.mean(returns) * 100 if returns else 0,
+                    "total_return": np.sum(returns) * 100 if returns else 0,
                 }
 
         # By action
-        for action in ['BUY', 'SELL']:
+        for action in ["BUY", "SELL"]:
             action_triggers = [t for t in triggers if t.action == action]
             if action_triggers:
-                wins = len([t for t in action_triggers if t.outcome == 'WIN'])
+                wins = len([t for t in action_triggers if t.outcome == "WIN"])
                 total = len(action_triggers)
-                returns = [t.actual_return for t in action_triggers if t.actual_return is not None]
+                returns = [
+                    t.actual_return
+                    for t in action_triggers
+                    if t.actual_return is not None
+                ]
 
                 # Adjust returns for sell (profit when price goes down)
-                if action == 'SELL':
+                if action == "SELL":
                     returns = [-r for r in returns]
 
-                results['by_action'][action] = {
-                    'count': total,
-                    'wins': wins,
-                    'win_rate': wins / total if total > 0 else 0,
-                    'avg_return': np.mean(returns) * 100 if returns else 0,
-                    'total_return': np.sum(returns) * 100 if returns else 0
+                results["by_action"][action] = {
+                    "count": total,
+                    "wins": wins,
+                    "win_rate": wins / total if total > 0 else 0,
+                    "avg_return": np.mean(returns) * 100 if returns else 0,
+                    "total_return": np.sum(returns) * 100 if returns else 0,
                 }
 
         # Overall
-        all_wins = len([t for t in triggers if t.outcome == 'WIN'])
+        all_wins = len([t for t in triggers if t.outcome == "WIN"])
         all_returns = []
         for t in triggers:
             if t.actual_return is not None:
-                if t.action == 'SELL':
+                if t.action == "SELL":
                     all_returns.append(-t.actual_return)
                 else:
                     all_returns.append(t.actual_return)
 
-        results['overall'] = {
-            'total': len(triggers),
-            'wins': all_wins,
-            'win_rate': all_wins / len(triggers) if triggers else 0,
-            'avg_return': np.mean(all_returns) * 100 if all_returns else 0,
-            'total_return': np.sum(all_returns) * 100 if all_returns else 0,
-            'sharpe': np.mean(all_returns) / (np.std(all_returns) + 1e-8) * np.sqrt(252) if all_returns else 0
+        results["overall"] = {
+            "total": len(triggers),
+            "wins": all_wins,
+            "win_rate": all_wins / len(triggers) if triggers else 0,
+            "avg_return": np.mean(all_returns) * 100 if all_returns else 0,
+            "total_return": np.sum(all_returns) * 100 if all_returns else 0,
+            "sharpe": (
+                np.mean(all_returns) / (np.std(all_returns) + 1e-8) * np.sqrt(252)
+                if all_returns
+                else 0
+            ),
         }
 
         return results
@@ -698,18 +755,22 @@ def main():
 
             logger.info(f"\nTriggers found: {len(triggers)}")
 
-            if results.get('by_type'):
+            if results.get("by_type"):
                 logger.info("\nBy Trigger Type:")
-                for ttype, stats in results['by_type'].items():
-                    logger.info(f"  {ttype:12}: {stats['count']:3} triggers, "
-                               f"Win Rate: {stats['win_rate']*100:5.1f}%, "
-                               f"Avg Return: {stats['avg_return']:+6.2f}%")
+                for ttype, stats in results["by_type"].items():
+                    logger.info(
+                        f"  {ttype:12}: {stats['count']:3} triggers, "
+                        f"Win Rate: {stats['win_rate']*100:5.1f}%, "
+                        f"Avg Return: {stats['avg_return']:+6.2f}%"
+                    )
 
-            if results.get('overall'):
-                overall = results['overall']
-                logger.info(f"\nOverall: Win Rate {overall['win_rate']*100:.1f}%, "
-                           f"Total Return: {overall['total_return']:+.2f}%, "
-                           f"Sharpe: {overall['sharpe']:.2f}")
+            if results.get("overall"):
+                overall = results["overall"]
+                logger.info(
+                    f"\nOverall: Win Rate {overall['win_rate']*100:.1f}%, "
+                    f"Total Return: {overall['total_return']:+.2f}%, "
+                    f"Sharpe: {overall['sharpe']:.2f}"
+                )
 
         except Exception as e:
             logger.error(f"Error analyzing {symbol}: {e}")
@@ -728,16 +789,20 @@ def main():
         logger.info(f"Sharpe Ratio: {aggregate['overall']['sharpe']:.2f}")
 
         logger.info("\nBY TRIGGER TYPE:")
-        for ttype, stats in aggregate.get('by_type', {}).items():
-            logger.info(f"  {ttype:15}: Win Rate {stats['win_rate']*100:5.1f}%, "
-                       f"Return {stats['total_return']:+7.2f}%, "
-                       f"Count: {stats['count']}")
+        for ttype, stats in aggregate.get("by_type", {}).items():
+            logger.info(
+                f"  {ttype:15}: Win Rate {stats['win_rate']*100:5.1f}%, "
+                f"Return {stats['total_return']:+7.2f}%, "
+                f"Count: {stats['count']}"
+            )
 
         logger.info("\nBY ACTION:")
-        for action, stats in aggregate.get('by_action', {}).items():
-            logger.info(f"  {action:4}: Win Rate {stats['win_rate']*100:5.1f}%, "
-                       f"Return {stats['total_return']:+7.2f}%, "
-                       f"Count: {stats['count']}")
+        for action, stats in aggregate.get("by_action", {}).items():
+            logger.info(
+                f"  {action:4}: Win Rate {stats['win_rate']*100:5.1f}%, "
+                f"Return {stats['total_return']:+7.2f}%, "
+                f"Count: {stats['count']}"
+            )
 
         # Best triggers
         logger.info("\n" + "=" * 60)
@@ -745,15 +810,29 @@ def main():
         logger.info("=" * 60)
 
         # Analyze best combinations
-        breakout_buys = [t for t in all_triggers if t.trigger_type == 'BREAKOUT' and t.action == 'BUY']
-        reversion_buys = [t for t in all_triggers if t.trigger_type == 'REVERSION' and t.action == 'BUY']
-        model_agree_buys = [t for t in all_triggers if t.trigger_type == 'MODEL_AGREE' and t.action == 'BUY']
+        breakout_buys = [
+            t
+            for t in all_triggers
+            if t.trigger_type == "BREAKOUT" and t.action == "BUY"
+        ]
+        reversion_buys = [
+            t
+            for t in all_triggers
+            if t.trigger_type == "REVERSION" and t.action == "BUY"
+        ]
+        model_agree_buys = [
+            t
+            for t in all_triggers
+            if t.trigger_type == "MODEL_AGREE" and t.action == "BUY"
+        ]
 
-        for name, triggers in [('BREAKOUT BUY', breakout_buys),
-                               ('REVERSION BUY', reversion_buys),
-                               ('MODEL AGREE BUY', model_agree_buys)]:
+        for name, triggers in [
+            ("BREAKOUT BUY", breakout_buys),
+            ("REVERSION BUY", reversion_buys),
+            ("MODEL AGREE BUY", model_agree_buys),
+        ]:
             if triggers:
-                wins = len([t for t in triggers if t.outcome == 'WIN'])
+                wins = len([t for t in triggers if t.outcome == "WIN"])
                 returns = [t.actual_return for t in triggers if t.actual_return]
                 logger.info(f"\n{name}:")
                 logger.info(f"  Count: {len(triggers)}")
@@ -761,10 +840,10 @@ def main():
                 logger.info(f"  Avg Return: {np.mean(returns)*100:.2f}%")
 
                 # Show conditions that led to wins
-                winning = [t for t in triggers if t.outcome == 'WIN']
+                winning = [t for t in triggers if t.outcome == "WIN"]
                 if winning:
-                    avg_rsi = np.mean([t.signals['RSI']['value'] for t in winning])
-                    avg_macd = np.mean([t.signals['MACD']['value'] for t in winning])
+                    avg_rsi = np.mean([t.signals["RSI"]["value"] for t in winning])
+                    avg_macd = np.mean([t.signals["MACD"]["value"] for t in winning])
                     logger.info(f"  Avg RSI (winners): {avg_rsi:.1f}")
                     logger.info(f"  Avg MACD (winners): {avg_macd:.4f}")
 
@@ -777,12 +856,15 @@ def main():
         best_winrate = 0
         best_combo = None
 
-        for ttype in ['BREAKOUT', 'REVERSION', 'MODEL_AGREE']:
-            for action in ['BUY', 'SELL']:
-                combo_triggers = [t for t in all_triggers
-                                 if t.trigger_type == ttype and t.action == action]
+        for ttype in ["BREAKOUT", "REVERSION", "MODEL_AGREE"]:
+            for action in ["BUY", "SELL"]:
+                combo_triggers = [
+                    t
+                    for t in all_triggers
+                    if t.trigger_type == ttype and t.action == action
+                ]
                 if len(combo_triggers) >= 5:
-                    wins = len([t for t in combo_triggers if t.outcome == 'WIN'])
+                    wins = len([t for t in combo_triggers if t.outcome == "WIN"])
                     winrate = wins / len(combo_triggers)
                     if winrate > best_winrate:
                         best_winrate = winrate
@@ -795,21 +877,21 @@ def main():
             logger.info(f"Sample Size: {len(triggers)}")
 
             # Extract common conditions from winners
-            winners = [t for t in triggers if t.outcome == 'WIN']
+            winners = [t for t in triggers if t.outcome == "WIN"]
             if winners:
-                avg_rsi = np.mean([t.signals['RSI']['value'] for t in winners])
+                avg_rsi = np.mean([t.signals["RSI"]["value"] for t in winners])
                 avg_conf = np.mean([t.confidence for t in winners])
 
                 logger.info(f"\nOptimal Conditions for {ttype} {action}:")
-                if ttype == 'REVERSION' and action == 'BUY':
+                if ttype == "REVERSION" and action == "BUY":
                     logger.info(f"  - RSI < {avg_rsi + 5:.0f} (oversold zone)")
                     logger.info(f"  - Price at/below lower Bollinger Band")
                     logger.info(f"  - At least 1 ML model says BUY")
-                elif ttype == 'BREAKOUT' and action == 'BUY':
+                elif ttype == "BREAKOUT" and action == "BUY":
                     logger.info(f"  - MACD histogram crossing above 0")
                     logger.info(f"  - RSI between 40-70 (not overbought)")
                     logger.info(f"  - 2+ ML models say BUY")
-                elif ttype == 'MODEL_AGREE':
+                elif ttype == "MODEL_AGREE":
                     logger.info(f"  - 3+ ML models agree on direction")
                     logger.info(f"  - At least 1 technical indicator confirms")
 

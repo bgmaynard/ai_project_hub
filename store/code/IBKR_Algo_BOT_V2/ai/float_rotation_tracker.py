@@ -16,42 +16,44 @@ Example:
 - Indicates extreme interest and potential for continued momentum
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
-import asyncio
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class RotationLevel(Enum):
     """Float rotation levels"""
-    NONE = "NONE"           # < 0.25x
-    WARMING = "WARMING"     # 0.25x - 0.5x
-    ACTIVE = "ACTIVE"       # 0.5x - 1.0x
-    ROTATING = "ROTATING"   # 1.0x - 2.0x
-    HOT = "HOT"             # 2.0x - 3.0x
-    EXTREME = "EXTREME"     # 3.0x+
+
+    NONE = "NONE"  # < 0.25x
+    WARMING = "WARMING"  # 0.25x - 0.5x
+    ACTIVE = "ACTIVE"  # 0.5x - 1.0x
+    ROTATING = "ROTATING"  # 1.0x - 2.0x
+    HOT = "HOT"  # 2.0x - 3.0x
+    EXTREME = "EXTREME"  # 3.0x+
 
 
 @dataclass
 class FloatData:
     """Float and volume data for a symbol"""
+
     symbol: str
-    float_shares: int = 0           # Free float in shares
-    shares_outstanding: int = 0     # Total shares
+    float_shares: int = 0  # Free float in shares
+    shares_outstanding: int = 0  # Total shares
 
     # Daily volume tracking
-    cumulative_volume: int = 0      # Total volume today
-    premarket_volume: int = 0       # Pre-market volume
-    regular_volume: int = 0         # Regular hours volume
+    cumulative_volume: int = 0  # Total volume today
+    premarket_volume: int = 0  # Pre-market volume
+    regular_volume: int = 0  # Regular hours volume
 
     # Rotation calculations
-    rotation_ratio: float = 0.0     # cumulative_volume / float_shares
+    rotation_ratio: float = 0.0  # cumulative_volume / float_shares
     rotation_level: RotationLevel = RotationLevel.NONE
-    rotations_completed: int = 0    # Number of full rotations (1x, 2x, 3x...)
+    rotations_completed: int = 0  # Number of full rotations (1x, 2x, 3x...)
 
     # Thresholds hit
     thresholds_hit: List[float] = field(default_factory=list)  # [0.5, 1.0, 2.0, ...]
@@ -62,21 +64,27 @@ class FloatData:
     time_to_first_rotation: Optional[float] = None  # Minutes to hit 1x
 
     # Quality indicators
-    is_low_float: bool = False      # < 20M shares
-    is_micro_float: bool = False    # < 5M shares
-    is_nano_float: bool = False     # < 1M shares
+    is_low_float: bool = False  # < 20M shares
+    is_micro_float: bool = False  # < 5M shares
+    is_nano_float: bool = False  # < 1M shares
 
     # Average metrics
     avg_daily_volume: int = 0
-    relative_volume: float = 0.0    # Today vs average
+    relative_volume: float = 0.0  # Today vs average
 
     def to_dict(self) -> Dict:
         return {
             "symbol": self.symbol,
             "float_shares": self.float_shares,
-            "float_millions": round(self.float_shares / 1_000_000, 2) if self.float_shares else 0,
+            "float_millions": (
+                round(self.float_shares / 1_000_000, 2) if self.float_shares else 0
+            ),
             "cumulative_volume": self.cumulative_volume,
-            "volume_millions": round(self.cumulative_volume / 1_000_000, 2) if self.cumulative_volume else 0,
+            "volume_millions": (
+                round(self.cumulative_volume / 1_000_000, 2)
+                if self.cumulative_volume
+                else 0
+            ),
             "rotation_ratio": round(self.rotation_ratio, 2),
             "rotation_level": self.rotation_level.value,
             "rotations_completed": self.rotations_completed,
@@ -87,16 +95,17 @@ class FloatData:
             "relative_volume": round(self.relative_volume, 2),
             "time_to_first_rotation": self.time_to_first_rotation,
             "last_update": self.last_update,
-            "date": self.date
+            "date": self.date,
         }
 
 
 @dataclass
 class RotationAlert:
     """Alert when rotation threshold is crossed"""
+
     symbol: str
-    threshold: float        # 0.5, 1.0, 2.0, etc.
-    rotation_ratio: float   # Actual ratio when crossed
+    threshold: float  # 0.5, 1.0, 2.0, etc.
+    rotation_ratio: float  # Actual ratio when crossed
     volume: int
     float_shares: int
     timestamp: str
@@ -111,7 +120,7 @@ class RotationAlert:
             "float_millions": round(self.float_shares / 1_000_000, 2),
             "timestamp": self.timestamp,
             "is_low_float": self.is_low_float,
-            "message": f"{self.symbol} hit {self.threshold}x float rotation ({self.rotation_ratio:.1f}x)"
+            "message": f"{self.symbol} hit {self.threshold}x float rotation ({self.rotation_ratio:.1f}x)",
         }
 
 
@@ -129,9 +138,9 @@ class FloatRotationTracker:
     ROTATION_THRESHOLDS = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]
 
     # Float classifications (in shares)
-    NANO_FLOAT_MAX = 1_000_000      # < 1M = nano float
-    MICRO_FLOAT_MAX = 5_000_000     # < 5M = micro float
-    LOW_FLOAT_MAX = 20_000_000      # < 20M = low float
+    NANO_FLOAT_MAX = 1_000_000  # < 1M = nano float
+    MICRO_FLOAT_MAX = 5_000_000  # < 5M = micro float
+    LOW_FLOAT_MAX = 20_000_000  # < 20M = low float
 
     def __init__(self):
         # Float data per symbol
@@ -196,7 +205,9 @@ class FloatRotationTracker:
                 if fundamentals.avg_volume:
                     self.avg_volume_cache[symbol] = int(fundamentals.avg_volume)
 
-                logger.info(f"Loaded float for {symbol}: {fundamentals.float_shares:,.0f} shares")
+                logger.info(
+                    f"Loaded float for {symbol}: {fundamentals.float_shares:,.0f} shares"
+                )
                 return int(fundamentals.float_shares)
 
         except Exception as e:
@@ -272,13 +283,18 @@ class FloatRotationTracker:
         alerts = []
 
         for threshold in self.ROTATION_THRESHOLDS:
-            if threshold not in data.thresholds_hit and data.rotation_ratio >= threshold:
+            if (
+                threshold not in data.thresholds_hit
+                and data.rotation_ratio >= threshold
+            ):
                 data.thresholds_hit.append(threshold)
 
                 # Track time to first rotation
                 if threshold == 1.0 and data.time_to_first_rotation is None:
                     if self.market_open_time:
-                        minutes = (datetime.now() - self.market_open_time).total_seconds() / 60
+                        minutes = (
+                            datetime.now() - self.market_open_time
+                        ).total_seconds() / 60
                         data.time_to_first_rotation = round(minutes, 1)
 
                 alert = RotationAlert(
@@ -288,7 +304,7 @@ class FloatRotationTracker:
                     volume=data.cumulative_volume,
                     float_shares=data.float_shares,
                     timestamp=datetime.now().isoformat(),
-                    is_low_float=data.is_low_float
+                    is_low_float=data.is_low_float,
                 )
                 alerts.append(alert)
 
@@ -302,7 +318,9 @@ class FloatRotationTracker:
 
         return alerts
 
-    def update_volume(self, symbol: str, volume: int, is_premarket: bool = False) -> Optional[FloatData]:
+    def update_volume(
+        self, symbol: str, volume: int, is_premarket: bool = False
+    ) -> Optional[FloatData]:
         """
         Update volume for a symbol.
 
@@ -329,7 +347,7 @@ class FloatRotationTracker:
                 symbol=symbol,
                 float_shares=float_shares,
                 avg_daily_volume=avg_vol,
-                date=self.today
+                date=self.today,
             )
             self._classify_float(self.float_data[symbol])
 
@@ -358,7 +376,7 @@ class FloatRotationTracker:
         for alert in alerts:
             self.alerts.append(alert)
             if len(self.alerts) > self.max_alerts:
-                self.alerts = self.alerts[-self.max_alerts:]
+                self.alerts = self.alerts[-self.max_alerts :]
 
             # Fire callback if registered
             if self.on_rotation_alert:
@@ -457,9 +475,12 @@ class FloatRotationTracker:
             "date": self.today,
             "top_rotators": [
                 {"symbol": d.symbol, "rotation": round(d.rotation_ratio, 2)}
-                for d in sorted(self.float_data.values(),
-                               key=lambda x: x.rotation_ratio, reverse=True)[:5]
-            ]
+                for d in sorted(
+                    self.float_data.values(),
+                    key=lambda x: x.rotation_ratio,
+                    reverse=True,
+                )[:5]
+            ],
         }
 
     def get_all_data(self) -> Dict[str, Dict]:
@@ -480,7 +501,9 @@ def get_float_tracker() -> FloatRotationTracker:
 
 
 # Convenience functions
-def update_float_volume(symbol: str, volume: int, is_premarket: bool = False) -> Optional[FloatData]:
+def update_float_volume(
+    symbol: str, volume: int, is_premarket: bool = False
+) -> Optional[FloatData]:
     """Update volume for float tracking"""
     return get_float_tracker().update_volume(symbol, volume, is_premarket)
 

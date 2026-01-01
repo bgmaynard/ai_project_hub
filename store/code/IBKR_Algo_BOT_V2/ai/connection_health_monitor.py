@@ -19,10 +19,10 @@ Features:
 import logging
 import threading
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +60,19 @@ class ConnectionHealthMonitor:
         # Connection statuses
         self._connections: Dict[str, ConnectionStatus] = {
             "schwab_broker": ConnectionStatus("Schwab Broker", ConnectionState.UNKNOWN),
-            "schwab_market_data": ConnectionStatus("Schwab Market Data", ConnectionState.UNKNOWN),
-            "api_server": ConnectionStatus("API Server", ConnectionState.CONNECTED),  # We're running
+            "schwab_market_data": ConnectionStatus(
+                "Schwab Market Data", ConnectionState.UNKNOWN
+            ),
+            "api_server": ConnectionStatus(
+                "API Server", ConnectionState.CONNECTED
+            ),  # We're running
         }
 
         # Optional connections (not monitored by default)
         self._optional_connections: Dict[str, ConnectionStatus] = {
-            "polygon_stream": ConnectionStatus("Polygon Stream", ConnectionState.DISCONNECTED),
+            "polygon_stream": ConnectionStatus(
+                "Polygon Stream", ConnectionState.DISCONNECTED
+            ),
         }
 
         # Polygon disabled - using Schwab only (saves $199/mo)
@@ -135,6 +141,7 @@ class ConnectionHealthMonitor:
         conn = self._connections["schwab_broker"]
         try:
             from unified_broker import get_unified_broker
+
             broker = get_unified_broker()
             if broker and broker.is_connected:
                 self._mark_connected(conn, extra={"broker": broker.broker_name})
@@ -147,11 +154,15 @@ class ConnectionHealthMonitor:
         """Check Schwab market data connection"""
         conn = self._connections["schwab_market_data"]
         try:
-            from schwab_market_data import is_schwab_available, get_token_status
+            from schwab_market_data import (get_token_status,
+                                            is_schwab_available)
+
             if is_schwab_available():
                 token_status = get_token_status()
                 if token_status.get("valid"):
-                    self._mark_connected(conn, extra={"token_status": token_status.get("status")})
+                    self._mark_connected(
+                        conn, extra={"token_status": token_status.get("status")}
+                    )
                 else:
                     self._mark_degraded(conn, f"Token: {token_status.get('message')}")
             else:
@@ -163,7 +174,9 @@ class ConnectionHealthMonitor:
         """Check Polygon WebSocket stream"""
         conn = self._connections["polygon_stream"]
         try:
-            from polygon_streaming import get_polygon_stream, is_polygon_streaming_available
+            from polygon_streaming import (get_polygon_stream,
+                                           is_polygon_streaming_available)
+
             if not is_polygon_streaming_available():
                 self._mark_disconnected(conn, "Polygon API key not configured")
                 return
@@ -171,11 +184,14 @@ class ConnectionHealthMonitor:
             stream = get_polygon_stream()
             if stream and stream.is_healthy():
                 stats = stream.get_status()
-                self._mark_connected(conn, extra={
-                    "trades_received": stats.get("trades_received", 0),
-                    "quotes_received": stats.get("quotes_received", 0),
-                    "reconnects": stats.get("reconnects", 0)
-                })
+                self._mark_connected(
+                    conn,
+                    extra={
+                        "trades_received": stats.get("trades_received", 0),
+                        "quotes_received": stats.get("quotes_received", 0),
+                        "reconnects": stats.get("reconnects", 0),
+                    },
+                )
             elif stream and stream.running:
                 # Running but not healthy - degraded
                 self._mark_degraded(conn, "Stream running but not connected")
@@ -187,7 +203,10 @@ class ConnectionHealthMonitor:
     def _mark_connected(self, conn: ConnectionStatus, extra: Dict = None):
         """Mark connection as connected"""
         with self._lock:
-            was_disconnected = conn.state in [ConnectionState.DISCONNECTED, ConnectionState.RECONNECTING]
+            was_disconnected = conn.state in [
+                ConnectionState.DISCONNECTED,
+                ConnectionState.RECONNECTING,
+            ]
             conn.state = ConnectionState.CONNECTED
             conn.last_success = datetime.now()
             conn.consecutive_failures = 0
@@ -210,7 +229,9 @@ class ConnectionHealthMonitor:
 
             if was_connected:
                 logger.warning(f"[HealthMonitor] {conn.name} DISCONNECTED: {error}")
-                self._notify_alert(conn.name, "error", f"{conn.name} disconnected: {error}")
+                self._notify_alert(
+                    conn.name, "error", f"{conn.name} disconnected: {error}"
+                )
 
             # Trigger recovery if too many failures
             if conn.consecutive_failures >= self._max_consecutive_failures:
@@ -225,12 +246,16 @@ class ConnectionHealthMonitor:
 
             if was_connected:
                 logger.warning(f"[HealthMonitor] {conn.name} DEGRADED: {error}")
-                self._notify_alert(conn.name, "warning", f"{conn.name} degraded: {error}")
+                self._notify_alert(
+                    conn.name, "warning", f"{conn.name} degraded: {error}"
+                )
 
     def _trigger_recovery(self, connection_name: str):
         """Trigger recovery for a connection"""
         if connection_name not in self._recovery_functions:
-            logger.warning(f"[HealthMonitor] No recovery function for {connection_name}")
+            logger.warning(
+                f"[HealthMonitor] No recovery function for {connection_name}"
+            )
             return
 
         conn = self._connections[connection_name]
@@ -260,10 +285,10 @@ class ConnectionHealthMonitor:
                 "connections": {
                     name: {
                         "state": conn.state.value,
-                        "failures": conn.consecutive_failures
+                        "failures": conn.consecutive_failures,
                     }
                     for name, conn in self._connections.items()
-                }
+                },
             }
             self._health_history.append(snapshot)
             if len(self._health_history) > self._max_history:
@@ -276,7 +301,10 @@ class ConnectionHealthMonitor:
             critical = ["schwab_broker", "schwab_market_data"]
             for name in critical:
                 conn = self._connections.get(name)
-                if conn and conn.state not in [ConnectionState.CONNECTED, ConnectionState.DEGRADED]:
+                if conn and conn.state not in [
+                    ConnectionState.CONNECTED,
+                    ConnectionState.DEGRADED,
+                ]:
                     return False
             return True
 
@@ -287,12 +315,16 @@ class ConnectionHealthMonitor:
             connections = {
                 name: {
                     "state": conn.state.value,
-                    "last_success": conn.last_success.isoformat() if conn.last_success else None,
-                    "last_failure": conn.last_failure.isoformat() if conn.last_failure else None,
+                    "last_success": (
+                        conn.last_success.isoformat() if conn.last_success else None
+                    ),
+                    "last_failure": (
+                        conn.last_failure.isoformat() if conn.last_failure else None
+                    ),
                     "consecutive_failures": conn.consecutive_failures,
                     "latency_ms": conn.latency_ms,
                     "error": conn.error_message,
-                    **conn.extra
+                    **conn.extra,
                 }
                 for name, conn in self._connections.items()
             }
@@ -307,14 +339,14 @@ class ConnectionHealthMonitor:
                     "last_failure": None,
                     "consecutive_failures": 0,
                     "latency_ms": None,
-                    "error": None
+                    "error": None,
                 }
 
             return {
                 "healthy": self.is_healthy(),
                 "timestamp": datetime.now().isoformat(),
                 "mode": "schwab_only",
-                "connections": connections
+                "connections": connections,
             }
 
     def get_connection_state(self, name: str) -> Optional[ConnectionState]:
@@ -328,7 +360,8 @@ class ConnectionHealthMonitor:
         with self._lock:
             cutoff = datetime.now() - timedelta(minutes=minutes)
             return [
-                h for h in self._health_history
+                h
+                for h in self._health_history
                 if datetime.fromisoformat(h["timestamp"]) > cutoff
             ]
 
@@ -348,6 +381,7 @@ def get_health_monitor() -> ConnectionHealthMonitor:
             """Attempt to recover Schwab market data"""
             try:
                 from schwab_market_data import _refresh_token
+
                 _refresh_token()
             except Exception as e:
                 logger.error(f"Schwab market data recovery failed: {e}")
@@ -356,13 +390,16 @@ def get_health_monitor() -> ConnectionHealthMonitor:
             """Attempt to recover Polygon stream"""
             try:
                 from polygon_streaming import get_polygon_stream
+
                 stream = get_polygon_stream()
                 if stream:
                     stream.restart()
             except Exception as e:
                 logger.error(f"Polygon stream recovery failed: {e}")
 
-        _health_monitor.register_recovery("schwab_market_data", recover_schwab_market_data)
+        _health_monitor.register_recovery(
+            "schwab_market_data", recover_schwab_market_data
+        )
         _health_monitor.register_recovery("polygon_stream", recover_polygon_stream)
 
     return _health_monitor
@@ -384,8 +421,10 @@ if __name__ == "__main__":
             print("\n--- Health Status ---")
             status = monitor.get_status()
             print(f"Overall Healthy: {status['healthy']}")
-            for name, conn in status['connections'].items():
-                print(f"  {name}: {conn['state']} (failures: {conn['consecutive_failures']})")
+            for name, conn in status["connections"].items():
+                print(
+                    f"  {name}: {conn['state']} (failures: {conn['consecutive_failures']})"
+                )
             time.sleep(10)
     except KeyboardInterrupt:
         monitor.stop()

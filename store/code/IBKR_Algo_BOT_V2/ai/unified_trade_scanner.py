@@ -16,16 +16,17 @@ User insight: Pre-market movers often have counter-moves at market open,
 high volatility means dump risk at any time.
 """
 
-import requests
+import logging
+import os
 import threading
 import time
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
-from dataclasses import dataclass, field
 from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-import os
+from typing import Dict, List, Optional, Set
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +38,18 @@ class SignalSource(Enum):
 
 
 class SignalType(Enum):
-    BREAKOUT = "breakout"           # Breaking resistance/VWAP
-    MOMENTUM_SURGE = "momentum"     # Strong momentum building
-    NEWS_CATALYST = "news"          # Breaking news trigger
-    GAP_CONTINUATION = "gap"        # Gap continuing after open
-    VWAP_RECLAIM = "vwap_reclaim"   # Reclaiming VWAP
-    REVERSAL_WARNING = "reversal"   # Counter-move warning
+    BREAKOUT = "breakout"  # Breaking resistance/VWAP
+    MOMENTUM_SURGE = "momentum"  # Strong momentum building
+    NEWS_CATALYST = "news"  # Breaking news trigger
+    GAP_CONTINUATION = "gap"  # Gap continuing after open
+    VWAP_RECLAIM = "vwap_reclaim"  # Reclaiming VWAP
+    REVERSAL_WARNING = "reversal"  # Counter-move warning
 
 
 @dataclass
 class TradeSignal:
     """Unified trade signal from any source"""
+
     symbol: str
     source: SignalSource
     signal_type: SignalType
@@ -84,7 +86,7 @@ class TradeSignal:
             "catalyst": self.catalyst,
             "momentum": round(self.momentum, 2),
             "vwap": self.vwap,
-            "detected_at": self.detected_at.isoformat()
+            "detected_at": self.detected_at.isoformat(),
         }
 
 
@@ -123,15 +125,12 @@ class UnifiedTradeScanner:
         self.on_tradeable_signal = None  # Called when tradeable signal found
 
         # Stats
-        self.stats = {
-            "scans": 0,
-            "signals_found": 0,
-            "tradeable": 0,
-            "rejected": 0
-        }
+        self.stats = {"scans": 0, "signals_found": 0, "tradeable": 0, "rejected": 0}
 
         logger.info("UnifiedTradeScanner initialized")
-        logger.info(f"Tradability: ${self.min_price}-${self.max_price}, spread<{self.max_spread_pct}%, vol>{self.min_volume/1000:.0f}K, conf>={self.min_confidence:.0%}")
+        logger.info(
+            f"Tradability: ${self.min_price}-${self.max_price}, spread<{self.max_spread_pct}%, vol>{self.min_volume/1000:.0f}K, conf>={self.min_confidence:.0%}"
+        )
 
     def get_watchlist_symbols(self) -> List[str]:
         """Get symbols from the worklist API"""
@@ -139,7 +138,7 @@ class UnifiedTradeScanner:
             r = requests.get(f"{self.api_url}/worklist", timeout=5)
             if r.status_code == 200:
                 data = r.json()
-                symbols = [item['symbol'] for item in data.get('data', [])]
+                symbols = [item["symbol"] for item in data.get("data", [])]
                 return symbols
         except Exception as e:
             logger.debug(f"Watchlist fetch error: {e}")
@@ -151,7 +150,7 @@ class UnifiedTradeScanner:
             r = requests.get(f"{self.alpaca_url}/positions", timeout=5)
             if r.status_code == 200:
                 positions = r.json()
-                return [pos['symbol'] for pos in positions]
+                return [pos["symbol"] for pos in positions]
         except Exception as e:
             logger.debug(f"Position fetch error: {e}")
         return []
@@ -168,10 +167,10 @@ class UnifiedTradeScanner:
 
     def check_tradability(self, symbol: str, quote: Dict) -> tuple[bool, Optional[str]]:
         """Check if a stock meets tradability criteria"""
-        bid = float(quote.get('bid', 0))
-        ask = float(quote.get('ask', 0))
-        last = float(quote.get('last', 0))
-        volume = int(quote.get('volume', 0) or 0)
+        bid = float(quote.get("bid", 0))
+        ask = float(quote.get("ask", 0))
+        last = float(quote.get("last", 0))
+        volume = int(quote.get("volume", 0) or 0)
 
         price = last if last > 0 else (bid + ask) / 2 if bid > 0 and ask > 0 else 0
 
@@ -204,7 +203,7 @@ class UnifiedTradeScanner:
             return 0.0
 
         # Use last 5 prices or available
-        prices = [h['price'] for h in history[-5:]]
+        prices = [h["price"] for h in history[-5:]]
         if len(prices) >= 2:
             return (current_price - prices[0]) / prices[0] * 100
 
@@ -222,21 +221,20 @@ class UnifiedTradeScanner:
 
             tradeable, rejection = self.check_tradability(symbol, quote)
 
-            bid = float(quote.get('bid', 0))
-            ask = float(quote.get('ask', 0))
-            last = float(quote.get('last', 0))
-            volume = int(quote.get('volume', 0) or 0)
+            bid = float(quote.get("bid", 0))
+            ask = float(quote.get("ask", 0))
+            last = float(quote.get("last", 0))
+            volume = int(quote.get("volume", 0) or 0)
             price = last if last > 0 else (bid + ask) / 2
             spread_pct = ((ask - bid) / bid * 100) if bid > 0 else 99
-            change_pct = float(quote.get('change_percent', 0) or 0)
+            change_pct = float(quote.get("change_percent", 0) or 0)
 
             # Track price
-            self.price_history[symbol].append({
-                'price': price,
-                'time': datetime.now()
-            })
+            self.price_history[symbol].append({"price": price, "time": datetime.now()})
             if len(self.price_history[symbol]) > self.max_history:
-                self.price_history[symbol] = self.price_history[symbol][-self.max_history:]
+                self.price_history[symbol] = self.price_history[symbol][
+                    -self.max_history :
+                ]
 
             # Calculate momentum
             momentum = self.calculate_momentum(symbol, price)
@@ -279,7 +277,7 @@ class UnifiedTradeScanner:
                     reason=reason,
                     tradeable=tradeable,
                     rejection_reason=rejection,
-                    momentum=momentum
+                    momentum=momentum,
                 )
                 signals.append(signal)
 
@@ -292,9 +290,24 @@ class UnifiedTradeScanner:
         # Default momentum universe
         if universe is None:
             universe = [
-                'TSLA', 'NVDA', 'AMD', 'PLTR', 'SOFI', 'NIO', 'LCID',
-                'MARA', 'RIOT', 'COIN', 'HOOD', 'GME', 'AMC',
-                'PLUG', 'FCEL', 'MULN', 'FFIE', 'GOEV'
+                "TSLA",
+                "NVDA",
+                "AMD",
+                "PLTR",
+                "SOFI",
+                "NIO",
+                "LCID",
+                "MARA",
+                "RIOT",
+                "COIN",
+                "HOOD",
+                "GME",
+                "AMC",
+                "PLUG",
+                "FCEL",
+                "MULN",
+                "FFIE",
+                "GOEV",
             ]
 
         for symbol in universe:
@@ -304,27 +317,28 @@ class UnifiedTradeScanner:
 
             tradeable, rejection = self.check_tradability(symbol, quote)
 
-            bid = float(quote.get('bid', 0))
-            ask = float(quote.get('ask', 0))
-            last = float(quote.get('last', 0))
-            volume = int(quote.get('volume', 0) or 0)
+            bid = float(quote.get("bid", 0))
+            ask = float(quote.get("ask", 0))
+            last = float(quote.get("last", 0))
+            volume = int(quote.get("volume", 0) or 0)
             price = last if last > 0 else (bid + ask) / 2
             spread_pct = ((ask - bid) / bid * 100) if bid > 0 else 99
-            change_pct = float(quote.get('change_percent', 0) or 0)
+            change_pct = float(quote.get("change_percent", 0) or 0)
 
             # Track price
-            self.price_history[symbol].append({
-                'price': price,
-                'time': datetime.now()
-            })
+            self.price_history[symbol].append({"price": price, "time": datetime.now()})
             if len(self.price_history[symbol]) > self.max_history:
-                self.price_history[symbol] = self.price_history[symbol][-self.max_history:]
+                self.price_history[symbol] = self.price_history[symbol][
+                    -self.max_history :
+                ]
 
             momentum = self.calculate_momentum(symbol, price)
 
             # Only flag strong momentum
             if momentum > 1.5 or abs(change_pct) >= 5:
-                signal_type = SignalType.BREAKOUT if momentum > 2 else SignalType.MOMENTUM_SURGE
+                signal_type = (
+                    SignalType.BREAKOUT if momentum > 2 else SignalType.MOMENTUM_SURGE
+                )
                 confidence = min(0.9, 0.5 + abs(momentum) / 10)
 
                 signal = TradeSignal(
@@ -341,7 +355,7 @@ class UnifiedTradeScanner:
                     reason=f"High momentum +{momentum:.1f}%",
                     tradeable=tradeable,
                     rejection_reason=rejection,
-                    momentum=momentum
+                    momentum=momentum,
                 )
                 signals.append(signal)
 
@@ -365,20 +379,20 @@ class UnifiedTradeScanner:
 
                     tradeable, rejection = self.check_tradability(symbol, quote)
 
-                    bid = float(quote.get('bid', 0))
-                    ask = float(quote.get('ask', 0))
-                    last = float(quote.get('last', 0))
-                    volume = int(quote.get('volume', 0) or 0)
+                    bid = float(quote.get("bid", 0))
+                    ask = float(quote.get("ask", 0))
+                    last = float(quote.get("last", 0))
+                    volume = int(quote.get("volume", 0) or 0)
                     price = last if last > 0 else (bid + ask) / 2
                     spread_pct = ((ask - bid) / bid * 100) if bid > 0 else 99
-                    change_pct = float(quote.get('change_percent', 0) or 0)
+                    change_pct = float(quote.get("change_percent", 0) or 0)
 
                     # Confidence based on news urgency
                     urgency_confidence = {
-                        'critical': 0.9,
-                        'high': 0.75,
-                        'medium': 0.5,
-                        'low': 0.3
+                        "critical": 0.9,
+                        "high": 0.75,
+                        "medium": 0.5,
+                        "low": 0.3,
                     }
                     confidence = urgency_confidence.get(alert.urgency.value, 0.5)
 
@@ -396,7 +410,7 @@ class UnifiedTradeScanner:
                         reason=f"NEWS: {alert.headline[:50]}...",
                         tradeable=tradeable,
                         rejection_reason=rejection,
-                        catalyst=alert.headline
+                        catalyst=alert.headline,
                     )
                     signals.append(signal)
 
@@ -416,33 +430,33 @@ class UnifiedTradeScanner:
             setups = scanner.get_a_setups()  # Get A+ and A setups
 
             for setup in setups:
-                symbol = setup['symbol']
+                symbol = setup["symbol"]
                 quote = self.get_quote(symbol)
                 if not quote:
                     continue
 
                 tradeable, rejection = self.check_tradability(symbol, quote)
 
-                bid = float(quote.get('bid', 0))
-                ask = float(quote.get('ask', 0))
-                price = setup.get('price', 0)
-                volume = int(quote.get('volume', 0) or 0)
+                bid = float(quote.get("bid", 0))
+                ask = float(quote.get("ask", 0))
+                price = setup.get("price", 0)
+                volume = int(quote.get("volume", 0) or 0)
                 spread_pct = ((ask - bid) / bid * 100) if bid > 0 else 99
-                change_pct = setup.get('change_pct', 0)
+                change_pct = setup.get("change_pct", 0)
 
                 # Map setup type to signal type
-                setup_type = setup.get('setup_type', 'watch')
+                setup_type = setup.get("setup_type", "watch")
                 signal_type_map = {
-                    'gap_go': SignalType.GAP_CONTINUATION,
-                    'vwap_reclaim': SignalType.VWAP_RECLAIM,
-                    'breakout': SignalType.BREAKOUT,
-                    'continuation': SignalType.MOMENTUM_SURGE
+                    "gap_go": SignalType.GAP_CONTINUATION,
+                    "vwap_reclaim": SignalType.VWAP_RECLAIM,
+                    "breakout": SignalType.BREAKOUT,
+                    "continuation": SignalType.MOMENTUM_SURGE,
                 }
                 signal_type = signal_type_map.get(setup_type, SignalType.MOMENTUM_SURGE)
 
                 # Confidence from signal quality
-                quality_confidence = {'A+': 0.9, 'A': 0.75, 'B': 0.5, 'C': 0.3}
-                confidence = quality_confidence.get(setup.get('signal', 'B'), 0.5)
+                quality_confidence = {"A+": 0.9, "A": 0.75, "B": 0.5, "C": 0.3}
+                confidence = quality_confidence.get(setup.get("signal", "B"), 0.5)
 
                 signal = TradeSignal(
                     symbol=symbol,
@@ -455,10 +469,10 @@ class UnifiedTradeScanner:
                     volume=volume,
                     change_pct=change_pct,
                     confidence=confidence,
-                    reason=setup.get('reason', 'Warrior setup'),
+                    reason=setup.get("reason", "Warrior setup"),
                     tradeable=tradeable,
                     rejection_reason=rejection,
-                    vwap=setup.get('vwap')
+                    vwap=setup.get("vwap"),
                 )
                 signals.append(signal)
 
@@ -502,7 +516,7 @@ class UnifiedTradeScanner:
         self.signals = sorted(
             symbol_best.values(),
             key=lambda x: (x.tradeable, x.confidence),
-            reverse=True
+            reverse=True,
         )
 
         self.last_scan = datetime.now()
@@ -515,7 +529,11 @@ class UnifiedTradeScanner:
         self.stats["rejected"] += len(self.signals) - tradeable_count
 
         # Trigger callback for tradeable signals
-        tradeable_signals = [s for s in self.signals if s.tradeable and s.confidence >= self.min_confidence]
+        tradeable_signals = [
+            s
+            for s in self.signals
+            if s.tradeable and s.confidence >= self.min_confidence
+        ]
         if tradeable_signals and self.on_tradeable_signal:
             for sig in tradeable_signals:
                 try:
@@ -551,7 +569,11 @@ class UnifiedTradeScanner:
                 signals = self.scan()
 
                 # Log tradeable signals
-                tradeable = [s for s in signals if s.tradeable and s.confidence >= self.min_confidence]
+                tradeable = [
+                    s
+                    for s in signals
+                    if s.tradeable and s.confidence >= self.min_confidence
+                ]
                 if tradeable:
                     logger.warning(f"TRADEABLE SIGNALS ({len(tradeable)}):")
                     for sig in tradeable[:5]:
@@ -569,7 +591,8 @@ class UnifiedTradeScanner:
     def get_tradeable_signals(self, min_confidence: float = 0.5) -> List[Dict]:
         """Get only tradeable signals above confidence threshold"""
         return [
-            s.to_dict() for s in self.signals
+            s.to_dict()
+            for s in self.signals
             if s.tradeable and s.confidence >= min_confidence
         ]
 
@@ -590,18 +613,24 @@ class UnifiedTradeScanner:
             "criteria": {
                 "price_range": f"${self.min_price:.2f} - ${self.max_price:.2f}",
                 "max_spread": f"{self.max_spread_pct}%",
-                "min_volume": f"{self.min_volume:,}"
+                "min_volume": f"{self.min_volume:,}",
             },
             "signals": {
                 "total": len(self.signals),
                 "tradeable": len([s for s in self.signals if s.tradeable]),
                 "by_source": {
-                    "watchlist": len([s for s in self.signals if s.source == SignalSource.WATCHLIST]),
-                    "news": len([s for s in self.signals if s.source == SignalSource.NEWS]),
-                    "momentum": len([s for s in self.signals if s.source == SignalSource.MOMENTUM])
-                }
+                    "watchlist": len(
+                        [s for s in self.signals if s.source == SignalSource.WATCHLIST]
+                    ),
+                    "news": len(
+                        [s for s in self.signals if s.source == SignalSource.NEWS]
+                    ),
+                    "momentum": len(
+                        [s for s in self.signals if s.source == SignalSource.MOMENTUM]
+                    ),
+                },
             },
-            "stats": self.stats
+            "stats": self.stats,
         }
 
 
@@ -634,8 +663,7 @@ def stop_unified_scanner():
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s | %(levelname)s | %(message)s'
+        level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
     )
 
     def on_signal(signal: TradeSignal):
@@ -663,9 +691,13 @@ if __name__ == "__main__":
             time.sleep(10)
             tradeable = scanner.get_tradeable_signals(min_confidence=0.5)
             if tradeable:
-                print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Tradeable signals: {len(tradeable)}")
+                print(
+                    f"\n[{datetime.now().strftime('%H:%M:%S')}] Tradeable signals: {len(tradeable)}"
+                )
                 for sig in tradeable[:5]:
-                    print(f"  {sig['symbol']}: ${sig['price']:.2f} | {sig['change_pct']:+.1f}% | {sig['source']}")
+                    print(
+                        f"  {sig['symbol']}: ${sig['price']:.2f} | {sig['change_pct']:+.1f}% | {sig['source']}"
+                    )
     except KeyboardInterrupt:
         stop_unified_scanner()
         print("\nStopped")

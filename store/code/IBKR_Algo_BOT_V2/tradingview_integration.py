@@ -2,16 +2,18 @@
 TradingView Integration for Alpaca Trading Hub
 Webhook receiver for TradingView alerts, scanners, and signals
 """
+
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
+from alpaca_integration import get_alpaca_connector
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-import logging
 from watchlist_manager import get_watchlist_manager
-from alpaca_integration import get_alpaca_connector
-from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/tradingview", tags=["TradingView"])
@@ -30,14 +32,22 @@ def get_tv_price(symbol: str) -> Optional[Dict]:
     symbol = symbol.upper()
     if symbol in _tv_price_cache:
         cached = _tv_price_cache[symbol]
-        age = (datetime.now() - cached.get('timestamp', datetime.min)).total_seconds()
+        age = (datetime.now() - cached.get("timestamp", datetime.min)).total_seconds()
         if age < _TV_PRICE_CACHE_TTL:
             return cached
     return None
 
 
-def set_tv_price(symbol: str, price: float, bid: float = None, ask: float = None,
-                 volume: int = None, high: float = None, low: float = None, open_price: float = None):
+def set_tv_price(
+    symbol: str,
+    price: float,
+    bid: float = None,
+    ask: float = None,
+    volume: int = None,
+    high: float = None,
+    low: float = None,
+    open_price: float = None,
+):
     """Store TradingView price in cache"""
     symbol = symbol.upper()
     _tv_price_cache[symbol] = {
@@ -50,7 +60,7 @@ def set_tv_price(symbol: str, price: float, bid: float = None, ask: float = None
         "low": low or price,
         "open": open_price or price,
         "timestamp": datetime.now(),
-        "source": "tradingview"
+        "source": "tradingview",
     }
     logger.info(f"TV Price Update: {symbol} = ${price:.2f}")
 
@@ -59,8 +69,10 @@ def set_tv_price(symbol: str, price: float, bid: float = None, ask: float = None
 # PYDANTIC MODELS
 # ============================================================================
 
+
 class TradingViewAlert(BaseModel):
     """TradingView alert webhook payload"""
+
     ticker: str
     action: Optional[str] = None  # "buy", "sell", "add_watchlist", "remove_watchlist"
     price: Optional[float] = None
@@ -79,6 +91,7 @@ class TradingViewAlert(BaseModel):
 
 class TradingViewScannerBatch(BaseModel):
     """Batch of scanner results from TradingView"""
+
     scanner_name: str
     symbols: List[str]
     timestamp: Optional[str] = None
@@ -87,6 +100,7 @@ class TradingViewScannerBatch(BaseModel):
 
 class TradingViewOrder(BaseModel):
     """TradingView order webhook"""
+
     ticker: str
     action: str  # "buy" or "sell"
     quantity: Optional[int] = 1
@@ -99,6 +113,7 @@ class TradingViewOrder(BaseModel):
 
 class TradingViewPrice(BaseModel):
     """TradingView price update webhook"""
+
     ticker: str
     price: float
     bid: Optional[float] = None
@@ -113,6 +128,7 @@ class TradingViewPrice(BaseModel):
 # ============================================================================
 # WEBHOOK ENDPOINTS
 # ============================================================================
+
 
 @router.post("/webhook/alert")
 async def tradingview_alert_webhook(alert: TradingViewAlert):
@@ -145,7 +161,7 @@ async def tradingview_alert_webhook(alert: TradingViewAlert):
             return {
                 "success": True,
                 "message": f"Signal received for {symbol}: {action}",
-                "note": "Use /webhook/order for automated trading"
+                "note": "Use /webhook/order for automated trading",
             }
 
         else:
@@ -155,7 +171,7 @@ async def tradingview_alert_webhook(alert: TradingViewAlert):
                 "message": f"Alert received for {symbol}",
                 "ticker": symbol,
                 "price": alert.price,
-                "strategy": alert.strategy
+                "strategy": alert.strategy,
             }
 
     except Exception as e:
@@ -177,7 +193,9 @@ async def tradingview_scanner_webhook(batch: TradingViewScannerBatch):
     }
     """
     try:
-        logger.info(f"TradingView Scanner: {batch.scanner_name} - {len(batch.symbols)} symbols")
+        logger.info(
+            f"TradingView Scanner: {batch.scanner_name} - {len(batch.symbols)} symbols"
+        )
 
         watchlist_mgr = get_watchlist_manager()
 
@@ -188,23 +206,18 @@ async def tradingview_scanner_webhook(batch: TradingViewScannerBatch):
         if not scanner_watchlist:
             # Create new watchlist for this scanner
             scanner_watchlist = watchlist_mgr.create_watchlist(
-                scanner_watchlist_name,
-                batch.symbols
+                scanner_watchlist_name, batch.symbols
             )
             action = "created"
         elif batch.replace_watchlist:
             # Replace entire watchlist
             watchlist_mgr.update_watchlist(
-                scanner_watchlist['watchlist_id'],
-                symbols=batch.symbols
+                scanner_watchlist["watchlist_id"], symbols=batch.symbols
             )
             action = "replaced"
         else:
             # Add to existing watchlist (merge)
-            watchlist_mgr.add_symbols(
-                scanner_watchlist['watchlist_id'],
-                batch.symbols
-            )
+            watchlist_mgr.add_symbols(scanner_watchlist["watchlist_id"], batch.symbols)
             action = "updated"
 
         return {
@@ -212,7 +225,7 @@ async def tradingview_scanner_webhook(batch: TradingViewScannerBatch):
             "message": f"Scanner watchlist {action}",
             "watchlist_name": scanner_watchlist_name,
             "symbols_count": len(batch.symbols),
-            "action": action
+            "action": action,
         }
 
     except Exception as e:
@@ -252,7 +265,7 @@ async def tradingview_price_webhook(price_data: TradingViewPrice):
             volume=price_data.volume,
             high=price_data.high,
             low=price_data.low,
-            open_price=price_data.open
+            open_price=price_data.open,
         )
 
         return {
@@ -260,7 +273,7 @@ async def tradingview_price_webhook(price_data: TradingViewPrice):
             "message": f"Price updated for {symbol}",
             "symbol": symbol,
             "price": price_data.price,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -273,15 +286,11 @@ async def get_tradingview_price(symbol: str):
     """Get cached TradingView price for a symbol"""
     cached = get_tv_price(symbol)
     if cached:
-        return {
-            "success": True,
-            "source": "tradingview",
-            "data": cached
-        }
+        return {"success": True, "source": "tradingview", "data": cached}
     return {
         "success": False,
         "message": f"No TradingView price cached for {symbol}",
-        "hint": "Set up a TradingView alert to push prices to /api/tradingview/webhook/price"
+        "hint": "Set up a TradingView alert to push prices to /api/tradingview/webhook/price",
     }
 
 
@@ -290,15 +299,11 @@ async def get_all_tradingview_prices():
     """Get all cached TradingView prices"""
     fresh_prices = {}
     for symbol, data in _tv_price_cache.items():
-        age = (datetime.now() - data.get('timestamp', datetime.min)).total_seconds()
+        age = (datetime.now() - data.get("timestamp", datetime.min)).total_seconds()
         if age < _TV_PRICE_CACHE_TTL:
             fresh_prices[symbol] = data
 
-    return {
-        "success": True,
-        "count": len(fresh_prices),
-        "prices": fresh_prices
-    }
+    return {"success": True, "count": len(fresh_prices), "prices": fresh_prices}
 
 
 @router.post("/webhook/order")
@@ -318,7 +323,9 @@ async def tradingview_order_webhook(order: TradingViewOrder):
     IMPORTANT: Only enable this in production after thorough testing!
     """
     try:
-        logger.info(f"TradingView Order: {order.action} {order.quantity} {order.ticker}")
+        logger.info(
+            f"TradingView Order: {order.action} {order.quantity} {order.ticker}"
+        )
 
         # Get Alpaca connector
         connector = get_alpaca_connector()
@@ -328,7 +335,9 @@ async def tradingview_order_webhook(order: TradingViewOrder):
 
         # Validate action
         if order.action.lower() not in ["buy", "sell"]:
-            raise HTTPException(status_code=400, detail="Invalid action. Must be 'buy' or 'sell'")
+            raise HTTPException(
+                status_code=400, detail="Invalid action. Must be 'buy' or 'sell'"
+            )
 
         # Prepare order
         symbol = order.ticker.upper()
@@ -340,18 +349,20 @@ async def tradingview_order_webhook(order: TradingViewOrder):
                 symbol=symbol,
                 qty=order.quantity,
                 side=side,
-                time_in_force=TimeInForce.DAY
+                time_in_force=TimeInForce.DAY,
             )
         elif order.order_type.lower() == "limit":
             if not order.limit_price:
-                raise HTTPException(status_code=400, detail="Limit price required for limit orders")
+                raise HTTPException(
+                    status_code=400, detail="Limit price required for limit orders"
+                )
 
             order_request = LimitOrderRequest(
                 symbol=symbol,
                 qty=order.quantity,
                 side=side,
                 time_in_force=TimeInForce.DAY,
-                limit_price=order.limit_price
+                limit_price=order.limit_price,
             )
         else:
             raise HTTPException(status_code=400, detail="Invalid order type")
@@ -369,7 +380,7 @@ async def tradingview_order_webhook(order: TradingViewOrder):
             "symbol": symbol,
             "quantity": order.quantity,
             "side": str(side),
-            "strategy": order.strategy
+            "strategy": order.strategy,
         }
 
     except HTTPException:
@@ -383,6 +394,7 @@ async def tradingview_order_webhook(order: TradingViewOrder):
 # HELPER FUNCTIONS
 # ============================================================================
 
+
 async def add_symbol_to_watchlist(symbol: str, alert: TradingViewAlert):
     """Add symbol to default watchlist"""
     try:
@@ -390,7 +402,7 @@ async def add_symbol_to_watchlist(symbol: str, alert: TradingViewAlert):
         default_watchlist = watchlist_mgr.get_default_watchlist()
 
         # Add symbol
-        watchlist_mgr.add_symbols(default_watchlist['watchlist_id'], [symbol])
+        watchlist_mgr.add_symbols(default_watchlist["watchlist_id"], [symbol])
 
         logger.info(f"Added {symbol} to watchlist from TradingView")
 
@@ -400,7 +412,7 @@ async def add_symbol_to_watchlist(symbol: str, alert: TradingViewAlert):
             "symbol": symbol,
             "price": alert.price,
             "strategy": alert.strategy,
-            "watchlist": "Default"
+            "watchlist": "Default",
         }
 
     except Exception as e:
@@ -415,14 +427,14 @@ async def remove_symbol_from_watchlist(symbol: str):
         default_watchlist = watchlist_mgr.get_default_watchlist()
 
         # Remove symbol
-        watchlist_mgr.remove_symbols(default_watchlist['watchlist_id'], [symbol])
+        watchlist_mgr.remove_symbols(default_watchlist["watchlist_id"], [symbol])
 
         logger.info(f"Removed {symbol} from watchlist")
 
         return {
             "success": True,
             "message": f"Removed {symbol} from watchlist",
-            "symbol": symbol
+            "symbol": symbol,
         }
 
     except Exception as e:
@@ -434,6 +446,7 @@ async def remove_symbol_from_watchlist(symbol: str):
 # CONFIGURATION ENDPOINTS
 # ============================================================================
 
+
 @router.get("/webhook-url")
 async def get_webhook_url():
     """Get webhook URL for TradingView configuration"""
@@ -441,22 +454,22 @@ async def get_webhook_url():
         "webhook_urls": {
             "alerts": "http://localhost:9100/api/tradingview/webhook/alert",
             "scanner": "http://localhost:9100/api/tradingview/webhook/scanner",
-            "orders": "http://localhost:9100/api/tradingview/webhook/order"
+            "orders": "http://localhost:9100/api/tradingview/webhook/order",
         },
         "example_alert_message": {
             "ticker": "{{ticker}}",
             "action": "add_watchlist",
             "price": "{{close}}",
             "strategy": "Momentum Scanner",
-            "time": "{{time}}"
+            "time": "{{time}}",
         },
         "example_order_message": {
             "ticker": "{{ticker}}",
             "action": "buy",
             "quantity": 100,
             "order_type": "market",
-            "strategy": "{{strategy.order.comment}}"
-        }
+            "strategy": "{{strategy.order.comment}}",
+        },
     }
 
 
@@ -469,25 +482,22 @@ async def tradingview_integration_status():
 
         # Get all TradingView watchlists
         all_watchlists = watchlist_mgr.get_all_watchlists()
-        tv_watchlists = [w for w in all_watchlists if w['name'].startswith('TV:')]
+        tv_watchlists = [w for w in all_watchlists if w["name"].startswith("TV:")]
 
         return {
             "status": "operational",
             "alpaca_connected": connector.is_connected(),
             "tradingview_watchlists": len(tv_watchlists),
-            "watchlists": [w['name'] for w in tv_watchlists],
+            "watchlists": [w["name"] for w in tv_watchlists],
             "webhook_endpoints": {
                 "alerts": "/api/tradingview/webhook/alert",
                 "scanner": "/api/tradingview/webhook/scanner",
-                "orders": "/api/tradingview/webhook/order"
-            }
+                "orders": "/api/tradingview/webhook/order",
+            },
         }
 
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        return {"status": "error", "error": str(e)}
 
 
 # ============================================================================
@@ -497,35 +507,86 @@ async def tradingview_integration_status():
 # Exchange mapping for proper TradingView symbol format
 EXCHANGE_MAPPING = {
     # ETFs - typically AMEX
-    'SPY': 'AMEX', 'QQQ': 'NASDAQ', 'DIA': 'AMEX', 'IWM': 'AMEX',
-    'XLF': 'AMEX', 'XLE': 'AMEX', 'XLK': 'AMEX', 'XLV': 'AMEX',
-    'GLD': 'AMEX', 'SLV': 'AMEX', 'TLT': 'NASDAQ', 'VXX': 'CBOE',
-    'UVXY': 'AMEX', 'SQQQ': 'NASDAQ', 'TQQQ': 'NASDAQ',
-
+    "SPY": "AMEX",
+    "QQQ": "NASDAQ",
+    "DIA": "AMEX",
+    "IWM": "AMEX",
+    "XLF": "AMEX",
+    "XLE": "AMEX",
+    "XLK": "AMEX",
+    "XLV": "AMEX",
+    "GLD": "AMEX",
+    "SLV": "AMEX",
+    "TLT": "NASDAQ",
+    "VXX": "CBOE",
+    "UVXY": "AMEX",
+    "SQQQ": "NASDAQ",
+    "TQQQ": "NASDAQ",
     # Major NYSE stocks
-    'JPM': 'NYSE', 'BAC': 'NYSE', 'WFC': 'NYSE', 'C': 'NYSE',
-    'GS': 'NYSE', 'MS': 'NYSE', 'V': 'NYSE', 'MA': 'NYSE',
-    'DIS': 'NYSE', 'KO': 'NYSE', 'PEP': 'NASDAQ', 'WMT': 'NYSE',
-    'HD': 'NYSE', 'MCD': 'NYSE', 'NKE': 'NYSE', 'BA': 'NYSE',
-    'CAT': 'NYSE', 'GE': 'NYSE', 'MMM': 'NYSE', 'IBM': 'NYSE',
-    'JNJ': 'NYSE', 'PFE': 'NYSE', 'MRK': 'NYSE', 'UNH': 'NYSE',
-    'CVX': 'NYSE', 'XOM': 'NYSE', 'BRK.A': 'NYSE', 'BRK.B': 'NYSE',
-
+    "JPM": "NYSE",
+    "BAC": "NYSE",
+    "WFC": "NYSE",
+    "C": "NYSE",
+    "GS": "NYSE",
+    "MS": "NYSE",
+    "V": "NYSE",
+    "MA": "NYSE",
+    "DIS": "NYSE",
+    "KO": "NYSE",
+    "PEP": "NASDAQ",
+    "WMT": "NYSE",
+    "HD": "NYSE",
+    "MCD": "NYSE",
+    "NKE": "NYSE",
+    "BA": "NYSE",
+    "CAT": "NYSE",
+    "GE": "NYSE",
+    "MMM": "NYSE",
+    "IBM": "NYSE",
+    "JNJ": "NYSE",
+    "PFE": "NYSE",
+    "MRK": "NYSE",
+    "UNH": "NYSE",
+    "CVX": "NYSE",
+    "XOM": "NYSE",
+    "BRK.A": "NYSE",
+    "BRK.B": "NYSE",
     # NASDAQ tech stocks (default for most tech)
-    'AAPL': 'NASDAQ', 'MSFT': 'NASDAQ', 'GOOGL': 'NASDAQ', 'GOOG': 'NASDAQ',
-    'AMZN': 'NASDAQ', 'META': 'NASDAQ', 'TSLA': 'NASDAQ', 'NVDA': 'NASDAQ',
-    'AMD': 'NASDAQ', 'INTC': 'NASDAQ', 'NFLX': 'NASDAQ', 'ADBE': 'NASDAQ',
-    'CRM': 'NYSE', 'ORCL': 'NYSE', 'CSCO': 'NASDAQ', 'AVGO': 'NASDAQ',
-    'QCOM': 'NASDAQ', 'TXN': 'NASDAQ', 'MU': 'NASDAQ', 'AMAT': 'NASDAQ',
-    'PLTR': 'NYSE', 'COIN': 'NASDAQ', 'MARA': 'NASDAQ', 'RIOT': 'NASDAQ',
-    'SOFI': 'NASDAQ', 'HOOD': 'NASDAQ', 'DKNG': 'NASDAQ', 'ROKU': 'NASDAQ',
+    "AAPL": "NASDAQ",
+    "MSFT": "NASDAQ",
+    "GOOGL": "NASDAQ",
+    "GOOG": "NASDAQ",
+    "AMZN": "NASDAQ",
+    "META": "NASDAQ",
+    "TSLA": "NASDAQ",
+    "NVDA": "NASDAQ",
+    "AMD": "NASDAQ",
+    "INTC": "NASDAQ",
+    "NFLX": "NASDAQ",
+    "ADBE": "NASDAQ",
+    "CRM": "NYSE",
+    "ORCL": "NYSE",
+    "CSCO": "NASDAQ",
+    "AVGO": "NASDAQ",
+    "QCOM": "NASDAQ",
+    "TXN": "NASDAQ",
+    "MU": "NASDAQ",
+    "AMAT": "NASDAQ",
+    "PLTR": "NYSE",
+    "COIN": "NASDAQ",
+    "MARA": "NASDAQ",
+    "RIOT": "NASDAQ",
+    "SOFI": "NASDAQ",
+    "HOOD": "NASDAQ",
+    "DKNG": "NASDAQ",
+    "ROKU": "NASDAQ",
 }
 
 
 def get_tv_exchange(symbol: str) -> str:
     """Get TradingView exchange for a symbol"""
     symbol = symbol.upper().strip()
-    return EXCHANGE_MAPPING.get(symbol, 'NASDAQ')  # Default to NASDAQ
+    return EXCHANGE_MAPPING.get(symbol, "NASDAQ")  # Default to NASDAQ
 
 
 def format_tv_symbol(symbol: str) -> str:
@@ -537,8 +598,7 @@ def format_tv_symbol(symbol: str) -> str:
 
 @router.get("/desktop/watchlist-export")
 async def export_watchlist_for_tv_desktop(
-    watchlist_id: Optional[str] = None,
-    format: str = "txt"
+    watchlist_id: Optional[str] = None, format: str = "txt"
 ):
     """
     Export watchlist in TradingView Desktop compatible format.
@@ -568,7 +628,7 @@ async def export_watchlist_for_tv_desktop(
         if not watchlist:
             return {"success": False, "error": "Watchlist not found"}
 
-        symbols = watchlist.get('symbols', [])
+        symbols = watchlist.get("symbols", [])
 
         # Format symbols for TradingView
         tv_symbols = [format_tv_symbol(s) for s in symbols]
@@ -578,11 +638,11 @@ async def export_watchlist_for_tv_desktop(
             content = "\n".join(tv_symbols)
             return {
                 "success": True,
-                "watchlist_name": watchlist['name'],
+                "watchlist_name": watchlist["name"],
                 "symbol_count": len(symbols),
                 "format": "txt",
                 "content": content,
-                "instructions": "Copy content and paste into TradingView Desktop watchlist import"
+                "instructions": "Copy content and paste into TradingView Desktop watchlist import",
             }
 
         elif format == "csv":
@@ -590,23 +650,23 @@ async def export_watchlist_for_tv_desktop(
             content = ",".join(tv_symbols)
             return {
                 "success": True,
-                "watchlist_name": watchlist['name'],
+                "watchlist_name": watchlist["name"],
                 "symbol_count": len(symbols),
                 "format": "csv",
-                "content": content
+                "content": content,
             }
 
         elif format == "json":
             # JSON format with full details
             return {
                 "success": True,
-                "watchlist_name": watchlist['name'],
-                "watchlist_id": watchlist.get('watchlist_id'),
+                "watchlist_name": watchlist["name"],
+                "watchlist_id": watchlist.get("watchlist_id"),
                 "symbol_count": len(symbols),
                 "format": "json",
                 "symbols": symbols,
                 "tv_formatted": tv_symbols,
-                "tv_import_text": "\n".join(tv_symbols)
+                "tv_import_text": "\n".join(tv_symbols),
             }
 
         else:
@@ -630,23 +690,21 @@ async def export_all_watchlists():
 
         result = []
         for wl in all_watchlists:
-            symbols = wl.get('symbols', [])
+            symbols = wl.get("symbols", [])
             tv_symbols = [format_tv_symbol(s) for s in symbols]
 
-            result.append({
-                "name": wl['name'],
-                "id": wl.get('watchlist_id'),
-                "symbol_count": len(symbols),
-                "symbols": symbols,
-                "tv_formatted": tv_symbols,
-                "tv_import_text": "\n".join(tv_symbols)
-            })
+            result.append(
+                {
+                    "name": wl["name"],
+                    "id": wl.get("watchlist_id"),
+                    "symbol_count": len(symbols),
+                    "symbols": symbols,
+                    "tv_formatted": tv_symbols,
+                    "tv_import_text": "\n".join(tv_symbols),
+                }
+            )
 
-        return {
-            "success": True,
-            "watchlist_count": len(result),
-            "watchlists": result
-        }
+        return {"success": True, "watchlist_count": len(result), "watchlists": result}
 
     except Exception as e:
         logger.error(f"All watchlists export error: {e}")
@@ -671,27 +729,23 @@ async def get_tv_desktop_sync_url(watchlist_id: str, interval: str = "D"):
         if not watchlist:
             return {"success": False, "error": "Watchlist not found"}
 
-        symbols = watchlist.get('symbols', [])
+        symbols = watchlist.get("symbols", [])
 
         # Generate TV Desktop URLs
         urls = []
         for symbol in symbols:
             tv_symbol = format_tv_symbol(symbol)
             url = f"tradingview://chart?symbol={tv_symbol}&interval={interval}"
-            urls.append({
-                "symbol": symbol,
-                "tv_symbol": tv_symbol,
-                "url": url
-            })
+            urls.append({"symbol": symbol, "tv_symbol": tv_symbol, "url": url})
 
         return {
             "success": True,
-            "watchlist_name": watchlist['name'],
+            "watchlist_name": watchlist["name"],
             "interval": interval,
             "symbol_count": len(symbols),
             "urls": urls,
-            "open_all_script": f"// Open all in TV Desktop (use browser console)\n" +
-                              "\n".join([f"window.open('{u['url']}');" for u in urls[:8]])
+            "open_all_script": f"// Open all in TV Desktop (use browser console)\n"
+            + "\n".join([f"window.open('{u['url']}');" for u in urls[:8]]),
         }
 
     except Exception as e:
@@ -711,13 +765,13 @@ async def generate_clipboard_export(data: Dict):
     }
     """
     try:
-        symbols = data.get('symbols', [])
-        format_type = data.get('format', 'tv')
+        symbols = data.get("symbols", [])
+        format_type = data.get("format", "tv")
 
         if not symbols:
             return {"success": False, "error": "No symbols provided"}
 
-        if format_type == 'tv':
+        if format_type == "tv":
             # TradingView format with exchange prefix
             formatted = [format_tv_symbol(s) for s in symbols]
         else:
@@ -729,7 +783,7 @@ async def generate_clipboard_export(data: Dict):
             "symbol_count": len(formatted),
             "format": format_type,
             "text": "\n".join(formatted),
-            "csv": ",".join(formatted)
+            "csv": ",".join(formatted),
         }
 
     except Exception as e:
@@ -753,5 +807,5 @@ async def get_tv_desktop_open_url(symbol: str, interval: str = "D"):
         "tv_symbol": tv_symbol,
         "interval": interval,
         "url": url,
-        "web_fallback": f"https://www.tradingview.com/chart/?symbol={tv_symbol}&interval={interval}"
+        "web_fallback": f"https://www.tradingview.com/chart/?symbol={tv_symbol}&interval={interval}",
     }

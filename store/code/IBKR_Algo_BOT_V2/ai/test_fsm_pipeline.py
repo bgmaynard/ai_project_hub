@@ -51,7 +51,7 @@ def test_momentum_scorer():
         buy_pressure=0.65,
         mtf_aligned=True,
         chronos_regime="TRENDING_UP",
-        chronos_confidence=0.7
+        chronos_confidence=0.7,
     )
 
     if result.score > 0 and not result.vetoed:
@@ -73,9 +73,13 @@ def test_momentum_scorer():
 
     if result.vetoed and VetoReason.SPREAD_WIDE in result.veto_reasons:
         tests_passed += 1
-        print(f"[PASS] Wide spread veto: Vetoed={result.vetoed}, Reasons={[v.value for v in result.veto_reasons]}")
+        print(
+            f"[PASS] Wide spread veto: Vetoed={result.vetoed}, Reasons={[v.value for v in result.veto_reasons]}"
+        )
     else:
-        print(f"[FAIL] Wide spread veto: Vetoed={result.vetoed}, Reasons={[v.value for v in result.veto_reasons]}")
+        print(
+            f"[FAIL] Wide spread veto: Vetoed={result.vetoed}, Reasons={[v.value for v in result.veto_reasons]}"
+        )
 
     # Test 1.3: Below VWAP veto
     tests_total += 1
@@ -109,9 +113,13 @@ def test_momentum_scorer():
 
     if result.price_urgency.r_5s > 0 and result.price_urgency.r_15s > 0:
         tests_passed += 1
-        print(f"[PASS] ROC calculation: r_5s={result.price_urgency.r_5s:.2f}%, r_15s={result.price_urgency.r_15s:.2f}%")
+        print(
+            f"[PASS] ROC calculation: r_5s={result.price_urgency.r_5s:.2f}%, r_15s={result.price_urgency.r_15s:.2f}%"
+        )
     else:
-        print(f"[FAIL] ROC calculation: r_5s={result.price_urgency.r_5s}, r_15s={result.price_urgency.r_15s}")
+        print(
+            f"[FAIL] ROC calculation: r_5s={result.price_urgency.r_5s}, r_15s={result.price_urgency.r_15s}"
+        )
 
     print(f"\nMomentum Scorer: {tests_passed}/{tests_total} tests passed")
     return tests_passed == tests_total
@@ -123,9 +131,8 @@ def test_state_machine():
     print("TEST 2: STATE MACHINE")
     print("=" * 60)
 
-    from ai.momentum_state_machine import (
-        MomentumStateMachine, MomentumState, StateOwner, TransitionReason
-    )
+    from ai.momentum_state_machine import (MomentumState, MomentumStateMachine,
+                                           StateOwner, TransitionReason)
 
     sm = MomentumStateMachine()
     tests_passed = 0
@@ -138,7 +145,9 @@ def test_state_machine():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.CANDIDATE:
         tests_passed += 1
-        print(f"[PASS] IDLE -> CANDIDATE: state={state.state.value}, owner={state.owner.value}")
+        print(
+            f"[PASS] IDLE -> CANDIDATE: state={state.state.value}, owner={state.owner.value}"
+        )
     else:
         print(f"[FAIL] IDLE -> CANDIDATE")
 
@@ -148,9 +157,13 @@ def test_state_machine():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.IGNITING:
         tests_passed += 1
-        print(f"[PASS] CANDIDATE -> IGNITING: state={state.state.value}, owner={state.owner.value}")
+        print(
+            f"[PASS] CANDIDATE -> IGNITING: state={state.state.value}, owner={state.owner.value}"
+        )
     else:
-        print(f"[FAIL] CANDIDATE -> IGNITING: state={state.state.value if state else None}")
+        print(
+            f"[FAIL] CANDIDATE -> IGNITING: state={state.state.value if state else None}"
+        )
 
     # Test 2.3: IGNITING -> GATED
     tests_total += 1
@@ -158,7 +171,9 @@ def test_state_machine():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.GATED:
         tests_passed += 1
-        print(f"[PASS] IGNITING -> GATED: state={state.state.value}, owner={state.owner.value}")
+        print(
+            f"[PASS] IGNITING -> GATED: state={state.state.value}, owner={state.owner.value}"
+        )
     else:
         print(f"[FAIL] IGNITING -> GATED: state={state.state.value if state else None}")
 
@@ -168,9 +183,13 @@ def test_state_machine():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.IN_POSITION:
         tests_passed += 1
-        print(f"[PASS] GATED -> IN_POSITION: state={state.state.value}, owner={state.owner.value}")
+        print(
+            f"[PASS] GATED -> IN_POSITION: state={state.state.value}, owner={state.owner.value}"
+        )
     else:
-        print(f"[FAIL] GATED -> IN_POSITION: state={state.state.value if state else None}")
+        print(
+            f"[FAIL] GATED -> IN_POSITION: state={state.state.value if state else None}"
+        )
 
     # Test 2.5: IN_POSITION -> MONITORING
     tests_total += 1
@@ -178,9 +197,13 @@ def test_state_machine():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.MONITORING:
         tests_passed += 1
-        print(f"[PASS] IN_POSITION -> MONITORING: state={state.state.value}, owner={state.owner.value}")
+        print(
+            f"[PASS] IN_POSITION -> MONITORING: state={state.state.value}, owner={state.owner.value}"
+        )
     else:
-        print(f"[FAIL] IN_POSITION -> MONITORING: state={state.state.value if state else None}")
+        print(
+            f"[FAIL] IN_POSITION -> MONITORING: state={state.state.value if state else None}"
+        )
 
     # Test 2.6: MONITORING -> EXITING
     tests_total += 1
@@ -188,9 +211,13 @@ def test_state_machine():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.EXITING:
         tests_passed += 1
-        print(f"[PASS] MONITORING -> EXITING: state={state.state.value}, owner={state.owner.value}")
+        print(
+            f"[PASS] MONITORING -> EXITING: state={state.state.value}, owner={state.owner.value}"
+        )
     else:
-        print(f"[FAIL] MONITORING -> EXITING: state={state.state.value if state else None}")
+        print(
+            f"[FAIL] MONITORING -> EXITING: state={state.state.value if state else None}"
+        )
 
     # Test 2.7: EXITING -> COOLDOWN
     tests_total += 1
@@ -198,9 +225,13 @@ def test_state_machine():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.COOLDOWN:
         tests_passed += 1
-        print(f"[PASS] EXITING -> COOLDOWN: state={state.state.value}, owner={state.owner.value}")
+        print(
+            f"[PASS] EXITING -> COOLDOWN: state={state.state.value}, owner={state.owner.value}"
+        )
     else:
-        print(f"[FAIL] EXITING -> COOLDOWN: state={state.state.value if state else None}")
+        print(
+            f"[FAIL] EXITING -> COOLDOWN: state={state.state.value if state else None}"
+        )
 
     # Test 2.8: State ownership
     tests_total += 1
@@ -217,7 +248,7 @@ def test_state_machine():
     }
     # Check via summary
     summary = sm.get_summary()
-    if summary['by_state']['COOLDOWN'] == 1:
+    if summary["by_state"]["COOLDOWN"] == 1:
         tests_passed += 1
         print(f"[PASS] State ownership tracking: by_owner={summary['by_owner']}")
     else:
@@ -231,7 +262,10 @@ def test_state_machine():
     state_before = sm.get_state(symbol2).state
     sm.update_momentum(symbol2, 75, vetoed=True, veto_reasons=["SPREAD_WIDE"])
     state_after = sm.get_state(symbol2).state
-    if state_before == MomentumState.IGNITING and state_after == MomentumState.CANDIDATE:
+    if (
+        state_before == MomentumState.IGNITING
+        and state_after == MomentumState.CANDIDATE
+    ):
         tests_passed += 1
         print(f"[PASS] Veto drops state: {state_before.value} -> {state_after.value}")
     else:
@@ -257,13 +291,10 @@ def test_telemetry():
     # Test 3.1: Start trade
     tests_total += 1
     trade_id = telemetry.start_trade(
-        symbol="TEL_TEST",
-        entry_price=10.00,
-        shares=100,
-        gating_result="APPROVED"
+        symbol="TEL_TEST", entry_price=10.00, shares=100, gating_result="APPROVED"
     )
     active = telemetry.get_active_trades()
-    if len(active) == 1 and active[0]['symbol'] == 'TEL_TEST':
+    if len(active) == 1 and active[0]["symbol"] == "TEL_TEST":
         tests_passed += 1
         print(f"[PASS] Start trade: trade_id={trade_id}")
     else:
@@ -275,17 +306,25 @@ def test_telemetry():
     telemetry.update_price("TEL_TEST", 10.75)  # Higher
     telemetry.update_price("TEL_TEST", 10.50)  # Drops back
     active = telemetry.get_active_trades()
-    if active[0]['mfe'] == 7.5 and active[0]['mae'] == 0:  # 7.5% MFE, 0% MAE
+    if active[0]["mfe"] == 7.5 and active[0]["mae"] == 0:  # 7.5% MFE, 0% MAE
         tests_passed += 1
-        print(f"[PASS] MFE/MAE tracking: MFE={active[0]['mfe']:.1f}%, MAE={active[0]['mae']:.1f}%")
+        print(
+            f"[PASS] MFE/MAE tracking: MFE={active[0]['mfe']:.1f}%, MAE={active[0]['mae']:.1f}%"
+        )
     else:
-        print(f"[FAIL] MFE/MAE tracking: MFE={active[0]['mfe']}, MAE={active[0]['mae']}")
+        print(
+            f"[FAIL] MFE/MAE tracking: MFE={active[0]['mfe']}, MAE={active[0]['mae']}"
+        )
 
     # Test 3.3: Complete trade
     tests_total += 1
     telemetry.complete_trade("TEL_TEST", 10.50, "TRAILING_STOP", "Trail triggered")
     completed = telemetry.get_completed_trades()
-    if len(completed) == 1 and completed[0]['is_winner'] and completed[0]['pnl_pct'] == 5.0:
+    if (
+        len(completed) == 1
+        and completed[0]["is_winner"]
+        and completed[0]["pnl_pct"] == 5.0
+    ):
         tests_passed += 1
         print(f"[PASS] Complete trade: pnl={completed[0]['pnl_pct']:.1f}%")
     else:
@@ -294,9 +333,11 @@ def test_telemetry():
     # Test 3.4: Metrics calculation
     tests_total += 1
     metrics = telemetry.get_metrics()
-    if metrics['total_trades'] == 1 and metrics['win_rate'] == 100:
+    if metrics["total_trades"] == 1 and metrics["win_rate"] == 100:
         tests_passed += 1
-        print(f"[PASS] Metrics: total={metrics['total_trades']}, win_rate={metrics['win_rate']:.1f}%")
+        print(
+            f"[PASS] Metrics: total={metrics['total_trades']}, win_rate={metrics['win_rate']:.1f}%"
+        )
     else:
         print(f"[FAIL] Metrics")
 
@@ -308,9 +349,11 @@ def test_telemetry():
     # Test 3.5: MFE/MAE analysis
     tests_total += 1
     mfe_mae = telemetry.get_mfe_mae_analysis()
-    if 'winners' in mfe_mae and 'losers' in mfe_mae:
+    if "winners" in mfe_mae and "losers" in mfe_mae:
         tests_passed += 1
-        print(f"[PASS] MFE/MAE analysis: winners={mfe_mae['winners']['count']}, losers={mfe_mae['losers']['count']}")
+        print(
+            f"[PASS] MFE/MAE analysis: winners={mfe_mae['winners']['count']}, losers={mfe_mae['losers']['count']}"
+        )
     else:
         print(f"[FAIL] MFE/MAE analysis")
 
@@ -325,7 +368,8 @@ def test_full_pipeline():
     print("=" * 60)
 
     from ai.momentum_score import MomentumScorer
-    from ai.momentum_state_machine import MomentumStateMachine, MomentumState, TransitionReason
+    from ai.momentum_state_machine import (MomentumState, MomentumStateMachine,
+                                           TransitionReason)
     from ai.momentum_telemetry import MomentumTelemetry
 
     scorer = MomentumScorer()
@@ -360,12 +404,14 @@ def test_full_pipeline():
         buy_pressure=0.65,
         mtf_aligned=True,
         chronos_regime="TRENDING_UP",
-        chronos_confidence=0.7
+        chronos_confidence=0.7,
     )
 
     if momentum_result.score > 0 and not momentum_result.vetoed:
         tests_passed += 1
-        print(f"[PASS] Step 1 - Momentum score: {momentum_result.score}/100, Grade {momentum_result.grade.value}")
+        print(
+            f"[PASS] Step 1 - Momentum score: {momentum_result.score}/100, Grade {momentum_result.grade.value}"
+        )
     else:
         print(f"[FAIL] Step 1 - Momentum score vetoed")
         return False
@@ -373,9 +419,12 @@ def test_full_pipeline():
     # Step 2: Feed to state machine
     tests_total += 1
     sm.add_to_candidate(symbol, "Scanner detected")
-    sm.update_momentum(symbol, momentum_result.score,
-                       vetoed=momentum_result.vetoed,
-                       veto_reasons=[v.value for v in momentum_result.veto_reasons])
+    sm.update_momentum(
+        symbol,
+        momentum_result.score,
+        vetoed=momentum_result.vetoed,
+        veto_reasons=[v.value for v in momentum_result.veto_reasons],
+    )
 
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.GATED:
@@ -386,7 +435,9 @@ def test_full_pipeline():
 
     # Step 3: Enter position
     tests_total += 1
-    sm.enter_position(symbol, entry_price=5.50, shares=100, stop_price=5.25, target_price=6.00)
+    sm.enter_position(
+        symbol, entry_price=5.50, shares=100, stop_price=5.25, target_price=6.00
+    )
     state = sm.get_state(symbol)
 
     # Also start telemetry tracking
@@ -394,7 +445,9 @@ def test_full_pipeline():
 
     if state and state.state == MomentumState.IN_POSITION:
         tests_passed += 1
-        print(f"[PASS] Step 3 - Position entered: {state.state.value}, trade_id={trade_id}")
+        print(
+            f"[PASS] Step 3 - Position entered: {state.state.value}, trade_id={trade_id}"
+        )
     else:
         print(f"[FAIL] Step 3 - Position entered")
 
@@ -404,7 +457,9 @@ def test_full_pipeline():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.MONITORING:
         tests_passed += 1
-        print(f"[PASS] Step 4 - Monitoring started: {state.state.value}, owner={state.owner.value}")
+        print(
+            f"[PASS] Step 4 - Monitoring started: {state.state.value}, owner={state.owner.value}"
+        )
     else:
         print(f"[FAIL] Step 4 - Monitoring started")
 
@@ -417,9 +472,11 @@ def test_full_pipeline():
 
     state = sm.get_state(symbol)
     active = telemetry.get_active_trades()
-    if state.pnl_pct > 0 and active[0]['mfe'] > 0:
+    if state.pnl_pct > 0 and active[0]["mfe"] > 0:
         tests_passed += 1
-        print(f"[PASS] Step 5 - Price tracking: PnL={state.pnl_pct:.1f}%, MFE={active[0]['mfe']:.1f}%")
+        print(
+            f"[PASS] Step 5 - Price tracking: PnL={state.pnl_pct:.1f}%, MFE={active[0]['mfe']:.1f}%"
+        )
     else:
         print(f"[FAIL] Step 5 - Price tracking")
 
@@ -429,7 +486,9 @@ def test_full_pipeline():
     state = sm.get_state(symbol)
     if state and state.state == MomentumState.EXITING:
         tests_passed += 1
-        print(f"[PASS] Step 6 - Exit signal: {state.state.value}, signal={state.exit_signal}")
+        print(
+            f"[PASS] Step 6 - Exit signal: {state.state.value}, signal={state.exit_signal}"
+        )
     else:
         print(f"[FAIL] Step 6 - Exit signal")
 
@@ -443,16 +502,20 @@ def test_full_pipeline():
     completed = telemetry.get_completed_trades()
     if state.state == MomentumState.COOLDOWN and len(completed) > 0:
         tests_passed += 1
-        print(f"[PASS] Step 7 - Exit completed: state={state.state.value}, PnL=${completed[0]['pnl_dollars']:.2f}")
+        print(
+            f"[PASS] Step 7 - Exit completed: state={state.state.value}, PnL=${completed[0]['pnl_dollars']:.2f}"
+        )
     else:
         print(f"[FAIL] Step 7 - Exit completed")
 
     # Step 8: Verify telemetry metrics
     tests_total += 1
     metrics = telemetry.get_metrics()
-    if metrics['total_trades'] >= 1:
+    if metrics["total_trades"] >= 1:
         tests_passed += 1
-        print(f"[PASS] Step 8 - Telemetry metrics: trades={metrics['total_trades']}, WR={metrics['win_rate']:.1f}%")
+        print(
+            f"[PASS] Step 8 - Telemetry metrics: trades={metrics['total_trades']}, WR={metrics['win_rate']:.1f}%"
+        )
     else:
         print(f"[FAIL] Step 8 - Telemetry metrics")
 
@@ -471,7 +534,7 @@ def run_all_tests():
         "momentum_scorer": test_momentum_scorer(),
         "state_machine": test_state_machine(),
         "telemetry": test_telemetry(),
-        "full_pipeline": test_full_pipeline()
+        "full_pipeline": test_full_pipeline(),
     }
 
     print("\n" + "=" * 70)

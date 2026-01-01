@@ -19,12 +19,12 @@ Strategy Classifications (like DTD):
 """
 
 import asyncio
-import logging
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
-from collections import deque
 import json
+import logging
+from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HODAlert:
     """Single HOD alert event"""
+
     symbol: str
     timestamp: datetime
     price: float
@@ -52,6 +53,7 @@ class HODAlert:
 @dataclass
 class SymbolTracker:
     """Tracks a single symbol's intraday data"""
+
     symbol: str
     open_price: float = 0.0
     high_of_day: float = 0.0
@@ -68,7 +70,9 @@ class SymbolTracker:
     last_hod_alert: Optional[datetime] = None
 
     # Price history for velocity calculation
-    price_history: deque = field(default_factory=lambda: deque(maxlen=60))  # Last 60 ticks
+    price_history: deque = field(
+        default_factory=lambda: deque(maxlen=60)
+    )  # Last 60 ticks
 
     def update_price(self, price: float, volume: int, timestamp: datetime = None):
         """Update with new price tick"""
@@ -79,11 +83,7 @@ class SymbolTracker:
         self.volume = volume
 
         # Track price history
-        self.price_history.append({
-            'price': price,
-            'time': timestamp,
-            'volume': volume
-        })
+        self.price_history.append({"price": price, "time": timestamp, "volume": volume})
 
         # Update low
         if price < self.low_of_day:
@@ -102,7 +102,9 @@ class SymbolTracker:
     def change_pct(self) -> float:
         """Calculate change from previous close"""
         if self.previous_close > 0:
-            return ((self.current_price - self.previous_close) / self.previous_close) * 100
+            return (
+                (self.current_price - self.previous_close) / self.previous_close
+            ) * 100
         return 0.0
 
     @property
@@ -134,8 +136,8 @@ class SymbolTracker:
         # Find oldest price in window
         oldest_price = None
         for entry in self.price_history:
-            if entry['time'] >= cutoff:
-                oldest_price = entry['price']
+            if entry["time"] >= cutoff:
+                oldest_price = entry["price"]
                 break
 
         if oldest_price and oldest_price > 0:
@@ -173,10 +175,10 @@ class HODMomentumScanner:
         self.max_float: float = 10_000_000  # Ross: "less than 10 million shares"
 
         # Strategy thresholds
-        self.squeeze_5min_threshold: float = 5.0   # Up 5% in 5 min
+        self.squeeze_5min_threshold: float = 5.0  # Up 5% in 5 min
         self.squeeze_10min_threshold: float = 10.0  # Up 10% in 10 min
-        self.medium_float_max: float = 20_000_000   # Adjusted for Ross's criteria
-        self.low_float_max: float = 10_000_000      # Ross's sweet spot
+        self.medium_float_max: float = 20_000_000  # Adjusted for Ross's criteria
+        self.low_float_max: float = 10_000_000  # Ross's sweet spot
 
         logger.info("HOD Momentum Scanner initialized")
 
@@ -187,15 +189,17 @@ class HODMomentumScanner:
 
             # Initialize with provided data
             if data:
-                tracker.previous_close = data.get('previous_close', data.get('close', 0))
-                tracker.open_price = data.get('open', 0)
-                tracker.high_of_day = data.get('high', 0)
-                tracker.low_of_day = data.get('low', 999999)
-                tracker.current_price = data.get('price', 0)
-                tracker.volume = data.get('volume', 0)
-                tracker.avg_volume = data.get('avg_volume', 0)
-                tracker.float_shares = data.get('float_shares', 0)
-                tracker.short_interest = data.get('short_interest', 0)
+                tracker.previous_close = data.get(
+                    "previous_close", data.get("close", 0)
+                )
+                tracker.open_price = data.get("open", 0)
+                tracker.high_of_day = data.get("high", 0)
+                tracker.low_of_day = data.get("low", 999999)
+                tracker.current_price = data.get("price", 0)
+                tracker.volume = data.get("volume", 0)
+                tracker.avg_volume = data.get("avg_volume", 0)
+                tracker.float_shares = data.get("float_shares", 0)
+                tracker.short_interest = data.get("short_interest", 0)
 
             self.trackers[symbol] = tracker
             logger.debug(f"Added {symbol} to HOD tracker")
@@ -206,7 +210,9 @@ class HODMomentumScanner:
             del self.trackers[symbol]
             logger.debug(f"Removed {symbol} from HOD tracker")
 
-    def update_price(self, symbol: str, price: float, volume: int = 0, data: dict = None):
+    def update_price(
+        self, symbol: str, price: float, volume: int = 0, data: dict = None
+    ):
         """
         Update price for a symbol and check for HOD break.
         Returns HODAlert if new HOD detected, None otherwise.
@@ -218,16 +224,16 @@ class HODMomentumScanner:
 
         # Update additional data if provided
         if data:
-            if 'avg_volume' in data:
-                tracker.avg_volume = data['avg_volume']
-            if 'float_shares' in data:
-                tracker.float_shares = data['float_shares']
-            if 'short_interest' in data:
-                tracker.short_interest = data['short_interest']
-            if 'close' in data and tracker.previous_close == 0:
-                tracker.previous_close = data['close']
-            if 'open' in data and tracker.open_price == 0:
-                tracker.open_price = data['open']
+            if "avg_volume" in data:
+                tracker.avg_volume = data["avg_volume"]
+            if "float_shares" in data:
+                tracker.float_shares = data["float_shares"]
+            if "short_interest" in data:
+                tracker.short_interest = data["short_interest"]
+            if "close" in data and tracker.previous_close == 0:
+                tracker.previous_close = data["close"]
+            if "open" in data and tracker.open_price == 0:
+                tracker.open_price = data["open"]
 
         previous_hod = tracker.high_of_day
         made_new_hod = tracker.update_price(price, volume)
@@ -260,39 +266,39 @@ class HODMomentumScanner:
         # 1. Relative Volume >= 5x
         if tracker.relative_volume >= 5.0:
             criteria_met += 1
-            details['rvol'] = f"✓ RVol {tracker.relative_volume:.1f}x >= 5x"
+            details["rvol"] = f"✓ RVol {tracker.relative_volume:.1f}x >= 5x"
         else:
-            details['rvol'] = f"✗ RVol {tracker.relative_volume:.1f}x < 5x"
+            details["rvol"] = f"✗ RVol {tracker.relative_volume:.1f}x < 5x"
 
         # 2. Already up 10%
         if tracker.change_pct >= 10.0:
             criteria_met += 1
-            details['change'] = f"✓ Up {tracker.change_pct:.1f}% >= 10%"
+            details["change"] = f"✓ Up {tracker.change_pct:.1f}% >= 10%"
         else:
-            details['change'] = f"✗ Up {tracker.change_pct:.1f}% < 10%"
+            details["change"] = f"✗ Up {tracker.change_pct:.1f}% < 10%"
 
         # 3. News catalyst
         if has_news:
             criteria_met += 1
-            details['news'] = "✓ Has news catalyst"
+            details["news"] = "✓ Has news catalyst"
         else:
-            details['news'] = "✗ No news catalyst"
+            details["news"] = "✗ No news catalyst"
 
         # 4. Price $1-$20
         if 1.0 <= tracker.current_price <= 20.0:
             criteria_met += 1
-            details['price'] = f"✓ Price ${tracker.current_price:.2f} in range"
+            details["price"] = f"✓ Price ${tracker.current_price:.2f} in range"
         else:
-            details['price'] = f"✗ Price ${tracker.current_price:.2f} out of range"
+            details["price"] = f"✗ Price ${tracker.current_price:.2f} out of range"
 
         # 5. Float < 10M
         if tracker.float_shares > 0 and tracker.float_shares < 10_000_000:
             criteria_met += 1
-            details['float'] = f"✓ Float {tracker.float_shares/1_000_000:.1f}M < 10M"
+            details["float"] = f"✓ Float {tracker.float_shares/1_000_000:.1f}M < 10M"
         elif tracker.float_shares == 0:
-            details['float'] = "? Float unknown"
+            details["float"] = "? Float unknown"
         else:
-            details['float'] = f"✗ Float {tracker.float_shares/1_000_000:.1f}M >= 10M"
+            details["float"] = f"✗ Float {tracker.float_shares/1_000_000:.1f}M >= 10M"
 
         # Determine grade
         if criteria_met >= 5:
@@ -304,7 +310,9 @@ class HODMomentumScanner:
 
         return grade, criteria_met, details
 
-    def _evaluate_hod_alert(self, tracker: SymbolTracker, previous_hod: float, has_news: bool = False) -> Optional[HODAlert]:
+    def _evaluate_hod_alert(
+        self, tracker: SymbolTracker, previous_hod: float, has_news: bool = False
+    ) -> Optional[HODAlert]:
         """Evaluate if HOD break should trigger an alert"""
 
         # Check cooldown
@@ -344,7 +352,7 @@ class HODMomentumScanner:
             alert_count_5min=tracker.hod_count_in_window(5),
             grade=grade,
             criteria_met=criteria_met,
-            has_news=has_news
+            has_news=has_news,
         )
 
         # Update last alert time
@@ -364,7 +372,9 @@ class HODMomentumScanner:
             except Exception as e:
                 logger.error(f"Alert callback error: {e}")
 
-        logger.info(f"🚀 HOD ALERT [{alert.grade}]: {alert.symbol} ${alert.price:.2f} ({alert.change_pct:+.1f}%) - {strategy} ({criteria_met}/5 criteria)")
+        logger.info(
+            f"🚀 HOD ALERT [{alert.grade}]: {alert.symbol} ${alert.price:.2f} ({alert.change_pct:+.1f}%) - {strategy} ({criteria_met}/5 criteria)"
+        )
 
         return alert
 
@@ -382,8 +392,12 @@ class HODMomentumScanner:
             return "Squeeze Alert - Up 10% in 10min"
 
         # Check float and volume conditions
-        is_low_float = tracker.float_shares > 0 and tracker.float_shares < self.low_float_max
-        is_medium_float = tracker.float_shares > 0 and tracker.float_shares < self.medium_float_max
+        is_low_float = (
+            tracker.float_shares > 0 and tracker.float_shares < self.low_float_max
+        )
+        is_medium_float = (
+            tracker.float_shares > 0 and tracker.float_shares < self.medium_float_max
+        )
         is_high_rvol = tracker.relative_volume >= 2.0
         is_under_20 = tracker.current_price < 20
 
@@ -411,7 +425,11 @@ class HODMomentumScanner:
         for level in key_levels:
             # Check if we crossed above the level
             if tracker.price_history:
-                prev_price = tracker.price_history[-1]['price'] if len(tracker.price_history) > 1 else 0
+                prev_price = (
+                    tracker.price_history[-1]["price"]
+                    if len(tracker.price_history) > 1
+                    else 0
+                )
                 if prev_price < level <= price:
                     return f"Broke ${level:.0f} level"
 
@@ -443,8 +461,8 @@ class HODMomentumScanner:
                 "max_price": self.max_price,
                 "min_change_pct": self.min_change_pct,
                 "min_relative_volume": self.min_relative_volume,
-                "max_float": self.max_float
-            }
+                "max_float": self.max_float,
+            },
         }
 
     def on_alert(self, callback: callable):
@@ -468,13 +486,13 @@ class HODMomentumScanner:
                     "alert_count_5min": a.alert_count_5min,
                     "grade": a.grade,
                     "criteria_met": a.criteria_met,
-                    "has_news": a.has_news
+                    "has_news": a.has_news,
                 }
                 for a in self.alerts[-50:]
             ],
             "running_stocks": self.get_running_stocks(),
             "a_grade_stocks": self.get_a_grade_stocks(),
-            "b_grade_stocks": self.get_b_grade_stocks()
+            "b_grade_stocks": self.get_b_grade_stocks(),
         }
 
     def get_a_grade_stocks(self) -> List[str]:
@@ -510,11 +528,15 @@ class HODMomentumScanner:
             "grade": grade,
             "criteria_met": criteria_met,
             "criteria_details": details,
-            "recommendation": "FULL_POSITION" if grade == "A" else "HALF_POSITION" if grade == "B" else "SCALP_ONLY",
+            "recommendation": (
+                "FULL_POSITION"
+                if grade == "A"
+                else "HALF_POSITION" if grade == "B" else "SCALP_ONLY"
+            ),
             "current_price": tracker.current_price,
             "change_pct": tracker.change_pct,
             "relative_volume": tracker.relative_volume,
-            "float_shares": tracker.float_shares
+            "float_shares": tracker.float_shares,
         }
 
 

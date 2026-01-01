@@ -3,13 +3,14 @@ Schwab Fast Polling for Near Real-Time Market Data
 Provides fast market data updates by polling the Schwab HTTP API in a background thread
 This is a fallback when WebSocket streaming is not available
 """
+
 import asyncio
 import logging
 import threading
 import time
-from datetime import datetime
-from typing import Dict, List, Optional, Callable, Set
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from typing import Callable, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ def _fetch_quotes_batch(symbols: List[str]) -> Dict[str, Dict]:
     """Fetch quotes for a batch of symbols"""
     try:
         from schwab_market_data import get_schwab_market_data
+
         market_data = get_schwab_market_data()
         if not market_data:
             return {}
@@ -91,7 +93,7 @@ def _poll_loop():
             all_quotes = {}
 
             for i in range(0, len(symbols), batch_size):
-                batch = symbols[i:i+batch_size]
+                batch = symbols[i : i + batch_size]
                 quotes = _fetch_quotes_batch(batch)
                 all_quotes.update(quotes)
 
@@ -103,7 +105,7 @@ def _poll_loop():
                 _last_update[symbol] = now
 
                 # Only notify if price changed
-                if old_quote is None or old_quote.get('last') != quote.get('last'):
+                if old_quote is None or old_quote.get("last") != quote.get("last"):
                     _notify_callbacks(symbol, quote)
 
             # Sleep for poll interval
@@ -166,7 +168,7 @@ def get_status() -> Dict:
         "poll_interval_ms": int(_poll_interval * 1000),
         "subscribed_symbols": list(_subscribed_symbols),
         "cached_quotes": len(_quote_cache),
-        "callbacks_registered": len(_quote_callbacks)
+        "callbacks_registered": len(_quote_callbacks),
     }
 
 
@@ -195,6 +197,6 @@ def get_fast_poller():
             "get_all_quotes": get_quote_cache,
             "get_status": get_status,
             "register_callback": register_callback,
-            "set_interval": set_poll_interval
+            "set_interval": set_poll_interval,
         }
     return _fast_poller

@@ -17,14 +17,15 @@ This scanner focuses on:
 4. Multi-day runners on day 2+
 """
 
-import requests
 import logging
+import threading
 import time
+from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
-from collections import defaultdict
-import threading
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class WarriorSetup:
     """A Warrior Trading style momentum setup"""
+
     symbol: str
     price: float
     vwap: float
@@ -64,27 +66,60 @@ class WarriorSetup:
             "entry_zone": f"${self.entry_zone[0]:.2f} - ${self.entry_zone[1]:.2f}",
             "risk_reward": self.risk_reward,
             "reason": self.reason,
-            "detected_at": self.detected_at.isoformat()
+            "detected_at": self.detected_at.isoformat(),
         }
 
 
 # Warrior Trading focus stocks - small cap momentum names
 WARRIOR_WATCHLIST = [
     # Recent momentum runners (update weekly)
-    'BEAT', 'DNA', 'SOUN', 'EDIT', 'BBGI', 'MAMA',
+    "BEAT",
+    "DNA",
+    "SOUN",
+    "EDIT",
+    "BBGI",
+    "MAMA",
     # Biotech/Pharma (catalyst plays)
-    'NVAX', 'SRNE', 'OCGN', 'VXRT', 'INO', 'SAVA', 'ATOS',
+    "NVAX",
+    "SRNE",
+    "OCGN",
+    "VXRT",
+    "INO",
+    "SAVA",
+    "ATOS",
     # EV/Tech small caps
-    'LCID', 'RIVN', 'GOEV', 'FFIE', 'NKLA', 'FSR',
+    "LCID",
+    "RIVN",
+    "GOEV",
+    "FFIE",
+    "NKLA",
+    "FSR",
     # Retail favorites with volume
-    'SOFI', 'PLTR', 'CLOV', 'WISH', 'BB',
+    "SOFI",
+    "PLTR",
+    "CLOV",
+    "WISH",
+    "BB",
     # Clean energy momentum
-    'PLUG', 'FCEL', 'BLNK', 'WKHS',
+    "PLUG",
+    "FCEL",
+    "BLNK",
+    "WKHS",
     # General small cap movers
-    'OPEN', 'BYND', 'HOOD', 'AFRM', 'UPST',
-    'COIN', 'MARA', 'RIOT', 'HIVE', 'BITF',
+    "OPEN",
+    "BYND",
+    "HOOD",
+    "AFRM",
+    "UPST",
+    "COIN",
+    "MARA",
+    "RIOT",
+    "HIVE",
+    "BITF",
     # Recent IPOs and SPACs
-    'VFS', 'IONQ', 'RKLB',
+    "VFS",
+    "IONQ",
+    "RKLB",
 ]
 
 
@@ -102,9 +137,9 @@ class WarriorMomentumScanner:
         self.max_price = 20.00
 
         # Quality filters
-        self.min_gap_pct = 3.0      # At least 3% gap
-        self.min_rel_volume = 1.5   # 1.5x normal volume
-        self.max_spread_pct = 2.0   # Max 2% spread
+        self.min_gap_pct = 3.0  # At least 3% gap
+        self.min_rel_volume = 1.5  # 1.5x normal volume
+        self.max_spread_pct = 2.0  # Max 2% spread
 
         # Watchlist
         self.watchlist = WARRIOR_WATCHLIST.copy()
@@ -127,7 +162,9 @@ class WarriorMomentumScanner:
         # Callbacks
         self.on_setup_detected = None
 
-        logger.info(f"WarriorMomentumScanner initialized - watching {len(self.watchlist)} stocks")
+        logger.info(
+            f"WarriorMomentumScanner initialized - watching {len(self.watchlist)} stocks"
+        )
 
     def add_symbol(self, symbol: str):
         """Add a symbol to watchlist"""
@@ -152,7 +189,7 @@ class WarriorMomentumScanner:
                     setups.append(setup)
 
                     # Callback for A+ setups
-                    if setup.signal == 'A+' and self.on_setup_detected:
+                    if setup.signal == "A+" and self.on_setup_detected:
                         try:
                             self.on_setup_detected(setup)
                         except Exception as e:
@@ -163,7 +200,7 @@ class WarriorMomentumScanner:
                 continue
 
         # Sort by signal quality then relative volume
-        quality_order = {'A+': 0, 'A': 1, 'B': 2, 'C': 3}
+        quality_order = {"A+": 0, "A": 1, "B": 2, "C": 3}
         setups.sort(key=lambda x: (quality_order.get(x.signal, 4), -x.relative_volume))
 
         self.setups = setups
@@ -180,11 +217,13 @@ class WarriorMomentumScanner:
             return None
 
         quote = r.json()
-        bid = float(quote.get('bid', 0))
-        ask = float(quote.get('ask', 0))
-        last = float(quote.get('last', 0))
-        volume = int(quote.get('volume', 0) or 0)
-        prev_close = float(quote.get('prev_close', 0) or quote.get('previous_close', 0) or 0)
+        bid = float(quote.get("bid", 0))
+        ask = float(quote.get("ask", 0))
+        last = float(quote.get("last", 0))
+        volume = int(quote.get("volume", 0) or 0)
+        prev_close = float(
+            quote.get("prev_close", 0) or quote.get("previous_close", 0) or 0
+        )
 
         # Use last price, fallback to mid
         price = last if last > 0 else (bid + ask) / 2 if bid > 0 and ask > 0 else 0
@@ -212,13 +251,11 @@ class WarriorMomentumScanner:
         gap_pct = (price - prev_close) / prev_close * 100 if prev_close > 0 else 0
 
         # Track price for momentum calculation
-        self.price_history[symbol].append({
-            'price': price,
-            'volume': volume,
-            'time': now
-        })
+        self.price_history[symbol].append(
+            {"price": price, "volume": volume, "time": now}
+        )
         if len(self.price_history[symbol]) > self.max_history:
-            self.price_history[symbol] = self.price_history[symbol][-self.max_history:]
+            self.price_history[symbol] = self.price_history[symbol][-self.max_history :]
 
         # Calculate VWAP (simplified - cumulative)
         vwap = self._calculate_vwap(symbol, price, volume)
@@ -231,7 +268,7 @@ class WarriorMomentumScanner:
         history = self.price_history[symbol]
         change_pct = 0
         if len(history) >= 2:
-            first_price = history[0]['price']
+            first_price = history[0]["price"]
             change_pct = (price - first_price) / first_price * 100
 
         # Float category (simplified - based on typical behavior)
@@ -243,7 +280,7 @@ class WarriorMomentumScanner:
         )
 
         # Only return actionable setups
-        if signal not in ['A+', 'A', 'B']:
+        if signal not in ["A+", "A", "B"]:
             return None
 
         # Calculate entry zone
@@ -271,27 +308,25 @@ class WarriorMomentumScanner:
             entry_zone=(entry_low, entry_high),
             risk_reward=risk_reward,
             reason=reason,
-            detected_at=now
+            detected_at=now,
         )
 
     def _calculate_vwap(self, symbol: str, price: float, volume: int) -> float:
         """Calculate approximate VWAP"""
         if symbol not in self.vwap_data:
-            self.vwap_data[symbol] = {
-                'cum_pv': 0,
-                'cum_vol': 0,
-                'vwap': price
-            }
+            self.vwap_data[symbol] = {"cum_pv": 0, "cum_vol": 0, "vwap": price}
 
         data = self.vwap_data[symbol]
 
         if volume > 0:
             # Incremental VWAP update
-            data['cum_pv'] += price * volume
-            data['cum_vol'] += volume
-            data['vwap'] = data['cum_pv'] / data['cum_vol'] if data['cum_vol'] > 0 else price
+            data["cum_pv"] += price * volume
+            data["cum_vol"] += volume
+            data["vwap"] = (
+                data["cum_pv"] / data["cum_vol"] if data["cum_vol"] > 0 else price
+            )
 
-        return data['vwap']
+        return data["vwap"]
 
     def _estimate_relative_volume(self, volume: int) -> float:
         """Estimate relative volume based on absolute volume"""
@@ -322,42 +357,57 @@ class WarriorMomentumScanner:
         else:
             return "large"  # 100M+ float
 
-    def _classify_setup(self, price: float, vwap: float, price_vs_vwap: float,
-                        gap_pct: float, change_pct: float, rel_volume: float,
-                        float_category: str) -> Tuple[str, str, str]:
+    def _classify_setup(
+        self,
+        price: float,
+        vwap: float,
+        price_vs_vwap: float,
+        gap_pct: float,
+        change_pct: float,
+        rel_volume: float,
+        float_category: str,
+    ) -> Tuple[str, str, str]:
         """Classify the setup type and quality"""
 
         # Gap and Go - gapping up with continuation
         if gap_pct >= 10 and price > vwap and rel_volume >= 2.0:
-            if float_category in ['micro', 'small']:
-                return ('gap_go', 'A+', f"Strong gap ({gap_pct:.0f}%) + low float + above VWAP")
+            if float_category in ["micro", "small"]:
+                return (
+                    "gap_go",
+                    "A+",
+                    f"Strong gap ({gap_pct:.0f}%) + low float + above VWAP",
+                )
             else:
-                return ('gap_go', 'A', f"Gap up {gap_pct:.0f}% with volume")
+                return ("gap_go", "A", f"Gap up {gap_pct:.0f}% with volume")
 
         # VWAP Reclaim - was below, now reclaiming
         if 0 < price_vs_vwap < 2.0 and gap_pct >= 5:
-            return ('vwap_reclaim', 'A', f"Reclaiming VWAP on gap ({gap_pct:.0f}%)")
+            return ("vwap_reclaim", "A", f"Reclaiming VWAP on gap ({gap_pct:.0f}%)")
 
         # Breakout - strong momentum above VWAP
         if price_vs_vwap >= 3.0 and rel_volume >= 2.0 and change_pct > 0:
-            return ('breakout', 'A', f"Breaking out +{price_vs_vwap:.1f}% above VWAP")
+            return ("breakout", "A", f"Breaking out +{price_vs_vwap:.1f}% above VWAP")
 
         # Continuation - already moving, still has momentum
         if change_pct >= 3.0 and price > vwap:
             if rel_volume >= 2.0:
-                return ('continuation', 'A', f"Continuing +{change_pct:.1f}% with strong volume")
+                return (
+                    "continuation",
+                    "A",
+                    f"Continuing +{change_pct:.1f}% with strong volume",
+                )
             else:
-                return ('continuation', 'B', f"Momentum +{change_pct:.1f}%")
+                return ("continuation", "B", f"Momentum +{change_pct:.1f}%")
 
         # Moderate gap with volume
         if gap_pct >= 5 and rel_volume >= 1.5:
-            return ('gap_go', 'B', f"Gap {gap_pct:.0f}% with decent volume")
+            return ("gap_go", "B", f"Gap {gap_pct:.0f}% with decent volume")
 
         # Watching - some criteria met
         if gap_pct >= 3 or (price > vwap and change_pct > 0):
-            return ('watch', 'C', "Building setup")
+            return ("watch", "C", "Building setup")
 
-        return ('none', 'D', "No setup")
+        return ("none", "D", "No setup")
 
     def start_scanning(self, interval: int = 10):
         """Start background scanning"""
@@ -386,7 +436,7 @@ class WarriorMomentumScanner:
                 setups = self.scan()
 
                 # Log A+ and A setups
-                top_setups = [s for s in setups if s.signal in ['A+', 'A']]
+                top_setups = [s for s in setups if s.signal in ["A+", "A"]]
                 if top_setups:
                     logger.warning(f"WARRIOR SETUPS: {[s.symbol for s in top_setups]}")
                     for s in top_setups[:3]:
@@ -409,15 +459,15 @@ class WarriorMomentumScanner:
 
     def get_a_setups(self) -> List[Dict]:
         """Get A+ and A quality setups"""
-        return [s.to_dict() for s in self.setups if s.signal in ['A+', 'A']]
+        return [s.to_dict() for s in self.setups if s.signal in ["A+", "A"]]
 
     def get_gap_setups(self) -> List[Dict]:
         """Get gap and go setups"""
-        return [s.to_dict() for s in self.setups if s.setup_type == 'gap_go']
+        return [s.to_dict() for s in self.setups if s.setup_type == "gap_go"]
 
     def get_vwap_reclaims(self) -> List[Dict]:
         """Get VWAP reclaim setups"""
-        return [s.to_dict() for s in self.setups if s.setup_type == 'vwap_reclaim']
+        return [s.to_dict() for s in self.setups if s.setup_type == "vwap_reclaim"]
 
     def get_status(self) -> Dict:
         """Get scanner status"""
@@ -433,8 +483,8 @@ class WarriorMomentumScanner:
             "last_scan": self.last_scan.isoformat() if self.last_scan else None,
             "setups_found": len(self.setups),
             "by_quality": setup_counts,
-            "a_plus_setups": len([s for s in self.setups if s.signal == 'A+']),
-            "a_setups": len([s for s in self.setups if s.signal == 'A'])
+            "a_plus_setups": len([s for s in self.setups if s.signal == "A+"]),
+            "a_setups": len([s for s in self.setups if s.signal == "A"]),
         }
 
     def reset_vwap(self):
@@ -484,7 +534,9 @@ if __name__ == "__main__":
     scanner = start_warrior_scanner(interval=10, on_setup=on_a_plus_setup)
 
     print("Warrior scanner running... Press Ctrl+C to stop")
-    print(f"Watching {len(scanner.watchlist)} stocks in ${scanner.min_price}-${scanner.max_price} range")
+    print(
+        f"Watching {len(scanner.watchlist)} stocks in ${scanner.min_price}-${scanner.max_price} range"
+    )
     print("Looking for: Gap & Go, VWAP Reclaim, Breakout, Continuation setups")
 
     try:

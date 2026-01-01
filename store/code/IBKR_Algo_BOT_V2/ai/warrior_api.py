@@ -10,22 +10,27 @@ Endpoints:
 - WebSocket alerts
 """
 
-import logging
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Query
-from pydantic import BaseModel
-from typing import List, Dict, Optional, Any
-from datetime import datetime, date
 import asyncio
 import json
+import logging
 from collections import defaultdict
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import (APIRouter, HTTPException, Query, WebSocket,
+                     WebSocketDisconnect)
+from pydantic import BaseModel
 
 # Import Warrior Trading modules
 try:
-    from ai.warrior_scanner import WarriorScanner, WarriorCandidate
-    from ai.warrior_pattern_detector import WarriorPatternDetector, TradingSetup, SetupType
-    from ai.warrior_risk_manager import WarriorRiskManager, ValidationResponse, ValidationResult
     from ai.warrior_database import WarriorDatabase, get_database
+    from ai.warrior_pattern_detector import (SetupType, TradingSetup,
+                                             WarriorPatternDetector)
+    from ai.warrior_risk_manager import (ValidationResponse, ValidationResult,
+                                         WarriorRiskManager)
+    from ai.warrior_scanner import WarriorCandidate, WarriorScanner
     from config.config_loader import get_config
+
     WARRIOR_AVAILABLE = True
 except ImportError as e:
     logging.warning(f"Warrior Trading modules not available: {e}")
@@ -37,10 +42,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/warrior", tags=["Warrior Trading"])
 
 # Global instances (singleton pattern)
-_scanner_instance: Optional['WarriorScanner'] = None
-_detector_instance: Optional['WarriorPatternDetector'] = None
-_risk_manager_instance: Optional['WarriorRiskManager'] = None
-_database_instance: Optional['WarriorDatabase'] = None
+_scanner_instance: Optional["WarriorScanner"] = None
+_detector_instance: Optional["WarriorPatternDetector"] = None
+_risk_manager_instance: Optional["WarriorRiskManager"] = None
+_database_instance: Optional["WarriorDatabase"] = None
+
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -52,11 +58,15 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        logger.info(f"WebSocket connected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"WebSocket connected. Total connections: {len(self.active_connections)}"
+        )
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-        logger.info(f"WebSocket disconnected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"WebSocket disconnected. Total connections: {len(self.active_connections)}"
+        )
 
     async def broadcast(self, message: dict):
         """Broadcast message to all connected clients"""
@@ -80,6 +90,7 @@ manager = ConnectionManager()
 # Pydantic models for request/response
 class ScanRequest(BaseModel):
     """Pre-market scan request"""
+
     min_gap_percent: Optional[float] = None
     min_rvol: Optional[float] = None
     max_float: Optional[float] = None
@@ -88,6 +99,7 @@ class ScanRequest(BaseModel):
 
 class PatternRequest(BaseModel):
     """Pattern detection request"""
+
     symbol: str
     candles_1m: List[Dict[str, Any]]  # OHLCV data
     candles_5m: List[Dict[str, Any]]  # OHLCV data
@@ -100,6 +112,7 @@ class PatternRequest(BaseModel):
 
 class ValidationRequest(BaseModel):
     """Trade validation request"""
+
     symbol: str
     setup_type: str
     entry_price: float
@@ -110,6 +123,7 @@ class ValidationRequest(BaseModel):
 
 class TradeEntryRequest(BaseModel):
     """Record trade entry"""
+
     symbol: str
     setup_type: str
     entry_price: float
@@ -120,18 +134,21 @@ class TradeEntryRequest(BaseModel):
 
 class TradeExitRequest(BaseModel):
     """Record trade exit"""
+
     trade_id: str
     exit_price: float
     exit_reason: str = "MANUAL"
 
 
 # Helper functions
-def get_scanner() -> 'WarriorScanner':
+def get_scanner() -> "WarriorScanner":
     """Get or create scanner instance"""
     global _scanner_instance
 
     if not WARRIOR_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Warrior Trading modules not available")
+        raise HTTPException(
+            status_code=503, detail="Warrior Trading modules not available"
+        )
 
     if _scanner_instance is None:
         _scanner_instance = WarriorScanner()
@@ -140,12 +157,14 @@ def get_scanner() -> 'WarriorScanner':
     return _scanner_instance
 
 
-def get_detector() -> 'WarriorPatternDetector':
+def get_detector() -> "WarriorPatternDetector":
     """Get or create detector instance"""
     global _detector_instance
 
     if not WARRIOR_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Warrior Trading modules not available")
+        raise HTTPException(
+            status_code=503, detail="Warrior Trading modules not available"
+        )
 
     if _detector_instance is None:
         _detector_instance = WarriorPatternDetector()
@@ -154,12 +173,14 @@ def get_detector() -> 'WarriorPatternDetector':
     return _detector_instance
 
 
-def get_risk_manager() -> 'WarriorRiskManager':
+def get_risk_manager() -> "WarriorRiskManager":
     """Get or create risk manager instance"""
     global _risk_manager_instance
 
     if not WARRIOR_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Warrior Trading modules not available")
+        raise HTTPException(
+            status_code=503, detail="Warrior Trading modules not available"
+        )
 
     if _risk_manager_instance is None:
         _risk_manager_instance = WarriorRiskManager()
@@ -168,12 +189,14 @@ def get_risk_manager() -> 'WarriorRiskManager':
     return _risk_manager_instance
 
 
-def get_db() -> 'WarriorDatabase':
+def get_db() -> "WarriorDatabase":
     """Get or create database instance"""
     global _database_instance
 
     if not WARRIOR_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Warrior Trading modules not available")
+        raise HTTPException(
+            status_code=503, detail="Warrior Trading modules not available"
+        )
 
     if _database_instance is None:
         _database_instance = get_database()
@@ -184,6 +207,7 @@ def get_db() -> 'WarriorDatabase':
 
 # API Endpoints
 
+
 @router.get("/status")
 async def get_status():
     """
@@ -193,10 +217,7 @@ async def get_status():
         System availability and configuration
     """
     if not WARRIOR_AVAILABLE:
-        return {
-            "available": False,
-            "error": "Warrior Trading modules not installed"
-        }
+        return {"available": False, "error": "Warrior Trading modules not installed"}
 
     try:
         config = get_config()
@@ -209,9 +230,9 @@ async def get_status():
                 "daily_goal": config.risk.daily_profit_goal,
                 "max_loss_per_trade": config.risk.max_loss_per_trade,
                 "max_loss_per_day": config.risk.max_loss_per_day,
-                "min_rr": config.risk.min_reward_to_risk
+                "min_rr": config.risk.min_reward_to_risk,
             },
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -242,13 +263,15 @@ async def scan_premarket(request: ScanRequest = None):
                 min_gap_percent=request.min_gap_percent,
                 min_rvol=request.min_rvol,
                 max_float=request.max_float,
-                min_premarket_vol=request.min_premarket_vol
+                min_premarket_vol=request.min_premarket_vol,
             )
         else:
             candidates = scanner.scan_premarket()
 
         scan_duration = (datetime.now() - start_time).total_seconds()
-        logger.info(f"Scan complete: {len(candidates)} candidates found in {scan_duration:.2f}s")
+        logger.info(
+            f"Scan complete: {len(candidates)} candidates found in {scan_duration:.2f}s"
+        )
 
         # Save candidates to database
         if candidates:
@@ -260,7 +283,7 @@ async def scan_premarket(request: ScanRequest = None):
             "timestamp": datetime.now().isoformat(),
             "count": len(candidates),
             "scan_time_seconds": scan_duration,
-            "candidates": [c.to_dict() for c in candidates]
+            "candidates": [c.to_dict() for c in candidates],
         }
 
     except Exception as e:
@@ -286,9 +309,9 @@ async def get_watchlist():
         if db_candidates:
             return {
                 "source": "database",
-                "timestamp": db_candidates[0]['scan_time'] if db_candidates else None,
+                "timestamp": db_candidates[0]["scan_time"] if db_candidates else None,
                 "count": len(db_candidates),
-                "watchlist": db_candidates
+                "watchlist": db_candidates,
             }
 
         # Fall back to scanner cache
@@ -297,10 +320,12 @@ async def get_watchlist():
 
         return {
             "source": "cache",
-            "timestamp": scanner.cache_timestamp.isoformat() if scanner.cache_timestamp else None,
+            "timestamp": (
+                scanner.cache_timestamp.isoformat() if scanner.cache_timestamp else None
+            ),
             "cache_valid": is_valid,
             "count": len(candidates),
-            "watchlist": [c.to_dict() for c in candidates]
+            "watchlist": [c.to_dict() for c in candidates],
         }
 
     except Exception as e:
@@ -338,7 +363,7 @@ async def detect_patterns(request: PatternRequest):
             ema9_1m=request.ema9_1m,
             ema9_5m=request.ema9_5m,
             ema20_5m=request.ema20_5m,
-            high_of_day=request.high_of_day
+            high_of_day=request.high_of_day,
         )
 
         logger.info(f"Found {len(setups)} patterns for {request.symbol}")
@@ -347,7 +372,7 @@ async def detect_patterns(request: PatternRequest):
             "symbol": request.symbol,
             "timestamp": datetime.now().isoformat(),
             "count": len(setups),
-            "setups": [s.to_dict() for s in setups]
+            "setups": [s.to_dict() for s in setups],
         }
 
     except Exception as e:
@@ -391,7 +416,7 @@ async def validate_trade(request: ValidationRequest):
             confidence=70.0,  # Default
             strength_factors=[],
             risk_factors=[],
-            current_price=request.entry_price
+            current_price=request.entry_price,
         )
 
         # Validate
@@ -430,8 +455,8 @@ async def get_risk_status():
                 "max_loss_per_trade": risk_mgr.risk_config.max_loss_per_trade,
                 "max_loss_per_day": risk_mgr.risk_config.max_loss_per_day,
                 "min_rr": risk_mgr.risk_config.min_reward_to_risk,
-                "max_consecutive_losses": risk_mgr.risk_config.max_consecutive_losses
-            }
+                "max_consecutive_losses": risk_mgr.risk_config.max_consecutive_losses,
+            },
         }
 
     except Exception as e:
@@ -457,7 +482,7 @@ async def reset_daily():
         return {
             "success": True,
             "message": "Daily statistics reset",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -487,7 +512,7 @@ async def record_trade_entry(request: TradeEntryRequest):
             entry_price=request.entry_price,
             shares=request.shares,
             stop_price=request.stop_price,
-            target_price=request.target_price
+            target_price=request.target_price,
         )
 
         # Save to database
@@ -499,20 +524,22 @@ async def record_trade_entry(request: TradeEntryRequest):
             entry_price=request.entry_price,
             shares=request.shares,
             stop_price=request.stop_price,
-            target_price=request.target_price
+            target_price=request.target_price,
         )
 
         logger.info(f"Trade entered and saved to database: {trade_id}")
 
         # Broadcast to WebSocket clients
-        await manager.broadcast({
-            "type": "trade_entered",
-            "trade_id": trade_id,
-            "symbol": request.symbol,
-            "entry_price": request.entry_price,
-            "shares": request.shares,
-            "timestamp": datetime.now().isoformat()
-        })
+        await manager.broadcast(
+            {
+                "type": "trade_entered",
+                "trade_id": trade_id,
+                "symbol": request.symbol,
+                "entry_price": request.entry_price,
+                "shares": request.shares,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         return {
             "success": True,
@@ -522,7 +549,7 @@ async def record_trade_entry(request: TradeEntryRequest):
             "shares": request.shares,
             "stop_price": request.stop_price,
             "target_price": request.target_price,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -549,11 +576,13 @@ async def record_trade_exit(request: TradeExitRequest):
         completed_trade = risk_mgr.record_trade_exit(
             trade_id=request.trade_id,
             exit_price=request.exit_price,
-            exit_reason=request.exit_reason
+            exit_reason=request.exit_reason,
         )
 
         if completed_trade is None:
-            raise HTTPException(status_code=404, detail=f"Trade {request.trade_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Trade {request.trade_id} not found"
+            )
 
         # Save to database
         db.save_trade_exit(
@@ -562,26 +591,34 @@ async def record_trade_exit(request: TradeExitRequest):
             exit_price=request.exit_price,
             exit_reason=request.exit_reason,
             pnl=completed_trade.pnl,
-            pnl_percent=(completed_trade.pnl / (completed_trade.entry_price * completed_trade.shares)) * 100,
-            r_multiple=completed_trade.r_multiple
+            pnl_percent=(
+                completed_trade.pnl
+                / (completed_trade.entry_price * completed_trade.shares)
+            )
+            * 100,
+            r_multiple=completed_trade.r_multiple,
         )
 
         # Update daily stats in database
         stats = risk_mgr.get_daily_stats()
         db.save_daily_stats(date.today(), stats)
 
-        logger.info(f"Trade exited and saved to database: {request.trade_id}, P&L: ${completed_trade.pnl:+.2f}")
+        logger.info(
+            f"Trade exited and saved to database: {request.trade_id}, P&L: ${completed_trade.pnl:+.2f}"
+        )
 
         # Broadcast to WebSocket clients
-        await manager.broadcast({
-            "type": "trade_exited",
-            "trade_id": request.trade_id,
-            "symbol": completed_trade.symbol,
-            "exit_price": request.exit_price,
-            "pnl": completed_trade.pnl,
-            "r_multiple": completed_trade.r_multiple,
-            "timestamp": datetime.now().isoformat()
-        })
+        await manager.broadcast(
+            {
+                "type": "trade_exited",
+                "trade_id": request.trade_id,
+                "symbol": completed_trade.symbol,
+                "exit_price": request.exit_price,
+                "pnl": completed_trade.pnl,
+                "r_multiple": completed_trade.r_multiple,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         return {
             "success": True,
@@ -591,10 +628,14 @@ async def record_trade_exit(request: TradeExitRequest):
             "exit_price": completed_trade.exit_price,
             "shares": completed_trade.shares,
             "pnl": completed_trade.pnl,
-            "pnl_percent": (completed_trade.pnl / (completed_trade.entry_price * completed_trade.shares)) * 100,
+            "pnl_percent": (
+                completed_trade.pnl
+                / (completed_trade.entry_price * completed_trade.shares)
+            )
+            * 100,
             "r_multiple": completed_trade.r_multiple,
             "exit_reason": request.exit_reason,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except HTTPException:
@@ -609,7 +650,7 @@ async def get_trade_history(
     date_filter: Optional[str] = Query(None, description="Date filter (YYYY-MM-DD)"),
     status: Optional[str] = Query(None, description="Filter by status (OPEN, CLOSED)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
-    limit: int = Query(100, description="Maximum number of trades to return")
+    limit: int = Query(100, description="Maximum number of trades to return"),
 ):
     """
     Get trade history from database
@@ -640,19 +681,15 @@ async def get_trade_history(
             symbol=symbol,
             start_date=start_date,
             end_date=end_date,
-            limit=limit
+            limit=limit,
         )
 
         return {
             "success": True,
             "count": len(trades),
-            "filters": {
-                "date": date_filter,
-                "status": status,
-                "symbol": symbol
-            },
+            "filters": {"date": date_filter, "status": status, "symbol": symbol},
             "trades": trades,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -675,11 +712,14 @@ async def websocket_alerts(websocket: WebSocket):
 
     try:
         # Send initial connection confirmation
-        await manager.send_personal({
-            "type": "connected",
-            "message": "Connected to Warrior Trading alerts",
-            "timestamp": datetime.now().isoformat()
-        }, websocket)
+        await manager.send_personal(
+            {
+                "type": "connected",
+                "message": "Connected to Warrior Trading alerts",
+                "timestamp": datetime.now().isoformat(),
+            },
+            websocket,
+        )
 
         # Keep connection alive and handle incoming messages
         while True:
@@ -689,10 +729,10 @@ async def websocket_alerts(websocket: WebSocket):
 
                 # Handle ping
                 if message.get("type") == "ping":
-                    await manager.send_personal({
-                        "type": "pong",
-                        "timestamp": datetime.now().isoformat()
-                    }, websocket)
+                    await manager.send_personal(
+                        {"type": "pong", "timestamp": datetime.now().isoformat()},
+                        websocket,
+                    )
 
                 # Handle other message types as needed
 
@@ -707,7 +747,7 @@ async def websocket_alerts(websocket: WebSocket):
 
 
 # Helper function to broadcast pattern alerts
-async def broadcast_pattern_alert(symbol: str, setup: 'TradingSetup'):
+async def broadcast_pattern_alert(symbol: str, setup: "TradingSetup"):
     """
     Broadcast pattern detection alert to all connected clients
 
@@ -715,17 +755,19 @@ async def broadcast_pattern_alert(symbol: str, setup: 'TradingSetup'):
         symbol: Stock ticker
         setup: Detected trading setup
     """
-    await manager.broadcast({
-        "type": "pattern_detected",
-        "symbol": symbol,
-        "setup_type": setup.setup_type.value,
-        "confidence": setup.confidence,
-        "entry_price": setup.entry_price,
-        "stop_price": setup.stop_price,
-        "target_2r": setup.target_2r,
-        "risk_reward_ratio": setup.risk_reward_ratio,
-        "timestamp": datetime.now().isoformat()
-    })
+    await manager.broadcast(
+        {
+            "type": "pattern_detected",
+            "symbol": symbol,
+            "setup_type": setup.setup_type.value,
+            "confidence": setup.confidence,
+            "entry_price": setup.entry_price,
+            "stop_price": setup.stop_price,
+            "target_2r": setup.target_2r,
+            "risk_reward_ratio": setup.risk_reward_ratio,
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
 
 
 # Configuration endpoint
@@ -745,13 +787,13 @@ async def get_configuration():
                 "min_gap_percent": config.scanner.min_gap_percent,
                 "min_rvol": config.scanner.min_rvol,
                 "max_float_millions": config.scanner.max_float_millions,
-                "max_watchlist_size": config.scanner.max_watchlist_size
+                "max_watchlist_size": config.scanner.max_watchlist_size,
             },
             "patterns": {
                 "enabled_patterns": config.patterns.enabled_patterns,
                 "bull_flag": config.patterns.bull_flag,
                 "hod_breakout": config.patterns.hod_breakout,
-                "whole_dollar_breakout": config.patterns.whole_dollar_breakout
+                "whole_dollar_breakout": config.patterns.whole_dollar_breakout,
             },
             "risk": {
                 "daily_profit_goal": config.risk.daily_profit_goal,
@@ -759,8 +801,8 @@ async def get_configuration():
                 "max_loss_per_day": config.risk.max_loss_per_day,
                 "default_risk_per_trade": config.risk.default_risk_per_trade,
                 "min_reward_to_risk": config.risk.min_reward_to_risk,
-                "max_consecutive_losses": config.risk.max_consecutive_losses
-            }
+                "max_consecutive_losses": config.risk.max_consecutive_losses,
+            },
         }
 
     except Exception as e:
@@ -775,9 +817,9 @@ async def health_check():
     return {
         "status": "healthy",
         "warrior_available": WARRIOR_AVAILABLE,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
 # Export router and manager for use in main app
-__all__ = ['router', 'manager', 'broadcast_pattern_alert']
+__all__ = ["router", "manager", "broadcast_pattern_alert"]

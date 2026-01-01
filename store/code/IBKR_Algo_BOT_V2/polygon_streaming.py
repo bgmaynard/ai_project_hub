@@ -20,19 +20,21 @@ Usage:
     stream.start()
 """
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
+import os
 import threading
-from datetime import datetime
-from typing import Dict, List, Optional, Callable, Set
 from collections import deque
+from datetime import datetime
+from typing import Callable, Dict, List, Optional, Set
+
 import websockets
 from websockets.exceptions import ConnectionClosed
 
 try:
     import pandas as pd
+
     HAS_PANDAS = True
 except ImportError:
     HAS_PANDAS = False
@@ -40,6 +42,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 POLYGON_WS_URL = "wss://socket.polygon.io/stocks"
+
 
 def get_polygon_api_key():
     """Get Polygon API key at runtime (after dotenv loads)"""
@@ -73,7 +76,7 @@ class PolygonStream:
 
         # Data buffers (last N items per symbol)
         self.trades: Dict[str, deque] = {}  # symbol -> deque of trades
-        self.quotes: Dict[str, Dict] = {}   # symbol -> latest quote
+        self.quotes: Dict[str, Dict] = {}  # symbol -> latest quote
         self.tape: deque = deque(maxlen=500)  # Combined tape for all symbols
         self.luld_bands: Dict[str, Dict] = {}  # symbol -> LULD bands
 
@@ -84,12 +87,12 @@ class PolygonStream:
 
         # Stats
         self.stats = {
-            'connected': False,
-            'trades_received': 0,
-            'quotes_received': 0,
-            'luld_received': 0,
-            'last_message': None,
-            'reconnects': 0
+            "connected": False,
+            "trades_received": 0,
+            "quotes_received": 0,
+            "luld_received": 0,
+            "last_message": None,
+            "reconnects": 0,
         }
 
         logger.info("PolygonStream initialized")
@@ -110,13 +113,17 @@ class PolygonStream:
         if symbol not in self.trades:
             self.trades[symbol] = deque(maxlen=200)
         logger.info(f"Subscribed to trades: {symbol}")
-        print(f"[PolygonStream] subscribe_trades({symbol}), is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}")
+        print(
+            f"[PolygonStream] subscribe_trades({symbol}), is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}"
+        )
         # Send subscription to WebSocket if already connected
-        if is_new and self.ws and self.stats.get('connected'):
+        if is_new and self.ws and self.stats.get("connected"):
             print(f"[PolygonStream] Sending live subscription for T.{symbol}")
             self._send_live_subscription(f"T.{symbol}")
         else:
-            print(f"[PolygonStream] NOT sending live sub - is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}")
+            print(
+                f"[PolygonStream] NOT sending live sub - is_new={is_new}, ws={self.ws is not None}, connected={self.stats.get('connected')}"
+            )
 
     def subscribe_quotes(self, symbol: str):
         """Subscribe to quote stream for symbol"""
@@ -125,19 +132,20 @@ class PolygonStream:
         self.quote_symbols.add(symbol)
         logger.info(f"Subscribed to quotes: {symbol}")
         # Send subscription to WebSocket if already connected
-        if is_new and self.ws and self.stats.get('connected'):
+        if is_new and self.ws and self.stats.get("connected"):
             self._send_live_subscription(f"Q.{symbol}")
 
     def _send_live_subscription(self, channel: str):
         """Send a subscription message to the live WebSocket"""
-        print(f"[PolygonStream] _send_live_subscription({channel}), loop={self._loop is not None}, ws={self.ws is not None}")
+        print(
+            f"[PolygonStream] _send_live_subscription({channel}), loop={self._loop is not None}, ws={self.ws is not None}"
+        )
         if self._loop and self.ws:
             try:
                 msg = {"action": "subscribe", "params": channel}
                 print(f"[PolygonStream] Sending msg: {msg}")
                 future = asyncio.run_coroutine_threadsafe(
-                    self.ws.send(json.dumps(msg)),
-                    self._loop
+                    self.ws.send(json.dumps(msg)), self._loop
                 )
                 # Wait briefly for the result to ensure it's sent
                 try:
@@ -187,9 +195,7 @@ class PolygonStream:
         try:
             print(f"[PolygonStream] Connecting to {POLYGON_WS_URL}...")
             self.ws = await websockets.connect(
-                POLYGON_WS_URL,
-                ping_interval=30,
-                ping_timeout=10
+                POLYGON_WS_URL, ping_interval=30, ping_timeout=10
             )
             logger.info("Connected to Polygon WebSocket")
             print("[PolygonStream] WebSocket connected!")
@@ -213,10 +219,12 @@ class PolygonStream:
                                 logger.info("Polygon WebSocket connected")
                             elif status == "auth_success":
                                 logger.info("Polygon authentication successful")
-                                self.stats['connected'] = True
+                                self.stats["connected"] = True
                                 authenticated = True
                             elif status == "auth_failed":
-                                logger.error(f"Polygon auth failed: {msg.get('message')}")
+                                logger.error(
+                                    f"Polygon auth failed: {msg.get('message')}"
+                                )
                                 self._connecting = False
                                 return
 
@@ -227,14 +235,14 @@ class PolygonStream:
 
             if not authenticated:
                 logger.warning("Polygon auth not confirmed, proceeding anyway")
-                self.stats['connected'] = True  # Assume connected
+                self.stats["connected"] = True  # Assume connected
 
             # Subscribe to symbols
             await self._send_subscriptions()
 
         except Exception as e:
             logger.error(f"Polygon connection error: {e}")
-            self.stats['connected'] = False
+            self.stats["connected"] = False
         finally:
             self._connecting = False
 
@@ -270,7 +278,7 @@ class PolygonStream:
             "exchange": data.get("x", ""),
             "timestamp": data.get("t", 0),
             "conditions": data.get("c", []),
-            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3],
         }
 
         # Add to symbol-specific buffer
@@ -280,8 +288,8 @@ class PolygonStream:
         # Add to combined tape
         self.tape.append(trade)
 
-        self.stats['trades_received'] += 1
-        self.stats['last_message'] = datetime.now().isoformat()
+        self.stats["trades_received"] += 1
+        self.stats["last_message"] = datetime.now().isoformat()
 
         # Fire callbacks
         for cb in self._trade_callbacks:
@@ -304,19 +312,19 @@ class PolygonStream:
             "ask": data.get("ap", data.get("P", 0)),
             "ask_size": data.get("as", data.get("S", 0)),
             "timestamp": data.get("t", 0),
-            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3],
         }
 
         # Calculate spread
-        if quote['bid'] > 0 and quote['ask'] > 0:
-            quote['spread'] = quote['ask'] - quote['bid']
-            quote['spread_pct'] = (quote['spread'] / quote['bid']) * 100
+        if quote["bid"] > 0 and quote["ask"] > 0:
+            quote["spread"] = quote["ask"] - quote["bid"]
+            quote["spread_pct"] = (quote["spread"] / quote["bid"]) * 100
 
         # Store latest quote
         self.quotes[symbol] = quote
 
-        self.stats['quotes_received'] += 1
-        self.stats['last_message'] = datetime.now().isoformat()
+        self.stats["quotes_received"] += 1
+        self.stats["last_message"] = datetime.now().isoformat()
 
         # Fire callbacks
         for cb in self._quote_callbacks:
@@ -339,14 +347,14 @@ class PolygonStream:
             "indicators": data.get("i", []),
             "tape": data.get("z", ""),
             "timestamp": data.get("t", 0),
-            "time": datetime.now().strftime("%H:%M:%S")
+            "time": datetime.now().strftime("%H:%M:%S"),
         }
 
         # Store LULD bands
         self.luld_bands[symbol] = luld
 
-        self.stats['luld_received'] += 1
-        self.stats['last_message'] = datetime.now().isoformat()
+        self.stats["luld_received"] += 1
+        self.stats["last_message"] = datetime.now().isoformat()
 
         # Fire callbacks
         for cb in self._luld_callbacks:
@@ -398,8 +406,8 @@ class PolygonStream:
             except ConnectionClosed:
                 print("[PolygonStream] WebSocket disconnected!")
                 logger.warning("Polygon WebSocket disconnected, reconnecting...")
-                self.stats['connected'] = False
-                self.stats['reconnects'] += 1
+                self.stats["connected"] = False
+                self.stats["reconnects"] += 1
                 self.ws = None
                 await asyncio.sleep(2)
 
@@ -426,7 +434,9 @@ class PolygonStream:
 
             # If running flag is True but thread is dead, clean up first
             if self.running and (not self._thread or not self._thread.is_alive()):
-                logger.warning("PolygonStream was marked running but thread died - cleaning up")
+                logger.warning(
+                    "PolygonStream was marked running but thread died - cleaning up"
+                )
                 print("[PolygonStream] Cleaning up dead thread before restart")
                 self.running = False
                 self._thread = None
@@ -434,12 +444,16 @@ class PolygonStream:
 
             if not self.api_key:
                 logger.error("Cannot start - Polygon API key not configured")
-                print(f"[PolygonStream] No API key! Key length: {len(self.api_key) if self.api_key else 0}")
+                print(
+                    f"[PolygonStream] No API key! Key length: {len(self.api_key) if self.api_key else 0}"
+                )
                 return
 
             print(f"[PolygonStream] Starting with API key: {self.api_key[:5]}...")
             self.running = True
-            self._thread = threading.Thread(target=self._run_loop, daemon=True, name="PolygonStreamThread")
+            self._thread = threading.Thread(
+                target=self._run_loop, daemon=True, name="PolygonStreamThread"
+            )
             self._thread.start()
             logger.info("PolygonStream started (thread ID: %s)", self._thread.ident)
             print(f"[PolygonStream] Thread started (ID: {self._thread.ident})")
@@ -467,7 +481,7 @@ class PolygonStream:
 
             self._thread = None
             self._loop = None
-            self.stats['connected'] = False
+            self.stats["connected"] = False
             logger.info("PolygonStream stopped")
             print("[PolygonStream] Stopped")
 
@@ -495,19 +509,19 @@ class PolygonStream:
         """
         symbol = symbol.upper()
         if symbol not in self.trades or len(self.trades[symbol]) < 5:
-            return {'bids': [], 'asks': [], 'source': 'polygon_synthetic'}
+            return {"bids": [], "asks": [], "source": "polygon_synthetic"}
 
         trades = list(self.trades[symbol])
         quote = self.quotes.get(symbol, {})
-        mid_price = quote.get('bid', 0) if quote else 0
+        mid_price = quote.get("bid", 0) if quote else 0
         if not mid_price and trades:
-            mid_price = trades[-1].get('price', 0)
+            mid_price = trades[-1].get("price", 0)
 
         # Aggregate volume by price
         price_volume = {}
         for t in trades:
-            price = round(t.get('price', 0), 2)
-            size = t.get('size', 0)
+            price = round(t.get("price", 0), 2)
+            size = t.get("size", 0)
             if price > 0:
                 price_volume[price] = price_volume.get(price, 0) + size
 
@@ -515,29 +529,31 @@ class PolygonStream:
         bids = []
         asks = []
         for price, volume in sorted(price_volume.items(), reverse=True):
-            entry = {'price': price, 'size': volume, 'orders': 1}
+            entry = {"price": price, "size": volume, "orders": 1}
             if price <= mid_price:
                 bids.append(entry)
             else:
                 asks.append(entry)
 
         # Sort: bids descending (highest first), asks ascending (lowest first)
-        bids = sorted(bids, key=lambda x: x['price'], reverse=True)[:levels]
-        asks = sorted(asks, key=lambda x: x['price'])[:levels]
+        bids = sorted(bids, key=lambda x: x["price"], reverse=True)[:levels]
+        asks = sorted(asks, key=lambda x: x["price"])[:levels]
 
         return {
-            'bids': bids,
-            'asks': asks,
-            'mid_price': mid_price,
-            'source': 'polygon_synthetic',
-            'trade_count': len(trades)
+            "bids": bids,
+            "asks": asks,
+            "mid_price": mid_price,
+            "source": "polygon_synthetic",
+            "trade_count": len(trades),
         }
 
     def get_luld_bands(self, symbol: str) -> Optional[dict]:
         """Get current LULD bands for symbol"""
         return self.luld_bands.get(symbol.upper())
 
-    def get_minute_bars(self, symbol: str, minutes: int = 30) -> Optional['pd.DataFrame']:
+    def get_minute_bars(
+        self, symbol: str, minutes: int = 30
+    ) -> Optional["pd.DataFrame"]:
         """
         Build minute OHLCV bars from recent trade stream.
         Returns DataFrame with Open, High, Low, Close, Volume columns.
@@ -555,17 +571,17 @@ class PolygonStream:
             trades_list = list(self.trades[symbol])
             df = pd.DataFrame(trades_list)
 
-            if 'timestamp' not in df.columns or 'price' not in df.columns:
+            if "timestamp" not in df.columns or "price" not in df.columns:
                 return None
 
             # Convert timestamp (milliseconds) to datetime
-            df['dt'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df = df.set_index('dt')
+            df["dt"] = pd.to_datetime(df["timestamp"], unit="ms")
+            df = df.set_index("dt")
 
             # Resample to 1-minute bars
-            ohlcv = df['price'].resample('1min').ohlc()
-            ohlcv['Volume'] = df['size'].resample('1min').sum()
-            ohlcv.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+            ohlcv = df["price"].resample("1min").ohlc()
+            ohlcv["Volume"] = df["size"].resample("1min").sum()
+            ohlcv.columns = ["Open", "High", "Low", "Close", "Volume"]
 
             # Drop NaN rows and return last N minutes
             result = ohlcv.dropna().tail(minutes)
@@ -581,6 +597,7 @@ class PolygonStream:
         print("[PolygonStream] Restarting...")
         self.stop()
         import time
+
         time.sleep(1)  # Brief pause between stop and start
         self.start()
         logger.info("PolygonStream restart complete")
@@ -589,7 +606,7 @@ class PolygonStream:
     def is_healthy(self) -> bool:
         """Check if the stream is healthy (connected and thread alive)"""
         thread_alive = self._thread is not None and self._thread.is_alive()
-        return self.running and thread_alive and self.stats['connected']
+        return self.running and thread_alive and self.stats["connected"]
 
     def get_status(self) -> dict:
         """Get stream status with thread health info"""
@@ -597,7 +614,7 @@ class PolygonStream:
         thread_id = self._thread.ident if self._thread else None
 
         return {
-            "connected": self.stats['connected'],
+            "connected": self.stats["connected"],
             "running": self.running,
             "thread_alive": thread_alive,
             "thread_id": thread_id,
@@ -606,11 +623,11 @@ class PolygonStream:
             "trade_subscriptions": list(self.trade_symbols),
             "quote_subscriptions": list(self.quote_symbols),
             "luld_subscriptions": list(self.luld_symbols),
-            "trades_received": self.stats['trades_received'],
-            "quotes_received": self.stats['quotes_received'],
-            "luld_received": self.stats['luld_received'],
-            "last_message": self.stats['last_message'],
-            "reconnects": self.stats['reconnects']
+            "trades_received": self.stats["trades_received"],
+            "quotes_received": self.stats["quotes_received"],
+            "luld_received": self.stats["luld_received"],
+            "last_message": self.stats["last_message"],
+            "reconnects": self.stats["reconnects"],
         }
 
 
@@ -635,6 +652,7 @@ def is_polygon_streaming_available() -> bool:
 
 _hod_scanner_wired = False
 
+
 def wire_hod_scanner():
     """
     Wire HOD Momentum Scanner to receive real-time trades from Polygon.
@@ -649,8 +667,8 @@ def wire_hod_scanner():
         return
 
     try:
-        from ai.hod_momentum_scanner import get_hod_scanner
         import httpx
+        from ai.hod_momentum_scanner import get_hod_scanner
 
         stream = get_polygon_stream()
         hod_scanner = get_hod_scanner()
@@ -658,9 +676,9 @@ def wire_hod_scanner():
         def on_polygon_trade(trade: dict):
             """Process each trade from Polygon and update HOD scanner"""
             try:
-                symbol = trade.get('symbol', '')
-                price = trade.get('price', 0)
-                size = trade.get('size', 0)
+                symbol = trade.get("symbol", "")
+                price = trade.get("price", 0)
+                size = trade.get("size", 0)
 
                 if not symbol or price <= 0:
                     return
@@ -669,8 +687,10 @@ def wire_hod_scanner():
                 alert = hod_scanner.update_price(symbol, price, size)
 
                 if alert:
-                    logger.info(f"🚀 HOD Alert from Polygon: {alert.symbol} ${alert.price:.2f} "
-                               f"[{alert.grade}] {alert.strategy_name}")
+                    logger.info(
+                        f"🚀 HOD Alert from Polygon: {alert.symbol} ${alert.price:.2f} "
+                        f"[{alert.grade}] {alert.strategy_name}"
+                    )
 
                     # Auto-add A and B grade stocks to watchlists
                     if alert.grade in ["A", "B"]:
@@ -686,13 +706,17 @@ def wire_hod_scanner():
         # Register HOD alert callback for additional processing
         def on_hod_alert(alert):
             """Called when HOD scanner generates an alert"""
-            logger.info(f"📈 HOD Break: {alert.symbol} ${alert.price:.2f} ({alert.change_pct:+.1f}%) "
-                       f"[{alert.grade}] {alert.criteria_met}/5 criteria")
+            logger.info(
+                f"📈 HOD Break: {alert.symbol} ${alert.price:.2f} ({alert.change_pct:+.1f}%) "
+                f"[{alert.grade}] {alert.criteria_met}/5 criteria"
+            )
 
         hod_scanner.on_alert(on_hod_alert)
 
         _hod_scanner_wired = True
-        logger.info("✅ HOD scanner wired to Polygon stream - real-time HOD detection enabled")
+        logger.info(
+            "✅ HOD scanner wired to Polygon stream - real-time HOD detection enabled"
+        )
 
     except Exception as e:
         logger.error(f"Failed to wire HOD scanner to Polygon: {e}")
@@ -701,6 +725,7 @@ def wire_hod_scanner():
 def _auto_add_to_watchlists(symbol: str):
     """Auto-add symbol to dashboard and scalper watchlists"""
     import threading
+
     import httpx
 
     def _add():
@@ -710,7 +735,7 @@ def _auto_add_to_watchlists(symbol: str):
                 try:
                     client.post(
                         "http://localhost:9100/api/worklist/add",
-                        json={"symbol": symbol}
+                        json={"symbol": symbol},
                     )
                 except:
                     pass
@@ -725,9 +750,7 @@ def _auto_add_to_watchlists(symbol: str):
 
                 # Add to HOD tracker
                 try:
-                    client.post(
-                        f"http://localhost:9100/api/scanner/hod/add/{symbol}"
-                    )
+                    client.post(f"http://localhost:9100/api/scanner/hod/add/{symbol}")
                 except:
                     pass
 
@@ -742,6 +765,7 @@ def _auto_add_to_watchlists(symbol: str):
 # ============ Tape Analyzer Integration ============
 
 _tape_analyzer_wired = False
+
 
 def wire_tape_analyzer():
     """
@@ -760,8 +784,9 @@ def wire_tape_analyzer():
         return
 
     try:
-        from ai.tape_analyzer import get_tape_analyzer, TapeEntry
         from datetime import datetime
+
+        from ai.tape_analyzer import TapeEntry, get_tape_analyzer
 
         stream = get_polygon_stream()
         tape_analyzer = get_tape_analyzer()
@@ -769,25 +794,25 @@ def wire_tape_analyzer():
         def on_polygon_trade_for_tape(trade: dict):
             """Process each trade and feed to tape analyzer"""
             try:
-                symbol = trade.get('symbol', '')
-                price = trade.get('price', 0)
-                size = trade.get('size', 0)
+                symbol = trade.get("symbol", "")
+                price = trade.get("price", 0)
+                size = trade.get("size", 0)
 
                 if not symbol or price <= 0:
                     return
 
                 # Determine trade side from conditions or price vs quote
                 quote = stream.quotes.get(symbol, {})
-                bid = quote.get('bid', 0)
-                ask = quote.get('ask', 0)
+                bid = quote.get("bid", 0)
+                ask = quote.get("ask", 0)
 
                 # Classify as buy (at ask) or sell (at bid)
                 if ask > 0 and price >= ask:
-                    side = 'buy'
+                    side = "buy"
                 elif bid > 0 and price <= bid:
-                    side = 'sell'
+                    side = "sell"
                 else:
-                    side = 'mid'
+                    side = "mid"
 
                 # Create tape entry
                 entry = TapeEntry(
@@ -795,7 +820,7 @@ def wire_tape_analyzer():
                     price=price,
                     size=size,
                     side=side,
-                    exchange=trade.get('exchange', '')
+                    exchange=trade.get("exchange", ""),
                 )
 
                 # Add to tape analyzer
@@ -808,7 +833,9 @@ def wire_tape_analyzer():
         stream.on_trade(on_polygon_trade_for_tape)
 
         _tape_analyzer_wired = True
-        logger.info("✅ Tape analyzer wired to Polygon stream - real-time tape reading enabled")
+        logger.info(
+            "✅ Tape analyzer wired to Polygon stream - real-time tape reading enabled"
+        )
 
     except Exception as e:
         logger.error(f"Failed to wire tape analyzer to Polygon: {e}")
@@ -817,8 +844,11 @@ def wire_tape_analyzer():
 # ============ Pattern Detector Integration ============
 
 _pattern_detector_wired = False
-_pattern_candle_buffers: Dict[str, List] = {}  # symbol -> list of trades for candle building
+_pattern_candle_buffers: Dict[str, List] = (
+    {}
+)  # symbol -> list of trades for candle building
 _last_candle_time: Dict[str, datetime] = {}  # symbol -> last candle timestamp
+
 
 def wire_pattern_detector():
     """
@@ -838,8 +868,9 @@ def wire_pattern_detector():
         return
 
     try:
-        from ai.pattern_detector import get_pattern_detector, Candle
         from datetime import datetime, timedelta
+
+        from ai.pattern_detector import Candle, get_pattern_detector
 
         stream = get_polygon_stream()
         pattern_detector = get_pattern_detector()
@@ -849,9 +880,9 @@ def wire_pattern_detector():
             global _pattern_candle_buffers, _last_candle_time
 
             try:
-                symbol = trade.get('symbol', '')
-                price = trade.get('price', 0)
-                size = trade.get('size', 0)
+                symbol = trade.get("symbol", "")
+                price = trade.get("price", 0)
+                size = trade.get("size", 0)
 
                 if not symbol or price <= 0:
                     return
@@ -870,8 +901,8 @@ def wire_pattern_detector():
                     # Build candle from buffered trades
                     trades = _pattern_candle_buffers[symbol]
 
-                    prices = [t['price'] for t in trades]
-                    volumes = [t['size'] for t in trades]
+                    prices = [t["price"] for t in trades]
+                    volumes = [t["size"] for t in trades]
 
                     candle = Candle(
                         timestamp=last_time,
@@ -879,7 +910,7 @@ def wire_pattern_detector():
                         high=max(prices),
                         low=min(prices),
                         close=prices[-1],
-                        volume=sum(volumes)
+                        volume=sum(volumes),
                     )
 
                     # Add to pattern detector
@@ -890,11 +921,9 @@ def wire_pattern_detector():
                     _last_candle_time[symbol] = current_minute
 
                 # Add trade to current candle buffer
-                _pattern_candle_buffers[symbol].append({
-                    'price': price,
-                    'size': size,
-                    'time': now
-                })
+                _pattern_candle_buffers[symbol].append(
+                    {"price": price, "size": size, "time": now}
+                )
 
             except Exception as e:
                 pass  # Don't spam logs
@@ -903,7 +932,9 @@ def wire_pattern_detector():
         stream.on_trade(on_polygon_trade_for_patterns)
 
         _pattern_detector_wired = True
-        logger.info("✅ Pattern detector wired to Polygon stream - real-time pattern detection enabled")
+        logger.info(
+            "✅ Pattern detector wired to Polygon stream - real-time pattern detection enabled"
+        )
 
     except Exception as e:
         logger.error(f"Failed to wire pattern detector to Polygon: {e}")
@@ -945,16 +976,17 @@ def wire_depth_analyzer():
         def on_polygon_quote_for_depth(quote: Dict):
             """Handle quote for depth analysis"""
             try:
-                symbol = quote.get('symbol', '')
-                bid = quote.get('bid', 0)
-                ask = quote.get('ask', 0)
-                bid_size = quote.get('bid_size', quote.get('bidsz', 0))
-                ask_size = quote.get('ask_size', quote.get('asksz', 0))
+                symbol = quote.get("symbol", "")
+                bid = quote.get("bid", 0)
+                ask = quote.get("ask", 0)
+                bid_size = quote.get("bid_size", quote.get("bidsz", 0))
+                ask_size = quote.get("ask_size", quote.get("asksz", 0))
 
                 if not symbol or not bid or not ask:
                     return
 
                 import time
+
                 now = time.time()
 
                 # Initialize cache
@@ -965,7 +997,9 @@ def wire_depth_analyzer():
 
                 # Update bid/ask levels (aggregate by price)
                 # For NBBO quotes, we get top of book
-                _depth_bid_cache[symbol] = [{"price": bid, "size": bid_size * 100}]  # Convert to shares
+                _depth_bid_cache[symbol] = [
+                    {"price": bid, "size": bid_size * 100}
+                ]  # Convert to shares
                 _depth_ask_cache[symbol] = [{"price": ask, "size": ask_size * 100}]
 
                 # Rate limit depth updates (every 500ms)
@@ -977,7 +1011,7 @@ def wire_depth_analyzer():
                         symbol,
                         _depth_bid_cache[symbol],
                         _depth_ask_cache[symbol],
-                        mid_price
+                        mid_price,
                     )
 
                     _depth_last_update[symbol] = now
@@ -991,7 +1025,9 @@ def wire_depth_analyzer():
         stream.on_quote(on_polygon_quote_for_depth)
 
         _depth_analyzer_wired = True
-        logger.info("✅ Depth analyzer wired to Polygon stream - order book analysis enabled")
+        logger.info(
+            "✅ Depth analyzer wired to Polygon stream - order book analysis enabled"
+        )
 
     except Exception as e:
         logger.error(f"Failed to wire depth analyzer to Polygon: {e}")
@@ -1026,14 +1062,15 @@ def wire_exhaustion_detector():
         def on_polygon_trade_for_exhaustion(trade: Dict):
             """Build candles from trades for exhaustion detection"""
             try:
-                symbol = trade.get('symbol', '')
-                price = trade.get('price', 0)
-                size = trade.get('size', 0)
+                symbol = trade.get("symbol", "")
+                price = trade.get("price", 0)
+                size = trade.get("size", 0)
 
                 if not symbol or not price:
                     return
 
                 from datetime import datetime
+
                 now = datetime.now()
                 current_minute = now.hour * 60 + now.minute
 
@@ -1048,15 +1085,15 @@ def wire_exhaustion_detector():
                     # Build candle from buffered trades
                     trades = _exhaustion_candle_buffers[symbol]
 
-                    prices = [t['price'] for t in trades]
-                    volumes = [t['size'] for t in trades]
+                    prices = [t["price"] for t in trades]
+                    volumes = [t["size"] for t in trades]
 
                     candle = {
-                        'open': prices[0],
-                        'high': max(prices),
-                        'low': min(prices),
-                        'close': prices[-1],
-                        'volume': sum(volumes)
+                        "open": prices[0],
+                        "high": max(prices),
+                        "low": min(prices),
+                        "close": prices[-1],
+                        "volume": sum(volumes),
                     }
 
                     # Update exhaustion detector
@@ -1067,10 +1104,9 @@ def wire_exhaustion_detector():
                     _exhaustion_last_minute[symbol] = current_minute
 
                 # Add trade to current candle buffer
-                _exhaustion_candle_buffers[symbol].append({
-                    'price': price,
-                    'size': size
-                })
+                _exhaustion_candle_buffers[symbol].append(
+                    {"price": price, "size": size}
+                )
 
             except Exception as e:
                 pass  # Don't spam logs
@@ -1078,9 +1114,9 @@ def wire_exhaustion_detector():
         def on_polygon_quote_for_exhaustion(quote: Dict):
             """Update exhaustion detector with quote data for spread analysis"""
             try:
-                symbol = quote.get('symbol', '')
-                bid = quote.get('bid', 0)
-                ask = quote.get('ask', 0)
+                symbol = quote.get("symbol", "")
+                bid = quote.get("bid", 0)
+                ask = quote.get("ask", 0)
 
                 if symbol and bid > 0 and ask > 0:
                     detector.update_quote(symbol, bid, ask)
@@ -1093,7 +1129,9 @@ def wire_exhaustion_detector():
         stream.on_quote(on_polygon_quote_for_exhaustion)
 
         _exhaustion_detector_wired = True
-        logger.info("✅ Exhaustion detector wired to Polygon stream - momentum exhaustion detection enabled")
+        logger.info(
+            "✅ Exhaustion detector wired to Polygon stream - momentum exhaustion detection enabled"
+        )
 
     except Exception as e:
         logger.error(f"Failed to wire exhaustion detector to Polygon: {e}")
@@ -1121,14 +1159,15 @@ def wire_float_rotation_tracker():
         def on_polygon_trade_for_float_rotation(trade: Dict):
             """Handle trade tick for float rotation tracking"""
             try:
-                symbol = trade.get('symbol', '')
-                size = trade.get('size', 0)
+                symbol = trade.get("symbol", "")
+                size = trade.get("size", 0)
 
                 if not symbol or not size:
                     return
 
                 # Determine if pre-market (before 9:30 ET)
                 from datetime import datetime
+
                 now = datetime.now()
                 is_premarket = now.hour < 9 or (now.hour == 9 and now.minute < 30)
 
@@ -1142,7 +1181,9 @@ def wire_float_rotation_tracker():
         stream.on_trade(on_polygon_trade_for_float_rotation)
 
         _float_rotation_wired = True
-        logger.info("✅ Float rotation tracker wired to Polygon stream - real-time rotation detection enabled")
+        logger.info(
+            "✅ Float rotation tracker wired to Polygon stream - real-time rotation detection enabled"
+        )
 
     except Exception as e:
         logger.error(f"Failed to wire float rotation tracker to Polygon: {e}")
@@ -1169,9 +1210,9 @@ def wire_vwap_manager():
         def on_polygon_trade_for_vwap(trade: Dict):
             """Handle trade tick for VWAP update"""
             try:
-                symbol = trade.get('symbol', '')
-                price = trade.get('price', 0)
-                size = trade.get('size', 0)
+                symbol = trade.get("symbol", "")
+                price = trade.get("price", 0)
+                size = trade.get("size", 0)
 
                 if not symbol or not price or not size:
                     return
@@ -1226,7 +1267,9 @@ if __name__ == "__main__":
         print(f"TRADE: {trade['symbol']} ${trade['price']:.2f} x{trade['size']}")
 
     def on_quote(quote):
-        print(f"QUOTE: {quote['symbol']} Bid: ${quote['bid']:.2f} Ask: ${quote['ask']:.2f}")
+        print(
+            f"QUOTE: {quote['symbol']} Bid: ${quote['bid']:.2f} Ask: ${quote['ask']:.2f}"
+        )
 
     stream.on_trade(on_trade)
     stream.on_quote(on_quote)
@@ -1240,6 +1283,7 @@ if __name__ == "__main__":
 
     # Run for 30 seconds
     import time
+
     try:
         time.sleep(30)
     except KeyboardInterrupt:

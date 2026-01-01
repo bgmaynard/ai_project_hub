@@ -11,14 +11,15 @@ Patterns:
 """
 
 import logging
-from dataclasses import dataclass, asdict
-from typing import List, Optional, Dict, Any, Literal
-from enum import Enum
-from datetime import datetime
-import pandas as pd
-import numpy as np
-from pathlib import Path
 import sys
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional
+
+import numpy as np
+import pandas as pd
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class SetupType(str, Enum):
     """Warrior Trading setup types"""
+
     BULL_FLAG = "BULL_FLAG"
     HOD_BREAKOUT = "HOD_BREAKOUT"
     WHOLE_DOLLAR_BREAKOUT = "WHOLE_DOLLAR_BREAKOUT"
@@ -62,6 +64,7 @@ class TradingSetup:
         current_price: Price when detected
         timestamp: Detection time
     """
+
     setup_type: SetupType
     symbol: str
     timeframe: str
@@ -101,15 +104,15 @@ class TradingSetup:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         data = asdict(self)
-        data['setup_type'] = self.setup_type.value
+        data["setup_type"] = self.setup_type.value
         return data
 
     def is_valid(self) -> bool:
         """Check if setup has valid risk/reward"""
         return (
-            self.risk_reward_ratio >= 2.0 and
-            self.risk_per_share > 0 and
-            self.entry_price > self.stop_price
+            self.risk_reward_ratio >= 2.0
+            and self.risk_per_share > 0
+            and self.entry_price > self.stop_price
         )
 
 
@@ -142,7 +145,7 @@ class WarriorPatternDetector:
         ema9_1m: float,
         ema9_5m: float,
         ema20_5m: float,
-        high_of_day: float
+        high_of_day: float,
     ) -> List[TradingSetup]:
         """
         Run all enabled pattern detectors
@@ -196,9 +199,7 @@ class WarriorPatternDetector:
 
         # Hammer Reversal (5-min chart) - Optional, higher risk
         if self._is_pattern_enabled(SetupType.HAMMER_REVERSAL):
-            hammer = self.detect_hammer_reversal(
-                symbol, candles_5m, vwap, ema9_5m
-            )
+            hammer = self.detect_hammer_reversal(symbol, candles_5m, vwap, ema9_5m)
             if hammer:
                 setups.append(hammer)
 
@@ -219,7 +220,7 @@ class WarriorPatternDetector:
         candles_5m: pd.DataFrame,
         vwap: float,
         ema9: float,
-        ema20: float
+        ema20: float,
     ) -> Optional[TradingSetup]:
         """
         Detect bull flag pattern
@@ -256,12 +257,12 @@ class WarriorPatternDetector:
             pole_candles = recent.iloc[pole_start_idx:pole_end_idx]
 
             # Check for strong upward pole
-            green_candles = (pole_candles['Close'] > pole_candles['Open']).sum()
-            pole_range = pole_candles['High'].max() - pole_candles['Low'].min()
-            pole_avg_price = pole_candles['Close'].mean()
+            green_candles = (pole_candles["Close"] > pole_candles["Open"]).sum()
+            pole_range = pole_candles["High"].max() - pole_candles["Low"].min()
+            pole_avg_price = pole_candles["Close"].mean()
 
-            min_candles = config.get('pole_min_candles', 3)
-            min_range_pct = config.get('pole_min_range_percent', 2.0) / 100
+            min_candles = config.get("pole_min_candles", 3)
+            min_range_pct = config.get("pole_min_range_percent", 2.0) / 100
 
             if green_candles < min_candles:
                 return None
@@ -270,29 +271,29 @@ class WarriorPatternDetector:
                 return None
 
             # Check for controlled pullback (flag)
-            max_pullback_candles = config.get('pullback_max_candles', 4)
+            max_pullback_candles = config.get("pullback_max_candles", 4)
             pullback_candles = recent.iloc[-max_pullback_candles:]
-            pullback_low = pullback_candles['Low'].min()
-            pullback_high = pullback_candles['High'].max()
+            pullback_low = pullback_candles["Low"].min()
+            pullback_high = pullback_candles["High"].max()
 
             # Support level (9 EMA or VWAP, whichever is higher)
             support_level = max(ema9, vwap)
 
             # Pullback should stay above support
-            if config.get('require_above_ema9', True):
+            if config.get("require_above_ema9", True):
                 if pullback_low < support_level * 0.99:  # 1% cushion
                     return None
 
             # Check volume (pullback volume should be lower than pole)
-            pole_avg_volume = pole_candles['Volume'].mean()
-            pullback_avg_volume = pullback_candles['Volume'].mean()
+            pole_avg_volume = pole_candles["Volume"].mean()
+            pullback_avg_volume = pullback_candles["Volume"].mean()
 
-            max_volume_ratio = config.get('pullback_max_volume_ratio', 0.8)
+            max_volume_ratio = config.get("pullback_max_volume_ratio", 0.8)
             if pullback_avg_volume > pole_avg_volume * max_volume_ratio:
                 return None
 
             # Calculate entry/stop/targets
-            current_price = recent['Close'].iloc[-1]
+            current_price = recent["Close"].iloc[-1]
             entry = pullback_high + 0.02  # Entry above flag high
             stop = max(pullback_low - 0.05, support_level * 0.99)
             risk = entry - stop
@@ -328,7 +329,7 @@ class WarriorPatternDetector:
                 strength.append(f"Volume decreased {volume_reduction:.0f}%")
 
             # Calculate confidence
-            base_confidence = config.get('min_confidence', 60)
+            base_confidence = config.get("min_confidence", 60)
             confidence = base_confidence + len(strength) * 5 - len(risks) * 10
             confidence = max(min(confidence, 95.0), 40.0)
 
@@ -349,11 +350,13 @@ class WarriorPatternDetector:
                 confidence=confidence,
                 strength_factors=strength,
                 risk_factors=risks,
-                current_price=current_price
+                current_price=current_price,
             )
 
             if setup.is_valid():
-                logger.info(f"{symbol}: Bull flag detected (confidence: {confidence:.0f}%)")
+                logger.info(
+                    f"{symbol}: Bull flag detected (confidence: {confidence:.0f}%)"
+                )
                 return setup
 
         except Exception as e:
@@ -367,7 +370,7 @@ class WarriorPatternDetector:
         candles_1m: pd.DataFrame,
         high_of_day: float,
         vwap: float,
-        ema9: float
+        ema9: float,
     ) -> Optional[TradingSetup]:
         """
         Detect high-of-day breakout
@@ -394,19 +397,21 @@ class WarriorPatternDetector:
                 return None
 
             recent = candles_1m.iloc[-5:].copy()
-            current_price = recent['Close'].iloc[-1]
-            current_high = recent['High'].iloc[-1]
+            current_price = recent["Close"].iloc[-1]
+            current_high = recent["High"].iloc[-1]
 
             # Check if we're near HOD
-            proximity_pct = config.get('proximity_percent', 1.0) / 100
+            proximity_pct = config.get("proximity_percent", 1.0) / 100
             distance_to_hod = (high_of_day - current_price) / current_price
 
             if distance_to_hod > proximity_pct or distance_to_hod < -0.005:
                 return None  # Too far or already broken significantly
 
             # Check volume trend (should be increasing)
-            volume_trend = recent['Volume'].iloc[-3:].mean() / recent['Volume'].iloc[:2].mean()
-            min_surge = config.get('volume_surge_ratio', 1.5)
+            volume_trend = (
+                recent["Volume"].iloc[-3:].mean() / recent["Volume"].iloc[:2].mean()
+            )
+            min_surge = config.get("volume_surge_ratio", 1.5)
 
             if volume_trend < min_surge:
                 return None
@@ -415,7 +420,7 @@ class WarriorPatternDetector:
             entry = high_of_day + 0.02
 
             # Stop below recent consolidation
-            consolidation_low = recent['Low'].iloc[-3:].min()
+            consolidation_low = recent["Low"].iloc[-3:].min()
             stop = consolidation_low - 0.05
 
             risk = entry - stop
@@ -446,7 +451,7 @@ class WarriorPatternDetector:
                 strength.append("Above 9 EMA")
 
             # Calculate confidence
-            base_confidence = config.get('min_confidence', 55)
+            base_confidence = config.get("min_confidence", 55)
             confidence = base_confidence + len(strength) * 7 - len(risks) * 10
             confidence = max(min(confidence, 90.0), 40.0)
 
@@ -467,11 +472,13 @@ class WarriorPatternDetector:
                 confidence=confidence,
                 strength_factors=strength,
                 risk_factors=risks,
-                current_price=current_price
+                current_price=current_price,
             )
 
             if setup.is_valid():
-                logger.info(f"{symbol}: HOD breakout detected (confidence: {confidence:.0f}%)")
+                logger.info(
+                    f"{symbol}: HOD breakout detected (confidence: {confidence:.0f}%)"
+                )
                 return setup
 
         except Exception as e:
@@ -480,11 +487,7 @@ class WarriorPatternDetector:
         return None
 
     def detect_whole_dollar_breakout(
-        self,
-        symbol: str,
-        candles_1m: pd.DataFrame,
-        vwap: float,
-        ema9: float
+        self, symbol: str, candles_1m: pd.DataFrame, vwap: float, ema9: float
     ) -> Optional[TradingSetup]:
         """
         Detect whole dollar level breakout
@@ -510,12 +513,13 @@ class WarriorPatternDetector:
                 return None
 
             recent = candles_1m.iloc[-5:].copy()
-            current_price = recent['Close'].iloc[-1]
+            current_price = recent["Close"].iloc[-1]
 
             # Find nearest whole dollar above current price
-            whole_levels = config.get('whole_dollar_levels', [
-                2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100
-            ])
+            whole_levels = config.get(
+                "whole_dollar_levels",
+                [2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100],
+            )
 
             nearest_whole = None
             for level in whole_levels:
@@ -527,14 +531,14 @@ class WarriorPatternDetector:
                 return None
 
             # Check proximity
-            proximity_pct = config.get('proximity_percent', 2.0) / 100
+            proximity_pct = config.get("proximity_percent", 2.0) / 100
             distance = (nearest_whole - current_price) / current_price
 
             if distance > proximity_pct or distance < -0.005:
                 return None  # Too far or already broken
 
             # Check uptrend
-            if config.get('require_uptrend', True):
+            if config.get("require_uptrend", True):
                 if current_price < ema9:
                     return None
 
@@ -571,7 +575,7 @@ class WarriorPatternDetector:
             strength.append(f"Approaching ${nearest_whole:.0f} whole dollar")
 
             # Calculate confidence
-            base_confidence = config.get('min_confidence', 50)
+            base_confidence = config.get("min_confidence", 50)
             confidence = base_confidence + len(strength) * 8 - len(risks) * 12
             confidence = max(min(confidence, 85.0), 35.0)
 
@@ -592,7 +596,7 @@ class WarriorPatternDetector:
                 confidence=confidence,
                 strength_factors=strength,
                 risk_factors=risks,
-                current_price=current_price
+                current_price=current_price,
             )
 
             if setup.is_valid():
@@ -613,7 +617,7 @@ class WarriorPatternDetector:
         candles_5m: pd.DataFrame,
         vwap: float,
         ema9: float,
-        ema20: float
+        ema20: float,
     ) -> Optional[TradingSetup]:
         """
         Detect micro pullback in strong trend
@@ -641,23 +645,23 @@ class WarriorPatternDetector:
                 return None
 
             recent = candles_5m.iloc[-10:].copy()
-            current_price = recent['Close'].iloc[-1]
+            current_price = recent["Close"].iloc[-1]
 
             # Check for uptrend
-            if config.get('require_trend', True):
+            if config.get("require_trend", True):
                 if not (current_price > ema9 > ema20):
                     return None
 
             # Look for pullback (last 1-3 candles)
-            max_pullback_candles = config.get('max_pullback_candles', 3)
+            max_pullback_candles = config.get("max_pullback_candles", 3)
             pullback = recent.iloc[-max_pullback_candles:]
 
             # Check if pullback touched EMA
-            pullback_low = pullback['Low'].min()
+            pullback_low = pullback["Low"].min()
             touched_ema9 = abs(pullback_low - ema9) / ema9 < 0.01  # Within 1%
             touched_ema20 = abs(pullback_low - ema20) / ema20 < 0.01
 
-            if config.get('pullback_to_ema', True):
+            if config.get("pullback_to_ema", True):
                 if not (touched_ema9 or touched_ema20):
                     return None
 
@@ -693,7 +697,7 @@ class WarriorPatternDetector:
                 strength.append("Pullback to 20 EMA")
 
             # Calculate confidence
-            base_confidence = config.get('min_confidence', 65)
+            base_confidence = config.get("min_confidence", 65)
             confidence = base_confidence + len(strength) * 6 - len(risks) * 10
             confidence = max(min(confidence, 90.0), 45.0)
 
@@ -714,7 +718,7 @@ class WarriorPatternDetector:
                 confidence=confidence,
                 strength_factors=strength,
                 risk_factors=risks,
-                current_price=current_price
+                current_price=current_price,
             )
 
             if setup.is_valid():
@@ -729,11 +733,7 @@ class WarriorPatternDetector:
         return None
 
     def detect_hammer_reversal(
-        self,
-        symbol: str,
-        candles_5m: pd.DataFrame,
-        vwap: float,
-        ema9: float
+        self, symbol: str, candles_5m: pd.DataFrame, vwap: float, ema9: float
     ) -> Optional[TradingSetup]:
         """
         Detect hammer reversal pattern (HIGHER RISK)
@@ -760,31 +760,33 @@ class WarriorPatternDetector:
                 return None
 
             recent = candles_5m.iloc[-10:].copy()
-            current_price = recent['Close'].iloc[-1]
+            current_price = recent["Close"].iloc[-1]
 
             # Check for extended down move
-            min_red_candles = config.get('min_red_candles', 3)
-            last_n = recent.iloc[-(min_red_candles + 1):-1]
-            red_candles = (last_n['Close'] < last_n['Open']).sum()
+            min_red_candles = config.get("min_red_candles", 3)
+            last_n = recent.iloc[-(min_red_candles + 1) : -1]
+            red_candles = (last_n["Close"] < last_n["Open"]).sum()
 
             if red_candles < min_red_candles:
                 return None
 
             # Check for hammer candle (last candle)
             last_candle = recent.iloc[-1]
-            body = abs(last_candle['Close'] - last_candle['Open'])
-            lower_wick = min(last_candle['Open'], last_candle['Close']) - last_candle['Low']
-            total_range = last_candle['High'] - last_candle['Low']
+            body = abs(last_candle["Close"] - last_candle["Open"])
+            lower_wick = (
+                min(last_candle["Open"], last_candle["Close"]) - last_candle["Low"]
+            )
+            total_range = last_candle["High"] - last_candle["Low"]
 
             # Hammer criteria: lower wick > 2x body
             if lower_wick < body * 2 or total_range == 0:
                 return None
 
             # Entry above hammer high
-            entry = last_candle['High'] + 0.02
+            entry = last_candle["High"] + 0.02
 
             # Stop below hammer low
-            stop = last_candle['Low'] - 0.05
+            stop = last_candle["Low"] - 0.05
 
             risk = entry - stop
             if risk <= 0:
@@ -806,7 +808,7 @@ class WarriorPatternDetector:
                 strength.append(f"Extended selloff ({red_candles} red candles)")
 
             # Calculate confidence (lower for reversals)
-            base_confidence = config.get('min_confidence', 70)
+            base_confidence = config.get("min_confidence", 70)
             confidence = base_confidence + len(strength) * 4 - len(risks) * 5
             confidence = max(min(confidence, 80.0), 40.0)
 
@@ -827,7 +829,7 @@ class WarriorPatternDetector:
                 confidence=confidence,
                 strength_factors=strength,
                 risk_factors=risks,
-                current_price=current_price
+                current_price=current_price,
             )
 
             if setup.is_valid():
@@ -853,7 +855,7 @@ if __name__ == "__main__":
     # Set up logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     print("=" * 80)
@@ -878,11 +880,13 @@ if __name__ == "__main__":
             print("❌ No data available (markets may be closed)")
         else:
             # Calculate indicators
-            vwap = (hist_5m['Close'] * hist_5m['Volume']).sum() / hist_5m['Volume'].sum()
-            ema9_5m = hist_5m['Close'].ewm(span=9, adjust=False).mean().iloc[-1]
-            ema20_5m = hist_5m['Close'].ewm(span=20, adjust=False).mean().iloc[-1]
-            ema9_1m = hist_1m['Close'].ewm(span=9, adjust=False).mean().iloc[-1]
-            hod = hist_1m['High'].max()
+            vwap = (hist_5m["Close"] * hist_5m["Volume"]).sum() / hist_5m[
+                "Volume"
+            ].sum()
+            ema9_5m = hist_5m["Close"].ewm(span=9, adjust=False).mean().iloc[-1]
+            ema20_5m = hist_5m["Close"].ewm(span=20, adjust=False).mean().iloc[-1]
+            ema9_1m = hist_1m["Close"].ewm(span=9, adjust=False).mean().iloc[-1]
+            hod = hist_1m["High"].max()
 
             print(f"  VWAP: ${vwap:.2f}")
             print(f"  9 EMA (5m): ${ema9_5m:.2f}")
@@ -899,7 +903,7 @@ if __name__ == "__main__":
                 ema9_1m=ema9_1m,
                 ema9_5m=ema9_5m,
                 ema20_5m=ema20_5m,
-                high_of_day=hod
+                high_of_day=hod,
             )
 
             if not setups:

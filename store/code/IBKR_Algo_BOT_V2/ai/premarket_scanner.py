@@ -10,13 +10,14 @@ Builds fresh watchlist each morning:
 Run at 4:00 AM ET via scheduled task.
 """
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
+import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 from pathlib import Path
+from typing import Dict, List, Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -43,9 +44,9 @@ class NewsLogger:
         """Load existing news log"""
         try:
             if NEWS_LOG_FILE.exists():
-                with open(NEWS_LOG_FILE, 'r') as f:
+                with open(NEWS_LOG_FILE, "r") as f:
                     data = json.load(f)
-                    self.news_log = data.get('news', [])
+                    self.news_log = data.get("news", [])
         except Exception as e:
             logger.error(f"Error loading news log: {e}")
             self.news_log = []
@@ -55,13 +56,16 @@ class NewsLogger:
         try:
             # Keep last 7 days of news
             cutoff = (datetime.now() - timedelta(days=7)).isoformat()
-            self.news_log = [n for n in self.news_log if n.get('timestamp', '') > cutoff]
+            self.news_log = [
+                n for n in self.news_log if n.get("timestamp", "") > cutoff
+            ]
 
-            with open(NEWS_LOG_FILE, 'w') as f:
-                json.dump({
-                    'news': self.news_log,
-                    'last_updated': datetime.now().isoformat()
-                }, f, indent=2)
+            with open(NEWS_LOG_FILE, "w") as f:
+                json.dump(
+                    {"news": self.news_log, "last_updated": datetime.now().isoformat()},
+                    f,
+                    indent=2,
+                )
         except Exception as e:
             logger.error(f"Error saving news log: {e}")
 
@@ -69,20 +73,22 @@ class NewsLogger:
         """Log a news item with timestamp"""
         now = datetime.now()
         entry = {
-            'timestamp': now.isoformat(),
-            'time_str': now.strftime('%I:%M %p'),
-            'date': now.strftime('%Y-%m-%d'),
-            'symbol': symbol.upper(),
-            'headline': headline,
-            'source': source
+            "timestamp": now.isoformat(),
+            "time_str": now.strftime("%I:%M %p"),
+            "date": now.strftime("%Y-%m-%d"),
+            "symbol": symbol.upper(),
+            "headline": headline,
+            "source": source,
         }
 
         # Avoid duplicates (same symbol + headline in last 5 mins)
         recent_cutoff = (now - timedelta(minutes=5)).isoformat()
         for existing in self.news_log:
-            if (existing.get('symbol') == symbol.upper() and
-                existing.get('headline') == headline and
-                existing.get('timestamp', '') > recent_cutoff):
+            if (
+                existing.get("symbol") == symbol.upper()
+                and existing.get("headline") == headline
+                and existing.get("timestamp", "") > recent_cutoff
+            ):
                 return  # Duplicate
 
         self.news_log.append(entry)
@@ -93,22 +99,24 @@ class NewsLogger:
 
     def get_today_news(self) -> List[Dict]:
         """Get all news from today"""
-        today = datetime.now().strftime('%Y-%m-%d')
-        return [n for n in self.news_log if n.get('date') == today]
+        today = datetime.now().strftime("%Y-%m-%d")
+        return [n for n in self.news_log if n.get("date") == today]
 
     def get_news_for_symbol(self, symbol: str) -> List[Dict]:
         """Get all news for a specific symbol"""
-        return [n for n in self.news_log if n.get('symbol') == symbol.upper()]
+        return [n for n in self.news_log if n.get("symbol") == symbol.upper()]
 
     def get_formatted_log(self, limit: int = 50) -> str:
         """Get formatted news log like the screenshot"""
         lines = []
-        for news in sorted(self.news_log, key=lambda x: x.get('timestamp', ''), reverse=True)[:limit]:
-            sym = news.get('symbol', '???')
-            headline = news.get('headline', '')[:80]
-            time_str = news.get('time_str', '')
+        for news in sorted(
+            self.news_log, key=lambda x: x.get("timestamp", ""), reverse=True
+        )[:limit]:
+            sym = news.get("symbol", "???")
+            headline = news.get("headline", "")[:80]
+            time_str = news.get("time_str", "")
             lines.append(f"${sym} - {headline} {time_str}")
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
 
 class PreMarketScanner:
@@ -128,28 +136,32 @@ class PreMarketScanner:
         """Load previous state"""
         try:
             if PREMARKET_WATCHLIST_FILE.exists():
-                with open(PREMARKET_WATCHLIST_FILE, 'r') as f:
+                with open(PREMARKET_WATCHLIST_FILE, "r") as f:
                     data = json.load(f)
-                    self.watchlist = data.get('symbols', [])
-                    self.premarket_movers = data.get('movers', [])
+                    self.watchlist = data.get("symbols", [])
+                    self.premarket_movers = data.get("movers", [])
 
             if CONTINUATION_FILE.exists():
-                with open(CONTINUATION_FILE, 'r') as f:
+                with open(CONTINUATION_FILE, "r") as f:
                     data = json.load(f)
-                    self.continuations = data.get('continuations', [])
+                    self.continuations = data.get("continuations", [])
         except Exception as e:
             logger.error(f"Error loading state: {e}")
 
     def _save_state(self):
         """Save current state"""
         try:
-            with open(PREMARKET_WATCHLIST_FILE, 'w') as f:
-                json.dump({
-                    'date': datetime.now().strftime('%Y-%m-%d'),
-                    'symbols': self.watchlist,
-                    'movers': self.premarket_movers,
-                    'updated': datetime.now().isoformat()
-                }, f, indent=2)
+            with open(PREMARKET_WATCHLIST_FILE, "w") as f:
+                json.dump(
+                    {
+                        "date": datetime.now().strftime("%Y-%m-%d"),
+                        "symbols": self.watchlist,
+                        "movers": self.premarket_movers,
+                        "updated": datetime.now().isoformat(),
+                    },
+                    f,
+                    indent=2,
+                )
         except Exception as e:
             logger.error(f"Error saving state: {e}")
 
@@ -167,15 +179,27 @@ class PreMarketScanner:
                     resp = await client.get(f"{API_BASE}/api/scanner/warrior/gaps")
                     if resp.status_code == 200:
                         data = resp.json()
-                        for stock in data.get('setups', data.get('gaps', [])):
-                            if abs(stock.get('gap_percent', stock.get('change_percent', 0))) >= 5:
-                                movers.append({
-                                    'symbol': stock.get('symbol'),
-                                    'price': stock.get('price'),
-                                    'gap_percent': stock.get('gap_percent', stock.get('change_percent', 0)),
-                                    'volume': stock.get('volume'),
-                                    'source': 'gap_scanner'
-                                })
+                        for stock in data.get("setups", data.get("gaps", [])):
+                            if (
+                                abs(
+                                    stock.get(
+                                        "gap_percent", stock.get("change_percent", 0)
+                                    )
+                                )
+                                >= 5
+                            ):
+                                movers.append(
+                                    {
+                                        "symbol": stock.get("symbol"),
+                                        "price": stock.get("price"),
+                                        "gap_percent": stock.get(
+                                            "gap_percent",
+                                            stock.get("change_percent", 0),
+                                        ),
+                                        "volume": stock.get("volume"),
+                                        "source": "gap_scanner",
+                                    }
+                                )
                 except Exception as e:
                     logger.debug(f"Gap scanner: {e}")
 
@@ -184,19 +208,21 @@ class PreMarketScanner:
                     resp = await client.get(f"{API_BASE}/api/worklist")
                     if resp.status_code == 200:
                         data = resp.json()
-                        items = data.get('data', data.get('symbols', []))
+                        items = data.get("data", data.get("symbols", []))
                         for stock in items:
-                            symbol = stock.get('symbol')
-                            if symbol and symbol not in [m['symbol'] for m in movers]:
-                                change = stock.get('change_percent', 0)
+                            symbol = stock.get("symbol")
+                            if symbol and symbol not in [m["symbol"] for m in movers]:
+                                change = stock.get("change_percent", 0)
                                 if abs(change) >= 5:
-                                    movers.append({
-                                        'symbol': symbol,
-                                        'price': stock.get('price'),
-                                        'change_percent': change,
-                                        'volume': stock.get('volume'),
-                                        'source': 'worklist_mover'
-                                    })
+                                    movers.append(
+                                        {
+                                            "symbol": symbol,
+                                            "price": stock.get("price"),
+                                            "change_percent": change,
+                                            "volume": stock.get("volume"),
+                                            "source": "worklist_mover",
+                                        }
+                                    )
                 except Exception as e:
                     logger.debug(f"Worklist movers: {e}")
 
@@ -205,27 +231,45 @@ class PreMarketScanner:
                     resp = await client.get(f"{API_BASE}/api/news/fetch?limit=50")
                     if resp.status_code == 200:
                         data = resp.json()
-                        for news in data.get('news', []):
-                            symbols = news.get('symbols', [])
-                            headline = news.get('headline', '') or news.get('title', '')
+                        for news in data.get("news", []):
+                            symbols = news.get("symbols", [])
+                            headline = news.get("headline", "") or news.get("title", "")
 
                             for sym in symbols:
                                 if sym and len(sym) <= 5:  # Valid ticker
                                     # Log the news
-                                    self.news_logger.log_news(sym, headline, 'benzinga')
+                                    self.news_logger.log_news(sym, headline, "benzinga")
 
                                     # Check if it's a catalyst
-                                    catalyst_words = ['FDA', 'approval', 'earnings', 'contract',
-                                                     'acquisition', 'merger', 'upgrade', 'partnership',
-                                                     'trial', 'Phase', 'revenue', 'guidance']
-                                    is_catalyst = any(w.lower() in headline.lower() for w in catalyst_words)
+                                    catalyst_words = [
+                                        "FDA",
+                                        "approval",
+                                        "earnings",
+                                        "contract",
+                                        "acquisition",
+                                        "merger",
+                                        "upgrade",
+                                        "partnership",
+                                        "trial",
+                                        "Phase",
+                                        "revenue",
+                                        "guidance",
+                                    ]
+                                    is_catalyst = any(
+                                        w.lower() in headline.lower()
+                                        for w in catalyst_words
+                                    )
 
-                                    if is_catalyst and sym not in [m['symbol'] for m in movers]:
-                                        movers.append({
-                                            'symbol': sym,
-                                            'headline': headline[:100],
-                                            'source': 'news_catalyst'
-                                        })
+                                    if is_catalyst and sym not in [
+                                        m["symbol"] for m in movers
+                                    ]:
+                                        movers.append(
+                                            {
+                                                "symbol": sym,
+                                                "headline": headline[:100],
+                                                "source": "news_catalyst",
+                                            }
+                                        )
                 except Exception as e:
                     logger.debug(f"News fetch: {e}")
 
@@ -244,27 +288,33 @@ class PreMarketScanner:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 # Get yesterday's top movers from our log
-                yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+                yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
                 # Check if we have continuation data
                 if CONTINUATION_FILE.exists():
-                    with open(CONTINUATION_FILE, 'r') as f:
+                    with open(CONTINUATION_FILE, "r") as f:
                         data = json.load(f)
-                        prev_movers = data.get('previous_day_movers', [])
+                        prev_movers = data.get("previous_day_movers", [])
 
                         for sym in prev_movers:
                             try:
-                                resp = await client.get(f"{API_BASE}/api/price/{sym}", timeout=5)
+                                resp = await client.get(
+                                    f"{API_BASE}/api/price/{sym}", timeout=5
+                                )
                                 if resp.status_code == 200:
                                     quote = resp.json()
                                     # Check for after-hours continuation (still moving)
-                                    if quote.get('change_percent', 0) > 2:
-                                        continuations.append({
-                                            'symbol': sym,
-                                            'price': quote.get('price'),
-                                            'change_percent': quote.get('change_percent'),
-                                            'reason': 'afterhours_continuation'
-                                        })
+                                    if quote.get("change_percent", 0) > 2:
+                                        continuations.append(
+                                            {
+                                                "symbol": sym,
+                                                "price": quote.get("price"),
+                                                "change_percent": quote.get(
+                                                    "change_percent"
+                                                ),
+                                                "reason": "afterhours_continuation",
+                                            }
+                                        )
                             except:
                                 pass
 
@@ -294,7 +344,7 @@ class PreMarketScanner:
         logger.info(f"Found {len(movers)} pre-market movers")
 
         for m in movers:
-            sym = m.get('symbol')
+            sym = m.get("symbol")
             if sym and sym not in new_watchlist:
                 new_watchlist.append(sym)
 
@@ -303,7 +353,7 @@ class PreMarketScanner:
         logger.info(f"Found {len(continuations)} continuation plays")
 
         for c in continuations:
-            sym = c.get('symbol')
+            sym = c.get("symbol")
             if sym and sym not in new_watchlist:
                 new_watchlist.append(sym)
 
@@ -315,7 +365,7 @@ class PreMarketScanner:
                     resp = await client.get(f"{API_BASE}/api/price/{sym}", timeout=3)
                     if resp.status_code == 200:
                         quote = resp.json()
-                        price = quote.get('price', 0)
+                        price = quote.get("price", 0)
 
                         # Filter: $1-$20 price range
                         if 1.0 <= price <= 20.0:
@@ -344,8 +394,7 @@ class PreMarketScanner:
                 # Add new symbols
                 for sym in symbols:
                     await client.post(
-                        f"{API_BASE}/api/worklist/add",
-                        json={"symbol": sym}
+                        f"{API_BASE}/api/worklist/add", json={"symbol": sym}
                     )
 
                 logger.info(f"Synced {len(symbols)} symbols to common watchlist")
@@ -369,9 +418,9 @@ class PreMarketScanner:
                     if resp.status_code == 200:
                         data = resp.json()
 
-                        for news in data.get('news', []):
-                            headline = news.get('headline', '') or news.get('title', '')
-                            symbols = news.get('symbols', [])
+                        for news in data.get("news", []):
+                            headline = news.get("headline", "") or news.get("title", "")
+                            symbols = news.get("symbols", [])
 
                             # Skip if already seen
                             headline_key = f"{headline[:50]}"
@@ -382,7 +431,7 @@ class PreMarketScanner:
                             # Log news for each symbol
                             for sym in symbols:
                                 if sym and len(sym) <= 5:
-                                    self.news_logger.log_news(sym, headline, 'benzinga')
+                                    self.news_logger.log_news(sym, headline, "benzinga")
 
                 # Keep seen_headlines from growing too large
                 if len(seen_headlines) > 1000:
@@ -400,21 +449,21 @@ class PreMarketScanner:
     def get_status(self) -> Dict:
         """Get scanner status"""
         return {
-            'is_running': self.is_running,
-            'watchlist_count': len(self.watchlist),
-            'watchlist': self.watchlist,
-            'premarket_movers': len(self.premarket_movers),
-            'continuations': len(self.continuations),
-            'news_today': len(self.news_logger.get_today_news()),
-            'last_updated': datetime.now().isoformat()
+            "is_running": self.is_running,
+            "watchlist_count": len(self.watchlist),
+            "watchlist": self.watchlist,
+            "premarket_movers": len(self.premarket_movers),
+            "continuations": len(self.continuations),
+            "news_today": len(self.news_logger.get_today_news()),
+            "last_updated": datetime.now().isoformat(),
         }
 
     def get_news_log(self, limit: int = 50) -> List[Dict]:
         """Get recent news log"""
         return sorted(
             self.news_logger.news_log,
-            key=lambda x: x.get('timestamp', ''),
-            reverse=True
+            key=lambda x: x.get("timestamp", ""),
+            reverse=True,
         )[:limit]
 
     def get_formatted_news(self, limit: int = 50) -> str:
@@ -461,7 +510,7 @@ async def run_4am_scan():
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     asyncio.run(run_4am_scan())

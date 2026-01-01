@@ -4,20 +4,21 @@ Test script for Warrior Trading Pattern Detector
 Tests all 5 pattern types with real market data
 """
 
-import sys
-from pathlib import Path
 import logging
+import sys
 from datetime import datetime
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from ai.warrior_pattern_detector import WarriorPatternDetector, SetupType
+from ai.warrior_pattern_detector import SetupType, WarriorPatternDetector
 from config.config_loader import get_config
 
 try:
     import yfinance as yf
+
     YFINANCE_AVAILABLE = True
 except ImportError:
     YFINANCE_AVAILABLE = False
@@ -56,7 +57,7 @@ def test_pattern_detector():
         for symbol in test_symbols:
             print(f"\n{'=' * 60}")
             print(f"Testing: {symbol}")
-            print('=' * 60)
+            print("=" * 60)
 
             try:
                 ticker = yf.Ticker(symbol)
@@ -68,12 +69,14 @@ def test_pattern_detector():
                     continue
 
                 # Calculate indicators
-                vwap = (hist_5m['Close'] * hist_5m['Volume']).sum() / hist_5m['Volume'].sum()
-                ema9_5m = hist_5m['Close'].ewm(span=9, adjust=False).mean().iloc[-1]
-                ema20_5m = hist_5m['Close'].ewm(span=20, adjust=False).mean().iloc[-1]
-                ema9_1m = hist_1m['Close'].ewm(span=9, adjust=False).mean().iloc[-1]
-                hod = hist_1m['High'].max()
-                current_price = hist_5m['Close'].iloc[-1]
+                vwap = (hist_5m["Close"] * hist_5m["Volume"]).sum() / hist_5m[
+                    "Volume"
+                ].sum()
+                ema9_5m = hist_5m["Close"].ewm(span=9, adjust=False).mean().iloc[-1]
+                ema20_5m = hist_5m["Close"].ewm(span=20, adjust=False).mean().iloc[-1]
+                ema9_1m = hist_1m["Close"].ewm(span=9, adjust=False).mean().iloc[-1]
+                hod = hist_1m["High"].max()
+                current_price = hist_5m["Close"].iloc[-1]
 
                 print(f"\n  Market Data:")
                 print(f"    Current Price: ${current_price:.2f}")
@@ -92,7 +95,7 @@ def test_pattern_detector():
                     ema9_1m=ema9_1m,
                     ema9_5m=ema9_5m,
                     ema20_5m=ema20_5m,
-                    high_of_day=hod
+                    high_of_day=hod,
                 )
 
                 if not setups:
@@ -147,6 +150,7 @@ def test_pattern_detector():
     except Exception as e:
         print(f"\n[FAIL] Error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -167,15 +171,17 @@ def test_individual_patterns():
             print("  [WARN]  No data available")
             return
 
-        vwap = (hist_5m['Close'] * hist_5m['Volume']).sum() / hist_5m['Volume'].sum()
-        ema9 = hist_5m['Close'].ewm(span=9, adjust=False).mean().iloc[-1]
-        ema20 = hist_5m['Close'].ewm(span=20, adjust=False).mean().iloc[-1]
+        vwap = (hist_5m["Close"] * hist_5m["Volume"]).sum() / hist_5m["Volume"].sum()
+        ema9 = hist_5m["Close"].ewm(span=9, adjust=False).mean().iloc[-1]
+        ema20 = hist_5m["Close"].ewm(span=20, adjust=False).mean().iloc[-1]
 
         # Test bull flag
         print("\n  Testing Bull Flag detector...")
         bull_flag = detector.detect_bull_flag("TSLA", hist_5m, vwap, ema9, ema20)
         if bull_flag:
-            print(f"    [OK] Bull Flag detected (confidence: {bull_flag.confidence:.0f}%)")
+            print(
+                f"    [OK] Bull Flag detected (confidence: {bull_flag.confidence:.0f}%)"
+            )
         else:
             print(f"    ℹ️  No Bull Flag pattern found")
 
@@ -183,20 +189,28 @@ def test_individual_patterns():
         print("\n  Testing HOD Breakout detector...")
         hist_1m = ticker.history(period="1d", interval="1m")
         if not hist_1m.empty:
-            hod = hist_1m['High'].max()
-            ema9_1m = hist_1m['Close'].ewm(span=9, adjust=False).mean().iloc[-1]
-            hod_setup = detector.detect_hod_breakout("TSLA", hist_1m, hod, vwap, ema9_1m)
+            hod = hist_1m["High"].max()
+            ema9_1m = hist_1m["Close"].ewm(span=9, adjust=False).mean().iloc[-1]
+            hod_setup = detector.detect_hod_breakout(
+                "TSLA", hist_1m, hod, vwap, ema9_1m
+            )
             if hod_setup:
-                print(f"    [OK] HOD Breakout detected (confidence: {hod_setup.confidence:.0f}%)")
+                print(
+                    f"    [OK] HOD Breakout detected (confidence: {hod_setup.confidence:.0f}%)"
+                )
             else:
                 print(f"    ℹ️  No HOD Breakout pattern found")
 
         # Test Whole Dollar
         print("\n  Testing Whole Dollar Breakout detector...")
         if not hist_1m.empty:
-            whole_dollar = detector.detect_whole_dollar_breakout("TSLA", hist_1m, vwap, ema9_1m)
+            whole_dollar = detector.detect_whole_dollar_breakout(
+                "TSLA", hist_1m, vwap, ema9_1m
+            )
             if whole_dollar:
-                print(f"    [OK] Whole Dollar detected (confidence: {whole_dollar.confidence:.0f}%)")
+                print(
+                    f"    [OK] Whole Dollar detected (confidence: {whole_dollar.confidence:.0f}%)"
+                )
             else:
                 print(f"    ℹ️  No Whole Dollar pattern found")
 
@@ -204,7 +218,9 @@ def test_individual_patterns():
         print("\n  Testing Micro Pullback detector...")
         pullback = detector.detect_micro_pullback("TSLA", hist_5m, vwap, ema9, ema20)
         if pullback:
-            print(f"    [OK] Micro Pullback detected (confidence: {pullback.confidence:.0f}%)")
+            print(
+                f"    [OK] Micro Pullback detected (confidence: {pullback.confidence:.0f}%)"
+            )
         else:
             print(f"    ℹ️  No Micro Pullback pattern found")
 
@@ -238,8 +254,7 @@ def print_pattern_config():
 if __name__ == "__main__":
     # Set up logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     # Print configuration

@@ -8,12 +8,12 @@ Tasks:
 - QLIB_FEATURE_RANK (R7): Feature importance ranking
 """
 
-import logging
-from datetime import datetime
-from typing import Dict, List, Optional
 import asyncio
 import json
+import logging
+from datetime import datetime
 from pathlib import Path
+from typing import Dict, List, Optional
 
 from .task_queue_manager import Task, get_task_queue_manager
 
@@ -29,6 +29,7 @@ async def _load_qlib_model():
     try:
         if QLIB_MODEL_PATH.exists():
             import joblib
+
             return joblib.load(QLIB_MODEL_PATH)
     except Exception as e:
         logger.warning(f"Could not load Qlib model: {e}")
@@ -38,7 +39,7 @@ async def _load_qlib_model():
 async def _get_qlib_meta() -> Dict:
     """Load Qlib model metadata"""
     if QLIB_META_PATH.exists():
-        with open(QLIB_META_PATH, 'r') as f:
+        with open(QLIB_META_PATH, "r") as f:
             return json.load(f)
     return {}
 
@@ -46,6 +47,7 @@ async def _get_qlib_meta() -> Dict:
 # =============================================================================
 # TASK 2.1 - QLIB_HOD_PROBABILITY
 # =============================================================================
+
 
 async def task_qlib_hod_probability(inputs: Dict) -> Dict:
     """
@@ -119,19 +121,33 @@ async def task_qlib_hod_probability(inputs: Dict) -> Dict:
         continuation_prob = prob
         reversal_prob = 1 - prob
 
-        predictions.append({
-            **s,
-            "continuation_prob": round(continuation_prob, 3),
-            "reversal_prob": round(reversal_prob, 3),
-            "model_confidence": "HIGH" if continuation_prob >= 0.65 else ("MEDIUM" if continuation_prob >= 0.55 else "LOW"),
-            "expected_move": f"+{round(gap_pct * 0.3, 1)}%" if continuation_prob >= 0.55 else f"-{round(gap_pct * 0.2, 1)}%"
-        })
+        predictions.append(
+            {
+                **s,
+                "continuation_prob": round(continuation_prob, 3),
+                "reversal_prob": round(reversal_prob, 3),
+                "model_confidence": (
+                    "HIGH"
+                    if continuation_prob >= 0.65
+                    else ("MEDIUM" if continuation_prob >= 0.55 else "LOW")
+                ),
+                "expected_move": (
+                    f"+{round(gap_pct * 0.3, 1)}%"
+                    if continuation_prob >= 0.55
+                    else f"-{round(gap_pct * 0.2, 1)}%"
+                ),
+            }
+        )
 
     # Sort by continuation probability
     predictions.sort(key=lambda x: x["continuation_prob"], reverse=True)
 
     # Calculate aggregate win rate
-    avg_win_rate = sum(p["continuation_prob"] for p in predictions) / len(predictions) if predictions else 0
+    avg_win_rate = (
+        sum(p["continuation_prob"] for p in predictions) / len(predictions)
+        if predictions
+        else 0
+    )
 
     # Determine if model is real or simulated
     model_source = "REAL" if model else "SIMULATED"
@@ -145,15 +161,22 @@ async def task_qlib_hod_probability(inputs: Dict) -> Dict:
         "baseline_win_rate": baseline_win_rate,
         "predicted_win_rate": round(avg_win_rate, 3),
         "win_rate": round(avg_win_rate, 3),
-        "high_confidence_count": sum(1 for p in predictions if p["model_confidence"] == "HIGH"),
-        "features_used": features_used[:10] if features_used else ["gap_pct", "rel_vol", "hod_status", "float"],
-        "timestamp": datetime.now().isoformat()
+        "high_confidence_count": sum(
+            1 for p in predictions if p["model_confidence"] == "HIGH"
+        ),
+        "features_used": (
+            features_used[:10]
+            if features_used
+            else ["gap_pct", "rel_vol", "hod_status", "float"]
+        ),
+        "timestamp": datetime.now().isoformat(),
     }
 
 
 # =============================================================================
 # TASK 2.2 - QLIB_REGIME_CHECK
 # =============================================================================
+
 
 async def task_qlib_regime_check(inputs: Dict) -> Dict:
     """
@@ -173,9 +196,12 @@ async def task_qlib_regime_check(inputs: Dict) -> Dict:
 
     # Get market context from API
     import httpx
+
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get("http://localhost:9100/api/validation/momentum/states")
+            response = await client.get(
+                "http://localhost:9100/api/validation/momentum/states"
+            )
             momentum_data = response.json() if response.status_code == 200 else {}
 
             response = await client.get("http://localhost:9100/api/strategy/policy")
@@ -252,18 +278,19 @@ async def task_qlib_regime_check(inputs: Dict) -> Dict:
             "confirmed_count": confirmed_count,
             "ignition_count": ignition_count,
             "dead_count": dead_count,
-            "momentum_ratio": round(momentum_ratio, 2)
+            "momentum_ratio": round(momentum_ratio, 2),
         },
         "policy_status": policy_data.get("overall_status", "UNKNOWN"),
         "symbols": symbols,  # Pass through
         "symbol_count": len(symbols),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
 # =============================================================================
 # TASK 2.3 - QLIB_FEATURE_RANK
 # =============================================================================
+
 
 async def task_qlib_feature_rank(inputs: Dict) -> Dict:
     """
@@ -287,21 +314,78 @@ async def task_qlib_feature_rank(inputs: Dict) -> Dict:
 
     # Default feature rankings based on Alpha158 + custom features
     feature_rankings = [
-        {"feature": "TURN_MA10", "importance": 0.142, "category": "volume", "signal": "HIGH"},
-        {"feature": "WVMA_60", "importance": 0.098, "category": "volume", "signal": "HIGH"},
-        {"feature": "QTLD_30", "importance": 0.087, "category": "momentum", "signal": "HIGH"},
-        {"feature": "ROC_30", "importance": 0.076, "category": "momentum", "signal": "HIGH"},
-        {"feature": "BETA_60", "importance": 0.065, "category": "risk", "signal": "MEDIUM"},
-        {"feature": "gap_pct", "importance": 0.089, "category": "gap", "signal": "HIGH"},
-        {"feature": "rel_vol_5m", "importance": 0.082, "category": "volume", "signal": "HIGH"},
-        {"feature": "float_shares", "importance": 0.071, "category": "structure", "signal": "HIGH"},
-        {"feature": "vol_float_ratio", "importance": 0.068, "category": "structure", "signal": "MEDIUM"},
-        {"feature": "hod_status", "importance": 0.095, "category": "price_action", "signal": "HIGH"},
-        {"feature": "continuation_prob", "importance": 0.127, "category": "model", "signal": "HIGH"},
+        {
+            "feature": "TURN_MA10",
+            "importance": 0.142,
+            "category": "volume",
+            "signal": "HIGH",
+        },
+        {
+            "feature": "WVMA_60",
+            "importance": 0.098,
+            "category": "volume",
+            "signal": "HIGH",
+        },
+        {
+            "feature": "QTLD_30",
+            "importance": 0.087,
+            "category": "momentum",
+            "signal": "HIGH",
+        },
+        {
+            "feature": "ROC_30",
+            "importance": 0.076,
+            "category": "momentum",
+            "signal": "HIGH",
+        },
+        {
+            "feature": "BETA_60",
+            "importance": 0.065,
+            "category": "risk",
+            "signal": "MEDIUM",
+        },
+        {
+            "feature": "gap_pct",
+            "importance": 0.089,
+            "category": "gap",
+            "signal": "HIGH",
+        },
+        {
+            "feature": "rel_vol_5m",
+            "importance": 0.082,
+            "category": "volume",
+            "signal": "HIGH",
+        },
+        {
+            "feature": "float_shares",
+            "importance": 0.071,
+            "category": "structure",
+            "signal": "HIGH",
+        },
+        {
+            "feature": "vol_float_ratio",
+            "importance": 0.068,
+            "category": "structure",
+            "signal": "MEDIUM",
+        },
+        {
+            "feature": "hod_status",
+            "importance": 0.095,
+            "category": "price_action",
+            "signal": "HIGH",
+        },
+        {
+            "feature": "continuation_prob",
+            "importance": 0.127,
+            "category": "model",
+            "signal": "HIGH",
+        },
     ]
 
     # Filter out low-signal features
-    high_signal_features = [f for f in feature_rankings if f["signal"] in ["HIGH", "MEDIUM"]]
+    high_signal_features = [
+        f for f in feature_rankings if f["signal"] in ["HIGH", "MEDIUM"]
+    ]
     low_signal_features = [f for f in feature_rankings if f["signal"] == "LOW"]
 
     # Add regime-specific adjustments
@@ -332,7 +416,7 @@ async def task_qlib_feature_rank(inputs: Dict) -> Dict:
         "regime": regime,
         "symbols": symbols,  # Pass through
         "symbol_count": len(symbols),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -340,44 +424,51 @@ async def task_qlib_feature_rank(inputs: Dict) -> Dict:
 # REGISTER TASKS
 # =============================================================================
 
+
 def register_qlib_tasks():
     """Register all Task Group 2 tasks with the manager"""
     manager = get_task_queue_manager()
 
     # Task 2.1 - HOD Probability
-    manager.register_task(Task(
-        id="QLIB_HOD_PROBABILITY",
-        name="HOD Continuation Probability",
-        group="QLIB_RESEARCH",
-        inputs=["report_R4_hod_behavior.json"],
-        process=task_qlib_hod_probability,
-        output_file="report_R5_hod_probability.json",
-        fail_conditions=["low_win_rate"],
-        next_task="QLIB_REGIME_CHECK"
-    ))
+    manager.register_task(
+        Task(
+            id="QLIB_HOD_PROBABILITY",
+            name="HOD Continuation Probability",
+            group="QLIB_RESEARCH",
+            inputs=["report_R4_hod_behavior.json"],
+            process=task_qlib_hod_probability,
+            output_file="report_R5_hod_probability.json",
+            fail_conditions=["low_win_rate"],
+            next_task="QLIB_REGIME_CHECK",
+        )
+    )
 
     # Task 2.2 - Regime Check
-    manager.register_task(Task(
-        id="QLIB_REGIME_CHECK",
-        name="Market Regime Validation",
-        group="QLIB_RESEARCH",
-        inputs=["report_R5_hod_probability.json"],
-        process=task_qlib_regime_check,
-        output_file="report_R6_regime_validity.json",
-        fail_conditions=["kill_regime"],
-        next_task="QLIB_FEATURE_RANK"
-    ))
+    manager.register_task(
+        Task(
+            id="QLIB_REGIME_CHECK",
+            name="Market Regime Validation",
+            group="QLIB_RESEARCH",
+            inputs=["report_R5_hod_probability.json"],
+            process=task_qlib_regime_check,
+            output_file="report_R6_regime_validity.json",
+            fail_conditions=["kill_regime"],
+            next_task="QLIB_FEATURE_RANK",
+        )
+    )
 
     # Task 2.3 - Feature Rank
-    manager.register_task(Task(
-        id="QLIB_FEATURE_RANK",
-        name="Feature Importance Ranking",
-        group="QLIB_RESEARCH",
-        inputs=["report_R6_regime_validity.json"],
-        process=task_qlib_feature_rank,
-        output_file="report_R7_feature_importance.json",
-        fail_conditions=[],
-        next_task="CHRONOS_PERSISTENCE"
-    ))
+    manager.register_task(
+        Task(
+            id="QLIB_FEATURE_RANK",
+            name="Feature Importance Ranking",
+            group="QLIB_RESEARCH",
+            inputs=["report_R6_regime_validity.json"],
+            process=task_qlib_feature_rank,
+            output_file="report_R7_feature_importance.json",
+            fail_conditions=[],
+            next_task="CHRONOS_PERSISTENCE",
+        )
+    )
 
     logger.info("Task Group 2 (Qlib Research) registered: 3 tasks")
