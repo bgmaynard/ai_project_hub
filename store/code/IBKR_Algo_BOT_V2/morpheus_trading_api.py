@@ -1036,6 +1036,81 @@ async def get_snapshot(symbol: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/timesales/{symbol}")
+async def get_timesales(symbol: str):
+    """
+    Get Time & Sales data for a symbol.
+
+    Tries sources in order:
+    1. Polygon streaming (real-time trades)
+    2. Schwab price history (1-min bars as fallback)
+
+    Returns array of trade-like records.
+    """
+    from datetime import datetime
+
+    trades = []
+
+    # Try Polygon streaming first
+    try:
+        from polygon_streaming import get_polygon_streamer
+        streamer = get_polygon_streamer()
+        if streamer and streamer.running:
+            polygon_trades = streamer.get_recent_trades(symbol.upper(), limit=100)
+            if polygon_trades:
+                for t in polygon_trades:
+                    trades.append({
+                        "time": t.get("time", ""),
+                        "price": t.get("price", 0),
+                        "size": t.get("size", 0),
+                        "side": t.get("side", "N"),
+                        "source": "polygon"
+                    })
+    except Exception as e:
+        logger.debug(f"Polygon trades not available: {e}")
+
+    # Fallback to Schwab price history (minute bars)
+    if not trades:
+        try:
+            from schwab_market_data import get_schwab_market_data
+            schwab = get_schwab_market_data()
+            if schwab:
+                history = schwab.get_price_history(
+                    symbol.upper(),
+                    period_type="day",
+                    period=1,
+                    frequency_type="minute",
+                    frequency=1
+                )
+
+                if history and "candles" in history:
+                    candles = history["candles"][-50:]  # Last 50 minutes
+                    for candle in reversed(candles):  # Newest first
+                        timestamp = candle.get("datetime", 0)
+                        if timestamp:
+                            dt = datetime.fromtimestamp(timestamp / 1000)
+                            time_str = dt.strftime("%H:%M:%S")
+                        else:
+                            time_str = ""
+
+                        # Use close price, determine side from open/close
+                        open_p = candle.get("open", 0)
+                        close_p = candle.get("close", 0)
+                        side = "B" if close_p > open_p else "S" if close_p < open_p else "N"
+
+                        trades.append({
+                            "time": time_str,
+                            "price": close_p,
+                            "size": candle.get("volume", 0),
+                            "side": side,
+                            "source": "schwab"
+                        })
+        except Exception as e:
+            logger.error(f"Error getting Schwab price history for T&S: {e}")
+
+    return {"trades": trades, "symbol": symbol.upper(), "count": len(trades)}
+
+
 @app.get("/api/market/movers")
 async def get_market_movers(index: str = "$SPX", direction: str = "up"):
     """

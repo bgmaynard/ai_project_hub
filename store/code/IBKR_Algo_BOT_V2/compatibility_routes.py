@@ -872,25 +872,84 @@ async def get_level2_compat(symbol: str):
 @router.get("/api/timesales/{symbol}")
 async def get_timesales_compat(symbol: str, limit: int = 50):
     """
-    Time & Sales endpoint - requires real tick data subscription.
-    Schwab's standard API doesn't provide tick-by-tick trade data.
-    """
-    symbol = symbol.upper()
+    Time & Sales endpoint.
 
-    # Return empty - no tick data available from Schwab standard API
-    # Real Time & Sales requires:
-    # - Finnhub paid subscription (tick data)
-    # - Polygon.io subscription
-    # - Interactive Brokers with tick data subscription
+    Tries sources in order:
+    1. Polygon streaming (real-time trades) if available
+    2. Polygon historical bars (1-minute candles as fallback)
+    """
+    from datetime import datetime
+
+    symbol = symbol.upper()
+    trades = []
+
+    # Try Polygon streaming first (best quality - real tick data)
+    try:
+        from polygon_streaming import get_polygon_streamer
+        streamer = get_polygon_streamer()
+        if streamer and streamer.running:
+            polygon_trades = streamer.get_recent_trades(symbol, limit=limit)
+            if polygon_trades:
+                for t in polygon_trades:
+                    trades.append({
+                        "time": t.get("time", ""),
+                        "price": t.get("price", 0),
+                        "size": t.get("size", 0),
+                        "side": t.get("side", "N"),
+                        "source": "polygon_stream"
+                    })
+    except Exception:
+        pass
+
+    # Fallback to Polygon historical bars (1-minute candles)
+    if not trades:
+        try:
+            from datetime import timedelta
+            from polygon_data import get_polygon_data
+            polygon = get_polygon_data()
+            if polygon:
+                # Calculate date range (today only for T&S)
+                to_date = datetime.now().strftime("%Y-%m-%d")
+                from_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+                bars = polygon.get_minute_bars(
+                    symbol,
+                    from_date=from_date,
+                    to_date=to_date,
+                    multiplier=1,
+                    limit=500
+                )
+                if bars:
+                    # Get last N bars, newest first
+                    recent_bars = bars[-limit:] if len(bars) >= limit else bars
+                    for bar in reversed(recent_bars):
+                        timestamp = bar.get("timestamp", 0)
+                        if timestamp:
+                            dt = datetime.fromtimestamp(timestamp / 1000)
+                            time_str = dt.strftime("%H:%M:%S")
+                        else:
+                            time_str = ""
+
+                        # Determine direction from open/close
+                        open_p = bar.get("open", 0)
+                        close_p = bar.get("close", 0)
+                        side = "B" if close_p > open_p else "S" if close_p < open_p else "N"
+
+                        trades.append({
+                            "time": time_str,
+                            "price": close_p,
+                            "size": bar.get("volume", 0),
+                            "side": side,
+                            "source": "polygon_1m"
+                        })
+        except Exception as e:
+            logger.debug(f"Polygon bars not available: {e}")
+
     return {
         "symbol": symbol,
-        "trades": [],
-        "message": "Time & Sales requires real-time tick data subscription",
-        "available_sources": [
-            "Finnhub Premium",
-            "Polygon.io",
-            "Interactive Brokers"
-        ]
+        "trades": trades,
+        "count": len(trades),
+        "source": trades[0]["source"] if trades else "none"
     }
 
 

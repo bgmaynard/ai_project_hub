@@ -16,6 +16,7 @@ Endpoints:
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, Dict, List, Any
+from datetime import datetime
 from .strategy_policy_engine import (
     get_strategy_policy_engine,
     PerformanceMetrics
@@ -60,6 +61,63 @@ async def get_all_policies():
     """
     engine = get_strategy_policy_engine()
     return engine.get_all_policies()
+
+
+# IMPORTANT: Specific routes MUST come BEFORE parameterized routes
+@router.get("/audit")
+async def get_audit_log(
+    strategy_id: Optional[str] = Query(None, description="Filter by strategy"),
+    limit: int = Query(100, description="Max entries to return")
+):
+    """
+    Get gating decisions audit log for frontend display.
+
+    Returns decisions in format expected by AI Control Center:
+    - timestamp: ISO timestamp
+    - approved: boolean
+    - symbol: stock symbol
+    - reasons: array of reason strings
+    """
+    from ai.signal_gating_engine import get_gating_engine
+
+    try:
+        gating = get_gating_engine()
+        history = gating.veto_logger.veto_history
+
+        # Convert GateResult objects to frontend-expected format
+        decisions = []
+        for result in history[-limit:]:
+            decisions.append({
+                "timestamp": result.gated_at if hasattr(result, 'gated_at') else datetime.utcnow().isoformat(),
+                "approved": result.approved,
+                "symbol": result.symbol,
+                "type": "entry",
+                "reasons": [result.veto_details] if result.veto_details else [result.veto_reason or "No reason"],
+                "veto_reason": result.veto_reason,
+                "regime": result.current_regime,
+                "confidence": result.chronos_confidence
+            })
+
+        # Return newest first
+        decisions.reverse()
+        return decisions
+
+    except Exception as e:
+        logger.error(f"Error fetching gating decisions: {e}")
+        # Return empty array - frontend handles this
+        return []
+
+
+@router.get("/audit-log")
+async def get_policy_audit_log(
+    strategy_id: Optional[str] = Query(None, description="Filter by strategy"),
+    limit: int = Query(100, description="Max entries to return")
+):
+    """Get policy change audit log (enable/disable/adjust events)"""
+    engine = get_strategy_policy_engine()
+    return {
+        "entries": engine.get_audit_log(strategy_id=strategy_id, limit=limit)
+    }
 
 
 @router.get("/{strategy_id}")
@@ -148,18 +206,6 @@ async def reset_strategy(strategy_id: str, reason: str = "manual reset"):
         "status": "reset",
         "strategy_id": strategy_id,
         "reason": reason
-    }
-
-
-@router.get("/audit")
-async def get_audit_log(
-    strategy_id: Optional[str] = Query(None, description="Filter by strategy"),
-    limit: int = Query(100, description="Max entries to return")
-):
-    """Get policy change audit log"""
-    engine = get_strategy_policy_engine()
-    return {
-        "entries": engine.get_audit_log(strategy_id=strategy_id, limit=limit)
     }
 
 

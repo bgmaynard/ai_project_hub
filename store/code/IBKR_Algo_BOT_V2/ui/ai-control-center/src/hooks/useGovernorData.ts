@@ -517,7 +517,7 @@ async function fetchHealth(): Promise<SystemHealth> {
       {
         name: 'WebSocket',
         status: websocketConnected ? 'HEALTHY' : 'OFFLINE',
-        detail: websocketConnected ? `Polygon (${websocketSubs} subs)` : 'Disconnected',
+        detail: websocketConnected ? `Schwab Stream (${websocketSubs} subs)` : 'Disconnected',
       },
       {
         name: 'Chronos',
