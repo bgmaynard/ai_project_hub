@@ -2481,6 +2481,316 @@ async def get_hod_config():
         return {"success": False, "error": str(e)}
 
 
+@router.get("/hod/dtd-format")
+async def get_hod_dtd_format(limit: int = 50):
+    """
+    Get HOD scanner data in Day Trade Dash format.
+
+    Columns match DTD "Small Cap - High of Day Momentum" scanner:
+    - Time (with seconds)
+    - Symbol/News
+    - Price
+    - Volume (K/M format)
+    - Float (M format)
+    - Relative Volume (Daily Rate)
+    - Relative Volume (5 min %)
+    - Gap(%)
+    - Change From Close(%)
+    - Short Interest
+    - Strategy Name
+    """
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        from datetime import datetime
+
+        scanner = get_hod_scanner()
+
+        def format_volume(vol):
+            """Format volume as K/M"""
+            if vol >= 1_000_000:
+                return f"{vol/1_000_000:.2f}M"
+            elif vol >= 1_000:
+                return f"{vol/1_000:.2f}K"
+            return str(vol)
+
+        def format_float(flt):
+            """Format float as M"""
+            if flt > 0:
+                return f"{flt/1_000_000:.2f}M"
+            return "N/A"
+
+        def format_short_interest(si):
+            """Format short interest as K"""
+            if si > 0:
+                return f"{si/1_000:.2f}K"
+            return "N/A"
+
+        # Get alerts and format in DTD style
+        alerts = scanner.alerts[-limit:]
+        dtd_rows = []
+
+        for alert in reversed(alerts):  # Most recent first
+            # Calculate 5-min relative volume (estimate from alert count)
+            rvol_5min = alert.alert_count_5min * 100 if alert.alert_count_5min else 0
+
+            row = {
+                "time": alert.timestamp.strftime("%I:%M:%S %p").lower(),
+                "symbol": alert.symbol,
+                "has_news": alert.has_news,
+                "price": round(alert.price, 2),
+                "volume": format_volume(alert.volume),
+                "volume_raw": alert.volume,
+                "float": format_float(alert.float_shares),
+                "float_raw": alert.float_shares,
+                "rel_vol_daily": round(alert.relative_volume, 2),
+                "rel_vol_5min_pct": round(rvol_5min, 2),
+                "gap_pct": round(alert.gap_pct, 2),
+                "change_from_close_pct": round(alert.change_pct, 2),
+                "short_interest": format_short_interest(alert.short_interest),
+                "short_interest_raw": alert.short_interest,
+                "strategy_name": alert.strategy_name,
+                "grade": alert.grade,
+                "criteria_met": alert.criteria_met
+            }
+            dtd_rows.append(row)
+
+        # Also get current tracker data for live view
+        live_data = []
+        for symbol, tracker in scanner.trackers.items():
+            if tracker.current_price > 0 and tracker.change_pct >= 5.0:
+                # Determine strategy for live data
+                strategy = scanner._classify_strategy(tracker)
+                grade, criteria_met, _ = scanner._grade_stock(tracker)
+
+                live_row = {
+                    "time": datetime.now().strftime("%I:%M:%S %p").lower(),
+                    "symbol": symbol,
+                    "has_news": False,
+                    "price": round(tracker.current_price, 2),
+                    "volume": format_volume(tracker.volume),
+                    "volume_raw": tracker.volume,
+                    "float": format_float(tracker.float_shares),
+                    "float_raw": tracker.float_shares,
+                    "rel_vol_daily": round(tracker.relative_volume, 2),
+                    "rel_vol_5min_pct": round(tracker.hod_count_in_window(5) * 100, 2),
+                    "gap_pct": round(tracker.gap_pct, 2),
+                    "change_from_close_pct": round(tracker.change_pct, 2),
+                    "short_interest": format_short_interest(tracker.short_interest),
+                    "short_interest_raw": tracker.short_interest,
+                    "strategy_name": strategy,
+                    "grade": grade,
+                    "criteria_met": criteria_met
+                }
+                live_data.append(live_row)
+
+        # Sort live data by change % descending
+        live_data.sort(key=lambda x: x["change_from_close_pct"], reverse=True)
+
+        return {
+            "success": True,
+            "format": "Day Trade Dash",
+            "scanner_name": "Small Cap - High of Day Momentum",
+            "columns": [
+                "Time", "Symbol/News", "Price", "Volume", "Float",
+                "Rel Vol (Daily)", "Rel Vol (5min %)", "Gap(%)",
+                "Change From Close(%)", "Short Interest", "Strategy Name"
+            ],
+            "alerts": dtd_rows,
+            "live": live_data[:limit],
+            "alert_count": len(dtd_rows),
+            "live_count": len(live_data)
+        }
+    except Exception as e:
+        logger.error(f"HOD DTD format error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/hod/scan-finviz")
+async def scan_hod_from_finviz():
+    """
+    Scan for HOD candidates using Finviz as data source.
+
+    Fetches top gainers from Finviz and adds them to HOD tracker
+    with all the data needed for DTD-style display.
+    """
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        from .finviz_scanner import get_finviz_scanner
+
+        scanner = get_hod_scanner()
+        finviz = get_finviz_scanner()
+
+        # Get top gainers from Finviz (synchronous method)
+        gainers = finviz.get_top_gainers(min_change=5.0, max_price=20.0)
+
+        added = []
+        for stock in gainers[:30]:  # Top 30
+            # ScanResult is a dataclass with attributes, not a dict
+            symbol = stock.symbol if hasattr(stock, 'symbol') else stock.get("symbol", "")
+            if not symbol:
+                continue
+
+            # Access attributes from ScanResult dataclass
+            price = stock.price if hasattr(stock, 'price') else stock.get("price", 0)
+            change_pct = stock.change_pct if hasattr(stock, 'change_pct') else stock.get("change_pct", 0)
+            volume = stock.volume if hasattr(stock, 'volume') else stock.get("volume", 0)
+            avg_volume = stock.avg_volume if hasattr(stock, 'avg_volume') else stock.get("avg_volume", 0)
+
+            # Calculate previous close from price and change_pct
+            prev_close = price / (1 + change_pct/100) if change_pct != -100 else price
+
+            data = {
+                "price": price,
+                "previous_close": prev_close,
+                "open": price,  # Approximate
+                "high": price,  # Will be updated by live data
+                "low": price * 0.95,  # Approximate
+                "volume": volume,
+                "avg_volume": avg_volume,
+                "float_shares": 0,  # Finviz doesn't provide this in basic scan
+                "short_interest": 0  # Finviz doesn't provide this in basic scan
+            }
+
+            scanner.add_symbol(symbol, data)
+            added.append(symbol)
+
+        return {
+            "success": True,
+            "scanned": len(gainers),
+            "added_to_tracker": added,
+            "tracker_total": len(scanner.trackers)
+        }
+    except Exception as e:
+        logger.error(f"HOD Finviz scan error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/hod/scan-schwab")
+async def scan_hod_from_schwab():
+    """
+    Scan for HOD candidates using Schwab movers API.
+    Schwab provides real-time price, volume, and change data.
+    """
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        import sys
+        sys.path.insert(0, 'C:/ai_project_hub/store/code/IBKR_Algo_BOT_V2')
+        from schwab_market_data import get_schwab_movers, get_all_movers
+
+        scanner = get_hod_scanner()
+
+        # Get gainers from Schwab (SPX and NASDAQ combined)
+        all_movers = get_all_movers()
+        gainers = all_movers.get('gainers', [])
+
+        # Filter for small cap criteria: $1-$20, 5%+ change
+        filtered = [m for m in gainers if 1.0 <= m.get('price', 0) <= 20.0 and m.get('change_pct', 0) >= 5.0]
+
+        added = []
+        for stock in filtered[:30]:  # Top 30
+            symbol = stock.get('symbol', '')
+            if not symbol:
+                continue
+
+            price = stock.get('price', 0)
+            change_pct = stock.get('change_pct', 0)
+            volume = stock.get('volume', 0)
+
+            # Calculate previous close from price and change_pct
+            prev_close = price / (1 + change_pct/100) if change_pct != -100 else price
+
+            data = {
+                "price": price,
+                "previous_close": prev_close,
+                "open": price,
+                "high": price,
+                "low": price * 0.95,
+                "volume": volume,
+                "avg_volume": 0,  # Will be enriched by yfinance
+                "float_shares": 0,
+                "short_interest": 0
+            }
+
+            scanner.add_symbol(symbol, data)
+            added.append({
+                "symbol": symbol,
+                "price": price,
+                "change_pct": change_pct,
+                "volume": volume
+            })
+
+        return {
+            "success": True,
+            "source": "Schwab",
+            "total_gainers": len(gainers),
+            "filtered": len(filtered),
+            "added_to_tracker": len(added),
+            "symbols": added,
+            "tracker_total": len(scanner.trackers)
+        }
+    except Exception as e:
+        logger.error(f"HOD Schwab scan error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/hod/enrich")
+async def enrich_hod_data():
+    """
+    Enrich HOD tracker data with float, short interest, and avg_volume from yfinance.
+    Call this after scan-finviz to get complete Day Trade Dash data.
+    """
+    try:
+        from .hod_momentum_scanner import get_hod_scanner
+        import yfinance as yf
+
+        scanner = get_hod_scanner()
+
+        enriched = []
+        failed = []
+
+        for symbol, tracker in list(scanner.trackers.items())[:30]:  # Limit to 30 for API rate limits
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+
+                # Update tracker with enriched data
+                if 'floatShares' in info and info['floatShares']:
+                    tracker.float_shares = info['floatShares']
+
+                if 'shortRatio' in info and info['shortRatio']:
+                    # Convert short ratio to approximate short interest
+                    tracker.short_interest = info.get('sharesShort', 0)
+
+                if 'averageVolume' in info and info['averageVolume']:
+                    tracker.avg_volume = info['averageVolume']
+
+                enriched.append({
+                    "symbol": symbol,
+                    "float_shares": tracker.float_shares,
+                    "short_interest": tracker.short_interest,
+                    "avg_volume": tracker.avg_volume,
+                    "rel_vol": tracker.relative_volume
+                })
+
+            except Exception as e:
+                failed.append({"symbol": symbol, "error": str(e)})
+
+        return {
+            "success": True,
+            "enriched_count": len(enriched),
+            "failed_count": len(failed),
+            "enriched": enriched,
+            "failed": failed
+        }
+    except Exception as e:
+        logger.error(f"HOD enrich error: {e}")
+        return {"success": False, "error": str(e)}
+
+
 # ============ Top Gappers Scanner Endpoints ============
 
 @router.get("/gappers/status")
