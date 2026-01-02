@@ -1051,6 +1051,40 @@ Implemented complete Ross Cameron trading methodology from Warrior Trading PDF a
 | `ai/top_gappers_scanner.py` | Top percentage gainers with 5-criteria grading |
 | `docs/WARRIOR_TRADING_STRATEGY_GUIDE.md` | Comprehensive strategy reference document |
 
+### HOD Scanner - Day Trade Dash Format (Jan 2, 2026)
+
+Replicates Day Trade Dash "Small Cap - High of Day Momentum" scanner with columns:
+- Time, Symbol/News, Price, Volume, Float, Rel Vol Daily, Rel Vol 5min%, Gap%, Change From Close%, Short Interest, Strategy Name
+
+**API Endpoints:**
+```
+GET  /api/scanner/hod/dtd-format      - Get data in DTD format
+POST /api/scanner/hod/scan-finviz     - Scan Finviz for gainers
+POST /api/scanner/hod/scan-schwab     - Scan Schwab movers (market hours)
+POST /api/scanner/hod/enrich          - Enrich with yfinance (float, short interest)
+GET  /api/scanner/hod/status          - Scanner status
+GET  /api/scanner/hod/alerts          - Recent HOD alerts
+GET  /api/scanner/hod/a-grade         - A-grade setups only
+```
+
+**Workflow:**
+```bash
+# 1. Scan for top gainers
+curl -X POST http://localhost:9100/api/scanner/hod/scan-finviz
+
+# 2. Enrich with float/short interest from yfinance
+curl -X POST http://localhost:9100/api/scanner/hod/enrich
+
+# 3. View DTD format
+curl http://localhost:9100/api/scanner/hod/dtd-format
+```
+
+**Strategy Classifications:**
+- "Squeeze Alert - Up 5% in 5min"
+- "Medium Float - High Rel Vol - Price under $20"
+- "HOD Break"
+- "Former Momo Stock"
+
 ### Enhanced Modules
 
 | File | Enhancement |
