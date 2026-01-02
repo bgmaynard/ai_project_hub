@@ -1134,22 +1134,43 @@ async def get_scalper_status():
 
 
 @router.post("/scalper/start")
-async def start_scalper(symbols: List[str] = None):
-    """Start the HFT scalper"""
+async def start_scalper(symbols: str = None):
+    """Start the HFT scalper
+
+    Args:
+        symbols: Comma-separated list of symbols (e.g., "SPY,QQQ,AAPL")
+    """
     try:
         from .hft_scalper import get_hft_scalper
         scalper = get_hft_scalper()
 
+        # Parse symbols from comma-separated string
+        symbol_list = []
+        if symbols:
+            symbol_list = [s.strip().upper() for s in symbols.split(',') if s.strip()]
+
         # Get watchlist if no symbols provided
-        if not symbols:
+        if not symbol_list:
             import httpx
             async with httpx.AsyncClient() as client:
-                resp = await client.get("http://localhost:9100/api/worklist", timeout=5.0)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    symbols = [item.get('symbol') for item in data.get('data', [])]
+                try:
+                    resp = await client.get("http://localhost:9100/api/worklist", timeout=5.0)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        # Handle both list response and wrapped response
+                        if isinstance(data, list):
+                            symbol_list = [item.get('symbol') for item in data if item.get('symbol')]
+                        elif isinstance(data, dict) and 'data' in data:
+                            symbol_list = [item.get('symbol') for item in data['data'] if item.get('symbol')]
+                except Exception as e:
+                    logger.warning(f"Could not fetch worklist: {e}")
 
-        scalper.start(symbols)
+        # Use default symbols if still empty
+        if not symbol_list:
+            symbol_list = ["SPY", "QQQ", "AAPL", "TSLA", "NVDA"]
+            logger.info(f"Using default symbols: {symbol_list}")
+
+        scalper.start(symbol_list)
 
         return {
             "status": "started",
@@ -1157,10 +1178,13 @@ async def start_scalper(symbols: List[str] = None):
             "enabled": scalper.config.enabled,
             "paper_mode": scalper.config.paper_mode,
             "watchlist_count": len(scalper.config.watchlist),
+            "symbols": symbol_list[:10],  # Show first 10 symbols
             "message": "Scalper monitoring started (set enabled=true to trade)"
         }
     except Exception as e:
         logger.error(f"Start scalper error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return {"status": "error", "error": str(e)}
 
 

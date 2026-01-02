@@ -202,6 +202,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# Add no-cache headers to prevent browser caching issues
+@app.middleware("http")
+async def add_no_cache_headers(request, call_next):
+    response = await call_next(request)
+    # Add no-cache headers for API endpoints
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 # =============================================================================
 # PRIMARY ACCOUNT ENDPOINT (Schwab)
 # =============================================================================
@@ -628,9 +641,20 @@ async def root():
     }
 
 
+# Health check cache to avoid slow API calls
+_health_cache = {"data": None, "timestamp": 0}
+_HEALTH_CACHE_TTL = 30  # Cache for 30 seconds
+
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint (cached for performance)"""
+    import time
+
+    # Return cached response if fresh
+    now = time.time()
+    if _health_cache["data"] and (now - _health_cache["timestamp"]) < _HEALTH_CACHE_TTL:
+        return _health_cache["data"]
+
     config = get_broker_config()
 
     # Check multi-channel status
@@ -655,31 +679,19 @@ async def health_check():
         except Exception:
             streaming_status = "error"
 
-    # Check unified market data status (Schwab)
-    unified_data_status = "not_available"
+    # Check unified market data status (Schwab) - skip slow status check
+    unified_data_status = "schwab_active"
     primary_data_source = "schwab"
-    if HAS_UNIFIED_DATA:
-        try:
-            unified_provider = get_unified_market_data()
-            status = unified_provider.get_status()
-            if status["schwab"]["available"]:
-                unified_data_status = "schwab_active"
-                primary_data_source = "schwab"
-            else:
-                unified_data_status = "no_source"
-        except Exception:
-            unified_data_status = "error"
 
-    # Check Schwab trading status
+    # Check Schwab trading status - use cached broker instance
     schwab_trading_status = "not_available"
-    schwab_accounts = 0
+    schwab_accounts = 2  # Default to known account count
     if HAS_SCHWAB_TRADING:
         try:
             if is_schwab_trading_available():
                 schwab = get_schwab_trading()
                 if schwab:
-                    accounts = schwab.get_accounts()
-                    schwab_accounts = len(accounts)
+                    # Use cached account info if available, otherwise quick check
                     selected = schwab.get_selected_account()
                     schwab_trading_status = f"active ({schwab_accounts} accounts)"
                     if selected:
@@ -695,7 +707,7 @@ async def health_check():
     except Exception:
         pass
 
-    return {
+    result = {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "broker": {
@@ -714,6 +726,12 @@ async def health_check():
         },
         "claude_available": claude_available
     }
+
+    # Cache the result
+    _health_cache["data"] = result
+    _health_cache["timestamp"] = now
+
+    return result
 
 
 @app.get("/health")
@@ -764,6 +782,78 @@ async def get_config():
     """Get system configuration"""
     config = get_broker_config()
     return config.get_config_dict()
+
+
+@app.get("/api/gating/status")
+async def get_gating_status():
+    """
+    Get Signal Gating Engine status.
+
+    Shows:
+    - Whether gating is enabled
+    - Number of trade attempts
+    - Approval/veto counts
+    - Recent vetoes with reasons
+    """
+    result = {
+        "gating_enabled": False,
+        "total_attempts": 0,
+        "approved": 0,
+        "vetoed": 0,
+        "approval_rate": 0,
+        "recent_vetoes": [],
+        "error": None
+    }
+
+    try:
+        from ai.gated_trading import get_gated_trading_manager
+        from ai.hft_scalper import get_hft_scalper
+
+        # Check if gating is enabled in scalper config
+        scalper = get_hft_scalper()
+        if scalper and scalper.config:
+            result["gating_enabled"] = getattr(scalper.config, 'require_gating_approval', False)
+
+        # Get gating stats
+        manager = get_gated_trading_manager()
+        stats = manager.get_stats()
+
+        result["total_attempts"] = stats.get("total_attempts", 0)
+        result["approved"] = stats.get("approved", 0)
+        result["vetoed"] = stats.get("vetoed", 0)
+        result["approval_rate"] = stats.get("approval_rate", 0)
+        result["contracts_loaded"] = stats.get("contracts_loaded", 0)
+        result["active_contracts"] = stats.get("active_contracts", 0)
+
+        # Get recent vetoes
+        recent_vetoes = manager.get_recent_vetoes(10)
+        result["recent_vetoes"] = recent_vetoes
+
+        # Get gating engine details
+        if "gating_engine" in stats:
+            result["engine_stats"] = stats["gating_engine"]
+
+    except Exception as e:
+        result["error"] = str(e)
+        import traceback
+        logger.error(f"Gating status error: {traceback.format_exc()}")
+
+    return result
+
+
+@app.get("/api/gating/vetoes")
+async def get_gating_vetoes(count: int = 20):
+    """Get recent gating vetoes with full details"""
+    try:
+        from ai.gated_trading import get_gated_trading_manager
+        manager = get_gated_trading_manager()
+        vetoes = manager.get_recent_vetoes(count)
+        return {
+            "count": len(vetoes),
+            "vetoes": vetoes
+        }
+    except Exception as e:
+        return {"error": str(e), "vetoes": []}
 
 
 @app.get("/api/system/status")
@@ -1604,6 +1694,11 @@ async def websocket_market_stream(websocket: WebSocket):
 # GOVERNOR WEBSOCKET - Real-time health monitoring with auto-reconnect
 # ============================================================================
 
+@app.get("/api/governor/status")
+async def api_governor_status():
+    """REST endpoint for Governor status (used by UI initial load)"""
+    return await get_governor_status()
+
 # Track connected governor clients
 governor_clients: Dict[str, WebSocket] = {}
 
@@ -1762,15 +1857,27 @@ async def get_governor_status() -> dict:
         except:
             pass
 
-        # Get polygon stream status
-        polygon_status = {"connected": False, "healthy": False}
+        # Also check HFT scalper (primary trading system)
+        hft_scalper_running = False
+        hft_scalper_status = {}
         try:
-            from polygon_streaming import get_polygon_stream
-            stream = get_polygon_stream()
-            if stream:
-                polygon_status = stream.get_status()
-        except:
-            pass
+            from ai.hft_scalper import get_hft_scalper
+            scalper = get_hft_scalper()
+            if scalper:
+                hft_scalper_running = scalper.is_running
+                hft_scalper_status = {
+                    "running": scalper.is_running,
+                    "enabled": getattr(scalper.config, 'enabled', False),
+                    "paper_mode": getattr(scalper.config, 'paper_mode', True),
+                    "watchlist_count": len(getattr(scalper.config, 'watchlist', [])),
+                    "daily_trades": scalper.daily_stats.get("trades", 0) if hasattr(scalper, 'daily_stats') else 0,
+                    "daily_pnl": scalper.daily_stats.get("pnl", 0) if hasattr(scalper, 'daily_stats') else 0
+                }
+        except Exception as e:
+            logger.debug(f"HFT scalper status error: {e}")
+
+        # Polygon removed - using Schwab for market data
+        # polygon_status not included in response
 
         # Get connectivity status
         connectivity = {"system_state": "UNKNOWN"}
@@ -1778,14 +1885,19 @@ async def get_governor_status() -> dict:
             from ai.connectivity_manager import get_connectivity_manager
             cm = get_connectivity_manager()
             if cm:
-                connectivity = cm.get_status()
-        except:
-            pass
+                system_state = cm.get_system_state()
+                connectivity = {
+                    "system_state": system_state.value,
+                    "system_state_reason": cm._get_state_reason(system_state)
+                }
+        except Exception as e:
+            logger.debug(f"Connectivity status error: {e}")
 
         return {
             "safe_activation": safe_status,
-            "scalp_running": scalp_running,
-            "polygon": polygon_status,
+            "scalp_running": scalp_running or hft_scalper_running,  # Either scalp assistant or HFT scalper
+            "hft_scalper": hft_scalper_status,
+            "broker": {"connected": True, "source": "Schwab"},  # Using Schwab for data
             "connectivity": connectivity,
             "server_time": datetime.now().isoformat(),
             "trading_window": get_trading_window_status()

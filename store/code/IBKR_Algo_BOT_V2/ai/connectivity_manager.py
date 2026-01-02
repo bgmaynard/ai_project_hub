@@ -394,11 +394,15 @@ class ConnectivityManager:
         """
         Determine overall system state for UI display.
 
+        Actively checks real service status rather than relying on cached state.
+
         Distinguishes:
         - MARKET_CLOSED: Calendar says market not open
         - DATA_OFFLINE: Market open but no data feed
         - SERVICE_NOT_RUNNING: Process not started
         - DISCONNECTED: Started but connection lost
+        - ACTIVE: All systems go, trading enabled
+        - READY: All connected, trading disabled
         """
         from .market_time import get_market_status, MarketStatus
         from .safe_activation import get_safe_activation
@@ -410,24 +414,43 @@ class ConnectivityManager:
         if market_status == MarketStatus.CLOSED:
             return SystemState.MARKET_CLOSED
 
-        # Check data feed status
-        data_up = self.services["market_data"].status == ServiceStatus.UP
-        websocket_up = self.services["websocket"].status == ServiceStatus.UP
+        # ACTIVELY check real service status instead of cached state
+        broker_connected = False
+        scalper_running = False
 
-        if not data_up and not websocket_up:
-            # Check if services are configured/started
-            if self.services["market_data"].status == ServiceStatus.NOT_CONFIGURED:
-                return SystemState.SERVICE_NOT_RUNNING
-            return SystemState.DISCONNECTED
+        # Check broker connection
+        try:
+            from unified_broker import get_broker
+            broker = get_broker()
+            broker_connected = broker is not None
+        except Exception:
+            pass
 
-        if not data_up or not websocket_up:
-            return SystemState.DATA_OFFLINE
+        # Check HFT scalper (primary trading system)
+        try:
+            from .hft_scalper import get_hft_scalper
+            scalper = get_hft_scalper()
+            if scalper:
+                scalper_running = scalper.is_running
+        except Exception:
+            pass
 
-        # Check if trading is enabled
-        if safe.is_active():
-            return SystemState.ACTIVE
+        # If no services are running at all
+        if not broker_connected and not scalper_running:
+            return SystemState.SERVICE_NOT_RUNNING
 
-        # All connected but trading not enabled
+        # If broker connected but scalper not running
+        if broker_connected and not scalper_running:
+            return SystemState.READY
+
+        # If scalper running, check if safe activation is enabled for trading
+        if scalper_running:
+            if safe.is_active():
+                return SystemState.ACTIVE
+            else:
+                return SystemState.READY
+
+        # Default to READY if broker is connected
         return SystemState.READY
 
     async def reconnect_feeds(self, paper_mode: bool = True) -> Dict:

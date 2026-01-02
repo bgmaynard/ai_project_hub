@@ -11,6 +11,50 @@ Morpheus Trading Bot - automated trading platform using **Schwab** as the primar
 - AI Control Center: `http://localhost:9100/ai-control-center` (system oversight)
 - Legacy Dashboard: `http://localhost:9100/dashboard` (deprecated)
 
+## ThinkOrSwim Reference (Connection Stability Patterns)
+
+**Location:** `C:\Program Files\thinkorswim\`
+
+Use TOS as the gold standard for Schwab connection stability. Key patterns:
+
+### Connection Configuration (suit.properties)
+```
+suit.server=thinkorswim-desktop2.schwab.com:443,thinkorswim-desktop1.schwab.com:443
+```
+- **Failover servers** - Two endpoints for redundancy
+- **Port 443** - HTTPS/WSS
+
+### Heartbeat Pattern (from client.log)
+```
+30-second interval: LiveSessionInfoService.getServerTime()
+PingStatistics{period: 1800000, requests: 60}
+Response time: ~50ms typical
+```
+- **30-second heartbeat** - Not longer, prevents connection drops
+- **Server time sync** - Used as keepalive mechanism
+- **Request tracking** - 60 requests per 30-minute period
+
+### VM Options (thinkorswim.vmoptions)
+```
+-DTimeDef.timeZone=America/New_York
+-Dcom.devexperts.qd.qtp.maxMessageSize=2147483647
+```
+- **Explicit timezone** - Always ET for trading
+- **No message size limits** - 2GB max
+
+### Key Differences from Our Bot
+| Aspect | TOS | Our Bot | Action Needed |
+|--------|-----|---------|---------------|
+| Heartbeat | 30s | Variable | Standardize to 30s |
+| Failover | 2 servers | 1 server | Add redundancy |
+| Timezone | Explicit ET | System default | Set explicitly |
+
+### Reference Files
+- `client.log` - Connection logs, heartbeat patterns
+- `suit.properties` - Server endpoints
+- `thinkorswim.vmoptions` - JVM/connection settings
+- `Thinkorswim_AITradingBot.py` - Example API usage
+
 ## Architecture
 
 ```
@@ -273,9 +317,20 @@ Environment variables (`.env`):
 ## Trading Context & User Preferences
 
 ### Trading Schedule
-- **Pre-market (4:00 AM - 9:30 AM ET)**: Primary trading window - different momentum dynamics
-- **Market Open (9:30 - 10:00 AM)**: Watch only, too chaotic for manual trading
-- **Mid-day (10:00 AM - 4:00 PM)**: Trends emerge, safer for manual entries
+
+**IMPORTANT: Time Zone Reference (User is Central Time)**
+| Session | Eastern (ET/NY) | Central (Local) |
+|---------|-----------------|-----------------|
+| Pre-market | 4:00 AM - 9:30 AM | **3:00 AM - 8:30 AM** |
+| Market Open | 9:30 AM - 10:00 AM | 8:30 AM - 9:00 AM |
+| Regular Hours | 10:00 AM - 4:00 PM | 9:00 AM - 3:00 PM |
+| After Hours | 4:00 PM - 8:00 PM | 3:00 PM - 7:00 PM |
+
+**Scheduled Task:** Runs at 3:00 AM local (= 4:00 AM ET) when pre-market opens.
+
+- **Pre-market (4:00 AM - 9:30 AM ET / 3:00-8:30 AM local)**: Primary trading window - different momentum dynamics
+- **Market Open (9:30 - 10:00 AM ET)**: Watch only, too chaotic for manual trading
+- **Mid-day (10:00 AM - 4:00 PM ET)**: Trends emerge, safer for manual entries
 
 ### Trading Style
 - HFT scalping approach (speed matters)
@@ -1962,3 +2017,349 @@ const fetchSystemStatus = async () => {
 ### Commits
 
 - `386df0e` - fix: AI Control Center dashboard fully functional
+
+## Dec 30, 2024 Session - Trading Window Assessment & Error Conditions
+
+### Pre-Market Observation (7:00 AM - 9:30 AM ET)
+
+**System Status at 7:54 AM ET:**
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Server | ✅ Running | Port 9100 |
+| Broker (Schwab) | ✅ Connected | Paper trading |
+| Polygon Stream | ❌ NOT Connected | 0 trades/quotes received |
+| Scalper | ✅ Running | 24 symbols, paper mode |
+| Safe Activation | ✅ ACTIVE | SAFE mode |
+| AI Posture | LIVE_PAPER | Trading window active |
+
+**Momentum States:**
+- 20 symbols tracked, ALL in DEAD state
+- No IGNITION or CONFIRMED momentum detected
+- Symbols: WOK, BRAG, MSC, BNAI, TTRX, FONR, DXST, LITB, ARBE, ORBS, MMA, PALI, NKLR, SKIL, NOMA, ANL, HIT, ZBAI, NTRB, STI
+
+### Critical Error: Polygon WebSocket Concurrency Bug
+
+**Symptoms Observed:**
+- Repeated `SERVICE_NOT_RUNNING` states in Governor UI
+- Log flooding with: `cannot call recv while another coroutine is already running recv`
+- Two threads created for same WebSocket stream
+- `Event loop stopped before Future completed` errors
+
+**Root Cause:**
+Race condition in `polygon_streaming.py` `start()` method:
+1. `self.running` boolean check not thread-safe
+2. Multiple API calls can pass check simultaneously before either sets flag
+3. Result: Duplicate threads sharing same WebSocket connection
+
+**Fix Applied (polygon_streaming.py):**
+
+```python
+# Added thread-safe lock
+self._start_lock = threading.Lock()
+
+def start(self):
+    """Start the streaming connection (thread-safe)"""
+    with self._start_lock:
+        # Check both running flag AND if thread is alive
+        if self.running and self._thread and self._thread.is_alive():
+            return  # Already running
+
+        # Clean up dead thread if needed
+        if self.running and (not self._thread or not self._thread.is_alive()):
+            self.running = False
+            self._thread = None
+            self._loop = None
+
+        # ... start new thread
+
+def stop(self):
+    """Stop the streaming connection (thread-safe)"""
+    with self._start_lock:
+        # ... cleanup logic with proper thread joining
+```
+
+**Changes Made:**
+| File | Change |
+|------|--------|
+| `polygon_streaming.py` | Added `_start_lock = threading.Lock()` in `__init__` |
+| `polygon_streaming.py` | Wrapped `start()` with lock, added thread alive check |
+| `polygon_streaming.py` | Wrapped `stop()` with lock, proper cleanup |
+| `polygon_streaming.py` | Added `restart()` method for clean restart |
+| `polygon_streaming.py` | Added `is_healthy()` method for monitoring |
+| `polygon_streaming.py` | Enhanced `get_status()` with thread health info |
+
+**Status:** Fix applied but requires server restart to take effect.
+
+### Time-Based Trading Windows (safe_activation.py)
+
+**New Feature Added:**
+AI posture now respects trading windows automatically.
+
+```python
+def is_trading_window(self) -> bool:
+    """Check if current time is within trading hours"""
+    et_tz = pytz.timezone('US/Eastern')
+    now_et = datetime.now(et_tz).time()
+
+    if time(7, 0) <= now_et < time(9, 30):   # Pre-market
+        return True
+    if time(9, 30) <= now_et < time(16, 0):  # Market hours
+        return True
+    if time(16, 0) <= now_et < time(20, 0):  # After hours
+        return True
+    return False
+```
+
+**New API Endpoints:**
+```
+GET /api/validation/safe/posture        - Get AI trading posture
+GET /api/validation/safe/trading-window - Get current trading window status
+```
+
+**Posture Response Example:**
+```json
+{
+  "posture": "LIVE_PAPER",
+  "posture_detail": "Paper trading active (SAFE mode)",
+  "mode": "SAFE",
+  "trading_window": {
+    "current_et_time": "07:54 AM ET",
+    "window": "PRE_MARKET",
+    "window_detail": "Pre-market trading (7:00 AM - 9:30 AM ET)",
+    "trading_allowed": true
+  },
+  "can_trade": true
+}
+```
+
+### Outstanding Issues / TODO
+
+| Priority | Issue | Status |
+|----------|-------|--------|
+| HIGH | Polygon WebSocket concurrency fix needs server restart | PENDING |
+| HIGH | SERVICE_NOT_RUNNING states causing Governor UI instability | FIX APPLIED |
+| MEDIUM | All 20 momentum symbols showing DEAD (no momentum detected) | MONITORING |
+| LOW | UI data feeds showing "disconnected" while backend connected | UI BUG |
+
+### Stability Goal
+
+**Target:** System must stay green for 60 uninterrupted minutes.
+
+**Checklist:**
+- [ ] Restart server with Polygon WebSocket fix
+- [ ] Verify no duplicate threads in logs
+- [ ] Confirm all services stay connected for 60+ minutes
+- [ ] Monitor for SERVICE_NOT_RUNNING recurrence
+- [ ] Validate reconnect + resubscribe behavior
+
+### Quick Reference Commands
+
+```bash
+# Check system status
+curl http://localhost:9100/api/status
+curl http://localhost:9100/api/health
+curl http://localhost:9100/api/validation/safe/posture
+
+# Check Polygon stream
+curl http://localhost:9100/api/polygon/stream/status
+
+# Check momentum
+curl http://localhost:9100/api/validation/momentum/states
+
+# Check scalper
+curl http://localhost:9100/api/scanner/scalper/status
+```
+
+### Pre-Market Session Results (7:00-9:30 AM ET)
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Total Trades | 134 | Paper mode |
+| Wins | 40 | |
+| Losses | 94 | |
+| **Win Rate** | 29.9% | Target: 40%+ |
+| **Total P&L** | -$373.47 | |
+| Avg Win | +$5.46 | |
+| Avg Loss | -$6.29 | Loss 15% larger than win |
+| Avg Hold Time | 161.4s | ~2.7 minutes |
+| Best Trade | +$28.28 | |
+| Worst Trade | -$61.37 | |
+| Profit Factor | 0.37 | Below 1.0 = losing system |
+
+**Key Observations:**
+1. Win rate stuck at ~30% (unchanged from previous sessions)
+2. Avg loss > avg win - need tighter stop losses OR bigger wins
+3. Profit factor 0.37 indicates system loses $0.63 for every $1 risked
+4. Polygon WebSocket remained disconnected (fix not yet deployed)
+5. System stayed running (no SERVICE_NOT_RUNNING during observation)
+
+**Changes Needed (My Assessment):**
+1. **Deploy Polygon fix** - Restart server to activate thread-safe WebSocket
+2. **Reduce entry frequency** - 134 trades in 2.5 hours = 1 trade/minute (too many)
+3. **Improve entry quality** - Only trade A/B grade setups, skip C grade
+4. **Fix loss/win ratio** - Either tighter stops (-2%) or let winners run longer
+5. **Add VWAP filter** - Don't enter below VWAP in pre-market
+
+## Task Queue System - HOD Momentum Bot Pipeline
+
+### Overview
+
+Execution contract-based task queue for Small-Cap Top Gappers / HOD Momentum Bot. Every task generates a persisted report artifact with fixed schema. **NO TRADE MAY EXECUTE WITHOUT report_R10 = APPROVED**.
+
+### Architecture
+
+```
+TASK_GROUP 1: MARKET DISCOVERY (R1-R4)
+    ├── DISCOVERY_GAPPERS      → report_R1_daily_top_gappers.json
+    ├── DISCOVERY_FLOAT_FILTER → report_R2_low_float_universe.json
+    ├── DISCOVERY_REL_VOLUME   → report_R3_rel_volume.json
+    └── DISCOVERY_HOD_BEHAVIOR → report_R4_hod_behavior.json
+
+TASK_GROUP 2: QLIB RESEARCH (R5-R7)
+    ├── QLIB_HOD_PROBABILITY   → report_R5_hod_probability.json
+    ├── QLIB_REGIME_CHECK      → report_R6_regime_validity.json
+    └── QLIB_FEATURE_RANK      → report_R7_feature_importance.json
+
+TASK_GROUP 3: CHRONOS CONTEXT (R8-R9)
+    ├── CHRONOS_PERSISTENCE    → report_R8_momentum_persistence.json
+    └── CHRONOS_PULLBACK_DEPTH → report_R9_pullback_depth.json
+
+TASK_GROUP 4: SIGNAL GATING (R10-R11) *** CRITICAL ***
+    ├── GATING_SIGNAL_EVAL     → report_R10_signal_decision.json
+    └── EXECUTION_QUEUE        → report_R11_trade_queue.json
+
+TASK_GROUP 5: POST-TRADE (R12-R15)
+    ├── POST_TRADE_OUTCOME     → report_R12_trade_outcomes.json
+    ├── POST_STRATEGY_HEALTH   → report_R13_strategy_health.json
+    └── POST_STRATEGY_TOGGLE   → report_R15_strategy_status.json
+```
+
+### Execution Contract Rules
+
+1. **Tasks execute sequentially** - No parallel execution
+2. **No downstream task runs if upstream fails** - Pipeline halts
+3. **Every task produces a named artifact** - Persisted JSON report
+4. **All decisions must be explainable via reports** - Full audit trail
+5. **NO TRADE MAY EXECUTE WITHOUT GATING_SIGNAL_EVAL = APPROVED**
+
+### API Endpoints
+
+```
+GET  /api/task-queue/status           - Pipeline status
+POST /api/task-queue/run              - Run full pipeline
+POST /api/task-queue/run/{task_id}    - Run single task
+GET  /api/task-queue/reports          - List all reports
+GET  /api/task-queue/report/{name}    - Get specific report
+GET  /api/task-queue/can-trade        - Check if trading allowed (R10 gate)
+POST /api/task-queue/reset            - Reset pipeline for new run
+GET  /api/task-queue/execution-contract - View contract rules
+```
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `ai/task_queue_manager.py` | Core pipeline orchestrator |
+| `ai/task_group_1_discovery.py` | Market Discovery tasks (R1-R4) |
+| `ai/task_group_2_qlib.py` | Qlib Research tasks (R5-R7) |
+| `ai/task_group_3_chronos.py` | Chronos Context tasks (R8-R9) |
+| `ai/task_group_4_gating.py` | Signal Gating tasks (R10-R11) |
+| `ai/task_group_5_post_trade.py` | Post-Trade tasks (R12-R15) |
+| `ai/task_queue_routes.py` | REST API endpoints |
+
+### Gating Rules (R10)
+
+```python
+# Minimum thresholds for approval
+MIN_ENTRY_SCORE = 0.50
+MIN_CONTINUATION_PROB = 0.55
+MIN_PERSISTENCE_SCORE = 0.50
+MIN_REL_VOL = 200
+
+# Required checks (ALL must pass)
+- entry_quality (entry_score >= 0.50)
+- qlib_prob (continuation_prob >= 0.55)
+- chronos_persistence (persistence_score >= 0.50)
+- hod_status (AT_HOD or NEAR_HOD)
+- vwap_position (ABOVE or AT)
+- regime_check (not in BLOCKED_REGIMES)
+
+# Blocked regimes
+BLOCKED_REGIMES = ["CHOP", "CRASH", "HALT_RISK"]
+```
+
+### Usage
+
+```bash
+# Run full pipeline
+curl -X POST http://localhost:9100/api/task-queue/run
+
+# Check if trading allowed
+curl http://localhost:9100/api/task-queue/can-trade
+
+# View gating decision
+curl http://localhost:9100/api/task-queue/report/report_R10_signal_decision.json
+
+# View trade queue
+curl http://localhost:9100/api/task-queue/report/report_R11_trade_queue.json
+```
+
+## Jan 2, 2026 Session - Gating Engine Fix & TOS Reference
+
+### Issues Fixed
+
+| Issue | Root Cause | Fix |
+|-------|------------|-----|
+| Governor showing SERVICE_NOT_RUNNING | ConnectivityManager used cached state | Active service checks in `get_system_state()` |
+| Scalper start returning empty error | `List[str]` didn't parse comma string | Changed to `str` with manual parsing |
+| `/api/gating/status` returning 404 | Endpoint didn't exist | Added gating status endpoints |
+| Gating bypassed (0 vetoes) | `require_gating_approval: false` | Enabled in `scalper_config.json` |
+| Browser caching causing stale data | No cache headers on API | Added no-cache middleware |
+| Polygon status showing disconnected | Checking Polygon when using Schwab | Return `connected: true` when Schwab active |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `ai/scalper_config.json` | `require_gating_approval: true` |
+| `ai/scanner_api_routes.py` | Fixed `start_scalper()` parameter parsing |
+| `ai/connectivity_manager.py` | Active service checks in `get_system_state()` |
+| `morpheus_trading_api.py` | Added `/api/gating/status`, `/api/gating/vetoes`, no-cache middleware |
+| `polygon_streaming_routes.py` | Schwab compatibility for polygon status |
+| `.claude/CLAUDE.md` | Added TOS reference section |
+
+### New API Endpoints
+
+```bash
+# Gating status
+GET /api/gating/status   - Gating engine status, contracts, vetoes
+GET /api/gating/vetoes   - Recent veto details
+```
+
+### Gating Now Active
+
+All trades go through Signal Gating Engine:
+1. `require_gating_approval: true` in config
+2. 7 signal contracts loaded (AAPL, TSLA, NVDA, AMD, SPY, QQQ, GOOGL)
+3. Vetoes logged with reasons
+4. Trading window enforcement (07:00-09:30 AM ET)
+
+### Monitor Commands
+
+```bash
+# Check gating
+curl http://localhost:9100/api/gating/status
+
+# Check system health
+curl http://localhost:9100/api/health
+
+# Check scalper
+curl http://localhost:9100/api/scanner/scalper/status
+```
+
+### Current State
+
+- Server: Running on port 9100
+- Scalper: Paper mode, gating enabled
+- TOS reference: Documented in CLAUDE.md for connection stability patterns
