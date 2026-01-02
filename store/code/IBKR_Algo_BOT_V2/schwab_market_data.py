@@ -8,6 +8,7 @@ import json
 import logging
 import base64
 import time
+import threading
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 from pathlib import Path
@@ -22,126 +23,146 @@ TOKEN_FILE = Path(__file__).parent / "schwab_token.json"
 # Schwab API base URL
 SCHWAB_API_BASE = "https://api.schwabapi.com"
 
-# Token singleton
+# Token singleton with thread-safe lock
+_token_lock = threading.RLock()  # Reentrant lock for nested calls
 _token_data: Optional[Dict] = None
 _token_expiry: Optional[datetime] = None
 _schwab_available = False
+_last_refresh_attempt: Optional[datetime] = None
+_refresh_cooldown_seconds = 30  # Prevent refresh spam
 
 
 def _load_token() -> Optional[Dict]:
-    """Load token from file"""
+    """Load token from file (thread-safe)"""
     global _token_data, _token_expiry
 
-    if not TOKEN_FILE.exists():
-        logger.warning("Schwab token file not found")
-        return None
+    with _token_lock:
+        if not TOKEN_FILE.exists():
+            logger.warning("Schwab token file not found")
+            return None
 
-    try:
-        with open(TOKEN_FILE, 'r') as f:
-            _token_data = json.load(f)
+        try:
+            with open(TOKEN_FILE, 'r') as f:
+                _token_data = json.load(f)
 
-        # Calculate expiry (access token expires in 30 mins, but we refresh early)
-        _token_expiry = datetime.now() + timedelta(seconds=_token_data.get('expires_in', 1800) - 300)
-        logger.info("Schwab token loaded successfully")
-        return _token_data
-    except Exception as e:
-        logger.error(f"Failed to load Schwab token: {e}")
-        return None
+            # Calculate expiry (access token expires in 30 mins, but we refresh early)
+            _token_expiry = datetime.now() + timedelta(seconds=_token_data.get('expires_in', 1800) - 300)
+            logger.info("Schwab token loaded successfully")
+            return _token_data
+        except Exception as e:
+            logger.error(f"Failed to load Schwab token: {e}")
+            return None
 
 
 def _save_token(token_data: Dict):
-    """Save token to file"""
+    """Save token to file (thread-safe with atomic write)"""
     global _token_data, _token_expiry
 
-    try:
-        with open(TOKEN_FILE, 'w') as f:
-            json.dump(token_data, f, indent=2)
-        _token_data = token_data
-        _token_expiry = datetime.now() + timedelta(seconds=token_data.get('expires_in', 1800) - 300)
-        logger.info("Schwab token saved successfully")
-    except Exception as e:
-        logger.error(f"Failed to save Schwab token: {e}")
+    with _token_lock:
+        try:
+            # Atomic write: write to temp file then rename
+            temp_file = TOKEN_FILE.with_suffix('.tmp')
+            with open(temp_file, 'w') as f:
+                json.dump(token_data, f, indent=2)
+            temp_file.replace(TOKEN_FILE)  # Atomic on most systems
+
+            _token_data = token_data
+            _token_expiry = datetime.now() + timedelta(seconds=token_data.get('expires_in', 1800) - 300)
+            logger.info("Schwab token saved successfully")
+        except Exception as e:
+            logger.error(f"Failed to save Schwab token: {e}")
 
 
 def _refresh_token() -> bool:
-    """Refresh the access token using refresh token"""
-    global _token_data, _token_expiry, _schwab_available
+    """Refresh the access token using refresh token (thread-safe with cooldown)"""
+    global _token_data, _token_expiry, _schwab_available, _last_refresh_attempt
 
-    if not _token_data or 'refresh_token' not in _token_data:
-        logger.error("No refresh token available")
-        _schwab_available = False
-        return False
+    with _token_lock:
+        # Check cooldown to prevent refresh spam
+        if _last_refresh_attempt:
+            elapsed = (datetime.now() - _last_refresh_attempt).total_seconds()
+            if elapsed < _refresh_cooldown_seconds:
+                logger.debug(f"Token refresh on cooldown ({elapsed:.0f}s < {_refresh_cooldown_seconds}s)")
+                return _schwab_available  # Return current state
 
-    app_key = os.getenv('SCHWAB_APP_KEY')
-    app_secret = os.getenv('SCHWAB_APP_SECRET')
+        _last_refresh_attempt = datetime.now()
 
-    if not app_key or not app_secret:
-        logger.error("Schwab credentials not configured")
-        _schwab_available = False
-        return False
-
-    try:
-        # Create Basic auth header
-        credentials = f"{app_key}:{app_secret}"
-        encoded_credentials = base64.b64encode(credentials.encode()).decode()
-
-        headers = {
-            "Authorization": f"Basic {encoded_credentials}",
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-
-        data = {
-            "grant_type": "refresh_token",
-            "refresh_token": _token_data['refresh_token']
-        }
-
-        response = httpx.post(
-            f"{SCHWAB_API_BASE}/v1/oauth/token",
-            headers=headers,
-            data=data,
-            timeout=30.0
-        )
-
-        if response.status_code == 200:
-            new_token = response.json()
-            # Keep refresh token if not returned
-            if 'refresh_token' not in new_token:
-                new_token['refresh_token'] = _token_data['refresh_token']
-            _save_token(new_token)
-            _schwab_available = True
-            logger.info("Schwab token refreshed successfully")
-            return True
-        else:
-            logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
+        if not _token_data or 'refresh_token' not in _token_data:
+            logger.error("No refresh token available")
             _schwab_available = False
             return False
 
-    except Exception as e:
-        logger.error(f"Token refresh error: {e}")
-        _schwab_available = False
-        return False
+        app_key = os.getenv('SCHWAB_APP_KEY')
+        app_secret = os.getenv('SCHWAB_APP_SECRET')
+
+        if not app_key or not app_secret:
+            logger.error("Schwab credentials not configured")
+            _schwab_available = False
+            return False
+
+        try:
+            # Create Basic auth header
+            credentials = f"{app_key}:{app_secret}"
+            encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+            headers = {
+                "Authorization": f"Basic {encoded_credentials}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+
+            data = {
+                "grant_type": "refresh_token",
+                "refresh_token": _token_data['refresh_token']
+            }
+
+            response = httpx.post(
+                f"{SCHWAB_API_BASE}/v1/oauth/token",
+                headers=headers,
+                data=data,
+                timeout=30.0
+            )
+
+            if response.status_code == 200:
+                new_token = response.json()
+                # Keep refresh token if not returned
+                if 'refresh_token' not in new_token:
+                    new_token['refresh_token'] = _token_data['refresh_token']
+                _save_token(new_token)
+                _schwab_available = True
+                logger.info("Schwab token refreshed successfully")
+                return True
+            else:
+                logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
+                _schwab_available = False
+                return False
+
+        except Exception as e:
+            logger.error(f"Token refresh error: {e}")
+            _schwab_available = False
+            return False
 
 
 def _ensure_token() -> Optional[str]:
-    """Ensure we have a valid access token"""
+    """Ensure we have a valid access token (thread-safe)"""
     global _token_data, _token_expiry, _schwab_available
 
-    # Load token if not loaded
-    if _token_data is None:
-        _load_token()
+    with _token_lock:
+        # Load token if not loaded
+        if _token_data is None:
+            _load_token()
 
-    if _token_data is None:
-        _schwab_available = False
-        return None
-
-    # Check if token needs refresh
-    if _token_expiry is None or datetime.now() >= _token_expiry:
-        logger.info("Token expired or expiring soon, refreshing...")
-        if not _refresh_token():
+        if _token_data is None:
+            _schwab_available = False
             return None
 
-    _schwab_available = True
-    return _token_data.get('access_token')
+        # Check if token needs refresh
+        if _token_expiry is None or datetime.now() >= _token_expiry:
+            logger.info("Token expired or expiring soon, refreshing...")
+            if not _refresh_token():
+                return None
+
+        _schwab_available = True
+        return _token_data.get('access_token')
 
 
 def _make_request(endpoint: str, params: Optional[Dict] = None) -> Optional[Dict]:
@@ -213,57 +234,58 @@ def is_schwab_available() -> bool:
 
 
 def get_token_status() -> Dict:
-    """Get Schwab token status for monitoring"""
+    """Get Schwab token status for monitoring (thread-safe)"""
     global _token_data, _token_expiry, _schwab_available
 
-    # Ensure token is loaded
-    if _token_data is None:
-        _load_token()
+    with _token_lock:
+        # Ensure token is loaded
+        if _token_data is None:
+            _load_token()
 
-    now = datetime.now()
+        now = datetime.now()
 
-    if _token_data is None:
+        if _token_data is None:
+            return {
+                "valid": False,
+                "status": "no_token",
+                "message": "No Schwab token found. Run schwab_authenticate.py",
+                "expires_in_seconds": 0,
+                "needs_refresh": True
+            }
+
+        if _token_expiry is None:
+            return {
+                "valid": False,
+                "status": "unknown_expiry",
+                "message": "Token expiry unknown",
+                "expires_in_seconds": 0,
+                "needs_refresh": True
+            }
+
+        expires_in = (_token_expiry - now).total_seconds()
+        is_expired = expires_in <= 0
+        needs_refresh = expires_in < 300  # Less than 5 minutes
+
+        if is_expired:
+            status = "expired"
+            message = "Token has expired"
+        elif needs_refresh:
+            status = "expiring_soon"
+            message = f"Token expires in {int(expires_in)}s - will auto-refresh"
+        else:
+            status = "valid"
+            message = f"Token valid for {int(expires_in/60)}m {int(expires_in%60)}s"
+
         return {
-            "valid": False,
-            "status": "no_token",
-            "message": "No Schwab token found. Run schwab_authenticate.py",
-            "expires_in_seconds": 0,
-            "needs_refresh": True
+            "valid": not is_expired,
+            "status": status,
+            "message": message,
+            "expires_in_seconds": max(0, int(expires_in)),
+            "expires_at": _token_expiry.isoformat() if _token_expiry else None,
+            "needs_refresh": needs_refresh,
+            "has_refresh_token": _token_data.get('refresh_token') is not None if _token_data else False,
+            "schwab_available": _schwab_available
         }
-
-    if _token_expiry is None:
-        return {
-            "valid": False,
-            "status": "unknown_expiry",
-            "message": "Token expiry unknown",
-            "expires_in_seconds": 0,
-            "needs_refresh": True
-        }
-
-    expires_in = (_token_expiry - now).total_seconds()
-    is_expired = expires_in <= 0
-    needs_refresh = expires_in < 300  # Less than 5 minutes
-
-    if is_expired:
-        status = "expired"
-        message = "Token has expired"
-    elif needs_refresh:
-        status = "expiring_soon"
-        message = f"Token expires in {int(expires_in)}s - will auto-refresh"
-    else:
-        status = "valid"
-        message = f"Token valid for {int(expires_in/60)}m {int(expires_in%60)}s"
-
-    return {
-        "valid": not is_expired,
-        "status": status,
-        "message": message,
-        "expires_in_seconds": max(0, int(expires_in)),
-        "expires_at": _token_expiry.isoformat() if _token_expiry else None,
-        "needs_refresh": needs_refresh,
-        "has_refresh_token": _token_data.get('refresh_token') is not None if _token_data else False,
-        "schwab_available": _schwab_available
-    }
 
 
 class SchwabMarketData:
@@ -538,16 +560,30 @@ def get_schwab_movers(index: str = "$SPX", direction: str = "up", change_type: s
         movers = []
         screeners = data.get('screeners', [])
 
-        for screener in screeners:
-            instruments = screener.get('instruments', [])
-            for inst in instruments:
+        # Schwab API returns stocks directly in screeners array (not nested in instruments)
+        for item in screeners:
+            # Handle both formats: direct stock data or nested instruments
+            if 'instruments' in item:
+                # Old format with nested instruments
+                for inst in item.get('instruments', []):
+                    movers.append({
+                        'symbol': inst.get('symbol', ''),
+                        'description': inst.get('description', ''),
+                        'price': inst.get('lastPrice', inst.get('last', 0)),
+                        'change': inst.get('netChange', 0),
+                        'change_pct': inst.get('netPercentChange', 0) * 100,  # Convert to percentage
+                        'volume': inst.get('totalVolume', inst.get('volume', 0)),
+                        'direction': direction
+                    })
+            else:
+                # Direct stock data format
                 movers.append({
-                    'symbol': inst.get('symbol', ''),
-                    'description': inst.get('description', ''),
-                    'price': inst.get('last', 0),
-                    'change': inst.get('netChange', 0),
-                    'change_pct': inst.get('netPercentChange', 0),
-                    'volume': inst.get('totalVolume', 0),
+                    'symbol': item.get('symbol', ''),
+                    'description': item.get('description', ''),
+                    'price': item.get('lastPrice', item.get('last', 0)),
+                    'change': item.get('netChange', 0),
+                    'change_pct': item.get('netPercentChange', 0) * 100,  # Convert to percentage
+                    'volume': item.get('totalVolume', item.get('volume', 0)),
                     'direction': direction
                 })
 
