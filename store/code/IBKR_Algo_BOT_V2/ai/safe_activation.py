@@ -303,7 +303,7 @@ class SafeActivationMode:
         """
         Check if we're in a valid trading window.
 
-        Pre-market: 7:00 AM - 9:30 AM ET -> Trading allowed
+        Pre-market: 4:00 AM - 9:30 AM ET -> Trading allowed
         Market hours: 9:30 AM - 4:00 PM ET -> Trading allowed
         After hours: 4:00 PM - 8:00 PM ET -> Trading allowed (configurable)
         Outside hours: No trading
@@ -312,8 +312,8 @@ class SafeActivationMode:
             et_tz = pytz.timezone('US/Eastern')
             now_et = datetime.now(et_tz).time()
 
-            # Pre-market window: 7:00 AM - 9:30 AM ET
-            if time(7, 0) <= now_et < time(9, 30):
+            # Pre-market window: 4:00 AM - 9:30 AM ET
+            if time(4, 0) <= now_et < time(9, 30):
                 return True
 
             # Regular market hours: 9:30 AM - 4:00 PM ET
@@ -339,9 +339,9 @@ class SafeActivationMode:
             now_et = datetime.now(et_tz)
             now_time = now_et.time()
 
-            if time(7, 0) <= now_time < time(9, 30):
+            if time(4, 0) <= now_time < time(9, 30):
                 window = "PRE_MARKET"
-                window_detail = "Pre-market trading (7:00 AM - 9:30 AM ET)"
+                window_detail = "Pre-market trading (4:00 AM - 9:30 AM ET)"
             elif time(9, 30) <= now_time < time(16, 0):
                 window = "MARKET_HOURS"
                 window_detail = "Regular market hours (9:30 AM - 4:00 PM ET)"

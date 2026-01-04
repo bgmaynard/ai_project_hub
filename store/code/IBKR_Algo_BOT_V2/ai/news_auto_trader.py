@@ -153,6 +153,7 @@ class NewsAutoTrader:
         # State
         self.is_running = False
         self._monitor_task: Optional[asyncio.Task] = None
+        self.last_scan_time: Optional[datetime] = None  # For observability
 
         # Watchlist integration
         self.auto_added_symbols: Dict[str, datetime] = {}
@@ -174,7 +175,7 @@ class NewsAutoTrader:
         """Lazy load fast news scanner"""
         if self._fast_news is None:
             try:
-                from ai.benzinga_fast_news import get_fast_news
+                from .benzinga_fast_news import get_fast_news
                 self._fast_news = get_fast_news()
             except ImportError:
                 from benzinga_fast_news import get_fast_news
@@ -366,6 +367,9 @@ class NewsAutoTrader:
 
     def _on_buy_signal(self, alert):
         """Handle buy signal from news scanner"""
+        # Update last scan time for observability
+        self.last_scan_time = datetime.now()
+
         if not self.config.enabled:
             return
 
@@ -703,6 +707,7 @@ class NewsAutoTrader:
             "max_daily_trades": self.config.max_daily_trades,
             "auto_added_symbols": list(self.auto_added_symbols.keys()),
             "cooldowns_active": len(self.symbol_cooldowns),
+            "last_scan_time": self.last_scan_time.isoformat() if self.last_scan_time else None,
             "stats": self.stats,
             "config": self.config.to_dict()
         }
