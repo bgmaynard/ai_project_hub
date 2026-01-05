@@ -312,19 +312,13 @@ class SafeActivationMode:
             et_tz = pytz.timezone('US/Eastern')
             now_et = datetime.now(et_tz).time()
 
-            # Pre-market window: 4:00 AM - 9:30 AM ET
-            if time(4, 0) <= now_et < time(9, 30):
+            # TRADING WINDOW: 7:00 AM - 9:30 AM ET (pre-market only)
+            # Before 7 AM = validation/monitoring mode
+            # After 9:30 AM = no trading (too chaotic)
+            if time(7, 0) <= now_et < time(9, 30):
                 return True
 
-            # Regular market hours: 9:30 AM - 4:00 PM ET
-            if time(9, 30) <= now_et < time(16, 0):
-                return True
-
-            # Extended hours (after market): 4:00 PM - 8:00 PM ET
-            if time(16, 0) <= now_et < time(20, 0):
-                return True
-
-            # Outside trading hours
+            # Outside trading window
             return False
 
         except Exception as e:
@@ -339,15 +333,15 @@ class SafeActivationMode:
             now_et = datetime.now(et_tz)
             now_time = now_et.time()
 
-            if time(4, 0) <= now_time < time(9, 30):
-                window = "PRE_MARKET"
-                window_detail = "Pre-market trading (4:00 AM - 9:30 AM ET)"
+            if time(4, 0) <= now_time < time(7, 0):
+                window = "VALIDATION"
+                window_detail = "Validation mode (4:00 AM - 7:00 AM ET) - monitoring only"
+            elif time(7, 0) <= now_time < time(9, 30):
+                window = "TRADING"
+                window_detail = "Trading window (7:00 AM - 9:30 AM ET)"
             elif time(9, 30) <= now_time < time(16, 0):
-                window = "MARKET_HOURS"
-                window_detail = "Regular market hours (9:30 AM - 4:00 PM ET)"
-            elif time(16, 0) <= now_time < time(20, 0):
-                window = "AFTER_HOURS"
-                window_detail = "After hours trading (4:00 PM - 8:00 PM ET)"
+                window = "MARKET_CLOSED"
+                window_detail = "Market hours - outside trading window"
             else:
                 window = "CLOSED"
                 window_detail = "Outside trading hours"
