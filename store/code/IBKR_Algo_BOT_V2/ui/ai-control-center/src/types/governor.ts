@@ -133,11 +133,13 @@ export interface GovernorData {
 // Polling Configuration
 // ============================================
 
+// TODO: [STABILITY 2026-01-08] Consider increasing decisions interval to 5s
+// if UI stalling persists. 3s may stack requests on slow API responses.
 export const POLL_INTERVALS = {
   globalStatus: 5000,    // 5s - critical
   marketContext: 10000,  // 10s - moderate
   policies: 15000,       // 15s - slow-changing
-  decisions: 3000,       // 3s - real-time feel
+  decisions: 3000,       // 3s - real-time feel (may cause stacking)
   health: 30000,         // 30s - background
 } as const;
 

@@ -402,6 +402,24 @@ class HFTScalper:
         self.fade_filter_rejects = 0
         self.fade_filter_approves = 0
 
+        # Diagnostic counters (analytics only - no logic changes)
+        self.diagnostics = {
+            "signals_detected": 0,           # Total momentum signals detected
+            "signals_blocked_time_window": 0, # Blocked by trading window
+            "signals_blocked_max_trades": 0,  # Blocked by daily trade limit
+            "signals_blocked_daily_loss": 0,  # Blocked by daily loss limit
+            "signals_blocked_cooldown": 0,    # Blocked by post-loss cooldown
+            "signals_blocked_spread": 0,      # Blocked by wide spread
+            "signals_blocked_gating": 0,      # Blocked by gating engine
+            "exits_failed_momentum": 0,       # Exited due to FAILED_MOMENTUM
+            "exits_stop_loss": 0,             # Exited due to stop loss
+            "exits_profit_target": 0,         # Exited due to profit target
+            "exits_trailing_stop": 0,         # Exited due to trailing stop
+            "exits_chronos": 0,               # Exited due to Chronos signal
+            "exits_max_hold": 0,              # Exited due to max hold time
+            "last_reset": datetime.now().isoformat()
+        }
+
         # Priority queue for news-triggered entries
         self.priority_symbols: List[str] = []  # Symbols to check immediately
 
@@ -770,6 +788,7 @@ class HFTScalper:
             spread_pct = (ask - bid) / price * 100
             if spread_pct > max_spread:
                 logger.debug(f"SPREAD REJECT: {symbol} spread {spread_pct:.1f}% > {max_spread:.1f}%")
+                self.diagnostics["signals_blocked_spread"] += 1  # Diagnostic counter
                 return None
 
         # Skip if already in position
@@ -781,12 +800,15 @@ class HFTScalper:
             cooldown = self.config.cooldown_after_loss
             cooldown_end = self.last_loss_time + timedelta(seconds=cooldown)
             if datetime.now() < cooldown_end:
+                self.diagnostics["signals_blocked_cooldown"] += 1  # Diagnostic counter
                 return None
 
         # Check daily limits
         if self.daily_trades >= self.config.max_daily_trades:
+            self.diagnostics["signals_blocked_max_trades"] += 1  # Diagnostic counter
             return None
         if self.daily_pnl <= -self.config.max_daily_loss:
+            self.diagnostics["signals_blocked_daily_loss"] += 1  # Diagnostic counter
             return None
 
         # TIME OF DAY FILTER - Block market open chaos (9:25-9:59 AM ET)
@@ -807,6 +829,7 @@ class HFTScalper:
 
         if blocked_start <= et_time <= blocked_end and not priority:
             logger.debug(f"TIME BLOCK: {symbol} - {et_time} ET in blocked range {blocked_start}-{blocked_end}")
+            self.diagnostics["signals_blocked_time_window"] += 1  # Diagnostic counter
             return None
 
         # ===== MOMENTUM STATE MACHINE (ChatGPT recommendation) =====
@@ -2275,6 +2298,21 @@ class HFTScalper:
         trade.pnl_percent = ((price - trade.entry_price) / trade.entry_price * 100)
         trade.status = "closed"
 
+        # Diagnostic counter for exit reasons (analytics only)
+        exit_reason_lower = trade.exit_reason.lower()
+        if "failed_momentum" in exit_reason_lower:
+            self.diagnostics["exits_failed_momentum"] += 1
+        elif "stop_loss" in exit_reason_lower:
+            self.diagnostics["exits_stop_loss"] += 1
+        elif "profit_target" in exit_reason_lower or "target" in exit_reason_lower:
+            self.diagnostics["exits_profit_target"] += 1
+        elif "trailing" in exit_reason_lower:
+            self.diagnostics["exits_trailing_stop"] += 1
+        elif "chronos" in exit_reason_lower:
+            self.diagnostics["exits_chronos"] += 1
+        elif "max_hold" in exit_reason_lower or "time" in exit_reason_lower:
+            self.diagnostics["exits_max_hold"] += 1
+
         # Execute order (paper or real)
         if self.config.paper_mode:
             logger.info(f"PAPER EXIT: {symbol} {trade.shares} shares @ ${price:.2f}")
@@ -2642,7 +2680,8 @@ class HFTScalper:
                 "max_position": self.config.max_position_size,
                 "min_price": self.config.min_price,
                 "max_price": self.config.max_price
-            }
+            },
+            "diagnostics": self.diagnostics  # Analytics counters
         }
 
     def get_open_positions(self) -> List[Dict]:
@@ -2687,10 +2726,17 @@ class HFTScalper:
         """Reset daily stats for a fresh start"""
         old_trades = self.daily_trades
         old_pnl = self.daily_pnl
+        old_diagnostics = self.diagnostics.copy()
 
         self.daily_trades = 0
         self.daily_pnl = 0.0
         self.last_loss_time = None
+
+        # Reset diagnostics counters
+        for key in self.diagnostics:
+            if key != "last_reset":
+                self.diagnostics[key] = 0
+        self.diagnostics["last_reset"] = datetime.now().isoformat()
 
         logger.info(f"Daily stats reset - was: {old_trades} trades, ${old_pnl:.2f} P/L")
 
@@ -2698,6 +2744,7 @@ class HFTScalper:
             "reset": True,
             "previous_trades": old_trades,
             "previous_pnl": round(old_pnl, 2),
+            "previous_diagnostics": old_diagnostics,
             "current_trades": 0,
             "current_pnl": 0.0
         }

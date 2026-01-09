@@ -3,6 +3,22 @@
  *
  * Unified hook for fetching all governor panel data with
  * staggered polling intervals for optimal performance.
+ *
+ * TODO: [STABILITY] Potential stall causes identified (2026-01-08):
+ *
+ * 1. POLL OVERLAP - If API response takes longer than poll interval,
+ *    requests can stack up. Need request-in-flight tracking.
+ *
+ * 2. DECISIONS POLL TOO FREQUENT - 3s interval may overwhelm slow APIs.
+ *    Consider increasing to 5s or adding adaptive polling.
+ *
+ * 3. NO OVERALL FETCHALL TIMEOUT - Individual fetches timeout at 3s
+ *    but Promise.all has no overall timeout. If one hangs, all wait.
+ *
+ * 4. INTERVAL CLEANUP ON REMOUNT - If component remounts before cleanup,
+ *    old intervals may continue running. Check StrictMode behavior.
+ *
+ * DO NOT REFACTOR TONIGHT - These are notes for future investigation.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
