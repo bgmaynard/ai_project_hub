@@ -28,6 +28,14 @@ import time
 
 logger = logging.getLogger(__name__)
 
+# DERO Event Sink - fire-and-forget, non-blocking
+try:
+    from services.dero.event_sink import emit_event, SCANNER_CANDIDATE, WATCHLIST_UPDATE, FSM_TRANSITION, GATE_DECISION, TRADE_EVENT
+    DERO_AVAILABLE = True
+except ImportError:
+    DERO_AVAILABLE = False
+    def emit_event(*args, **kwargs): pass  # No-op if DERO not available
+
 # Config file
 SCALPER_CONFIG_FILE = os.path.join(os.path.dirname(__file__), "scalper_config.json")
 SCALPER_TRADES_FILE = os.path.join(os.path.dirname(__file__), "scalper_trades.json")
@@ -127,7 +135,7 @@ class ScalperConfig:
     failed_momentum_threshold: float = 0.5  # Exit if gain < X% after failed_momentum_seconds
 
     # Momentum velocity filter (ensure still moving up at entry)
-    use_velocity_filter: bool = True  # Check if price still rising at entry
+    use_velocity_filter: bool = False  # Check if price still rising at entry (disabled for testing)
     min_entry_velocity: float = 0.1  # Min % gain in last 2 ticks to enter
 
     # Risk management
@@ -200,11 +208,41 @@ class ScalperConfig:
     # GATING ENFORCEMENT (Signal Gating Engine integration)
     require_gating_approval: bool = True  # ALL trades MUST go through Signal Gating Engine
 
+    # SCOUT MODE (for momentum discovery without contracts)
+    allow_scout_trades: bool = True  # Allow trades on symbols without contracts
+    scout_position_size_pct: float = 50.0  # Scout position size (% of normal)
+    scout_stop_loss_pct: float = 1.0  # Tighter stop for scouts (1% vs normal)
+    scout_max_hold_seconds: int = 90  # Shorter hold time for scouts
+
     # Momentum State Machine v2 (ChatGPT FSM Spec)
     use_state_machine: bool = True  # Use state machine for entry decisions
     state_machine_candidate_score: int = 30  # Score to enter CANDIDATE (grid search optimal)
     state_machine_igniting_score: int = 45  # Score to enter IGNITING (grid search optimal)
     state_machine_gated_score: int = 60  # Score to enter GATED (grid search optimal)
+
+    # EXTREME MOVER DETECTION (for gap-and-go plays in pre-market)
+    # Triggers on stocks already up significantly from CLOSE (not open)
+    # Essential for pre-market trading where open price is unavailable
+    use_extreme_mover_detection: bool = True  # Enable gap-and-go detection
+    min_extreme_mover_percent: float = 20.0  # Min % from close to trigger (20% = gapper)
+    extreme_mover_min_volume: int = 500000  # Min volume for extreme mover
+
+    # AUTO-SCAN Configuration (periodic Finviz scanning)
+    auto_scan_enabled: bool = True  # Enable periodic scanning for new movers
+    auto_scan_interval: int = 180  # Seconds between scans (3 minutes default)
+    auto_scan_add_to_watchlist: bool = True  # Add discovered symbols to watchlist
+    auto_scan_max_symbols: int = 10  # Max symbols to add per scan
+    auto_scan_types: List[str] = field(default_factory=lambda: ['momentum', 'new_highs'])  # Scan types
+
+    # PROBE ENTRY Configuration (Task F - ChatGPT Directive)
+    # Controlled initiation with reduced size/tighter stops when normal triggers don't fire
+    use_probe_entries: bool = True  # Enable probe entry fallback
+    probe_size_multiplier: float = 0.30  # 30% of normal position size
+    probe_stop_loss_percent: float = 1.5  # Tighter stop than normal
+    probe_min_micro_confidence: float = 0.60  # Min Chronos micro confidence
+    probe_max_per_symbol: int = 1  # Max probes per symbol per session
+    probe_max_per_hour: int = 3  # Max probes per hour across all symbols
+    probe_cooldown_minutes: int = 15  # Cooldown after stopped probe
 
     # Symbols
     watchlist: List[str] = field(default_factory=list)
@@ -298,6 +336,15 @@ class ScalpTrade:
     warrior_patterns: List[str] = field(default_factory=list)  # Detected patterns
     warrior_tape_signals: List[str] = field(default_factory=list)  # Tape reading signals
 
+    # Probe Entry tracking (Task F - ChatGPT directive)
+    is_probe: bool = False  # Whether this is a probe entry
+    probe_trigger_type: str = ""  # VWAP_RECLAIM, PREMARKET_HIGH_BREAK, etc.
+    probe_state: str = ""  # ACTIVE, STOPPED, CONFIRMED
+
+    # Scout Trade tracking (momentum discovery without contracts)
+    is_scout: bool = False  # Whether this is a scout trade (no contract)
+    scout_max_hold: int = 0  # Max hold time for scout trades
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -349,6 +396,7 @@ class HFTScalper:
         self.daily_trades = 0
         self.last_loss_time: Optional[datetime] = None
         self.last_scan_time: Optional[datetime] = None  # For observability
+        self.last_auto_scan_time: Optional[datetime] = None  # For periodic Finviz scans
 
         # Filter stats
         self.fade_filter_rejects = 0
@@ -565,6 +613,12 @@ class HFTScalper:
         if symbol not in self.config.watchlist:
             self.config.watchlist.append(symbol)
             self._save_config()
+            # DERO: Emit watchlist update event
+            emit_event(WATCHLIST_UPDATE, {
+                "action": "ADD",
+                "symbol": symbol,
+                "watchlist_size": len(self.config.watchlist)
+            })
 
     def remove_from_watchlist(self, symbol: str):
         """Remove symbol from watchlist"""
@@ -572,6 +626,12 @@ class HFTScalper:
         if symbol in self.config.watchlist:
             self.config.watchlist.remove(symbol)
             self._save_config()
+            # DERO: Emit watchlist update event
+            emit_event(WATCHLIST_UPDATE, {
+                "action": "REMOVE",
+                "symbol": symbol,
+                "watchlist_size": len(self.config.watchlist)
+            })
 
     def _check_pullback_confirmation(self, symbol: str, price: float,
                                       momentum: float, change_pct: float,
@@ -753,7 +813,7 @@ class HFTScalper:
         # Only allow entry when state machine is in IGNITION state
         # This provides unified entry decision logic
         momentum_score_result = None
-        if getattr(self.config, 'use_state_machine', True):
+        if getattr(self.config, 'use_state_machine', False):
             try:
                 from ai.momentum_state_machine import MomentumState, TransitionReason
 
@@ -780,6 +840,9 @@ class HFTScalper:
 
                 # Update state machine with score
                 # Pass veto info to state machine
+                old_state_val = self.state_machine.get_state(symbol)
+                old_state_name = old_state_val.state.value if old_state_val else "NONE"
+
                 new_state = self.state_machine.update_momentum(
                     symbol, momentum_score_result.score,
                     vetoed=momentum_score_result.vetoed,
@@ -789,6 +852,18 @@ class HFTScalper:
 
                 # Check if symbol is in GATED state (ready for entry)
                 symbol_state = self.state_machine.get_state(symbol)
+
+                # DERO: Emit FSM transition event if state changed
+                new_state_name = symbol_state.state.value if symbol_state else "NONE"
+                if old_state_name != new_state_name:
+                    emit_event(FSM_TRANSITION, {
+                        "symbol": symbol,
+                        "from_state": old_state_name,
+                        "to_state": new_state_name,
+                        "score": momentum_score_result.score,
+                        "vetoed": momentum_score_result.vetoed,
+                        "veto_reasons": [v.value for v in momentum_score_result.veto_reasons]
+                    })
                 if symbol_state:
                     if symbol_state.state != MomentumState.GATED:
                         # Not in GATED - NO BYPASS ALLOWED (gating enforced)
@@ -843,10 +918,28 @@ class HFTScalper:
             if len(self.price_history[symbol]) < 5:
                 return None
 
-            # Calculate momentum
+            # Calculate momentum - MULTI-WINDOW approach
             prices = self.price_history[symbol]
+
+            # Short-term (5 ticks) - catches quick spikes
             price_5_ago = prices[-5].price if len(prices) >= 5 else prices[0].price
-            momentum = ((price - price_5_ago) / price_5_ago * 100) if price_5_ago > 0 else 0
+            momentum_5 = ((price - price_5_ago) / price_5_ago * 100) if price_5_ago > 0 else 0
+
+            # Medium-term (15 ticks) - catches sustained moves
+            price_15_ago = prices[-15].price if len(prices) >= 15 else prices[0].price
+            momentum_15 = ((price - price_15_ago) / price_15_ago * 100) if price_15_ago > 0 else 0
+
+            # Long-term (30 ticks) - catches extended runs
+            price_30_ago = prices[-30].price if len(prices) >= 30 else prices[0].price
+            momentum_30 = ((price - price_30_ago) / price_30_ago * 100) if price_30_ago > 0 else 0
+
+            # Use the HIGHEST momentum detected across all windows
+            momentum = max(momentum_5, momentum_15 / 3, momentum_30 / 6)  # Normalize for comparison
+            best_window = "5-tick" if momentum == momentum_5 else ("15-tick" if momentum == momentum_15/3 else "30-tick")
+
+            # Log sustained momentum even if below threshold
+            if momentum_15 >= 3.0 or momentum_30 >= 5.0:
+                logger.debug(f"MOMENTUM: {symbol} 5t:{momentum_5:+.1f}% 15t:{momentum_15:+.1f}% 30t:{momentum_30:+.1f}%")
 
             # Check for momentum spike
             signal = None
@@ -867,6 +960,15 @@ class HFTScalper:
                         "timestamp": datetime.now().isoformat()
                     }
                     logger.info(f"MOMENTUM SPIKE: {symbol} +{momentum:.1f}% in 5 ticks @ ${price:.2f}")
+                    # DERO: Emit scanner candidate event
+                    emit_event(SCANNER_CANDIDATE, {
+                        "symbol": symbol,
+                        "scanner": "momentum_spike",
+                        "price": price,
+                        "momentum_pct": momentum,
+                        "change_pct": change_pct,
+                        "volume": volume
+                    })
 
             # Volume surge detection
             if signal is None and len(prices) >= 10:
@@ -897,6 +999,15 @@ class HFTScalper:
                                     "timestamp": datetime.now().isoformat()
                                 }
                                 logger.info(f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f} ({distance_from_hod:.1f}% from HOD)")
+                                # DERO: Emit scanner candidate event
+                                emit_event(SCANNER_CANDIDATE, {
+                                    "symbol": symbol,
+                                    "scanner": "volume_surge",
+                                    "price": price,
+                                    "volume_surge": vol_change,
+                                    "change_pct": change_pct,
+                                    "distance_from_hod": distance_from_hod
+                                })
                         else:
                             # No HOD data, fall back to momentum check
                             if momentum >= 1.0:  # At least 1% recent momentum
@@ -909,13 +1020,22 @@ class HFTScalper:
                                     "timestamp": datetime.now().isoformat()
                                 }
                                 logger.info(f"VOLUME SURGE: {symbol} {vol_change:.1f}x volume @ ${price:.2f} (momentum +{momentum:.1f}%)")
+                                # DERO: Emit scanner candidate event
+                                emit_event(SCANNER_CANDIDATE, {
+                                    "symbol": symbol,
+                                    "scanner": "volume_surge",
+                                    "price": price,
+                                    "volume_surge": vol_change,
+                                    "change_pct": change_pct,
+                                    "momentum_pct": momentum
+                                })
                             else:
                                 logger.debug(f"VOLUME SURGE SKIPPED: {symbol} - No HOD data and weak momentum")
 
         # ===== MOMENTUM VELOCITY FILTER =====
         # Check if price is STILL moving up right now (not just moved up in past)
         # This prevents entering after momentum has already stalled
-        if signal and getattr(self.config, 'use_velocity_filter', True):
+        if signal and getattr(self.config, 'use_velocity_filter', False):
             if len(prices) >= 3:
                 # Compare current price to price 2 ticks ago
                 price_2_ago = prices[-3].price
@@ -1407,6 +1527,106 @@ class HFTScalper:
 
         return signal
 
+    async def check_probe_entry(self, symbol: str, quote: Dict) -> Optional[Dict]:
+        """
+        Check if symbol qualifies for a PROBE ENTRY.
+
+        Probe Entry (Task F - ChatGPT Directive):
+        - Controlled initiation with 25-33% of normal position size
+        - Tighter stops than normal
+        - Used when normal triggers don't fire but conditions are favorable
+        - Requires: ATS in {IGNITING, ACTIVE}, Chronos micro confidence >= threshold
+
+        Returns probe signal dict if eligible, None otherwise.
+        """
+        try:
+            from ai.probe_entry_manager import get_probe_manager, check_probe_eligibility, ProbeTriggerType
+
+            price = quote.get('price', 0) or quote.get('last', 0)
+            if not price:
+                return None
+
+            # Get current ATS state from momentum tracker
+            ats_state = "UNKNOWN"
+            micro_confidence = 0.5
+            macro_regime = "UNKNOWN"
+
+            try:
+                import httpx
+                async with httpx.AsyncClient() as client:
+                    # Get momentum state for ATS
+                    resp = await client.get(
+                        f"http://localhost:9100/api/validation/momentum/state/{symbol}",
+                        timeout=2.0
+                    )
+                    if resp.status_code == 200:
+                        state_data = resp.json()
+                        ats_state = state_data.get('state', 'UNKNOWN')
+                        micro_confidence = state_data.get('micro_confidence', 0.5)
+                        macro_regime = state_data.get('macro_regime', 'UNKNOWN')
+            except Exception as e:
+                logger.debug(f"Could not get ATS state for {symbol}: {e}")
+
+            # Get volume and VWAP data from quote
+            current_volume = quote.get('volume', 0)
+            avg_volume = quote.get('avg_volume', 0) or quote.get('avgVolume', 0)
+            vwap = quote.get('vwap', 0)
+            premarket_high = quote.get('premarket_high', 0)
+            range_high_1m = quote.get('range_high_1m', 0) or quote.get('high', 0)
+            range_high_3m = quote.get('range_high_3m', 0)
+            day_high = quote.get('day_high', 0) or quote.get('high', 0)
+
+            # Check probe eligibility
+            eligible, reason, trigger_type = check_probe_eligibility(
+                symbol=symbol,
+                ats_state=ats_state,
+                micro_confidence=micro_confidence,
+                macro_regime=macro_regime,
+                current_price=price,
+                current_volume=current_volume,
+                avg_volume=avg_volume,
+                vwap=vwap,
+                premarket_high=premarket_high,
+                range_high_1m=range_high_1m,
+                range_high_3m=range_high_3m,
+                day_high=day_high
+            )
+
+            if not eligible:
+                logger.debug(f"PROBE REJECT: {symbol} - {reason}")
+                return None
+
+            # Create probe entry signal
+            probe_manager = get_probe_manager()
+            probe_config = probe_manager.config
+
+            probe_signal = {
+                "type": "probe_entry",
+                "is_probe": True,
+                "price": price,
+                "trigger_type": trigger_type.value if trigger_type else "UNKNOWN",
+                "ats_state": ats_state,
+                "micro_confidence": micro_confidence,
+                "macro_regime": macro_regime,
+                "probe_size_multiplier": probe_config.size_multiplier,
+                "probe_stop_loss_percent": probe_config.stop_loss_percent,
+                "reason": reason
+            }
+
+            logger.info(
+                f"PROBE ELIGIBLE: {symbol} - {trigger_type.value if trigger_type else 'UNKNOWN'} "
+                f"(ATS={ats_state}, conf={micro_confidence:.0%}, size={probe_config.size_multiplier:.0%})"
+            )
+
+            return probe_signal
+
+        except ImportError:
+            logger.debug("Probe entry manager not available")
+            return None
+        except Exception as e:
+            logger.warning(f"Probe entry check failed for {symbol}: {e}")
+            return None
+
     async def check_exit_signal(self, symbol: str, quote: Dict) -> Optional[Dict]:
         """
         Check if there's an exit signal for an open position.
@@ -1640,7 +1860,9 @@ class HFTScalper:
                 logger.info(f"FAILED_MOMENTUM: {symbol} @ {pnl_pct:+.1f}% after {hold_seconds:.0f}s (max was {max_gain:+.1f}%)")
 
         # Check max hold time - but only exit if in profit or small loss
-        if exit_signal is None and hold_seconds >= self.config.max_hold_seconds:
+        # Scout trades use shorter max hold time
+        max_hold = trade.scout_max_hold if trade.is_scout and trade.scout_max_hold > 0 else self.config.max_hold_seconds
+        if exit_signal is None and hold_seconds >= max_hold:
             # If we're up, let reversal detection handle it
             # If we're down or flat, exit on time
             if pnl_pct <= 1.0:  # Only time-exit if not running
@@ -1669,6 +1891,46 @@ class HFTScalper:
 
         return exit_signal
 
+    async def _update_probe_state(self, symbol: str, quote: Dict, trade: 'ScalpTrade') -> None:
+        """
+        Update probe entry state (Task F).
+
+        Check if probe should be:
+        - STOPPED: Hit stop loss or failed momentum
+        - CONFIRMED: Momentum continuation, allow normal scalper logic
+        """
+        try:
+            from ai.probe_entry_manager import get_probe_manager, ProbeState
+
+            price = quote.get('price', 0) or quote.get('last', 0)
+            if not price:
+                return
+
+            probe_manager = get_probe_manager()
+            probe = probe_manager.get_active_probe(symbol)
+
+            if not probe:
+                return
+
+            # Update probe with current price
+            probe_manager.update_probe(symbol, price)
+
+            # Check if probe was stopped
+            if probe.state == ProbeState.STOPPED:
+                trade.probe_state = 'STOPPED'
+                logger.info(f"PROBE_ENTRY_STOPPED: {symbol} - stopped at ${price:.2f}")
+                # Probe manager already handles cooldown
+
+            # Check if probe was confirmed (price continued up)
+            elif probe.state == ProbeState.CONFIRMED:
+                trade.probe_state = 'CONFIRMED'
+                logger.info(f"PROBE_ENTRY_CONFIRMED: {symbol} - continuation confirmed at ${price:.2f}")
+
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"Probe state update failed for {symbol}: {e}")
+
     async def execute_entry(self, symbol: str, signal: Dict, quote: Dict = None, gating_token: str = None) -> Optional[ScalpTrade]:
         """
         Execute an entry trade.
@@ -1685,6 +1947,7 @@ class HFTScalper:
             return None
 
         # GATING ENFORCEMENT: Verify trade was approved by Signal Gating Engine
+        is_scout_trade = False  # Track if this is a scout (no contract) trade
         if getattr(self.config, 'require_gating_approval', True):
             if not gating_token:
                 # Must go through gating first
@@ -1700,12 +1963,52 @@ class HFTScalper:
                     )
 
                     if not approved:
-                        logger.info(f"GATING VETOED: {symbol} - {reason}")
-                        return None
+                        # Check if this is a "no contract" veto and scout trades are allowed
+                        no_contract_reasons = ['NO_CONTRACT', 'CONTRACT_NOT_FOUND', 'no contract']
+                        is_no_contract = any(r.lower() in reason.lower() for r in no_contract_reasons)
+                        allow_scout = getattr(self.config, 'allow_scout_trades', False)
 
-                    # Trade approved - set token to prove gating passed
-                    gating_token = f"GATED_{symbol}_{datetime.now().strftime('%H%M%S')}"
-                    logger.info(f"GATING APPROVED: {symbol} - token={gating_token}")
+                        if is_no_contract and allow_scout:
+                            # Allow as SCOUT trade - reduced size, tight stops
+                            is_scout_trade = True
+                            gating_token = f"SCOUT_{symbol}_{datetime.now().strftime('%H%M%S')}"
+                            logger.info(f"SCOUT TRADE ALLOWED: {symbol} - no contract, proceeding with reduced size")
+                            emit_event(GATE_DECISION, {
+                                "symbol": symbol,
+                                "decision": "SCOUT_APPROVED",
+                                "reason": "Scout trade - no contract required",
+                                "trigger_type": trigger_type,
+                                "gating_token": gating_token,
+                                "price": price,
+                                "scanner": "hft_scalper"
+                            })
+                        else:
+                            logger.info(f"GATING VETOED: {symbol} - {reason}")
+                            # DERO: Emit gate decision event (vetoed)
+                            emit_event(GATE_DECISION, {
+                                "symbol": symbol,
+                                "decision": "VETOED",
+                                "reason": reason,
+                                "trigger_type": trigger_type,
+                                "price": price,
+                                "scanner": "hft_scalper"
+                            })
+                            return None
+
+                    else:
+                        # Trade approved - set token to prove gating passed
+                        gating_token = f"GATED_{symbol}_{datetime.now().strftime('%H%M%S')}"
+                        logger.info(f"GATING APPROVED: {symbol} - token={gating_token}")
+                        # DERO: Emit gate decision event (approved)
+                        emit_event(GATE_DECISION, {
+                            "symbol": symbol,
+                            "decision": "APPROVED",
+                            "reason": "All gating checks passed",
+                            "trigger_type": trigger_type,
+                            "gating_token": gating_token,
+                            "price": price,
+                            "scanner": "hft_scalper"
+                        })
 
                 except Exception as e:
                     # Fail-closed: on gating error, reject trade
@@ -1715,6 +2018,22 @@ class HFTScalper:
         # Calculate position size using risk-based sizing
         shares, position_value, risk_amount = self.config.calculate_position_size(price)
 
+        # SCOUT TRADE SIZING: Apply reduced size and tighter stops for scout trades
+        scout_stop_override = None
+        scout_hold_override = None
+        if is_scout_trade:
+            scout_size_pct = getattr(self.config, 'scout_position_size_pct', 50.0)
+            scout_stop_pct = getattr(self.config, 'scout_stop_loss_pct', 1.0)
+            scout_hold_sec = getattr(self.config, 'scout_max_hold_seconds', 90)
+            original_shares = shares
+            shares = max(int(shares * (scout_size_pct / 100)), self.config.min_shares)
+            scout_stop_override = price * (1 - scout_stop_pct / 100)
+            scout_hold_override = scout_hold_sec
+            logger.info(
+                f"SCOUT SIZING: {symbol} - {scout_size_pct:.0f}% size ({original_shares} -> {shares} shares), "
+                f"stop={scout_stop_override:.2f} ({scout_stop_pct:.1f}%), max_hold={scout_hold_sec}s"
+            )
+
         # Adjust position size based on Warrior grade (A=75%, B=50%, C=25%)
         warrior_grade = signal.get('warrior_grade')
         if warrior_grade and getattr(self.config, 'use_warrior_filter', True):
@@ -1723,6 +2042,37 @@ class HFTScalper:
             original_shares = shares
             shares = max(int(shares * multiplier), self.config.min_shares)
             logger.info(f"WARRIOR SIZING: {symbol} Grade {warrior_grade} = {multiplier*100:.0f}% size ({original_shares} -> {shares} shares)")
+
+        # PROBE ENTRY SIZING: Apply reduced size for probe entries (Task F)
+        is_probe = signal.get('is_probe', False)
+        probe_stop_override = None
+        if is_probe:
+            probe_multiplier = signal.get('probe_size_multiplier', 0.30)
+            probe_stop_pct = signal.get('probe_stop_loss_percent', 1.5)
+            original_shares = shares
+            shares = max(int(shares * probe_multiplier), self.config.min_shares)
+            # Override stop loss for probe (tighter than normal)
+            probe_stop_override = price * (1 - probe_stop_pct / 100)
+            logger.info(
+                f"PROBE SIZING: {symbol} - {probe_multiplier*100:.0f}% size ({original_shares} -> {shares} shares), "
+                f"stop={probe_stop_override:.2f} ({probe_stop_pct:.1f}%)"
+            )
+
+            # Register probe with probe manager
+            try:
+                from ai.probe_entry_manager import get_probe_manager, ProbeTriggerType
+                probe_manager = get_probe_manager()
+                trigger_type = ProbeTriggerType(signal.get('trigger_type', 'UNKNOWN'))
+                probe_entry = probe_manager.create_probe_entry(
+                    symbol=symbol,
+                    entry_price=price,
+                    shares=shares,
+                    trigger_type=trigger_type
+                )
+                if probe_entry:
+                    logger.info(f"PROBE_ENTRY_ATTEMPT: {symbol} @ ${price:.2f} x {shares} shares ({trigger_type.value})")
+            except Exception as e:
+                logger.warning(f"Failed to register probe entry for {symbol}: {e}")
 
         if shares < self.config.min_shares:
             logger.debug(f"Position too small for {symbol}: {shares} shares < {self.config.min_shares} min")
@@ -1783,6 +2133,20 @@ class HFTScalper:
             # Calculate trailing from distance to stop
             atr_trail_distance = (price - warrior_stop) * 0.5  # Trail at 50% of stop distance
 
+        # PROBE ENTRY: Override stop with tighter probe stop (Task F)
+        if probe_stop_override:
+            logger.info(f"PROBE STOP: {symbol} overriding stop ${atr_stop_price:.2f} -> ${probe_stop_override:.2f}")
+            atr_stop_price = probe_stop_override
+            # Probe entries don't use trailing - just tight stop
+            atr_trail_distance = (price - probe_stop_override) * 0.3
+
+        # SCOUT TRADE: Override stop with tighter scout stop
+        if scout_stop_override:
+            logger.info(f"SCOUT STOP: {symbol} overriding stop ${atr_stop_price:.2f} -> ${scout_stop_override:.2f}")
+            atr_stop_price = scout_stop_override
+            # Scout entries use tight trailing
+            atr_trail_distance = (price - scout_stop_override) * 0.5
+
         trade_id = f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         trade = ScalpTrade(
@@ -1815,7 +2179,14 @@ class HFTScalper:
             warrior_grade=signal.get('warrior_grade', ''),
             warrior_score=signal.get('warrior_score', 0.0),
             warrior_patterns=signal.get('warrior_patterns', []),
-            warrior_tape_signals=signal.get('warrior_tape_signals', [])
+            warrior_tape_signals=signal.get('warrior_tape_signals', []),
+            # Probe Entry tracking (Task F)
+            is_probe=signal.get('is_probe', False),
+            probe_trigger_type=signal.get('trigger_type', ''),
+            probe_state='ACTIVE' if signal.get('is_probe', False) else '',
+            # Scout Trade tracking
+            is_scout=is_scout_trade,
+            scout_max_hold=scout_hold_override or 0
         )
 
         # Execute order (paper or real)
@@ -1851,8 +2222,22 @@ class HFTScalper:
         self.daily_trades += 1
         self._save_trades()
 
+        # DERO: Emit trade entry event
+        emit_event(TRADE_EVENT, {
+            "symbol": symbol,
+            "action": "ENTRY",
+            "shares": shares,
+            "price": price,
+            "position_value": position_value,
+            "risk_amount": risk_amount,
+            "signal_type": signal.get('type', 'unknown'),
+            "warrior_grade": signal.get('warrior_grade', ''),
+            "paper_mode": self.config.paper_mode,
+            "scanner": "hft_scalper"
+        })
+
         # Transition state machine to IN_POSITION
-        if getattr(self.config, 'use_state_machine', True):
+        if getattr(self.config, 'use_state_machine', False):
             try:
                 self.state_machine.enter_position(
                     symbol=symbol,
@@ -1919,6 +2304,22 @@ class HFTScalper:
         del self.open_positions[symbol]
         self._save_trades()
 
+        # DERO: Emit trade exit event
+        emit_event(TRADE_EVENT, {
+            "symbol": symbol,
+            "action": "EXIT",
+            "shares": trade.shares,
+            "entry_price": trade.entry_price,
+            "exit_price": price,
+            "pnl": trade.pnl,
+            "pnl_percent": trade.pnl_percent,
+            "exit_reason": trade.exit_reason,
+            "hold_time_seconds": trade.hold_time_seconds,
+            "outcome": "WIN" if trade.pnl > 0 else "LOSS",
+            "paper_mode": self.config.paper_mode,
+            "scanner": "hft_scalper"
+        })
+
         # Unregister from Chronos exit manager
         try:
             from ai.chronos_exit_manager import get_chronos_exit_manager
@@ -1928,7 +2329,7 @@ class HFTScalper:
             pass
 
         # Transition state machine to EXIT/COOLDOWN
-        if getattr(self.config, 'use_state_machine', True):
+        if getattr(self.config, 'use_state_machine', False):
             try:
                 from ai.momentum_state_machine import TransitionReason
                 # Map exit reason to TransitionReason
@@ -2031,9 +2432,8 @@ class HFTScalper:
                             wl_data = wl_resp.json()
                             common_symbols = [s.get('symbol') for s in wl_data.get('data', []) if s.get('symbol')]
                             if common_symbols:
-                                # Merge with config watchlist (union)
-                                all_symbols = list(set(self.config.watchlist + common_symbols))
-                                self.config.watchlist = all_symbols
+                                # USE common worklist directly (unified data bus)
+                                self.config.watchlist = common_symbols
                     except Exception as e:
                         logger.debug(f"Worklist sync: {e}")
 
@@ -2093,6 +2493,11 @@ class HFTScalper:
 
                                 # Check for exit signals first
                                 if symbol in self.open_positions:
+                                    # Update probe state if this is a probe position
+                                    trade = self.open_positions[symbol]
+                                    if trade.is_probe and trade.probe_state == 'ACTIVE':
+                                        await self._update_probe_state(symbol, quote, trade)
+
                                     exit_signal = await self.check_exit_signal(symbol, quote)
                                     if exit_signal:
                                         await self.execute_exit(symbol, exit_signal)
@@ -2101,6 +2506,12 @@ class HFTScalper:
                                     entry_signal = await self.check_entry_signal(symbol, quote)
                                     if entry_signal and self.config.enabled:
                                         await self.execute_entry(symbol, entry_signal, quote)
+                                    elif self.config.enabled and getattr(self.config, 'use_probe_entries', True):
+                                        # PROBE FALLBACK: If no normal signal, check for probe entry
+                                        probe_signal = await self.check_probe_entry(symbol, quote)
+                                        if probe_signal:
+                                            logger.info(f"PROBE FALLBACK: {symbol} - trying probe entry")
+                                            await self.execute_entry(symbol, probe_signal, quote)
                         except Exception as e:
                             logger.debug(f"Error checking {symbol}: {e}")
 
@@ -2109,11 +2520,91 @@ class HFTScalper:
                 # Update last scan time for observability
                 self.last_scan_time = datetime.now()
 
+                # AUTO-SCAN: Periodically scan for new movers
+                if self.config.auto_scan_enabled:
+                    await self._run_auto_scan_if_needed(client)
+
                 await asyncio.sleep(0.5)  # 500ms between full scans
 
             except Exception as e:
                 logger.error(f"Monitor loop error: {e}")
                 await asyncio.sleep(2)
+
+    async def _run_auto_scan_if_needed(self, client):
+        """Periodically scan Finviz for new momentum stocks"""
+        try:
+            # Check if enough time has passed since last scan
+            now = datetime.now()
+            if self.last_auto_scan_time:
+                elapsed = (now - self.last_auto_scan_time).total_seconds()
+                if elapsed < self.config.auto_scan_interval:
+                    return  # Not time yet
+
+            self.last_auto_scan_time = now
+            logger.info(f"Running auto-scan (interval: {self.config.auto_scan_interval}s)")
+
+            new_symbols = set()
+
+            # Run configured scan types
+            for scan_type in self.config.auto_scan_types:
+                try:
+                    if scan_type == 'momentum':
+                        resp = await client.post(
+                            "http://localhost:9100/api/scanner/finviz/momentum",
+                            timeout=10.0
+                        )
+                    elif scan_type == 'new_highs':
+                        resp = await client.post(
+                            "http://localhost:9100/api/scanner/finviz/new-highs",
+                            timeout=10.0
+                        )
+                    elif scan_type == 'gainers':
+                        resp = await client.get(
+                            "http://localhost:9100/api/scanner/finviz/gainers?min_change=5&max_price=20",
+                            timeout=10.0
+                        )
+                    else:
+                        continue
+
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        results = data.get('results', data.get('candidates', []))
+                        for item in results[:self.config.auto_scan_max_symbols]:
+                            symbol = item.get('symbol', '')
+                            if symbol and symbol not in self.config.blacklist:
+                                new_symbols.add(symbol)
+
+                except Exception as e:
+                    logger.debug(f"Auto-scan {scan_type} failed: {e}")
+
+            # Add new symbols to watchlist
+            if new_symbols and self.config.auto_scan_add_to_watchlist:
+                added = []
+                for symbol in list(new_symbols)[:self.config.auto_scan_max_symbols]:
+                    if symbol not in self.config.watchlist:
+                        try:
+                            # Add to backend worklist
+                            await client.post(
+                                "http://localhost:9100/api/worklist/add",
+                                json={"symbol": symbol, "skip_screening": True},
+                                timeout=2.0
+                            )
+                            added.append(symbol)
+                        except Exception:
+                            pass
+
+                if added:
+                    logger.info(f"Auto-scan added {len(added)} new symbols: {added}")
+                    # Emit DERO event
+                    if DERO_AVAILABLE:
+                        emit_event(WATCHLIST_UPDATE, {
+                            "action": "auto_scan_add",
+                            "symbols": added,
+                            "source": "finviz"
+                        })
+
+        except Exception as e:
+            logger.error(f"Auto-scan error: {e}")
 
     def get_status(self) -> Dict:
         """Get scalper status"""

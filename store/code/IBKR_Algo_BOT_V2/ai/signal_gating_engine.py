@@ -37,6 +37,14 @@ from ai.signal_contract import (
     get_contract_repository
 )
 
+# Micro-momentum override import
+try:
+    from ai.micro_momentum_override import check_micro_override, get_micro_override
+    HAS_MICRO_OVERRIDE = True
+except ImportError:
+    HAS_MICRO_OVERRIDE = False
+    check_micro_override = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,6 +119,7 @@ class SignalGatingEngine:
         self.min_chronos_confidence = 0.50  # Base minimum confidence
         self.require_regime_match = True     # Enforce regime matching
         self.log_all_decisions = True        # Log approvals too (not just vetoes)
+        self.enable_micro_override = True    # Allow micro-momentum to bypass macro veto
 
         logger.info("SignalGatingEngine initialized")
 
@@ -152,24 +161,90 @@ class SignalGatingEngine:
             self._log_result(result)
             return result
 
+        # =====================================================================
+        # TASK 3: Regime reconciliation with MACRO/MICRO split
+        # =====================================================================
+        # Use effective regime (considers both macro and micro with override logic)
+        effective_regime = chronos_context.get_effective_regime()
+        regime_explanation = chronos_context.get_regime_decision_explanation()
+
+        logger.info(
+            f"Regime reconciliation for {contract.symbol}: MACRO={chronos_context.macro_regime} "
+            f"({chronos_context.macro_confidence:.0%}), MICRO={chronos_context.micro_regime} "
+            f"({chronos_context.micro_confidence:.0%}) -> EFFECTIVE={effective_regime}. "
+            f"Reason: {regime_explanation}"
+        )
+
         # Check 2: Regime is valid for this signal
         if self.require_regime_match:
-            if not contract.is_regime_valid(chronos_context.market_regime):
-                result.approved = False
-                result.veto_reason = VetoReason.REGIME_MISMATCH.value
-                result.veto_details = (
-                    f"Current regime '{chronos_context.market_regime}' not in valid regimes "
-                    f"{contract.valid_regimes} or is in invalid regimes {contract.invalid_regimes}"
-                )
-                self._log_result(result)
-                return result
+            if not contract.is_regime_valid(effective_regime):
+                # ================================================================
+                # TASK D: Micro-Momentum Override Check
+                # Before vetoing for REGIME_MISMATCH, check if strong micro
+                # momentum allows bypassing the bad macro regime.
+                # ================================================================
+                micro_override_applied = False
+                override_size_mult = 1.0
+
+                if self.enable_micro_override and HAS_MICRO_OVERRIDE and check_micro_override:
+                    # Map micro regime to ATS state for override check
+                    # Strong bullish micro = "ACTIVE", moderate = "CONFIRMED"
+                    ats_state_map = {
+                        "TRENDING_UP": "ACTIVE",
+                        "BULLISH": "ACTIVE",
+                        "RANGING": "CONFIRMED",
+                        "NEUTRAL": "IDLE"
+                    }
+                    proxy_ats = ats_state_map.get(
+                        chronos_context.micro_regime.upper(),
+                        "IDLE"
+                    )
+
+                    # Check if micro-momentum override allows bypassing
+                    override_allowed, override_reason, override_size_mult = check_micro_override(
+                        symbol=contract.symbol,
+                        macro_regime=chronos_context.macro_regime,
+                        micro_regime=chronos_context.micro_regime,
+                        micro_confidence=chronos_context.micro_confidence,
+                        ats_state=proxy_ats
+                    )
+
+                    if override_allowed:
+                        micro_override_applied = True
+                        logger.warning(
+                            f"GATING_MICRO_OVERRIDE_APPLIED: {contract.symbol} | "
+                            f"macro={chronos_context.macro_regime}, "
+                            f"micro={chronos_context.micro_regime} ({chronos_context.micro_confidence:.0%}), "
+                            f"size_mult={override_size_mult}. Reason: {override_reason}"
+                        )
+                        # Add override info to result
+                        result.override_applied = True
+                        result.override_reason = override_reason
+                        result.override_size_multiplier = override_size_mult
+                    else:
+                        logger.debug(
+                            f"Micro-override denied for {contract.symbol}: {override_reason}"
+                        )
+
+                # If no override was applied, apply the original veto
+                if not micro_override_applied:
+                    result.approved = False
+                    result.veto_reason = VetoReason.REGIME_MISMATCH.value
+                    result.veto_details = (
+                        f"Effective regime '{effective_regime}' not in valid regimes "
+                        f"{contract.valid_regimes}. {regime_explanation}"
+                    )
+                    self._log_result(result)
+                    return result
+                # If override was applied, continue to next checks (don't veto)
 
         # Check 3: Regime is explicitly invalid
-        if chronos_context.market_regime in contract.invalid_regimes:
+        if effective_regime in contract.invalid_regimes:
             result.approved = False
             result.veto_reason = VetoReason.INVALID_REGIME.value
             result.veto_details = (
-                f"Regime '{chronos_context.market_regime}' explicitly invalid for this signal"
+                f"Effective regime '{effective_regime}' explicitly invalid for this signal. "
+                f"{regime_explanation}"
             )
             self._log_result(result)
             return result
@@ -267,6 +342,21 @@ class SignalGatingEngine:
                 f"GATE VETOED: {result.symbol} | "
                 f"{result.veto_reason}: {result.veto_details}"
             )
+
+        # Record to funnel metrics
+        try:
+            from ai.funnel_metrics import (
+                record_gating_attempt,
+                record_gating_approval,
+                record_gating_veto
+            )
+            record_gating_attempt(result.symbol)
+            if result.approved:
+                record_gating_approval(result.symbol)
+            else:
+                record_gating_veto(result.symbol, result.veto_reason or "UNKNOWN")
+        except ImportError:
+            pass  # Funnel metrics not available
 
     def get_stats(self) -> Dict[str, Any]:
         """Get gating statistics."""

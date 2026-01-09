@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Trading Window Configuration
 WARRIOR_WINDOW_START = time(7, 0)   # 07:00 AM ET
-WARRIOR_WINDOW_END = time(9, 30)    # 09:30 AM ET
+WARRIOR_WINDOW_END = time(16, 0)    # 04:00 PM ET (extended for full market day)
 
 # Extended Pre-Market Window (for monitoring only)
 PREMARKET_START = time(4, 0)        # 04:00 AM ET
