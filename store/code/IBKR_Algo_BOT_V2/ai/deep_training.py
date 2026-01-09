@@ -20,25 +20,26 @@ Usage:
 Created: December 2024
 """
 
+import json
+import logging
+import os
+import sys
+import warnings
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-import logging
-import json
-import os
-import sys
-from pathlib import Path
-import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -49,32 +50,69 @@ logger = logging.getLogger(__name__)
 # Expanded symbol universe - diverse sectors and market caps
 TRAINING_SYMBOLS = {
     # Large Cap Tech
-    'mega_tech': ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'INTC', 'CRM'],
-
+    "mega_tech": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "AMZN",
+        "NVDA",
+        "META",
+        "TSLA",
+        "AMD",
+        "INTC",
+        "CRM",
+    ],
     # Large Cap Finance
-    'finance': ['JPM', 'BAC', 'WFC', 'GS', 'MS', 'V', 'MA', 'AXP', 'BLK', 'SCHW'],
-
+    "finance": ["JPM", "BAC", "WFC", "GS", "MS", "V", "MA", "AXP", "BLK", "SCHW"],
     # Large Cap Healthcare
-    'healthcare': ['JNJ', 'UNH', 'PFE', 'ABBV', 'MRK', 'LLY', 'TMO', 'ABT', 'DHR', 'BMY'],
-
+    "healthcare": [
+        "JNJ",
+        "UNH",
+        "PFE",
+        "ABBV",
+        "MRK",
+        "LLY",
+        "TMO",
+        "ABT",
+        "DHR",
+        "BMY",
+    ],
     # Large Cap Consumer
-    'consumer': ['PG', 'KO', 'PEP', 'WMT', 'HD', 'MCD', 'NKE', 'SBUX', 'TGT', 'COST'],
-
+    "consumer": ["PG", "KO", "PEP", "WMT", "HD", "MCD", "NKE", "SBUX", "TGT", "COST"],
     # Large Cap Industrial
-    'industrial': ['CAT', 'DE', 'UNP', 'HON', 'GE', 'BA', 'LMT', 'RTX', 'MMM', 'UPS'],
-
+    "industrial": ["CAT", "DE", "UNP", "HON", "GE", "BA", "LMT", "RTX", "MMM", "UPS"],
     # Mid Cap Growth
-    'mid_growth': ['PANW', 'CRWD', 'DDOG', 'NET', 'SNOW', 'ZS', 'TEAM', 'MELI', 'SQ', 'SHOP'],
-
+    "mid_growth": [
+        "PANW",
+        "CRWD",
+        "DDOG",
+        "NET",
+        "SNOW",
+        "ZS",
+        "TEAM",
+        "MELI",
+        "SQ",
+        "SHOP",
+    ],
     # Small Cap / Momentum
-    'small_momentum': ['SOUN', 'IONQ', 'RGTI', 'QUBT', 'RKLB', 'PLTR', 'SOFI', 'HOOD', 'AFRM', 'UPST'],
-
+    "small_momentum": [
+        "SOUN",
+        "IONQ",
+        "RGTI",
+        "QUBT",
+        "RKLB",
+        "PLTR",
+        "SOFI",
+        "HOOD",
+        "AFRM",
+        "UPST",
+    ],
     # ETFs (market exposure)
-    'etfs': ['SPY', 'QQQ', 'IWM', 'DIA', 'XLK', 'XLF', 'XLV', 'XLE', 'XLI', 'XLP'],
-
+    "etfs": ["SPY", "QQQ", "IWM", "DIA", "XLK", "XLF", "XLV", "XLE", "XLI", "XLP"],
     # Volatility / Special
-    'volatility': ['UVXY', 'VXX', 'SQQQ', 'TQQQ', 'SPXU', 'SPXL'],
+    "volatility": ["UVXY", "VXX", "SQQQ", "TQQQ", "SPXU", "SPXL"],
 }
+
 
 def get_all_symbols() -> List[str]:
     """Get flattened list of all training symbols"""
@@ -88,6 +126,7 @@ def get_all_symbols() -> List[str]:
 # DATA COLLECTION
 # ============================================================================
 
+
 class DataCollector:
     """Collect and prepare training data"""
 
@@ -96,10 +135,7 @@ class DataCollector:
         self.cache_dir.mkdir(exist_ok=True)
 
     def fetch_data(
-        self,
-        symbols: List[str],
-        period: str = "2y",
-        interval: str = "1d"
+        self, symbols: List[str], period: str = "2y", interval: str = "1d"
     ) -> Dict[str, pd.DataFrame]:
         """
         Fetch historical data for symbols.
@@ -140,11 +176,11 @@ class DataCollector:
 
                 # Standardize columns
                 df = df.reset_index()
-                if 'Date' in df.columns:
-                    df['Date'] = pd.to_datetime(df['Date']).dt.tz_localize(None)
-                elif 'Datetime' in df.columns:
-                    df['Date'] = pd.to_datetime(df['Datetime']).dt.tz_localize(None)
-                    df = df.drop('Datetime', axis=1)
+                if "Date" in df.columns:
+                    df["Date"] = pd.to_datetime(df["Date"]).dt.tz_localize(None)
+                elif "Datetime" in df.columns:
+                    df["Date"] = pd.to_datetime(df["Datetime"]).dt.tz_localize(None)
+                    df = df.drop("Datetime", axis=1)
 
                 # Save to cache
                 df.to_parquet(cache_file)
@@ -161,7 +197,9 @@ class DataCollector:
 
         logger.info(f"Successfully fetched {len(data)} symbols, {len(failed)} failed")
         if failed:
-            logger.info(f"  Failed symbols: {failed[:10]}{'...' if len(failed) > 10 else ''}")
+            logger.info(
+                f"  Failed symbols: {failed[:10]}{'...' if len(failed) > 10 else ''}"
+            )
 
         return data
 
@@ -169,6 +207,7 @@ class DataCollector:
 # ============================================================================
 # LIGHTGBM TRAINING
 # ============================================================================
+
 
 class LightGBMTrainer:
     """Enhanced LightGBM trainer with walk-forward validation"""
@@ -183,7 +222,7 @@ class LightGBMTrainer:
         data: Dict[str, pd.DataFrame],
         forward_days: int = 5,
         n_folds: int = 5,
-        use_regularization: bool = True
+        use_regularization: bool = True,
     ) -> Dict:
         """
         Train LightGBM with walk-forward cross-validation.
@@ -198,8 +237,8 @@ class LightGBMTrainer:
             Training results with metrics
         """
         import lightgbm as lgb
-        from sklearn.model_selection import TimeSeriesSplit
         from sklearn.metrics import accuracy_score, roc_auc_score
+        from sklearn.model_selection import TimeSeriesSplit
 
         try:
             from ai.qlib_predictor import Alpha158Calculator
@@ -218,14 +257,19 @@ class LightGBMTrainer:
             try:
                 # Prepare data for Alpha158
                 df_prep = df.copy()
-                if 'Date' in df_prep.columns:
-                    df_prep = df_prep.set_index('Date')
+                if "Date" in df_prep.columns:
+                    df_prep = df_prep.set_index("Date")
 
                 # Rename columns to expected format
-                df_prep = df_prep.rename(columns={
-                    'open': 'Open', 'high': 'High', 'low': 'Low',
-                    'close': 'Close', 'volume': 'Volume'
-                })
+                df_prep = df_prep.rename(
+                    columns={
+                        "open": "Open",
+                        "high": "High",
+                        "low": "Low",
+                        "close": "Close",
+                        "volume": "Volume",
+                    }
+                )
 
                 # Compute Alpha158 features
                 features = calculator.compute_features(df_prep)
@@ -234,17 +278,19 @@ class LightGBMTrainer:
                     continue
 
                 # Compute forward return labels
-                features['forward_return'] = df_prep['Close'].shift(-forward_days) / df_prep['Close'] - 1
-                features = features.dropna(subset=['forward_return'])
+                features["forward_return"] = (
+                    df_prep["Close"].shift(-forward_days) / df_prep["Close"] - 1
+                )
+                features = features.dropna(subset=["forward_return"])
 
                 if len(features) < 50:
                     continue
 
                 # Binary label: 1 if positive return, 0 otherwise
-                labels = (features['forward_return'] > 0).astype(int)
+                labels = (features["forward_return"] > 0).astype(int)
 
                 # Remove label column from features
-                feature_cols = [c for c in features.columns if c != 'forward_return']
+                feature_cols = [c for c in features.columns if c != "forward_return"]
 
                 all_features.append(features[feature_cols])
                 all_labels.append(labels)
@@ -265,40 +311,42 @@ class LightGBMTrainer:
 
         self.feature_names = list(X.columns)
 
-        logger.info(f"Training data: {len(X)} samples, {len(self.feature_names)} features")
+        logger.info(
+            f"Training data: {len(X)} samples, {len(self.feature_names)} features"
+        )
 
         # Model parameters
         if use_regularization:
             params = {
-                'objective': 'binary',
-                'metric': 'auc',
-                'boosting_type': 'gbdt',
-                'num_leaves': 20,          # Reduced from 31
-                'max_depth': 5,            # Limit depth
-                'learning_rate': 0.03,     # Lower learning rate
-                'feature_fraction': 0.7,   # More dropout
-                'bagging_fraction': 0.7,
-                'bagging_freq': 5,
-                'min_child_samples': 30,   # More samples per leaf
-                'reg_alpha': 0.1,          # L1 regularization
-                'reg_lambda': 0.1,         # L2 regularization
-                'verbose': -1,
-                'n_jobs': -1,
-                'seed': 42
+                "objective": "binary",
+                "metric": "auc",
+                "boosting_type": "gbdt",
+                "num_leaves": 20,  # Reduced from 31
+                "max_depth": 5,  # Limit depth
+                "learning_rate": 0.03,  # Lower learning rate
+                "feature_fraction": 0.7,  # More dropout
+                "bagging_fraction": 0.7,
+                "bagging_freq": 5,
+                "min_child_samples": 30,  # More samples per leaf
+                "reg_alpha": 0.1,  # L1 regularization
+                "reg_lambda": 0.1,  # L2 regularization
+                "verbose": -1,
+                "n_jobs": -1,
+                "seed": 42,
             }
         else:
             params = {
-                'objective': 'binary',
-                'metric': 'auc',
-                'boosting_type': 'gbdt',
-                'num_leaves': 31,
-                'learning_rate': 0.05,
-                'feature_fraction': 0.8,
-                'bagging_fraction': 0.8,
-                'bagging_freq': 5,
-                'verbose': -1,
-                'n_jobs': -1,
-                'seed': 42
+                "objective": "binary",
+                "metric": "auc",
+                "boosting_type": "gbdt",
+                "num_leaves": 31,
+                "learning_rate": 0.05,
+                "feature_fraction": 0.8,
+                "bagging_fraction": 0.8,
+                "bagging_freq": 5,
+                "verbose": -1,
+                "n_jobs": -1,
+                "seed": 42,
             }
 
         # Walk-forward cross-validation
@@ -324,8 +372,8 @@ class LightGBMTrainer:
                 valid_sets=[val_data],
                 callbacks=[
                     lgb.early_stopping(stopping_rounds=50),
-                    lgb.log_evaluation(period=0)  # Suppress per-iteration logging
-                ]
+                    lgb.log_evaluation(period=0),  # Suppress per-iteration logging
+                ],
             )
 
             # Evaluate
@@ -338,16 +386,20 @@ class LightGBMTrainer:
             val_acc = accuracy_score(y_val, y_pred)
             val_auc = roc_auc_score(y_val, y_pred_proba)
 
-            fold_metrics.append({
-                'fold': fold + 1,
-                'train_acc': train_acc,
-                'val_acc': val_acc,
-                'val_auc': val_auc,
-                'overfit_gap': train_acc - val_acc,
-                'best_iteration': model.best_iteration
-            })
+            fold_metrics.append(
+                {
+                    "fold": fold + 1,
+                    "train_acc": train_acc,
+                    "val_acc": val_acc,
+                    "val_auc": val_auc,
+                    "overfit_gap": train_acc - val_acc,
+                    "best_iteration": model.best_iteration,
+                }
+            )
 
-            logger.info(f"  Fold {fold + 1}: Train={train_acc:.3f}, Val={val_acc:.3f}, AUC={val_auc:.3f}, Gap={train_acc - val_acc:.3f}")
+            logger.info(
+                f"  Fold {fold + 1}: Train={train_acc:.3f}, Val={val_acc:.3f}, AUC={val_auc:.3f}, Gap={train_acc - val_acc:.3f}"
+            )
 
             if val_auc > best_auc:
                 best_auc = val_auc
@@ -356,30 +408,32 @@ class LightGBMTrainer:
         self.model = best_model
 
         # Final metrics
-        avg_train_acc = np.mean([m['train_acc'] for m in fold_metrics])
-        avg_val_acc = np.mean([m['val_acc'] for m in fold_metrics])
-        avg_val_auc = np.mean([m['val_auc'] for m in fold_metrics])
-        avg_overfit_gap = np.mean([m['overfit_gap'] for m in fold_metrics])
+        avg_train_acc = np.mean([m["train_acc"] for m in fold_metrics])
+        avg_val_acc = np.mean([m["val_acc"] for m in fold_metrics])
+        avg_val_auc = np.mean([m["val_auc"] for m in fold_metrics])
+        avg_overfit_gap = np.mean([m["overfit_gap"] for m in fold_metrics])
 
         # Feature importance
-        importance = pd.DataFrame({
-            'feature': self.feature_names,
-            'importance': best_model.feature_importance(importance_type='gain')
-        }).sort_values('importance', ascending=False)
+        importance = pd.DataFrame(
+            {
+                "feature": self.feature_names,
+                "importance": best_model.feature_importance(importance_type="gain"),
+            }
+        ).sort_values("importance", ascending=False)
 
         self.metrics = {
-            'model_type': 'LightGBM',
-            'n_folds': n_folds,
-            'total_samples': len(X),
-            'n_features': len(self.feature_names),
-            'avg_train_accuracy': float(avg_train_acc),
-            'avg_val_accuracy': float(avg_val_acc),
-            'avg_val_auc': float(avg_val_auc),
-            'avg_overfit_gap': float(avg_overfit_gap),
-            'fold_metrics': fold_metrics,
-            'top_features': importance.head(20).to_dict('records'),
-            'regularization': params if use_regularization else None,
-            'trained_at': datetime.now().isoformat()
+            "model_type": "LightGBM",
+            "n_folds": n_folds,
+            "total_samples": len(X),
+            "n_features": len(self.feature_names),
+            "avg_train_accuracy": float(avg_train_acc),
+            "avg_val_accuracy": float(avg_val_acc),
+            "avg_val_auc": float(avg_val_auc),
+            "avg_overfit_gap": float(avg_overfit_gap),
+            "fold_metrics": fold_metrics,
+            "top_features": importance.head(20).to_dict("records"),
+            "regularization": params if use_regularization else None,
+            "trained_at": datetime.now().isoformat(),
         }
 
         logger.info(f"\nLightGBM Training Complete:")
@@ -390,7 +444,11 @@ class LightGBMTrainer:
 
         return self.metrics
 
-    def save(self, model_path: str = "ai/qlib_model.pkl", meta_path: str = "ai/qlib_model_meta.json"):
+    def save(
+        self,
+        model_path: str = "ai/qlib_model.pkl",
+        meta_path: str = "ai/qlib_model_meta.json",
+    ):
         """Save trained model and metadata"""
         import pickle
 
@@ -398,18 +456,18 @@ class LightGBMTrainer:
             raise ValueError("No model to save")
 
         # Save model
-        with open(model_path, 'wb') as f:
+        with open(model_path, "wb") as f:
             pickle.dump(self.model, f)
 
         # Save metadata
         meta = {
-            'trained_at': self.metrics.get('trained_at', datetime.now().isoformat()),
-            'metrics': self.metrics,
-            'feature_names': self.feature_names,
-            'model_path': model_path
+            "trained_at": self.metrics.get("trained_at", datetime.now().isoformat()),
+            "metrics": self.metrics,
+            "feature_names": self.feature_names,
+            "model_path": model_path,
         }
 
-        with open(meta_path, 'w') as f:
+        with open(meta_path, "w") as f:
             json.dump(meta, f, indent=2, default=str)
 
         logger.info(f"Model saved to {model_path}")
@@ -419,6 +477,7 @@ class LightGBMTrainer:
 # ============================================================================
 # CNN TRAINING
 # ============================================================================
+
 
 class CNNTrainerPipeline:
     """CNN training pipeline using the cnn_stock_predictor module"""
@@ -432,7 +491,7 @@ class CNNTrainerPipeline:
         symbols: List[str],
         days: int = 365,
         epochs: int = 50,
-        batch_size: int = 32
+        batch_size: int = 32,
     ) -> Dict:
         """
         Train CNN model.
@@ -450,51 +509,51 @@ class CNNTrainerPipeline:
             from ai.cnn_stock_predictor import CNNStockPredictor
         except ImportError:
             logger.warning("CNN predictor not available")
-            return {'error': 'CNN predictor not available'}
+            return {"error": "CNN predictor not available"}
 
         logger.info(f"Training CNN on {len(symbols)} symbols...")
 
         self.predictor = CNNStockPredictor(
-            model_path="ai/cnn_model.pt",
-            input_features=30,
-            sequence_length=60
+            model_path="ai/cnn_model.pt", input_features=30, sequence_length=60
         )
 
         try:
             results = self.predictor.train(
-                symbols=symbols,
-                days=days,
-                epochs=epochs,
-                batch_size=batch_size
+                symbols=symbols, days=days, epochs=epochs, batch_size=batch_size
             )
 
             self.metrics = {
-                'model_type': 'CNN',
-                'symbols_trained': len(symbols),
-                'days': days,
-                'epochs_trained': results.get('epochs_trained', 0),
-                'final_accuracy': results.get('metrics', {}).get('accuracy', 0),
-                'f1_score': results.get('metrics', {}).get('f1_score', 0),
-                'directional_accuracy': results.get('metrics', {}).get('directional_accuracy', 0),
-                'best_val_loss': results.get('best_val_loss', 0),
-                'trained_at': datetime.now().isoformat()
+                "model_type": "CNN",
+                "symbols_trained": len(symbols),
+                "days": days,
+                "epochs_trained": results.get("epochs_trained", 0),
+                "final_accuracy": results.get("metrics", {}).get("accuracy", 0),
+                "f1_score": results.get("metrics", {}).get("f1_score", 0),
+                "directional_accuracy": results.get("metrics", {}).get(
+                    "directional_accuracy", 0
+                ),
+                "best_val_loss": results.get("best_val_loss", 0),
+                "trained_at": datetime.now().isoformat(),
             }
 
             logger.info(f"\nCNN Training Complete:")
             logger.info(f"  Final Accuracy: {self.metrics['final_accuracy']:.3f}")
             logger.info(f"  F1 Score: {self.metrics['f1_score']:.3f}")
-            logger.info(f"  Directional Accuracy: {self.metrics['directional_accuracy']:.3f}")
+            logger.info(
+                f"  Directional Accuracy: {self.metrics['directional_accuracy']:.3f}"
+            )
 
             return self.metrics
 
         except Exception as e:
             logger.error(f"CNN training failed: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
 
 # ============================================================================
 # ENSEMBLE OPTIMIZATION
 # ============================================================================
+
 
 class EnsembleOptimizer:
     """Optimize ensemble weights based on validation performance"""
@@ -502,11 +561,7 @@ class EnsembleOptimizer:
     def __init__(self):
         self.optimal_weights = None
 
-    def optimize(
-        self,
-        data: Dict[str, pd.DataFrame],
-        n_trials: int = 100
-    ) -> Dict:
+    def optimize(self, data: Dict[str, pd.DataFrame], n_trials: int = 100) -> Dict:
         """
         Optimize ensemble component weights.
 
@@ -517,7 +572,7 @@ class EnsembleOptimizer:
             from ai.ensemble_predictor import get_ensemble_predictor
         except ImportError:
             logger.warning("Ensemble predictor not available")
-            return {'error': 'Ensemble predictor not available'}
+            return {"error": "Ensemble predictor not available"}
 
         predictor = get_ensemble_predictor()
 
@@ -533,11 +588,11 @@ class EnsembleOptimizer:
             # Generate random weights (sum to 1)
             raw_weights = np.random.dirichlet(np.ones(5))
             weights = {
-                'lgb': raw_weights[0],
-                'chronos': raw_weights[1],
-                'qlib': raw_weights[2],
-                'heuristic': raw_weights[3],
-                'momentum': raw_weights[4]
+                "lgb": raw_weights[0],
+                "chronos": raw_weights[1],
+                "qlib": raw_weights[2],
+                "heuristic": raw_weights[3],
+                "momentum": raw_weights[4],
             }
 
             # Set weights in predictor
@@ -550,14 +605,14 @@ class EnsembleOptimizer:
             for symbol in val_symbols:
                 try:
                     df = data[symbol]
-                    if 'Date' in df.columns:
-                        df = df.set_index('Date')
+                    if "Date" in df.columns:
+                        df = df.set_index("Date")
 
                     # Get prediction
                     result = predictor.predict(symbol, df)
 
                     # Check against actual next-day return
-                    actual_return = (df['Close'].iloc[-1] / df['Close'].iloc[-6]) - 1
+                    actual_return = (df["Close"].iloc[-1] / df["Close"].iloc[-6]) - 1
                     actual_direction = 1 if actual_return > 0 else 0
 
                     if result.prediction == actual_direction:
@@ -574,15 +629,17 @@ class EnsembleOptimizer:
                     best_weights = weights.copy()
 
             if (trial + 1) % 20 == 0:
-                logger.info(f"  Trial {trial + 1}/{n_trials}, Best accuracy: {best_accuracy:.3f}")
+                logger.info(
+                    f"  Trial {trial + 1}/{n_trials}, Best accuracy: {best_accuracy:.3f}"
+                )
 
         self.optimal_weights = best_weights
 
         result = {
-            'optimal_weights': best_weights,
-            'best_accuracy': best_accuracy,
-            'n_trials': n_trials,
-            'optimized_at': datetime.now().isoformat()
+            "optimal_weights": best_weights,
+            "best_accuracy": best_accuracy,
+            "n_trials": n_trials,
+            "optimized_at": datetime.now().isoformat(),
         }
 
         logger.info(f"\nEnsemble Optimization Complete:")
@@ -595,6 +652,7 @@ class EnsembleOptimizer:
 # ============================================================================
 # MAIN TRAINING PIPELINE
 # ============================================================================
+
 
 class DeepTrainingPipeline:
     """Main deep training pipeline"""
@@ -616,7 +674,7 @@ class DeepTrainingPipeline:
         train_cnn: bool = True,
         optimize_ensemble: bool = True,
         symbols: List[str] = None,
-        period: str = "2y"
+        period: str = "2y",
     ) -> Dict:
         """
         Run full training pipeline.
@@ -650,10 +708,10 @@ class DeepTrainingPipeline:
         logger.info("=" * 70)
 
         data = self.collector.fetch_data(symbols, period=period)
-        self.results['data_collection'] = {
-            'symbols_requested': len(symbols),
-            'symbols_fetched': len(data),
-            'period': period
+        self.results["data_collection"] = {
+            "symbols_requested": len(symbols),
+            "symbols_fetched": len(data),
+            "period": period,
         }
 
         # Train LightGBM
@@ -662,9 +720,11 @@ class DeepTrainingPipeline:
             logger.info("PHASE 2: LIGHTGBM TRAINING")
             logger.info("=" * 70)
 
-            lgb_metrics = self.lgb_trainer.train(data, n_folds=5, use_regularization=True)
+            lgb_metrics = self.lgb_trainer.train(
+                data, n_folds=5, use_regularization=True
+            )
             self.lgb_trainer.save()
-            self.results['lightgbm'] = lgb_metrics
+            self.results["lightgbm"] = lgb_metrics
 
         # Train CNN
         if train_cnn:
@@ -674,7 +734,7 @@ class DeepTrainingPipeline:
 
             cnn_symbols = list(data.keys())[:50]  # Use top 50 symbols for CNN
             cnn_metrics = self.cnn_trainer.train(cnn_symbols, days=365, epochs=50)
-            self.results['cnn'] = cnn_metrics
+            self.results["cnn"] = cnn_metrics
 
         # Optimize ensemble
         if optimize_ensemble:
@@ -683,29 +743,29 @@ class DeepTrainingPipeline:
             logger.info("=" * 70)
 
             ensemble_results = self.ensemble_optimizer.optimize(data, n_trials=50)
-            self.results['ensemble'] = ensemble_results
+            self.results["ensemble"] = ensemble_results
 
         # Save results
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
 
-        self.results['summary'] = {
-            'start_time': start_time.isoformat(),
-            'end_time': end_time.isoformat(),
-            'duration_seconds': duration,
-            'duration_minutes': duration / 60,
-            'symbols_trained': len(data),
-            'models_trained': []
+        self.results["summary"] = {
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
+            "duration_seconds": duration,
+            "duration_minutes": duration / 60,
+            "symbols_trained": len(data),
+            "models_trained": [],
         }
 
         if train_lgb:
-            self.results['summary']['models_trained'].append('LightGBM')
+            self.results["summary"]["models_trained"].append("LightGBM")
         if train_cnn:
-            self.results['summary']['models_trained'].append('CNN')
+            self.results["summary"]["models_trained"].append("CNN")
 
         # Save full results
         results_path = self.output_dir / "deep_training_results.json"
-        with open(results_path, 'w') as f:
+        with open(results_path, "w") as f:
             json.dump(self.results, f, indent=2, default=str)
 
         logger.info("\n" + "=" * 70)
@@ -726,32 +786,34 @@ class DeepTrainingPipeline:
         print("TRAINING SUMMARY")
         print("=" * 70)
 
-        if 'lightgbm' in self.results:
-            lgb = self.results['lightgbm']
+        if "lightgbm" in self.results:
+            lgb = self.results["lightgbm"]
             print(f"\nLightGBM Model:")
             print(f"  Validation Accuracy: {lgb.get('avg_val_accuracy', 0):.1%}")
             print(f"  Validation AUC: {lgb.get('avg_val_auc', 0):.3f}")
             print(f"  Overfit Gap: {lgb.get('avg_overfit_gap', 0):.1%}")
             print(f"  Total Samples: {lgb.get('total_samples', 0):,}")
 
-        if 'cnn' in self.results:
-            cnn = self.results['cnn']
-            if 'error' not in cnn:
+        if "cnn" in self.results:
+            cnn = self.results["cnn"]
+            if "error" not in cnn:
                 print(f"\nCNN Model:")
                 print(f"  Final Accuracy: {cnn.get('final_accuracy', 0):.1%}")
                 print(f"  F1 Score: {cnn.get('f1_score', 0):.3f}")
-                print(f"  Directional Accuracy: {cnn.get('directional_accuracy', 0):.1%}")
+                print(
+                    f"  Directional Accuracy: {cnn.get('directional_accuracy', 0):.1%}"
+                )
             else:
                 print(f"\nCNN Model: {cnn['error']}")
 
-        if 'ensemble' in self.results:
-            ens = self.results['ensemble']
-            if 'error' not in ens:
+        if "ensemble" in self.results:
+            ens = self.results["ensemble"]
+            if "error" not in ens:
                 print(f"\nEnsemble Optimization:")
                 print(f"  Best Accuracy: {ens.get('best_accuracy', 0):.1%}")
-                if ens.get('optimal_weights'):
+                if ens.get("optimal_weights"):
                     print(f"  Optimal Weights:")
-                    for k, v in ens['optimal_weights'].items():
+                    for k, v in ens["optimal_weights"].items():
                         print(f"    {k}: {v:.3f}")
 
         print("\n" + "=" * 70)
@@ -768,9 +830,15 @@ if __name__ == "__main__":
     parser.add_argument("--all", action="store_true", help="Train all models")
     parser.add_argument("--lgb", action="store_true", help="Train LightGBM only")
     parser.add_argument("--cnn", action="store_true", help="Train CNN only")
-    parser.add_argument("--ensemble", action="store_true", help="Optimize ensemble only")
-    parser.add_argument("--period", type=str, default="2y", help="Data period (1y, 2y, 5y)")
-    parser.add_argument("--symbols", type=str, default=None, help="Comma-separated symbols (or 'all')")
+    parser.add_argument(
+        "--ensemble", action="store_true", help="Optimize ensemble only"
+    )
+    parser.add_argument(
+        "--period", type=str, default="2y", help="Data period (1y, 2y, 5y)"
+    )
+    parser.add_argument(
+        "--symbols", type=str, default=None, help="Comma-separated symbols (or 'all')"
+    )
 
     args = parser.parse_args()
 
@@ -786,8 +854,8 @@ if __name__ == "__main__":
 
     # Parse symbols
     symbols = None
-    if args.symbols and args.symbols != 'all':
-        symbols = [s.strip() for s in args.symbols.split(',')]
+    if args.symbols and args.symbols != "all":
+        symbols = [s.strip() for s in args.symbols.split(",")]
 
     # Run pipeline
     pipeline = DeepTrainingPipeline()
@@ -796,5 +864,5 @@ if __name__ == "__main__":
         train_cnn=train_cnn,
         optimize_ensemble=optimize_ensemble,
         symbols=symbols,
-        period=args.period
+        period=args.period,
     )

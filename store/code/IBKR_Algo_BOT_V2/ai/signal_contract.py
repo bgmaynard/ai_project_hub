@@ -16,33 +16,36 @@ Key Concepts:
 - NEVER created during live trading
 """
 
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any
-from enum import Enum
 import json
-import uuid
 import logging
+import uuid
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class SignalDirection(Enum):
     """Trade direction"""
+
     LONG = "LONG"
     SHORT = "SHORT"
 
 
 class SignalHorizon(Enum):
     """Trade horizon timeframe"""
-    SCALP = "SCALP"          # < 5 minutes
-    INTRADAY = "INTRADAY"    # Same day
-    SWING = "SWING"          # 1-5 days
-    POSITION = "POSITION"    # 5+ days
+
+    SCALP = "SCALP"  # < 5 minutes
+    INTRADAY = "INTRADAY"  # Same day
+    SWING = "SWING"  # 1-5 days
+    POSITION = "POSITION"  # 5+ days
 
 
 class MarketRegime(Enum):
     """Market regime classification (from Chronos)"""
+
     TRENDING_UP = "TRENDING_UP"
     TRENDING_DOWN = "TRENDING_DOWN"
     RANGING = "RANGING"
@@ -52,15 +55,16 @@ class MarketRegime(Enum):
 
 class VetoReason(Enum):
     """Reasons a signal can be vetoed"""
-    REGIME_MISMATCH = "REGIME_MISMATCH"           # Current regime not in valid_regimes
-    CONFIDENCE_LOW = "CONFIDENCE_LOW"              # Chronos confidence below threshold
-    RISK_LIMIT_EXCEEDED = "RISK_LIMIT_EXCEEDED"   # Would exceed risk limits
-    DRAWDOWN_EXCEEDED = "DRAWDOWN_EXCEEDED"       # Max drawdown already hit
-    CONTRACT_EXPIRED = "CONTRACT_EXPIRED"          # Signal contract has expired
-    COOLDOWN_ACTIVE = "COOLDOWN_ACTIVE"           # Symbol on cooldown
-    MARKET_CLOSED = "MARKET_CLOSED"               # Market not open
-    BLACKLISTED = "BLACKLISTED"                   # Symbol is blacklisted
-    INVALID_REGIME = "INVALID_REGIME"             # Regime explicitly invalid for signal
+
+    REGIME_MISMATCH = "REGIME_MISMATCH"  # Current regime not in valid_regimes
+    CONFIDENCE_LOW = "CONFIDENCE_LOW"  # Chronos confidence below threshold
+    RISK_LIMIT_EXCEEDED = "RISK_LIMIT_EXCEEDED"  # Would exceed risk limits
+    DRAWDOWN_EXCEEDED = "DRAWDOWN_EXCEEDED"  # Max drawdown already hit
+    CONTRACT_EXPIRED = "CONTRACT_EXPIRED"  # Signal contract has expired
+    COOLDOWN_ACTIVE = "COOLDOWN_ACTIVE"  # Symbol on cooldown
+    MARKET_CLOSED = "MARKET_CLOSED"  # Market not open
+    BLACKLISTED = "BLACKLISTED"  # Symbol is blacklisted
+    INVALID_REGIME = "INVALID_REGIME"  # Regime explicitly invalid for signal
 
 
 @dataclass
@@ -75,6 +79,7 @@ class SignalContract:
     IMPORTANT: SignalContracts are NEVER created during live trading.
     They are exported from Qlib backtests as pre-approved signal templates.
     """
+
     # Identity
     signal_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
@@ -97,22 +102,24 @@ class SignalContract:
 
     # Risk constraints
     max_drawdown_allowed: float = 0.03  # 3% max drawdown
-    max_position_pct: float = 0.02      # 2% of portfolio
+    max_position_pct: float = 0.02  # 2% of portfolio
 
     # Expected performance (from backtest)
-    expected_return: float = 0.02       # 2% expected return
-    historical_win_rate: float = 0.55   # 55% win rate in backtest
-    profit_factor: float = 1.5          # Backtest profit factor
+    expected_return: float = 0.02  # 2% expected return
+    historical_win_rate: float = 0.55  # 55% win rate in backtest
+    profit_factor: float = 1.5  # Backtest profit factor
 
     # Metadata
     source: str = "QLIB"  # Always QLIB for offline signals
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    expires_at: str = field(default_factory=lambda: (datetime.now() + timedelta(days=30)).isoformat())
+    expires_at: str = field(
+        default_factory=lambda: (datetime.now() + timedelta(days=30)).isoformat()
+    )
 
     # Research context
-    backtest_period: str = ""           # e.g., "2024-01-01 to 2024-12-01"
-    sample_size: int = 0                # Number of trades in backtest
-    sharpe_ratio: float = 0.0           # Backtest Sharpe ratio
+    backtest_period: str = ""  # e.g., "2024-01-01 to 2024-12-01"
+    sample_size: int = 0  # Number of trades in backtest
+    sharpe_ratio: float = 0.0  # Backtest Sharpe ratio
 
     def is_expired(self) -> bool:
         """Check if this signal contract has expired."""
@@ -135,7 +142,7 @@ class SignalContract:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SignalContract':
+    def from_dict(cls, data: Dict[str, Any]) -> "SignalContract":
         """Create from dictionary."""
         return cls(**data)
 
@@ -156,6 +163,7 @@ class GateResult:
     Every trade attempt MUST be gated. This provides full audit trail
     of why signals were approved or vetoed.
     """
+
     signal_id: str
     symbol: str
     approved: bool
@@ -196,6 +204,7 @@ class ChronosContext:
     IMPORTANT: Chronos ONLY provides context - it does NOT make trading decisions.
     This context is used by the Gating Engine to validate SignalContracts.
     """
+
     # Current regime classification
     market_regime: str = "UNKNOWN"
     regime_confidence: float = 0.0
@@ -211,7 +220,7 @@ class ChronosContext:
 
     # Trend context
     trend_strength: float = 0.0  # 0-1
-    trend_direction: int = 0     # -1, 0, 1
+    trend_direction: int = 0  # -1, 0, 1
 
     # Timestamp
     computed_at: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -225,17 +234,20 @@ class RiskState:
     """
     Current risk state for risk-based gating.
     """
+
     # Portfolio state
-    current_drawdown: float = 0.0       # Current drawdown from peak
-    daily_pnl: float = 0.0              # Today's P&L
-    max_daily_loss: float = 200.0       # Max allowed daily loss
+    current_drawdown: float = 0.0  # Current drawdown from peak
+    daily_pnl: float = 0.0  # Today's P&L
+    max_daily_loss: float = 200.0  # Max allowed daily loss
 
     # Position limits
     open_positions: int = 0
     max_positions: int = 3
 
     # Symbol-level state
-    symbol_cooldowns: Dict[str, str] = field(default_factory=dict)  # symbol -> cooldown_until
+    symbol_cooldowns: Dict[str, str] = field(
+        default_factory=dict
+    )  # symbol -> cooldown_until
 
     # Trade counts
     daily_trades: int = 0
@@ -263,15 +275,24 @@ class RiskState:
 
         # Check position limit
         if self.open_positions >= self.max_positions:
-            return True, f"Max positions reached ({self.open_positions}/{self.max_positions})"
+            return (
+                True,
+                f"Max positions reached ({self.open_positions}/{self.max_positions})",
+            )
 
         # Check trade limit
         if self.daily_trades >= self.max_daily_trades:
-            return True, f"Max daily trades reached ({self.daily_trades}/{self.max_daily_trades})"
+            return (
+                True,
+                f"Max daily trades reached ({self.daily_trades}/{self.max_daily_trades})",
+            )
 
         # Check drawdown vs contract's max allowed
         if self.current_drawdown > contract.max_drawdown_allowed:
-            return True, f"Drawdown {self.current_drawdown:.1%} > contract max {contract.max_drawdown_allowed:.1%}"
+            return (
+                True,
+                f"Drawdown {self.current_drawdown:.1%} > contract max {contract.max_drawdown_allowed:.1%}",
+            )
 
         return False, ""
 
@@ -290,7 +311,7 @@ class SignalContractRepository:
 
     def __init__(self, contracts_path: str = None):
         self.contracts: Dict[str, SignalContract] = {}  # signal_id -> contract
-        self.by_symbol: Dict[str, List[str]] = {}        # symbol -> [signal_ids]
+        self.by_symbol: Dict[str, List[str]] = {}  # symbol -> [signal_ids]
         self.contracts_path = contracts_path or "ai/signal_contracts.json"
 
     def load(self) -> int:
@@ -299,10 +320,10 @@ class SignalContractRepository:
         Returns number of contracts loaded.
         """
         try:
-            with open(self.contracts_path, 'r') as f:
+            with open(self.contracts_path, "r") as f:
                 data = json.load(f)
 
-            for item in data.get('contracts', []):
+            for item in data.get("contracts", []):
                 contract = SignalContract.from_dict(item)
                 self.add(contract)
 
@@ -319,12 +340,12 @@ class SignalContractRepository:
     def save(self):
         """Save contracts to disk."""
         data = {
-            'contracts': [c.to_dict() for c in self.contracts.values()],
-            'exported_at': datetime.now().isoformat(),
-            'count': len(self.contracts)
+            "contracts": [c.to_dict() for c in self.contracts.values()],
+            "exported_at": datetime.now().isoformat(),
+            "count": len(self.contracts),
         }
 
-        with open(self.contracts_path, 'w') as f:
+        with open(self.contracts_path, "w") as f:
             json.dump(data, f, indent=2)
 
         logger.info(f"Saved {len(self.contracts)} contracts to {self.contracts_path}")
@@ -397,7 +418,7 @@ if __name__ == "__main__":
         profit_factor=1.6,
         backtest_period="2024-01-01 to 2024-12-01",
         sample_size=150,
-        sharpe_ratio=1.2
+        sharpe_ratio=1.2,
     )
 
     print("Sample SignalContract:")

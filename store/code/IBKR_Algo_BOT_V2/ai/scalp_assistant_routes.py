@@ -18,9 +18,10 @@ Endpoints:
 """
 
 import logging
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ router = APIRouter(prefix="/api/scalp", tags=["Scalp Assistant"])
 
 # Import scalp assistant
 try:
-    from ai.scalp_assistant import get_scalp_assistant, ScalpAssistant
+    from ai.scalp_assistant import ScalpAssistant, get_scalp_assistant
+
     HAS_SCALP_ASSISTANT = True
 except ImportError as e:
     logger.warning(f"Scalp Assistant not available: {e}")
@@ -38,6 +40,7 @@ except ImportError as e:
 
 class ScalpConfigUpdate(BaseModel):
     """Config update request"""
+
     stop_loss_pct: Optional[float] = None
     profit_target_pct: Optional[float] = None
     trailing_stop_pct: Optional[float] = None
@@ -72,7 +75,7 @@ async def start_scalp_assistant():
     return {
         "success": True,
         "message": "Scalp Assistant started",
-        "running": assistant.running
+        "running": assistant.running,
     }
 
 
@@ -87,7 +90,7 @@ async def stop_scalp_assistant():
     return {
         "success": True,
         "message": "Scalp Assistant stopped",
-        "running": assistant.running
+        "running": assistant.running,
     }
 
 
@@ -111,10 +114,12 @@ async def enable_ai_takeover(symbol: str):
         return {
             "success": True,
             "message": f"AI takeover enabled for {symbol}",
-            "position": assistant.positions[symbol].to_dict()
+            "position": assistant.positions[symbol].to_dict(),
         }
     else:
-        raise HTTPException(status_code=400, detail=f"Failed to enable AI takeover for {symbol}")
+        raise HTTPException(
+            status_code=400, detail=f"Failed to enable AI takeover for {symbol}"
+        )
 
 
 @router.post("/release/{symbol}")
@@ -131,13 +136,10 @@ async def disable_ai_takeover(symbol: str):
         return {
             "success": True,
             "message": f"Manual control restored for {symbol}",
-            "position": assistant.positions.get(symbol, {})
+            "position": assistant.positions.get(symbol, {}),
         }
     else:
-        return {
-            "success": False,
-            "message": f"Position {symbol} not found"
-        }
+        return {"success": False, "message": f"Position {symbol} not found"}
 
 
 @router.get("/config")
@@ -163,15 +165,9 @@ async def update_scalp_config(config: ScalpConfigUpdate):
 
     if updates:
         new_config = assistant.update_config(**updates)
-        return {
-            "success": True,
-            "config": new_config
-        }
+        return {"success": True, "config": new_config}
     else:
-        return {
-            "success": False,
-            "message": "No config values provided"
-        }
+        return {"success": False, "message": "No config values provided"}
 
 
 @router.get("/positions")
@@ -185,7 +181,7 @@ async def get_scalp_positions():
 
     return {
         "total": len(assistant.positions),
-        "positions": [p.to_dict() for p in assistant.positions.values()]
+        "positions": [p.to_dict() for p in assistant.positions.values()],
     }
 
 
@@ -201,17 +197,14 @@ async def get_scalp_history(limit: int = 50):
     history = []
     try:
         import json
+
         if assistant._history_path().exists():
-            with open(assistant._history_path(), 'r') as f:
+            with open(assistant._history_path(), "r") as f:
                 history = json.load(f)
     except Exception as e:
         logger.error(f"Failed to load history: {e}")
 
-    return {
-        "total": len(history),
-        "exits": history[-limit:],
-        "stats": assistant.stats
-    }
+    return {"total": len(history), "exits": history[-limit:], "stats": assistant.stats}
 
 
 @router.post("/sync")
@@ -226,7 +219,7 @@ async def sync_positions():
     return {
         "success": True,
         "positions": len(assistant.positions),
-        "position_list": [p.to_dict() for p in assistant.positions.values()]
+        "position_list": [p.to_dict() for p in assistant.positions.values()],
     }
 
 
@@ -238,14 +231,14 @@ async def set_paper_mode(mode: str):
 
     assistant = get_scalp_assistant()
 
-    paper = mode.lower() in ('true', '1', 'yes', 'on')
+    paper = mode.lower() in ("true", "1", "yes", "on")
     assistant.config.paper_mode = paper
     assistant._save_config()
 
     return {
         "success": True,
         "paper_mode": assistant.config.paper_mode,
-        "message": f"Paper mode {'enabled' if paper else 'DISABLED - LIVE TRADING'}"
+        "message": f"Paper mode {'enabled' if paper else 'DISABLED - LIVE TRADING'}",
     }
 
 
@@ -258,8 +251,14 @@ async def get_scalp_stats():
     assistant = get_scalp_assistant()
 
     stats = assistant.stats.copy()
-    stats['win_rate'] = (stats['winning_exits'] / stats['total_exits'] * 100) if stats['total_exits'] > 0 else 0
-    stats['avg_pnl'] = (stats['total_pnl'] / stats['total_exits']) if stats['total_exits'] > 0 else 0
+    stats["win_rate"] = (
+        (stats["winning_exits"] / stats["total_exits"] * 100)
+        if stats["total_exits"] > 0
+        else 0
+    )
+    stats["avg_pnl"] = (
+        (stats["total_pnl"] / stats["total_exits"]) if stats["total_exits"] > 0 else 0
+    )
 
     return stats
 
@@ -272,20 +271,16 @@ async def reset_stats():
 
     assistant = get_scalp_assistant()
     assistant.stats = {
-        'total_exits': 0,
-        'stop_loss_exits': 0,
-        'trailing_stop_exits': 0,
-        'reversal_exits': 0,
-        'timeout_exits': 0,
-        'manual_exits': 0,
-        'total_pnl': 0.0,
-        'winning_exits': 0,
-        'losing_exits': 0
+        "total_exits": 0,
+        "stop_loss_exits": 0,
+        "trailing_stop_exits": 0,
+        "reversal_exits": 0,
+        "timeout_exits": 0,
+        "manual_exits": 0,
+        "total_pnl": 0.0,
+        "winning_exits": 0,
+        "losing_exits": 0,
     }
     assistant._save_config()
 
-    return {
-        "success": True,
-        "message": "Stats reset",
-        "stats": assistant.stats
-    }
+    return {"success": True, "message": "Stats reset", "stats": assistant.stats}

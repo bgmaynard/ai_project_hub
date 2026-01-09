@@ -6,31 +6,34 @@ Monitors multiple news sources for market-moving events.
 """
 
 import asyncio
-import logging
-import json
-import re
 import html
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-import aiohttp
+import json
+import logging
 import os
+import re
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
+
+import aiohttp
 
 logger = logging.getLogger(__name__)
 
 
 class NewsImpact(Enum):
     """News impact level on market"""
-    CRITICAL = "critical"      # Major market-moving (Fed, earnings miss/beat >20%)
-    HIGH = "high"              # Significant (analyst upgrades, M&A rumors)
-    MEDIUM = "medium"          # Moderate (product launches, partnerships)
-    LOW = "low"                # Minor (routine updates)
-    NEUTRAL = "neutral"        # No expected impact
+
+    CRITICAL = "critical"  # Major market-moving (Fed, earnings miss/beat >20%)
+    HIGH = "high"  # Significant (analyst upgrades, M&A rumors)
+    MEDIUM = "medium"  # Moderate (product launches, partnerships)
+    LOW = "low"  # Minor (routine updates)
+    NEUTRAL = "neutral"  # No expected impact
 
 
 class NewsSentiment(Enum):
     """Sentiment classification"""
+
     VERY_BULLISH = "very_bullish"
     BULLISH = "bullish"
     NEUTRAL = "neutral"
@@ -40,6 +43,7 @@ class NewsSentiment(Enum):
 
 class NewsCategory(Enum):
     """News categories"""
+
     EARNINGS = "earnings"
     FDA_APPROVAL = "fda_approval"
     MERGER_ACQUISITION = "merger_acquisition"
@@ -61,6 +65,7 @@ class NewsCategory(Enum):
 @dataclass
 class NewsItem:
     """Individual news item"""
+
     id: str
     headline: str
     summary: str
@@ -80,16 +85,19 @@ class NewsItem:
     def to_dict(self) -> Dict:
         return {
             **asdict(self),
-            'published_at': self.published_at.isoformat() if self.published_at else None,
-            'category': self.category.value,
-            'sentiment': self.sentiment.value,
-            'impact': self.impact.value
+            "published_at": (
+                self.published_at.isoformat() if self.published_at else None
+            ),
+            "category": self.category.value,
+            "sentiment": self.sentiment.value,
+            "impact": self.impact.value,
         }
 
 
 @dataclass
 class NewsTrigger:
     """Trigger rule for news events"""
+
     id: str
     name: str
     enabled: bool
@@ -107,72 +115,164 @@ class NewsTrigger:
 # Keyword patterns for category detection
 CATEGORY_PATTERNS = {
     NewsCategory.EARNINGS: [
-        r'\bearnings\b', r'\bEPS\b', r'\brevenue\b', r'\bquarterly results?\b',
-        r'\bbeat estimates?\b', r'\bmiss estimates?\b', r'\bguidance\b'
+        r"\bearnings\b",
+        r"\bEPS\b",
+        r"\brevenue\b",
+        r"\bquarterly results?\b",
+        r"\bbeat estimates?\b",
+        r"\bmiss estimates?\b",
+        r"\bguidance\b",
     ],
     NewsCategory.FDA_APPROVAL: [
-        r'\bFDA\b', r'\bapproval\b', r'\brejection\b', r'\bclinical trial\b',
-        r'\bphase [123]\b', r'\bdrug approval\b'
+        r"\bFDA\b",
+        r"\bapproval\b",
+        r"\brejection\b",
+        r"\bclinical trial\b",
+        r"\bphase [123]\b",
+        r"\bdrug approval\b",
     ],
     NewsCategory.MERGER_ACQUISITION: [
-        r'\bmerger\b', r'\bacquisition\b', r'\bbuyout\b', r'\btakeover\b',
-        r'\bM&A\b', r'\bacquire[sd]?\b'
+        r"\bmerger\b",
+        r"\bacquisition\b",
+        r"\bbuyout\b",
+        r"\btakeover\b",
+        r"\bM&A\b",
+        r"\bacquire[sd]?\b",
     ],
     NewsCategory.ANALYST_RATING: [
-        r'\bupgrade[sd]?\b', r'\bdowngrade[sd]?\b', r'\bprice target\b',
-        r'\banalyst\b', r'\brating\b', r'\bbuy rating\b', r'\bsell rating\b'
+        r"\bupgrade[sd]?\b",
+        r"\bdowngrade[sd]?\b",
+        r"\bprice target\b",
+        r"\banalyst\b",
+        r"\brating\b",
+        r"\bbuy rating\b",
+        r"\bsell rating\b",
     ],
     NewsCategory.INSIDER_TRADING: [
-        r'\binsider\b', r'\bCEO (buy|sell|purchase)\b', r'\bexecutive (buy|sell)\b',
-        r'\bForm 4\b', r'\binsider trading\b'
+        r"\binsider\b",
+        r"\bCEO (buy|sell|purchase)\b",
+        r"\bexecutive (buy|sell)\b",
+        r"\bForm 4\b",
+        r"\binsider trading\b",
     ],
     NewsCategory.ECONOMIC_DATA: [
-        r'\bCPI\b', r'\binflation\b', r'\bunemployment\b', r'\bjobs report\b',
-        r'\bGDP\b', r'\bretail sales\b', r'\bhousing\b', r'\bPMI\b'
+        r"\bCPI\b",
+        r"\binflation\b",
+        r"\bunemployment\b",
+        r"\bjobs report\b",
+        r"\bGDP\b",
+        r"\bretail sales\b",
+        r"\bhousing\b",
+        r"\bPMI\b",
     ],
     NewsCategory.FED_ANNOUNCEMENT: [
-        r'\bFed\b', r'\bFOMC\b', r'\binterest rate\b', r'\brate (hike|cut)\b',
-        r'\bPowell\b', r'\bFederal Reserve\b', r'\bmonetary policy\b'
+        r"\bFed\b",
+        r"\bFOMC\b",
+        r"\binterest rate\b",
+        r"\brate (hike|cut)\b",
+        r"\bPowell\b",
+        r"\bFederal Reserve\b",
+        r"\bmonetary policy\b",
     ],
     NewsCategory.GUIDANCE: [
-        r'\bguidance\b', r'\boutlook\b', r'\bforecast\b', r'\bexpectations?\b',
-        r'\braise[sd]? guidance\b', r'\blower[ed]? guidance\b'
+        r"\bguidance\b",
+        r"\boutlook\b",
+        r"\bforecast\b",
+        r"\bexpectations?\b",
+        r"\braise[sd]? guidance\b",
+        r"\blower[ed]? guidance\b",
     ],
     NewsCategory.PRODUCT_LAUNCH: [
-        r'\blaunch\b', r'\bnew product\b', r'\bannounce[sd]?\b', r'\brelease\b',
-        r'\bunveil\b', r'\bintroduc\b'
+        r"\blaunch\b",
+        r"\bnew product\b",
+        r"\bannounce[sd]?\b",
+        r"\brelease\b",
+        r"\bunveil\b",
+        r"\bintroduc\b",
     ],
     NewsCategory.LEGAL_REGULATORY: [
-        r'\blawsuit\b', r'\bSEC\b', r'\bregulator\b', r'\binvestigation\b',
-        r'\bsubpoena\b', r'\bsettlement\b', r'\bantitrust\b'
+        r"\blawsuit\b",
+        r"\bSEC\b",
+        r"\bregulator\b",
+        r"\binvestigation\b",
+        r"\bsubpoena\b",
+        r"\bsettlement\b",
+        r"\bantitrust\b",
     ],
     NewsCategory.MANAGEMENT_CHANGE: [
-        r'\bCEO\b', r'\bCFO\b', r'\bresign\b', r'\bappoint\b', r'\bstep down\b',
-        r'\bleadership change\b', r'\bexecutive\b'
+        r"\bCEO\b",
+        r"\bCFO\b",
+        r"\bresign\b",
+        r"\bappoint\b",
+        r"\bstep down\b",
+        r"\bleadership change\b",
+        r"\bexecutive\b",
     ],
     NewsCategory.DIVIDEND: [
-        r'\bdividend\b', r'\byield\b', r'\bpayout\b', r'\bdistribution\b'
+        r"\bdividend\b",
+        r"\byield\b",
+        r"\bpayout\b",
+        r"\bdistribution\b",
     ],
     NewsCategory.STOCK_SPLIT: [
-        r'\bstock split\b', r'\breverse split\b', r'\bshare split\b'
+        r"\bstock split\b",
+        r"\breverse split\b",
+        r"\bshare split\b",
     ],
     NewsCategory.GEOPOLITICAL: [
-        r'\btariff\b', r'\btrade war\b', r'\bsanction\b', r'\bgeopolitical\b',
-        r'\bwar\b', r'\bconflict\b', r'\bChina\b.*\btrade\b'
-    ]
+        r"\btariff\b",
+        r"\btrade war\b",
+        r"\bsanction\b",
+        r"\bgeopolitical\b",
+        r"\bwar\b",
+        r"\bconflict\b",
+        r"\bChina\b.*\btrade\b",
+    ],
 }
 
 # Sentiment keywords
 BULLISH_KEYWORDS = [
-    'beat', 'exceed', 'surge', 'soar', 'rally', 'upgrade', 'breakthrough',
-    'approval', 'growth', 'record', 'strong', 'bullish', 'outperform',
-    'positive', 'upside', 'raise', 'higher', 'accelerate', 'expand'
+    "beat",
+    "exceed",
+    "surge",
+    "soar",
+    "rally",
+    "upgrade",
+    "breakthrough",
+    "approval",
+    "growth",
+    "record",
+    "strong",
+    "bullish",
+    "outperform",
+    "positive",
+    "upside",
+    "raise",
+    "higher",
+    "accelerate",
+    "expand",
 ]
 
 BEARISH_KEYWORDS = [
-    'miss', 'decline', 'plunge', 'crash', 'downgrade', 'rejection', 'layoff',
-    'weak', 'bearish', 'underperform', 'negative', 'downside', 'lower',
-    'cut', 'warning', 'concern', 'risk', 'lawsuit', 'investigation'
+    "miss",
+    "decline",
+    "plunge",
+    "crash",
+    "downgrade",
+    "rejection",
+    "layoff",
+    "weak",
+    "bearish",
+    "underperform",
+    "negative",
+    "downside",
+    "lower",
+    "cut",
+    "warning",
+    "concern",
+    "risk",
+    "lawsuit",
+    "investigation",
 ]
 
 
@@ -184,7 +284,9 @@ class NewsFeedMonitor:
 
     def __init__(self):
         # Benzinga API for news (primary source)
-        self.benzinga_api_key = os.getenv("BENZINGA_API_KEY", "bz.MUTADSLMPPPHDWEGOYUMSFHUGH5TS7TD")
+        self.benzinga_api_key = os.getenv(
+            "BENZINGA_API_KEY", "bz.MUTADSLMPPPHDWEGOYUMSFHUGH5TS7TD"
+        )
         self.base_url = "https://api.benzinga.com/api/v2/news"
 
         self.news_cache: List[NewsItem] = []
@@ -218,7 +320,7 @@ class NewsFeedMonitor:
                 keyword_filters=["FOMC", "rate", "Powell"],
                 action="alert",
                 action_params={"priority": "high", "pause_new_trades": True},
-                cooldown_minutes=30
+                cooldown_minutes=30,
             ),
             NewsTrigger(
                 id="earnings_surprise",
@@ -231,7 +333,7 @@ class NewsFeedMonitor:
                 keyword_filters=["beat", "miss", "surprise"],
                 action="alert",
                 action_params={"priority": "high"},
-                cooldown_minutes=5
+                cooldown_minutes=5,
             ),
             NewsTrigger(
                 id="fda_decision",
@@ -244,7 +346,7 @@ class NewsFeedMonitor:
                 keyword_filters=["FDA", "approval", "rejection"],
                 action="close_positions",
                 action_params={"affected_symbols_only": True},
-                cooldown_minutes=60
+                cooldown_minutes=60,
             ),
             NewsTrigger(
                 id="merger_news",
@@ -257,7 +359,7 @@ class NewsFeedMonitor:
                 keyword_filters=["merger", "acquisition", "buyout"],
                 action="alert",
                 action_params={"priority": "high"},
-                cooldown_minutes=15
+                cooldown_minutes=15,
             ),
             NewsTrigger(
                 id="negative_sentiment_spike",
@@ -270,8 +372,8 @@ class NewsFeedMonitor:
                 keyword_filters=[],
                 action="switch_strategy",
                 action_params={"strategy": "mean_reversion"},
-                cooldown_minutes=30
-            )
+                cooldown_minutes=30,
+            ),
         ]
 
         for trigger in default_triggers:
@@ -279,19 +381,20 @@ class NewsFeedMonitor:
 
     def _extract_summary(self, article: dict) -> str:
         """Extract clean summary from article, stripping HTML tags and entities"""
+
         def clean_text(text: str) -> str:
             """Clean HTML and fix encoding issues"""
             # Strip HTML tags
-            text = re.sub(r'<[^>]+>', ' ', text)
+            text = re.sub(r"<[^>]+>", " ", text)
             # Decode HTML entities
             text = html.unescape(text)
             # Fix double-encoded UTF-8 (common Benzinga issue)
             # \u00c2\u00a0 -> space, \u00c2\u00ad -> nothing
-            text = text.replace('\u00c2\u00a0', ' ')
-            text = text.replace('\u00c2\u00ad', '')
-            text = text.replace('\u00c2', '')
+            text = text.replace("\u00c2\u00a0", " ")
+            text = text.replace("\u00c2\u00ad", "")
+            text = text.replace("\u00c2", "")
             # Normalize whitespace
-            text = re.sub(r'\s+', ' ', text).strip()
+            text = re.sub(r"\s+", " ", text).strip()
             return text
 
         # Try teaser first
@@ -305,9 +408,9 @@ class NewsFeedMonitor:
             text = clean_text(body)
             # Get first 300 chars, break at sentence if possible
             if len(text) > 300:
-                cut_point = text[:300].rfind('.')
+                cut_point = text[:300].rfind(".")
                 if cut_point > 100:
-                    return text[:cut_point + 1]
+                    return text[: cut_point + 1]
                 return text[:300] + "..."
             return text
 
@@ -352,16 +455,20 @@ class NewsFeedMonitor:
 
         return sentiment, score
 
-    def _assess_impact(self, category: NewsCategory, sentiment_score: float,
-                       keywords: List[str]) -> NewsImpact:
+    def _assess_impact(
+        self, category: NewsCategory, sentiment_score: float, keywords: List[str]
+    ) -> NewsImpact:
         """Assess the market impact of news"""
         # Critical categories
         if category in [NewsCategory.FED_ANNOUNCEMENT, NewsCategory.FDA_APPROVAL]:
             return NewsImpact.CRITICAL
 
         # High impact categories
-        if category in [NewsCategory.EARNINGS, NewsCategory.MERGER_ACQUISITION,
-                       NewsCategory.ECONOMIC_DATA]:
+        if category in [
+            NewsCategory.EARNINGS,
+            NewsCategory.MERGER_ACQUISITION,
+            NewsCategory.ECONOMIC_DATA,
+        ]:
             if abs(sentiment_score) > 0.5:
                 return NewsImpact.HIGH
             return NewsImpact.MEDIUM
@@ -375,8 +482,8 @@ class NewsFeedMonitor:
             return NewsImpact.MEDIUM
 
         # Check keywords for urgency indicators
-        urgent_keywords = ['breaking', 'urgent', 'halt', 'crash', 'surge', 'plunge']
-        if any(kw in ' '.join(keywords).lower() for kw in urgent_keywords):
+        urgent_keywords = ["breaking", "urgent", "halt", "crash", "surge", "plunge"]
+        if any(kw in " ".join(keywords).lower() for kw in urgent_keywords):
             return NewsImpact.HIGH
 
         return NewsImpact.LOW
@@ -387,15 +494,15 @@ class NewsFeedMonitor:
         keywords = []
 
         # Check for ticker symbols (1-5 uppercase letters)
-        tickers = re.findall(r'\b[A-Z]{1,5}\b', text)
+        tickers = re.findall(r"\b[A-Z]{1,5}\b", text)
         keywords.extend([t for t in tickers if len(t) >= 2])
 
         # Check for percentages
-        percentages = re.findall(r'\d+\.?\d*%', text)
+        percentages = re.findall(r"\d+\.?\d*%", text)
         keywords.extend(percentages)
 
         # Check for dollar amounts
-        amounts = re.findall(r'\$[\d,]+\.?\d*[BMK]?', text)
+        amounts = re.findall(r"\$[\d,]+\.?\d*[BMK]?", text)
         keywords.extend(amounts)
 
         # Add category-specific keywords found
@@ -406,8 +513,9 @@ class NewsFeedMonitor:
 
         return list(set(keywords))[:20]
 
-    async def fetch_news(self, symbols: List[str] = None,
-                        limit: int = 50) -> List[NewsItem]:
+    async def fetch_news(
+        self, symbols: List[str] = None, limit: int = 50
+    ) -> List[NewsItem]:
         """Fetch news from Benzinga API"""
         if not self.benzinga_api_key:
             logger.warning("Benzinga API key not configured, using mock data")
@@ -418,19 +526,24 @@ class NewsFeedMonitor:
             "token": self.benzinga_api_key,
             "pageSize": limit,
             "displayOutput": "full",
-            "sort": "created:desc"
+            "sort": "created:desc",
         }
         if symbols:
             params["tickers"] = ",".join(symbols[:10])
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(self.base_url,
-                                      params=params, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                async with session.get(
+                    self.base_url,
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                ) as response:
                     if response.status == 200:
                         text = await response.text()
                         # Check if response is XML or JSON
-                        if text.strip().startswith('<?xml') or text.strip().startswith('<result'):
+                        if text.strip().startswith("<?xml") or text.strip().startswith(
+                            "<result"
+                        ):
                             return self._parse_benzinga_xml(text)
                         else:
                             data = await response.json()
@@ -446,30 +559,31 @@ class NewsFeedMonitor:
     def _parse_benzinga_xml(self, xml_text: str) -> List[NewsItem]:
         """Parse Benzinga XML response into NewsItem objects"""
         import xml.etree.ElementTree as ET
+
         items = []
 
         try:
             root = ET.fromstring(xml_text)
 
-            for item_elem in root.findall('.//item'):
+            for item_elem in root.findall(".//item"):
                 try:
-                    headline = item_elem.findtext('title', '')
-                    url = item_elem.findtext('url', '')
-                    created = item_elem.findtext('created', '')
-                    teaser = item_elem.findtext('teaser', '')
-                    body = item_elem.findtext('body', '')
-                    news_id = item_elem.findtext('id', '')
+                    headline = item_elem.findtext("title", "")
+                    url = item_elem.findtext("url", "")
+                    created = item_elem.findtext("created", "")
+                    teaser = item_elem.findtext("teaser", "")
+                    body = item_elem.findtext("body", "")
+                    news_id = item_elem.findtext("id", "")
 
                     # Extract symbols from stocks
                     symbols = []
-                    stocks_elem = item_elem.find('stocks')
+                    stocks_elem = item_elem.find("stocks")
                     if stocks_elem is not None:
-                        for stock in stocks_elem.findall('item'):
-                            name = stock.findtext('name', '')
+                        for stock in stocks_elem.findall("item"):
+                            name = stock.findtext("name", "")
                             if name:
                                 symbols.append(name)
 
-                    summary = teaser or body[:200] if body else ''
+                    summary = teaser or body[:200] if body else ""
                     full_text = f"{headline} {summary}"
 
                     category = self._detect_category(full_text)
@@ -483,6 +597,7 @@ class NewsFeedMonitor:
                         try:
                             # Format: "Mon, 29 Dec 2025 07:26:02 -0400"
                             from email.utils import parsedate_to_datetime
+
                             published_at = parsedate_to_datetime(created)
                         except Exception:
                             pass
@@ -499,7 +614,7 @@ class NewsFeedMonitor:
                         sentiment=sentiment,
                         sentiment_score=score,
                         impact=impact,
-                        keywords=keywords
+                        keywords=keywords,
                     )
                     items.append(news_item)
                     logger.debug(f"Parsed news: {symbols} - {headline[:50]}")
@@ -519,7 +634,7 @@ class NewsFeedMonitor:
         items = []
 
         # Benzinga returns list directly or in 'data' key
-        articles = data if isinstance(data, list) else data.get('data', [])
+        articles = data if isinstance(data, list) else data.get("data", [])
 
         for article in articles:
             try:
@@ -542,7 +657,9 @@ class NewsFeedMonitor:
                 created = article.get("created", article.get("updated", ""))
                 try:
                     if created:
-                        published_at = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                        published_at = datetime.fromisoformat(
+                            created.replace("Z", "+00:00")
+                        )
                     else:
                         published_at = datetime.now()
                 except:
@@ -561,7 +678,7 @@ class NewsFeedMonitor:
                     sentiment_score=score,
                     keywords=keywords,
                     url=article.get("url"),
-                    raw_data=article
+                    raw_data=article,
                 )
                 items.append(news_item)
 
@@ -571,7 +688,9 @@ class NewsFeedMonitor:
 
         return items
 
-    def _get_mock_news(self, symbols: List[str] = None, limit: int = 10) -> List[NewsItem]:
+    def _get_mock_news(
+        self, symbols: List[str] = None, limit: int = 10
+    ) -> List[NewsItem]:
         """Generate mock news for testing"""
         mock_items = [
             {
@@ -579,36 +698,36 @@ class NewsFeedMonitor:
                 "summary": "The Fed maintained interest rates and indicated it will be patient before making changes.",
                 "source": "Reuters",
                 "symbols": ["SPY", "QQQ"],
-                "category": NewsCategory.FED_ANNOUNCEMENT
+                "category": NewsCategory.FED_ANNOUNCEMENT,
             },
             {
                 "headline": "NVIDIA Beats Q3 Earnings Estimates, Data Center Revenue Surges 200%",
                 "summary": "NVIDIA reported earnings that significantly exceeded analyst expectations driven by AI demand.",
                 "source": "Bloomberg",
                 "symbols": ["NVDA"],
-                "category": NewsCategory.EARNINGS
+                "category": NewsCategory.EARNINGS,
             },
             {
                 "headline": "Tesla Faces Downgrade from Major Analyst Amid Competition Concerns",
                 "summary": "A prominent Wall Street analyst downgraded Tesla stock citing increasing EV competition.",
                 "source": "CNBC",
                 "symbols": ["TSLA"],
-                "category": NewsCategory.ANALYST_RATING
+                "category": NewsCategory.ANALYST_RATING,
             },
             {
                 "headline": "Apple Announces New AI Features Coming to iPhone",
                 "summary": "Apple unveiled new artificial intelligence capabilities for its next iPhone generation.",
                 "source": "WSJ",
                 "symbols": ["AAPL"],
-                "category": NewsCategory.PRODUCT_LAUNCH
+                "category": NewsCategory.PRODUCT_LAUNCH,
             },
             {
                 "headline": "Biotech Company Receives FDA Approval for Cancer Treatment",
                 "summary": "XYZ Pharma received FDA approval for its breakthrough cancer treatment drug.",
                 "source": "BioPharma Dive",
                 "symbols": ["XBI"],
-                "category": NewsCategory.FDA_APPROVAL
-            }
+                "category": NewsCategory.FDA_APPROVAL,
+            },
         ]
 
         items = []
@@ -616,25 +735,27 @@ class NewsFeedMonitor:
             full_text = f"{mock['headline']} {mock['summary']}"
             sentiment, score = self._analyze_sentiment(full_text)
             keywords = self._extract_keywords(full_text)
-            impact = self._assess_impact(mock['category'], score, keywords)
+            impact = self._assess_impact(mock["category"], score, keywords)
 
             # Filter by symbols if provided
-            if symbols and not any(s in mock['symbols'] for s in symbols):
+            if symbols and not any(s in mock["symbols"] for s in symbols):
                 continue
 
-            items.append(NewsItem(
-                id=f"mock_{i}_{datetime.now().timestamp()}",
-                headline=mock['headline'],
-                summary=mock['summary'],
-                source=mock['source'],
-                published_at=datetime.now() - timedelta(minutes=i * 15),
-                symbols=mock['symbols'],
-                category=mock['category'],
-                sentiment=sentiment,
-                impact=impact,
-                sentiment_score=score,
-                keywords=keywords
-            ))
+            items.append(
+                NewsItem(
+                    id=f"mock_{i}_{datetime.now().timestamp()}",
+                    headline=mock["headline"],
+                    summary=mock["summary"],
+                    source=mock["source"],
+                    published_at=datetime.now() - timedelta(minutes=i * 15),
+                    symbols=mock["symbols"],
+                    category=mock["category"],
+                    sentiment=sentiment,
+                    impact=impact,
+                    sentiment_score=score,
+                    keywords=keywords,
+                )
+            )
 
         return items
 
@@ -645,6 +766,7 @@ class NewsFeedMonitor:
 
         try:
             import anthropic
+
             client = anthropic.Anthropic(api_key=self.claude_api_key)
 
             prompt = f"""Analyze this market news for trading implications:
@@ -667,7 +789,7 @@ Keep response concise (under 200 words)."""
             response = client.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=500,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
 
             analysis = response.content[0].text
@@ -689,32 +811,54 @@ Keep response concise (under 200 words)."""
 
             # Check cooldown
             if trigger.last_triggered:
-                cooldown_end = trigger.last_triggered + timedelta(minutes=trigger.cooldown_minutes)
+                cooldown_end = trigger.last_triggered + timedelta(
+                    minutes=trigger.cooldown_minutes
+                )
                 if now < cooldown_end:
                     continue
 
             # Check category filter
-            if trigger.category_filters and news_item.category not in trigger.category_filters:
+            if (
+                trigger.category_filters
+                and news_item.category not in trigger.category_filters
+            ):
                 continue
 
             # Check impact threshold
-            impact_order = [NewsImpact.LOW, NewsImpact.MEDIUM, NewsImpact.HIGH, NewsImpact.CRITICAL]
-            if impact_order.index(news_item.impact) < impact_order.index(trigger.impact_threshold):
+            impact_order = [
+                NewsImpact.LOW,
+                NewsImpact.MEDIUM,
+                NewsImpact.HIGH,
+                NewsImpact.CRITICAL,
+            ]
+            if impact_order.index(news_item.impact) < impact_order.index(
+                trigger.impact_threshold
+            ):
                 continue
 
             # Check sentiment threshold
             if trigger.sentiment_threshold:
                 sentiment_order = [
-                    NewsSentiment.VERY_BEARISH, NewsSentiment.BEARISH,
-                    NewsSentiment.NEUTRAL, NewsSentiment.BULLISH, NewsSentiment.VERY_BULLISH
+                    NewsSentiment.VERY_BEARISH,
+                    NewsSentiment.BEARISH,
+                    NewsSentiment.NEUTRAL,
+                    NewsSentiment.BULLISH,
+                    NewsSentiment.VERY_BULLISH,
                 ]
                 if news_item.sentiment != trigger.sentiment_threshold:
                     # Check if sentiment is more extreme in the expected direction
-                    if trigger.sentiment_threshold in [NewsSentiment.BEARISH, NewsSentiment.VERY_BEARISH]:
-                        if sentiment_order.index(news_item.sentiment) > sentiment_order.index(trigger.sentiment_threshold):
+                    if trigger.sentiment_threshold in [
+                        NewsSentiment.BEARISH,
+                        NewsSentiment.VERY_BEARISH,
+                    ]:
+                        if sentiment_order.index(
+                            news_item.sentiment
+                        ) > sentiment_order.index(trigger.sentiment_threshold):
                             continue
                     else:
-                        if sentiment_order.index(news_item.sentiment) < sentiment_order.index(trigger.sentiment_threshold):
+                        if sentiment_order.index(
+                            news_item.sentiment
+                        ) < sentiment_order.index(trigger.sentiment_threshold):
                             continue
 
             # Check symbol filter
@@ -732,20 +876,25 @@ Keep response concise (under 200 words)."""
             trigger.last_triggered = now
             news_item.triggered_actions.append(trigger.name)
 
-            triggered.append({
-                "trigger_id": trigger_id,
-                "trigger_name": trigger.name,
-                "action": trigger.action,
-                "action_params": trigger.action_params,
-                "news_item": news_item.to_dict()
-            })
+            triggered.append(
+                {
+                    "trigger_id": trigger_id,
+                    "trigger_name": trigger.name,
+                    "action": trigger.action,
+                    "action_params": trigger.action_params,
+                    "news_item": news_item.to_dict(),
+                }
+            )
 
-            logger.info(f"News trigger activated: {trigger.name} for {news_item.headline[:50]}...")
+            logger.info(
+                f"News trigger activated: {trigger.name} for {news_item.headline[:50]}..."
+            )
 
         return triggered
 
-    async def start_monitoring(self, symbols: List[str] = None,
-                              poll_interval: int = 30):
+    async def start_monitoring(
+        self, symbols: List[str] = None, poll_interval: int = 30
+    ):
         """Start continuous news monitoring"""
         self.is_monitoring = True
         self.watched_symbols = symbols or []
@@ -768,7 +917,7 @@ Keep response concise (under 200 words)."""
 
                     # Trim cache if needed
                     if len(self.news_cache) > self.max_cache_size:
-                        self.news_cache = self.news_cache[:self.max_cache_size]
+                        self.news_cache = self.news_cache[: self.max_cache_size]
 
                     # Check triggers
                     triggered = self.check_triggers(item)
@@ -813,10 +962,13 @@ Keep response concise (under 200 words)."""
             del self.triggers[trigger_id]
             logger.info(f"Removed trigger: {trigger_id}")
 
-    def get_recent_news(self, limit: int = 20,
-                       category: NewsCategory = None,
-                       impact: NewsImpact = None,
-                       symbols: List[str] = None) -> List[NewsItem]:
+    def get_recent_news(
+        self,
+        limit: int = 20,
+        category: NewsCategory = None,
+        impact: NewsImpact = None,
+        symbols: List[str] = None,
+    ) -> List[NewsItem]:
         """Get recent news with optional filters"""
         filtered = self.news_cache
 
@@ -824,24 +976,31 @@ Keep response concise (under 200 words)."""
             filtered = [n for n in filtered if n.category == category]
 
         if impact:
-            impact_order = [NewsImpact.LOW, NewsImpact.MEDIUM, NewsImpact.HIGH, NewsImpact.CRITICAL]
+            impact_order = [
+                NewsImpact.LOW,
+                NewsImpact.MEDIUM,
+                NewsImpact.HIGH,
+                NewsImpact.CRITICAL,
+            ]
             min_index = impact_order.index(impact)
-            filtered = [n for n in filtered if impact_order.index(n.impact) >= min_index]
+            filtered = [
+                n for n in filtered if impact_order.index(n.impact) >= min_index
+            ]
 
         if symbols:
             filtered = [n for n in filtered if any(s in n.symbols for s in symbols)]
 
         return filtered[:limit]
 
-    def get_sentiment_summary(self, symbols: List[str] = None,
-                             hours: int = 24) -> Dict:
+    def get_sentiment_summary(self, symbols: List[str] = None, hours: int = 24) -> Dict:
         """Get aggregated sentiment summary"""
         cutoff = datetime.now() - timedelta(hours=hours)
 
         relevant_news = [
-            n for n in self.news_cache
-            if n.published_at > cutoff and
-               (not symbols or any(s in n.symbols for s in symbols))
+            n
+            for n in self.news_cache
+            if n.published_at > cutoff
+            and (not symbols or any(s in n.symbols for s in symbols))
         ]
 
         if not relevant_news:
@@ -851,7 +1010,7 @@ Keep response concise (under 200 words)."""
                 "news_count": 0,
                 "bullish_count": 0,
                 "bearish_count": 0,
-                "high_impact_count": 0
+                "high_impact_count": 0,
             }
 
         scores = [n.sentiment_score for n in relevant_news]
@@ -859,7 +1018,13 @@ Keep response concise (under 200 words)."""
 
         bullish = len([n for n in relevant_news if n.sentiment_score > 0.2])
         bearish = len([n for n in relevant_news if n.sentiment_score < -0.2])
-        high_impact = len([n for n in relevant_news if n.impact in [NewsImpact.HIGH, NewsImpact.CRITICAL]])
+        high_impact = len(
+            [
+                n
+                for n in relevant_news
+                if n.impact in [NewsImpact.HIGH, NewsImpact.CRITICAL]
+            ]
+        )
 
         if avg_score >= 0.3:
             overall = "bullish"
@@ -875,7 +1040,7 @@ Keep response concise (under 200 words)."""
             "bullish_count": bullish,
             "bearish_count": bearish,
             "high_impact_count": high_impact,
-            "period_hours": hours
+            "period_hours": hours,
         }
 
 
@@ -901,7 +1066,9 @@ async def test_news_monitor():
 
     print(f"\nFound {len(news)} news items:\n")
     for item in news:
-        print(f"[{item.impact.value.upper()}] [{item.sentiment.value}] {item.headline[:60]}...")
+        print(
+            f"[{item.impact.value.upper()}] [{item.sentiment.value}] {item.headline[:60]}..."
+        )
         print(f"  Category: {item.category.value}, Score: {item.sentiment_score:.2f}")
         print(f"  Symbols: {item.symbols}")
         print()

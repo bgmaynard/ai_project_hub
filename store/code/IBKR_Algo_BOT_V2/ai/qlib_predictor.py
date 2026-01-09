@@ -16,16 +16,17 @@ Author: Morpheus Trading Bot
 Created: December 2024
 """
 
+import logging
+import warnings
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
-import logging
-import warnings
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
 # Lazy load heavy imports
@@ -36,6 +37,7 @@ _feature_calculator = None
 @dataclass
 class QlibPrediction:
     """Result from Qlib prediction"""
+
     symbol: str
     timestamp: str
     score: float  # 0.0 to 1.0 (bearish to bullish)
@@ -65,35 +67,55 @@ class Alpha158Calculator:
         """Build list of all feature names"""
         # Price-based features
         for w in self.WINDOWS:
-            self.feature_names.extend([
-                f'ROC_{w}',      # Rate of change
-                f'MA_{w}',       # Moving average ratio
-                f'STD_{w}',      # Standard deviation
-                f'BETA_{w}',     # Beta vs market
-                f'MAX_{w}',      # Max ratio
-                f'MIN_{w}',      # Min ratio
-                f'QTLU_{w}',     # Upper quantile
-                f'QTLD_{w}',     # Lower quantile
-                f'RANK_{w}',     # Rank in window
-                f'RSV_{w}',      # Raw stochastic value
-                f'CORR_{w}',     # Correlation with volume
-                f'CORD_{w}',     # Correlation delta
-            ])
+            self.feature_names.extend(
+                [
+                    f"ROC_{w}",  # Rate of change
+                    f"MA_{w}",  # Moving average ratio
+                    f"STD_{w}",  # Standard deviation
+                    f"BETA_{w}",  # Beta vs market
+                    f"MAX_{w}",  # Max ratio
+                    f"MIN_{w}",  # Min ratio
+                    f"QTLU_{w}",  # Upper quantile
+                    f"QTLD_{w}",  # Lower quantile
+                    f"RANK_{w}",  # Rank in window
+                    f"RSV_{w}",  # Raw stochastic value
+                    f"CORR_{w}",  # Correlation with volume
+                    f"CORD_{w}",  # Correlation delta
+                ]
+            )
 
         # Volume-based features
         for w in self.WINDOWS:
-            self.feature_names.extend([
-                f'VMA_{w}',      # Volume MA ratio
-                f'VSTD_{w}',     # Volume std
-                f'WVMA_{w}',     # Weighted volume MA
-            ])
+            self.feature_names.extend(
+                [
+                    f"VMA_{w}",  # Volume MA ratio
+                    f"VSTD_{w}",  # Volume std
+                    f"WVMA_{w}",  # Weighted volume MA
+                ]
+            )
 
         # Cross-sectional features
-        self.feature_names.extend([
-            'KMID', 'KLEN', 'KMID2', 'KUP', 'KUP2', 'KLOW', 'KLOW2',
-            'KSFT', 'KSFT2', 'OPEN_RATIO', 'HIGH_RATIO', 'LOW_RATIO',
-            'CLOSE_RATIO', 'VWAP_RATIO', 'TURN', 'TURN_MA5', 'TURN_MA10'
-        ])
+        self.feature_names.extend(
+            [
+                "KMID",
+                "KLEN",
+                "KMID2",
+                "KUP",
+                "KUP2",
+                "KLOW",
+                "KLOW2",
+                "KSFT",
+                "KSFT2",
+                "OPEN_RATIO",
+                "HIGH_RATIO",
+                "LOW_RATIO",
+                "CLOSE_RATIO",
+                "VWAP_RATIO",
+                "TURN",
+                "TURN_MA5",
+                "TURN_MA10",
+            ]
+        )
 
     def compute_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -112,11 +134,11 @@ class Alpha158Calculator:
 
         features = {}
 
-        close = df['Close']
-        open_ = df['Open']
-        high = df['High']
-        low = df['Low']
-        volume = df['Volume']
+        close = df["Close"]
+        open_ = df["Open"]
+        high = df["High"]
+        low = df["Low"]
+        volume = df["Volume"]
 
         # Prevent division by zero
         close_safe = close.replace(0, np.nan)
@@ -125,104 +147,104 @@ class Alpha158Calculator:
         # === Price-based features ===
         for w in self.WINDOWS:
             # ROC: Rate of change
-            features[f'ROC_{w}'] = close / close.shift(w) - 1
+            features[f"ROC_{w}"] = close / close.shift(w) - 1
 
             # MA: Moving average ratio
             ma = close.rolling(w).mean()
-            features[f'MA_{w}'] = close / ma - 1
+            features[f"MA_{w}"] = close / ma - 1
 
             # STD: Rolling standard deviation (normalized)
-            features[f'STD_{w}'] = close.rolling(w).std() / close_safe
+            features[f"STD_{w}"] = close.rolling(w).std() / close_safe
 
             # BETA: Linear regression slope
-            features[f'BETA_{w}'] = self._rolling_beta(close, w)
+            features[f"BETA_{w}"] = self._rolling_beta(close, w)
 
             # MAX: Distance from rolling max
             roll_max = close.rolling(w).max()
-            features[f'MAX_{w}'] = close / roll_max - 1
+            features[f"MAX_{w}"] = close / roll_max - 1
 
             # MIN: Distance from rolling min
             roll_min = close.rolling(w).min()
-            features[f'MIN_{w}'] = close / roll_min - 1
+            features[f"MIN_{w}"] = close / roll_min - 1
 
             # QTLU: Upper quantile distance
             qtlu = close.rolling(w).quantile(0.8)
-            features[f'QTLU_{w}'] = close / qtlu - 1
+            features[f"QTLU_{w}"] = close / qtlu - 1
 
             # QTLD: Lower quantile distance
             qtld = close.rolling(w).quantile(0.2)
-            features[f'QTLD_{w}'] = close / qtld - 1
+            features[f"QTLD_{w}"] = close / qtld - 1
 
             # RANK: Percentile rank in window
-            features[f'RANK_{w}'] = close.rolling(w).apply(
+            features[f"RANK_{w}"] = close.rolling(w).apply(
                 lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False
             )
 
             # RSV: Raw stochastic value
-            features[f'RSV_{w}'] = (close - roll_min) / (roll_max - roll_min + 1e-8)
+            features[f"RSV_{w}"] = (close - roll_min) / (roll_max - roll_min + 1e-8)
 
             # CORR: Price-volume correlation
-            features[f'CORR_{w}'] = close.rolling(w).corr(volume)
+            features[f"CORR_{w}"] = close.rolling(w).corr(volume)
 
             # CORD: Correlation delta
-            corr = features[f'CORR_{w}']
-            features[f'CORD_{w}'] = corr - corr.shift(w // 2)
+            corr = features[f"CORR_{w}"]
+            features[f"CORD_{w}"] = corr - corr.shift(w // 2)
 
         # === Volume-based features ===
         for w in self.WINDOWS:
             # VMA: Volume MA ratio
             vma = volume.rolling(w).mean()
-            features[f'VMA_{w}'] = volume / vma - 1
+            features[f"VMA_{w}"] = volume / vma - 1
 
             # VSTD: Volume std (normalized)
-            features[f'VSTD_{w}'] = volume.rolling(w).std() / volume_safe
+            features[f"VSTD_{w}"] = volume.rolling(w).std() / volume_safe
 
             # WVMA: Weighted volume MA
             wvma = (close * volume).rolling(w).sum() / volume.rolling(w).sum()
-            features[f'WVMA_{w}'] = close / wvma - 1
+            features[f"WVMA_{w}"] = close / wvma - 1
 
         # === K-line features ===
         # KMID: Middle of bar relative to close
-        features['KMID'] = (close - open_) / close_safe
+        features["KMID"] = (close - open_) / close_safe
 
         # KLEN: Bar length relative to close
-        features['KLEN'] = (high - low) / close_safe
+        features["KLEN"] = (high - low) / close_safe
 
         # KMID2: Open-close range normalized
-        features['KMID2'] = (close - open_) / (high - low + 1e-8)
+        features["KMID2"] = (close - open_) / (high - low + 1e-8)
 
         # KUP: Upper shadow
-        features['KUP'] = (high - np.maximum(open_, close)) / close_safe
+        features["KUP"] = (high - np.maximum(open_, close)) / close_safe
 
         # KUP2: Upper shadow normalized
-        features['KUP2'] = (high - np.maximum(open_, close)) / (high - low + 1e-8)
+        features["KUP2"] = (high - np.maximum(open_, close)) / (high - low + 1e-8)
 
         # KLOW: Lower shadow
-        features['KLOW'] = (np.minimum(open_, close) - low) / close_safe
+        features["KLOW"] = (np.minimum(open_, close) - low) / close_safe
 
         # KLOW2: Lower shadow normalized
-        features['KLOW2'] = (np.minimum(open_, close) - low) / (high - low + 1e-8)
+        features["KLOW2"] = (np.minimum(open_, close) - low) / (high - low + 1e-8)
 
         # KSFT: Bar shift (close position in range)
-        features['KSFT'] = (2 * close - high - low) / close_safe
+        features["KSFT"] = (2 * close - high - low) / close_safe
 
         # KSFT2: Bar shift normalized
-        features['KSFT2'] = (2 * close - high - low) / (high - low + 1e-8)
+        features["KSFT2"] = (2 * close - high - low) / (high - low + 1e-8)
 
         # === Ratio features ===
-        features['OPEN_RATIO'] = open_ / close.shift(1) - 1
-        features['HIGH_RATIO'] = high / close.shift(1) - 1
-        features['LOW_RATIO'] = low / close.shift(1) - 1
-        features['CLOSE_RATIO'] = close / close.shift(1) - 1
+        features["OPEN_RATIO"] = open_ / close.shift(1) - 1
+        features["HIGH_RATIO"] = high / close.shift(1) - 1
+        features["LOW_RATIO"] = low / close.shift(1) - 1
+        features["CLOSE_RATIO"] = close / close.shift(1) - 1
 
         # VWAP ratio
         vwap = (close * volume).rolling(20).sum() / volume.rolling(20).sum()
-        features['VWAP_RATIO'] = close / vwap - 1
+        features["VWAP_RATIO"] = close / vwap - 1
 
         # Turnover features (using volume as proxy)
-        features['TURN'] = volume / volume.rolling(20).mean()
-        features['TURN_MA5'] = features['TURN'].rolling(5).mean()
-        features['TURN_MA10'] = features['TURN'].rolling(10).mean()
+        features["TURN"] = volume / volume.rolling(20).mean()
+        features["TURN_MA5"] = features["TURN"].rolling(5).mean()
+        features["TURN_MA10"] = features["TURN"].rolling(10).mean()
 
         # Build DataFrame
         result = pd.DataFrame(features, index=df.index)
@@ -234,6 +256,7 @@ class Alpha158Calculator:
 
     def _rolling_beta(self, series: pd.Series, window: int) -> pd.Series:
         """Compute rolling linear regression slope (beta)"""
+
         def calc_beta(x):
             if len(x) < window:
                 return np.nan
@@ -272,7 +295,7 @@ class QlibPredictor:
 
         if os.path.exists(model_path):
             try:
-                with open(model_path, 'rb') as f:
+                with open(model_path, "rb") as f:
                     self.model = pickle.load(f)
                 self.is_trained = True
                 logger.info(f"Qlib predictor loaded trained model from {model_path}")
@@ -296,10 +319,12 @@ class QlibPredictor:
                 colsample_bytree=0.8,
                 random_state=42,
                 verbose=-1,
-                force_col_wise=True
+                force_col_wise=True,
             )
 
-            logger.info("Qlib predictor initialized with default LightGBM (not trained)")
+            logger.info(
+                "Qlib predictor initialized with default LightGBM (not trained)"
+            )
 
         except Exception as e:
             logger.error(f"Failed to initialize Qlib model: {e}")
@@ -352,13 +377,13 @@ class QlibPredictor:
 
         # Momentum signals (ROC)
         for w in [5, 10, 20]:
-            roc = valid_features.get(f'ROC_{w}', 0)
+            roc = valid_features.get(f"ROC_{w}", 0)
             if not np.isnan(roc):
                 score += np.clip(roc * 5, -0.1, 0.1)
 
         # Trend signals (MA position)
         for w in [5, 10, 20]:
-            ma_ratio = valid_features.get(f'MA_{w}', 0)
+            ma_ratio = valid_features.get(f"MA_{w}", 0)
             if not np.isnan(ma_ratio):
                 if ma_ratio > 0:  # Price above MA
                     score += 0.02
@@ -366,7 +391,7 @@ class QlibPredictor:
                     score -= 0.02
 
         # RSV signals (stochastic)
-        rsv_20 = valid_features.get('RSV_20', 0.5)
+        rsv_20 = valid_features.get("RSV_20", 0.5)
         if not np.isnan(rsv_20):
             if rsv_20 > 0.8:  # Overbought
                 score -= 0.05
@@ -374,13 +399,13 @@ class QlibPredictor:
                 score += 0.05
 
         # Rank signals
-        rank_20 = valid_features.get('RANK_20', 0.5)
+        rank_20 = valid_features.get("RANK_20", 0.5)
         if not np.isnan(rank_20):
             score += (rank_20 - 0.5) * 0.1
 
         # Volume confirmation
-        vma_5 = valid_features.get('VMA_5', 0)
-        roc_5 = valid_features.get('ROC_5', 0)
+        vma_5 = valid_features.get("VMA_5", 0)
+        roc_5 = valid_features.get("ROC_5", 0)
         if not np.isnan(vma_5) and not np.isnan(roc_5):
             if vma_5 > 0 and roc_5 > 0:  # Volume up with price up
                 score += 0.05
@@ -388,7 +413,7 @@ class QlibPredictor:
                 score -= 0.05
 
         # VWAP position
-        vwap_ratio = valid_features.get('VWAP_RATIO', 0)
+        vwap_ratio = valid_features.get("VWAP_RATIO", 0)
         if not np.isnan(vwap_ratio):
             if vwap_ratio > 0:  # Above VWAP
                 score += 0.03
@@ -396,7 +421,7 @@ class QlibPredictor:
                 score -= 0.03
 
         # K-line patterns
-        kmid = valid_features.get('KMID', 0)
+        kmid = valid_features.get("KMID", 0)
         if not np.isnan(kmid):
             score += kmid * 0.5  # Bullish candle adds, bearish subtracts
 
@@ -464,7 +489,7 @@ class QlibPredictor:
                 signal=signal,
                 confidence=round(confidence, 4),
                 top_features=top_features,
-                feature_count=valid_count
+                feature_count=valid_count,
             )
 
         except Exception as e:
@@ -481,7 +506,7 @@ class QlibPredictor:
             signal="ERROR",
             confidence=0.0,
             top_features=[],
-            feature_count=0
+            feature_count=0,
         )
 
     def rank_symbols(self, symbols: List[str]) -> List[Dict]:
@@ -499,31 +524,35 @@ class QlibPredictor:
         for symbol in symbols:
             try:
                 pred = self.predict(symbol)
-                results.append({
-                    'symbol': symbol,
-                    'score': pred.score,
-                    'signal': pred.signal,
-                    'confidence': pred.confidence,
-                    'features': pred.feature_count
-                })
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "score": pred.score,
+                        "signal": pred.signal,
+                        "confidence": pred.confidence,
+                        "features": pred.feature_count,
+                    }
+                )
             except Exception as e:
                 logger.error(f"Failed to score {symbol}: {e}")
-                results.append({
-                    'symbol': symbol,
-                    'score': 0.5,
-                    'signal': 'ERROR',
-                    'confidence': 0.0,
-                    'features': 0
-                })
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "score": 0.5,
+                        "signal": "ERROR",
+                        "confidence": 0.0,
+                        "features": 0,
+                    }
+                )
 
         # Sort by score (highest first)
-        results.sort(key=lambda x: x['score'], reverse=True)
+        results.sort(key=lambda x: x["score"], reverse=True)
 
         # Add rank percentiles
         n = len(results)
         for i, r in enumerate(results):
-            r['rank'] = i + 1
-            r['rank_percentile'] = round((n - i) / n, 4) if n > 0 else 0.5
+            r["rank"] = i + 1
+            r["rank_percentile"] = round((n - i) / n, 4) if n > 0 else 0.5
 
         return results
 
@@ -558,11 +587,13 @@ class QlibPredictor:
                         continue
 
                     # Create labels: 1 if next day return > 0, else 0
-                    returns = df['Close'].pct_change().shift(-1)
+                    returns = df["Close"].pct_change().shift(-1)
                     labels = (returns > 0).astype(int)
 
                     # Align and drop NaN
-                    valid_idx = features.dropna().index.intersection(labels.dropna().index)
+                    valid_idx = features.dropna().index.intersection(
+                        labels.dropna().index
+                    )
 
                     if len(valid_idx) < 50:
                         continue
@@ -602,7 +633,9 @@ class QlibPredictor:
 
             self.is_trained = True
 
-            logger.info(f"Qlib model trained: train_acc={train_acc:.2%}, test_acc={test_acc:.2%}")
+            logger.info(
+                f"Qlib model trained: train_acc={train_acc:.2%}, test_acc={test_acc:.2%}"
+            )
 
             return {
                 "status": "trained",
@@ -611,7 +644,7 @@ class QlibPredictor:
                 "train_accuracy": round(train_acc, 4),
                 "test_accuracy": round(test_acc, 4),
                 "feature_count": len(X.columns),
-                "symbols_used": len(all_X)
+                "symbols_used": len(all_X),
             }
 
         except Exception as e:

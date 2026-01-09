@@ -11,25 +11,30 @@ Usage:
     python quick_start.py --restart # Kill and restart
 """
 
-import subprocess
-import time
-import sys
 import os
-import requests
+import subprocess
+import sys
+import time
 import webbrowser
 from datetime import datetime
+
+import requests
 
 BASE_URL = "http://localhost:9100"
 STARTUP_TIMEOUT = 30  # seconds
 
+
 def print_step(step, total, msg):
     print(f"[{step}/{total}] {msg}")
+
 
 def print_ok(msg):
     print(f"       OK: {msg}")
 
+
 def print_fail(msg):
     print(f"       FAIL: {msg}")
+
 
 def check_server():
     """Check if server is responding"""
@@ -38,6 +43,7 @@ def check_server():
         return r.status_code == 200
     except:
         return False
+
 
 def wait_for_server(timeout=STARTUP_TIMEOUT):
     """Wait for server to be ready"""
@@ -48,14 +54,17 @@ def wait_for_server(timeout=STARTUP_TIMEOUT):
         time.sleep(1)
     return False
 
+
 def kill_python():
     """Kill existing Python processes"""
     try:
-        subprocess.run(["taskkill", "/F", "/IM", "python.exe"],
-                      capture_output=True, timeout=5)
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "python.exe"], capture_output=True, timeout=5
+        )
     except:
         pass
     time.sleep(2)
+
 
 def start_server():
     """Start the Morpheus server"""
@@ -64,8 +73,9 @@ def start_server():
         ["python", "morpheus_trading_api.py"],
         creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.SW_HIDE,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
+        stderr=subprocess.DEVNULL,
     )
+
 
 def api_post(endpoint):
     """POST to API endpoint"""
@@ -75,6 +85,7 @@ def api_post(endpoint):
     except:
         return None
 
+
 def api_get(endpoint):
     """GET from API endpoint"""
     try:
@@ -83,11 +94,12 @@ def api_get(endpoint):
     except:
         return None
 
+
 def show_status():
     """Show current system status"""
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("   MORPHEUS TRADING BOT STATUS")
-    print("="*50 + "\n")
+    print("=" * 50 + "\n")
 
     # Check if server is running
     if not check_server():
@@ -98,7 +110,9 @@ def show_status():
     # Trading posture
     posture = api_get("/api/validation/safe/posture")
     if posture:
-        print(f"Time:     {posture.get('trading_window', {}).get('current_et_time', 'N/A')}")
+        print(
+            f"Time:     {posture.get('trading_window', {}).get('current_et_time', 'N/A')}"
+        )
         print(f"Window:   {posture.get('trading_window', {}).get('window', 'N/A')}")
         print(f"Posture:  {posture.get('posture', 'N/A')}")
         print(f"Can Trade: {posture.get('can_trade', False)}")
@@ -128,15 +142,18 @@ def show_status():
     conn = api_get("/api/validation/connectivity/status")
     if conn:
         summary = conn.get("summary", {})
-        print(f"Services: {summary.get('services_up', 0)}/{summary.get('total_services', 0)} UP")
+        print(
+            f"Services: {summary.get('services_up', 0)}/{summary.get('total_services', 0)} UP"
+        )
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
+
 
 def full_startup():
     """Full startup sequence"""
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("   MORPHEUS PRE-MARKET STARTUP")
-    print("="*50 + "\n")
+    print("=" * 50 + "\n")
 
     total_steps = 7
 
@@ -179,7 +196,9 @@ def full_startup():
     api_post("/api/scanner/premarket/scan")
     hod = api_post("/api/scanner/hod/scan-finviz")
     if hod:
-        print_ok(f"HOD Scanner: {hod.get('scanned', 0)} scanned, {len(hod.get('added_to_tracker', []))} added")
+        print_ok(
+            f"HOD Scanner: {hod.get('scanned', 0)} scanned, {len(hod.get('added_to_tracker', []))} added"
+        )
     api_post("/api/scanner/hod/enrich")
 
     # Step 7: Open dashboards
@@ -189,9 +208,9 @@ def full_startup():
     webbrowser.open(f"{BASE_URL}/ai-control-center")
     print_ok("Dashboards opened")
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("   STARTUP COMPLETE!")
-    print("="*50)
+    print("=" * 50)
     print(f"\n   Trading:  {BASE_URL}/trading-new")
     print(f"   AI Center: {BASE_URL}/ai-control-center")
     print()
@@ -200,6 +219,7 @@ def full_startup():
     show_status()
 
     return True
+
 
 def main():
     if len(sys.argv) > 1:
@@ -220,6 +240,7 @@ def main():
             print("\nUse --restart to restart the system.")
         else:
             full_startup()
+
 
 if __name__ == "__main__":
     main()

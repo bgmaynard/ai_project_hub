@@ -14,24 +14,26 @@ RISK MANAGEMENT:
 - Time-based exits (don't hold news plays)
 """
 
-import requests
 import logging
-import time
-import threading
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 import os
 import sys
+import threading
+import time
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+import requests
 
 # Add parent to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from ai.benzinga_fast_news import get_fast_news, start_fast_news, BenzingaFastNews, BreakingNews
+from ai.benzinga_fast_news import (BenzingaFastNews, BreakingNews,
+                                   get_fast_news, start_fast_news)
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s | %(levelname)s | %(message)s',
-    datefmt='%H:%M:%S'
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -45,10 +47,10 @@ class NewsTriggeredTrader:
         self.api_url = "http://localhost:9100/api/alpaca"
 
         # Position management
-        self.max_position_value = 500      # Max $ per news trade
-        self.stop_loss_pct = 0.02          # 2% stop loss
-        self.take_profit_pct = 0.05        # 5% take profit
-        self.max_hold_minutes = 5          # Exit after 5 mins regardless
+        self.max_position_value = 500  # Max $ per news trade
+        self.stop_loss_pct = 0.02  # 2% stop loss
+        self.take_profit_pct = 0.05  # 5% take profit
+        self.max_hold_minutes = 5  # Exit after 5 mins regardless
 
         # Track active news positions
         self.news_positions: Dict[str, Dict] = {}
@@ -81,17 +83,21 @@ class NewsTriggeredTrader:
         self.news_scanner = start_fast_news(
             watchlist=watchlist,
             on_buy=self._handle_buy_signal,
-            on_sell=self._handle_sell_signal
+            on_sell=self._handle_sell_signal,
         )
 
         # Start position monitor
-        self._monitor_thread = threading.Thread(target=self._monitor_positions, daemon=True)
+        self._monitor_thread = threading.Thread(
+            target=self._monitor_positions, daemon=True
+        )
         self._monitor_thread.start()
 
         logger.info("=" * 60)
         logger.info("NEWS TRIGGERED TRADER STARTED")
         logger.info(f"Max position: ${self.max_position_value}")
-        logger.info(f"Stop loss: {self.stop_loss_pct:.0%} | Take profit: {self.take_profit_pct:.0%}")
+        logger.info(
+            f"Stop loss: {self.stop_loss_pct:.0%} | Take profit: {self.take_profit_pct:.0%}"
+        )
         logger.info(f"Max hold time: {self.max_hold_minutes} minutes")
         logger.info("=" * 60)
 
@@ -115,7 +121,9 @@ class NewsTriggeredTrader:
         """Handle a buy signal from news"""
         logger.info(f"\n>>> BUY SIGNAL: {alert.symbols}")
         logger.info(f"    {alert.headline[:80]}...")
-        logger.info(f"    Catalyst: {alert.catalyst_type} | Confidence: {alert.confidence:.0%}")
+        logger.info(
+            f"    Catalyst: {alert.catalyst_type} | Confidence: {alert.confidence:.0%}"
+        )
 
         for symbol in alert.symbols:
             if symbol in self.news_positions:
@@ -147,7 +155,7 @@ class NewsTriggeredTrader:
                 logger.error(f"    Could not get quote for {symbol}")
                 return
 
-            price = quote.get('ask', quote.get('last', 0))
+            price = quote.get("ask", quote.get("last", 0))
             if price <= 0:
                 logger.error(f"    Invalid price for {symbol}")
                 return
@@ -157,31 +165,33 @@ class NewsTriggeredTrader:
 
             # Place order
             order = {
-                'symbol': symbol,
-                'quantity': qty,
-                'action': 'buy',
-                'order_type': 'market',
-                'time_in_force': 'day',
-                'extended_hours': True
+                "symbol": symbol,
+                "quantity": qty,
+                "action": "buy",
+                "order_type": "market",
+                "time_in_force": "day",
+                "extended_hours": True,
             }
 
             logger.info(f"    Placing BUY: {symbol} x{qty} @ ~${price:.2f}")
 
-            response = requests.post(f"{self.api_url}/place-order", json=order, timeout=5)
+            response = requests.post(
+                f"{self.api_url}/place-order", json=order, timeout=5
+            )
             result = response.json()
 
-            if result.get('success'):
+            if result.get("success"):
                 logger.info(f"    ORDER FILLED!")
 
                 # Track position
                 self.news_positions[symbol] = {
-                    'entry_price': price,
-                    'quantity': qty,
-                    'entry_time': datetime.now(),
-                    'catalyst': alert.catalyst_type,
-                    'headline': alert.headline[:100],
-                    'stop_loss': price * (1 - self.stop_loss_pct),
-                    'take_profit': price * (1 + self.take_profit_pct)
+                    "entry_price": price,
+                    "quantity": qty,
+                    "entry_time": datetime.now(),
+                    "catalyst": alert.catalyst_type,
+                    "headline": alert.headline[:100],
+                    "stop_loss": price * (1 - self.stop_loss_pct),
+                    "take_profit": price * (1 + self.take_profit_pct),
                 }
 
                 self.trades_executed += 1
@@ -201,26 +211,30 @@ class NewsTriggeredTrader:
 
         try:
             quote = self._get_quote(symbol)
-            current_price = quote.get('bid', quote.get('last', 0)) if quote else 0
+            current_price = quote.get("bid", quote.get("last", 0)) if quote else 0
 
             order = {
-                'symbol': symbol,
-                'quantity': pos['quantity'],
-                'action': 'sell',
-                'order_type': 'market',
-                'time_in_force': 'day',
-                'extended_hours': True
+                "symbol": symbol,
+                "quantity": pos["quantity"],
+                "action": "sell",
+                "order_type": "market",
+                "time_in_force": "day",
+                "extended_hours": True,
             }
 
             logger.info(f"    Closing {symbol}: {reason}")
 
-            response = requests.post(f"{self.api_url}/place-order", json=order, timeout=5)
+            response = requests.post(
+                f"{self.api_url}/place-order", json=order, timeout=5
+            )
             result = response.json()
 
-            if result.get('success'):
+            if result.get("success"):
                 # Calculate P&L
-                pnl = (current_price - pos['entry_price']) * pos['quantity']
-                pnl_pct = (current_price - pos['entry_price']) / pos['entry_price'] * 100
+                pnl = (current_price - pos["entry_price"]) * pos["quantity"]
+                pnl_pct = (
+                    (current_price - pos["entry_price"]) / pos["entry_price"] * 100
+                )
 
                 if pnl >= 0:
                     self.wins += 1
@@ -231,18 +245,20 @@ class NewsTriggeredTrader:
                 logger.info(f"    CLOSED: P/L ${pnl:.2f} ({pnl_pct:+.1f}%)")
 
                 # Record trade
-                self.trade_history.append({
-                    'symbol': symbol,
-                    'entry_price': pos['entry_price'],
-                    'exit_price': current_price,
-                    'quantity': pos['quantity'],
-                    'pnl': pnl,
-                    'pnl_pct': pnl_pct,
-                    'catalyst': pos['catalyst'],
-                    'reason': reason,
-                    'entry_time': pos['entry_time'].isoformat(),
-                    'exit_time': datetime.now().isoformat()
-                })
+                self.trade_history.append(
+                    {
+                        "symbol": symbol,
+                        "entry_price": pos["entry_price"],
+                        "exit_price": current_price,
+                        "quantity": pos["quantity"],
+                        "pnl": pnl,
+                        "pnl_pct": pnl_pct,
+                        "catalyst": pos["catalyst"],
+                        "reason": reason,
+                        "entry_time": pos["entry_time"].isoformat(),
+                        "exit_time": datetime.now().isoformat(),
+                    }
+                )
 
                 del self.news_positions[symbol]
 
@@ -271,26 +287,30 @@ class NewsTriggeredTrader:
                     if not quote:
                         continue
 
-                    current_price = quote.get('last', 0)
+                    current_price = quote.get("last", 0)
                     if current_price <= 0:
                         continue
 
                     # Check stop loss
-                    if current_price <= pos['stop_loss']:
-                        logger.warning(f"STOP LOSS HIT: {symbol} @ ${current_price:.2f}")
+                    if current_price <= pos["stop_loss"]:
+                        logger.warning(
+                            f"STOP LOSS HIT: {symbol} @ ${current_price:.2f}"
+                        )
                         self._close_position(symbol, "Stop loss")
                         continue
 
                     # Check take profit
-                    if current_price >= pos['take_profit']:
+                    if current_price >= pos["take_profit"]:
                         logger.info(f"TAKE PROFIT HIT: {symbol} @ ${current_price:.2f}")
                         self._close_position(symbol, "Take profit")
                         continue
 
                     # Check time limit
-                    hold_time = (now - pos['entry_time']).total_seconds() / 60
+                    hold_time = (now - pos["entry_time"]).total_seconds() / 60
                     if hold_time >= self.max_hold_minutes:
-                        logger.info(f"TIME EXIT: {symbol} after {hold_time:.1f} minutes")
+                        logger.info(
+                            f"TIME EXIT: {symbol} after {hold_time:.1f} minutes"
+                        )
                         self._close_position(symbol, "Time limit")
                         continue
 
@@ -327,21 +347,23 @@ class NewsTriggeredTrader:
     def get_status(self) -> Dict:
         """Get trader status"""
         return {
-            'is_running': self.is_running,
-            'active_positions': len(self.news_positions),
-            'positions': {
+            "is_running": self.is_running,
+            "active_positions": len(self.news_positions),
+            "positions": {
                 s: {
-                    'entry': p['entry_price'],
-                    'catalyst': p['catalyst'],
-                    'since': p['entry_time'].isoformat()
+                    "entry": p["entry_price"],
+                    "catalyst": p["catalyst"],
+                    "since": p["entry_time"].isoformat(),
                 }
                 for s, p in self.news_positions.items()
             },
-            'trades_executed': self.trades_executed,
-            'wins': self.wins,
-            'losses': self.losses,
-            'total_pnl': round(self.total_pnl, 2),
-            'news_scanner': self.news_scanner.get_status() if self.news_scanner else None
+            "trades_executed": self.trades_executed,
+            "wins": self.wins,
+            "losses": self.losses,
+            "total_pnl": round(self.total_pnl, 2),
+            "news_scanner": (
+                self.news_scanner.get_status() if self.news_scanner else None
+            ),
         }
 
 
@@ -351,8 +373,21 @@ def main():
 
     # Default watchlist - common momentum stocks
     watchlist = [
-        'AAPL', 'TSLA', 'NVDA', 'AMD', 'META', 'GOOGL', 'AMZN', 'MSFT',
-        'SPY', 'QQQ', 'PLTR', 'SOFI', 'NIO', 'RIVN', 'LCID'
+        "AAPL",
+        "TSLA",
+        "NVDA",
+        "AMD",
+        "META",
+        "GOOGL",
+        "AMZN",
+        "MSFT",
+        "SPY",
+        "QQQ",
+        "PLTR",
+        "SOFI",
+        "NIO",
+        "RIVN",
+        "LCID",
     ]
 
     print("\n" + "=" * 60)

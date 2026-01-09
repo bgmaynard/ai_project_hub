@@ -17,13 +17,14 @@ This module tracks:
 - Model degradation alerts
 """
 
-import logging
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
-from pathlib import Path
+import logging
 from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -32,14 +33,15 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Prediction:
     """A single prediction record"""
+
     symbol: str
     model_name: str
-    predicted_probability: float    # 0-1, probability of "up" move
-    prediction_direction: str       # "up" or "down"
-    actual_outcome: Optional[int]   # 1 if up, 0 if down, None if pending
+    predicted_probability: float  # 0-1, probability of "up" move
+    prediction_direction: str  # "up" or "down"
+    actual_outcome: Optional[int]  # 1 if up, 0 if down, None if pending
     entry_price: float
     exit_price: Optional[float]
-    threshold_move: float           # % move to count as "up" (e.g., 0.5%)
+    threshold_move: float  # % move to count as "up" (e.g., 0.5%)
     timestamp: str
     resolved_timestamp: Optional[str]
     brier_contribution: Optional[float]  # Individual Brier score
@@ -48,13 +50,14 @@ class Prediction:
 @dataclass
 class ModelHealth:
     """Health status of a model/strategy"""
+
     model_name: str
-    brier_score: float              # Lower is better (0 = perfect)
-    calibration_error: float        # How far off are probabilities
-    accuracy: float                 # Simple accuracy %
+    brier_score: float  # Lower is better (0 = perfect)
+    calibration_error: float  # How far off are probabilities
+    accuracy: float  # Simple accuracy %
     total_predictions: int
-    recent_predictions: int         # Last 7 days
-    is_degraded: bool               # True if performing poorly
+    recent_predictions: int  # Last 7 days
+    is_degraded: bool  # True if performing poorly
     degradation_reason: Optional[str]
     last_updated: str
 
@@ -71,11 +74,11 @@ class BrierTracker:
         self.model_health: Dict[str, ModelHealth] = {}
 
         # Thresholds
-        self.brier_threshold = 0.30       # Worse than this = degraded
+        self.brier_threshold = 0.30  # Worse than this = degraded
         self.calibration_threshold = 0.15  # Max acceptable calibration error
-        self.min_predictions = 20          # Min predictions before judging
-        self.rolling_window = 50           # Number of recent predictions to track
-        self.degradation_window = 7        # Days to check for degradation
+        self.min_predictions = 20  # Min predictions before judging
+        self.rolling_window = 50  # Number of recent predictions to track
+        self.degradation_window = 7  # Days to check for degradation
 
         # File paths
         self.storage_path = Path("store/brier_scores")
@@ -109,9 +112,14 @@ class BrierTracker:
         except Exception as e:
             logger.warning(f"Could not save predictions: {e}")
 
-    def record_prediction(self, symbol: str, model_name: str,
-                         predicted_prob: float, entry_price: float,
-                         threshold_move: float = 0.5) -> str:
+    def record_prediction(
+        self,
+        symbol: str,
+        model_name: str,
+        predicted_prob: float,
+        entry_price: float,
+        threshold_move: float = 0.5,
+    ) -> str:
         """
         Record a new prediction before outcome is known.
 
@@ -138,17 +146,21 @@ class BrierTracker:
             threshold_move=threshold_move,
             timestamp=datetime.now().isoformat(),
             resolved_timestamp=None,
-            brier_contribution=None
+            brier_contribution=None,
         )
 
         self.predictions.append(prediction)
         self._save_data()
 
-        logger.debug(f"Recorded prediction: {symbol} {direction} ({predicted_prob:.1%}) via {model_name}")
+        logger.debug(
+            f"Recorded prediction: {symbol} {direction} ({predicted_prob:.1%}) via {model_name}"
+        )
 
         return prediction.timestamp
 
-    def resolve_prediction(self, prediction_id: str, exit_price: float) -> Optional[Prediction]:
+    def resolve_prediction(
+        self, prediction_id: str, exit_price: float
+    ) -> Optional[Prediction]:
         """
         Resolve a prediction with the actual outcome.
 
@@ -171,22 +183,27 @@ class BrierTracker:
 
                 # Calculate Brier contribution
                 # Brier = (predicted_prob - actual_outcome)^2
-                pred.brier_contribution = (pred.predicted_probability - pred.actual_outcome) ** 2
+                pred.brier_contribution = (
+                    pred.predicted_probability - pred.actual_outcome
+                ) ** 2
 
                 pred.resolved_timestamp = datetime.now().isoformat()
 
                 self._save_data()
                 self._update_model_health(pred.model_name)
 
-                logger.debug(f"Resolved prediction {prediction_id}: outcome={pred.actual_outcome}, brier={pred.brier_contribution:.4f}")
+                logger.debug(
+                    f"Resolved prediction {prediction_id}: outcome={pred.actual_outcome}, brier={pred.brier_contribution:.4f}"
+                )
 
                 return pred
 
         logger.warning(f"Prediction {prediction_id} not found or already resolved")
         return None
 
-    def resolve_by_symbol(self, symbol: str, exit_price: float,
-                         model_name: str = None) -> List[Prediction]:
+    def resolve_by_symbol(
+        self, symbol: str, exit_price: float, model_name: str = None
+    ) -> List[Prediction]:
         """
         Resolve all pending predictions for a symbol.
         Useful when a position is closed.
@@ -194,9 +211,11 @@ class BrierTracker:
         resolved = []
 
         for pred in self.predictions:
-            if (pred.symbol == symbol and
-                pred.actual_outcome is None and
-                (model_name is None or pred.model_name == model_name)):
+            if (
+                pred.symbol == symbol
+                and pred.actual_outcome is None
+                and (model_name is None or pred.model_name == model_name)
+            ):
 
                 result = self.resolve_prediction(pred.timestamp, exit_price)
                 if result:
@@ -204,9 +223,9 @@ class BrierTracker:
 
         return resolved
 
-    def calculate_brier_score(self, model_name: str = None,
-                             symbol: str = None,
-                             days: int = None) -> Tuple[float, int]:
+    def calculate_brier_score(
+        self, model_name: str = None, symbol: str = None, days: int = None
+    ) -> Tuple[float, int]:
         """
         Calculate Brier score for given filters.
 
@@ -232,8 +251,9 @@ class BrierTracker:
 
         return brier, len(preds)
 
-    def calculate_calibration_error(self, model_name: str = None,
-                                   num_bins: int = 10) -> Tuple[float, Dict]:
+    def calculate_calibration_error(
+        self, model_name: str = None, num_bins: int = 10
+    ) -> Tuple[float, Dict]:
         """
         Calculate calibration error - how well do predicted probabilities
         match actual frequencies?
@@ -262,7 +282,9 @@ class BrierTracker:
 
         for bin_idx, bin_preds in bins.items():
             if bin_preds:
-                predicted_avg = sum(p.predicted_probability for p in bin_preds) / len(bin_preds)
+                predicted_avg = sum(p.predicted_probability for p in bin_preds) / len(
+                    bin_preds
+                )
                 actual_avg = sum(p.actual_outcome for p in bin_preds) / len(bin_preds)
 
                 error = abs(predicted_avg - actual_avg)
@@ -275,7 +297,7 @@ class BrierTracker:
                     "predicted_avg": predicted_avg,
                     "actual_avg": actual_avg,
                     "count": len(bin_preds),
-                    "error": error
+                    "error": error,
                 }
 
         calibration_error = total_error / total_weight if total_weight > 0 else 0
@@ -286,20 +308,23 @@ class BrierTracker:
         """Update health status for a model"""
         brier, count = self.calculate_brier_score(model_name=model_name)
         brier_recent, count_recent = self.calculate_brier_score(
-            model_name=model_name,
-            days=self.degradation_window
+            model_name=model_name, days=self.degradation_window
         )
         calibration, _ = self.calculate_calibration_error(model_name=model_name)
 
         # Calculate accuracy
-        preds = [p for p in self.predictions
-                if p.model_name == model_name and p.actual_outcome is not None]
+        preds = [
+            p
+            for p in self.predictions
+            if p.model_name == model_name and p.actual_outcome is not None
+        ]
 
         if preds:
             correct = sum(
-                1 for p in preds
-                if (p.predicted_probability >= 0.5 and p.actual_outcome == 1) or
-                   (p.predicted_probability < 0.5 and p.actual_outcome == 0)
+                1
+                for p in preds
+                if (p.predicted_probability >= 0.5 and p.actual_outcome == 1)
+                or (p.predicted_probability < 0.5 and p.actual_outcome == 0)
             )
             accuracy = correct / len(preds)
         else:
@@ -312,13 +337,17 @@ class BrierTracker:
         if count >= self.min_predictions:
             if brier > self.brier_threshold:
                 is_degraded = True
-                degradation_reason = f"Brier score {brier:.3f} > threshold {self.brier_threshold}"
+                degradation_reason = (
+                    f"Brier score {brier:.3f} > threshold {self.brier_threshold}"
+                )
             elif calibration > self.calibration_threshold:
                 is_degraded = True
                 degradation_reason = f"Calibration error {calibration:.3f} > threshold {self.calibration_threshold}"
             elif brier_recent > brier * 1.5 and count_recent >= 10:
                 is_degraded = True
-                degradation_reason = f"Recent degradation: {brier_recent:.3f} vs historical {brier:.3f}"
+                degradation_reason = (
+                    f"Recent degradation: {brier_recent:.3f} vs historical {brier:.3f}"
+                )
 
         health = ModelHealth(
             model_name=model_name,
@@ -329,7 +358,7 @@ class BrierTracker:
             recent_predictions=count_recent,
             is_degraded=is_degraded,
             degradation_reason=degradation_reason,
-            last_updated=datetime.now().isoformat()
+            last_updated=datetime.now().isoformat(),
         )
 
         self.model_health[model_name] = health
@@ -373,8 +402,9 @@ class BrierTracker:
 
         return True, "Model healthy"
 
-    def get_confidence_adjustment(self, model_name: str,
-                                  base_confidence: float) -> float:
+    def get_confidence_adjustment(
+        self, model_name: str, base_confidence: float
+    ) -> float:
         """
         Adjust confidence based on model health.
         Better models get slight confidence boost, worse get reduced.
@@ -398,8 +428,11 @@ class BrierTracker:
 
     def get_symbol_performance(self, symbol: str) -> Dict:
         """Get prediction performance for a specific symbol"""
-        preds = [p for p in self.predictions
-                if p.symbol == symbol and p.actual_outcome is not None]
+        preds = [
+            p
+            for p in self.predictions
+            if p.symbol == symbol and p.actual_outcome is not None
+        ]
 
         if not preds:
             return {"symbol": symbol, "predictions": 0}
@@ -407,9 +440,10 @@ class BrierTracker:
         brier = sum(p.brier_contribution for p in preds) / len(preds)
 
         correct = sum(
-            1 for p in preds
-            if (p.predicted_probability >= 0.5 and p.actual_outcome == 1) or
-               (p.predicted_probability < 0.5 and p.actual_outcome == 0)
+            1
+            for p in preds
+            if (p.predicted_probability >= 0.5 and p.actual_outcome == 1)
+            or (p.predicted_probability < 0.5 and p.actual_outcome == 0)
         )
 
         return {
@@ -417,8 +451,9 @@ class BrierTracker:
             "predictions": len(preds),
             "brier_score": brier,
             "accuracy": correct / len(preds),
-            "avg_predicted_prob": sum(p.predicted_probability for p in preds) / len(preds),
-            "actual_win_rate": sum(p.actual_outcome for p in preds) / len(preds)
+            "avg_predicted_prob": sum(p.predicted_probability for p in preds)
+            / len(preds),
+            "actual_win_rate": sum(p.actual_outcome for p in preds) / len(preds),
         }
 
     def get_summary(self) -> Dict:
@@ -446,7 +481,7 @@ class BrierTracker:
             "overall_calibration_error": overall_calibration,
             "tracked_models": len(all_health),
             "degraded_models": degraded,
-            "interpretation": self._interpret_brier(overall_brier)
+            "interpretation": self._interpret_brier(overall_brier),
         }
 
     def _interpret_brier(self, brier: float) -> str:

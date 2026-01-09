@@ -2,12 +2,14 @@
 Backtesting Module
 Simple backtester for AI trading strategies using historical data
 """
+
 import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import yfinance as yf
 
 logger = logging.getLogger(__name__)
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BacktestTrade:
     """Record of a simulated trade"""
+
     symbol: str
     entry_date: str
     entry_price: float
@@ -32,6 +35,7 @@ class BacktestTrade:
 @dataclass
 class BacktestResult:
     """Results of a backtest run"""
+
     start_date: str
     end_date: str
     symbols: List[str]
@@ -67,18 +71,16 @@ class Backtester:
         """Lazy load the predictor"""
         if self.predictor is None:
             from ai.ai_predictor import get_predictor
+
             self.predictor = get_predictor()
         return self.predictor
 
-    def _get_historical_data(self, symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
+    def _get_historical_data(
+        self, symbol: str, start_date: str, end_date: str
+    ) -> pd.DataFrame:
         """Get historical data for backtesting"""
         try:
-            df = yf.download(
-                symbol,
-                start=start_date,
-                end=end_date,
-                progress=False
-            )
+            df = yf.download(symbol, start=start_date, end=end_date, progress=False)
 
             # Flatten column index if multi-level
             if isinstance(df.columns, pd.MultiIndex):
@@ -114,8 +116,10 @@ class Backtester:
         confidences = []
         actions = []
 
-        threshold = getattr(predictor, 'optimal_threshold', 0.5)
-        print(f"[BACKTEST] {symbol}: {len(df)} rows, {len(available_features)} features, threshold={threshold:.3f}")
+        threshold = getattr(predictor, "optimal_threshold", 0.5)
+        print(
+            f"[BACKTEST] {symbol}: {len(df)} rows, {len(available_features)} features, threshold={threshold:.3f}"
+        )
 
         buy_count = 0
         sell_count = 0
@@ -127,11 +131,13 @@ class Backtester:
                 continue
 
             try:
-                row = df[available_features].iloc[i:i+1].values
+                row = df[available_features].iloc[i : i + 1].values
 
                 # Pad if needed
                 if len(available_features) < len(predictor.feature_names):
-                    padding = np.zeros((1, len(predictor.feature_names) - len(available_features)))
+                    padding = np.zeros(
+                        (1, len(predictor.feature_names) - len(available_features))
+                    )
                     row = np.concatenate([row, padding], axis=1)
 
                 prob = predictor.model.predict(row)[0]
@@ -172,11 +178,13 @@ class Backtester:
                 confidences.append(0.0)
                 actions.append("HOLD")
 
-        df['signal'] = signals
-        df['confidence'] = confidences
-        df['action'] = actions
+        df["signal"] = signals
+        df["confidence"] = confidences
+        df["action"] = actions
 
-        print(f"[BACKTEST] {symbol}: Generated {buy_count} BUY, {sell_count} SELL signals")
+        print(
+            f"[BACKTEST] {symbol}: Generated {buy_count} BUY, {sell_count} SELL signals"
+        )
         return df
 
     def run_backtest(
@@ -188,7 +196,7 @@ class Backtester:
         position_size_pct: float = 0.1,
         confidence_threshold: float = 0.15,
         max_positions: int = 5,
-        holding_period: int = 5
+        holding_period: int = 5,
     ) -> BacktestResult:
         """
         Run a backtest simulation
@@ -248,7 +256,7 @@ class Backtester:
             # Check for exits (holding period expired)
             positions_to_close = []
             for symbol, pos in open_positions.items():
-                days_held = (day - pd.Timestamp(pos['entry_date'])).days
+                days_held = (day - pd.Timestamp(pos["entry_date"])).days
                 if days_held >= holding_period:
                     positions_to_close.append(symbol)
 
@@ -256,28 +264,30 @@ class Backtester:
             for symbol in positions_to_close:
                 pos = open_positions.pop(symbol)
                 if symbol in all_signals and day in all_signals[symbol].index:
-                    exit_price = all_signals[symbol].loc[day, 'Close']
+                    exit_price = all_signals[symbol].loc[day, "Close"]
 
-                    if pos['side'] == 'BUY':
-                        pnl = (exit_price - pos['entry_price']) * pos['quantity']
+                    if pos["side"] == "BUY":
+                        pnl = (exit_price - pos["entry_price"]) * pos["quantity"]
                     else:
-                        pnl = (pos['entry_price'] - exit_price) * pos['quantity']
+                        pnl = (pos["entry_price"] - exit_price) * pos["quantity"]
 
-                    pnl_percent = (pnl / (pos['entry_price'] * pos['quantity'])) * 100
+                    pnl_percent = (pnl / (pos["entry_price"] * pos["quantity"])) * 100
                     capital += pnl
 
                     trade = BacktestTrade(
                         symbol=symbol,
-                        entry_date=pos['entry_date'].isoformat(),
-                        entry_price=pos['entry_price'],
-                        exit_date=day.isoformat() if hasattr(day, 'isoformat') else str(day),
+                        entry_date=pos["entry_date"].isoformat(),
+                        entry_price=pos["entry_price"],
+                        exit_date=(
+                            day.isoformat() if hasattr(day, "isoformat") else str(day)
+                        ),
                         exit_price=exit_price,
-                        side=pos['side'],
-                        quantity=pos['quantity'],
+                        side=pos["side"],
+                        quantity=pos["quantity"],
                         pnl=pnl,
                         pnl_percent=pnl_percent,
-                        signal=pos['signal'],
-                        confidence=pos['confidence']
+                        signal=pos["signal"],
+                        confidence=pos["confidence"],
                     )
                     trades.append(trade)
 
@@ -290,34 +300,38 @@ class Backtester:
                         continue
 
                     row = df.loc[day]
-                    action = row.get('action', 'HOLD')
-                    confidence = row.get('confidence', 0)
+                    action = row.get("action", "HOLD")
+                    confidence = row.get("confidence", 0)
 
-                    if action in ['BUY', 'SELL'] and confidence >= confidence_threshold:
+                    if action in ["BUY", "SELL"] and confidence >= confidence_threshold:
                         # Calculate position size
                         position_value = capital * position_size_pct
-                        price = row['Close']
+                        price = row["Close"]
                         quantity = int(position_value / price)
 
                         if quantity > 0 and len(open_positions) < max_positions:
                             open_positions[symbol] = {
-                                'entry_date': day,
-                                'entry_price': price,
-                                'side': action,
-                                'quantity': quantity,
-                                'signal': row.get('signal', 'NEUTRAL'),
-                                'confidence': confidence
+                                "entry_date": day,
+                                "entry_price": price,
+                                "side": action,
+                                "quantity": quantity,
+                                "signal": row.get("signal", "NEUTRAL"),
+                                "confidence": confidence,
                             }
 
             # Update equity curve
             portfolio_value = capital
             for symbol, pos in open_positions.items():
                 if symbol in all_signals and day in all_signals[symbol].index:
-                    current_price = all_signals[symbol].loc[day, 'Close']
-                    if pos['side'] == 'BUY':
-                        unrealized = (current_price - pos['entry_price']) * pos['quantity']
+                    current_price = all_signals[symbol].loc[day, "Close"]
+                    if pos["side"] == "BUY":
+                        unrealized = (current_price - pos["entry_price"]) * pos[
+                            "quantity"
+                        ]
                     else:
-                        unrealized = (pos['entry_price'] - current_price) * pos['quantity']
+                        unrealized = (pos["entry_price"] - current_price) * pos[
+                            "quantity"
+                        ]
                     portfolio_value += unrealized
 
             equity_curve.append(portfolio_value)
@@ -334,29 +348,33 @@ class Backtester:
             if symbol in all_signals:
                 df = all_signals[symbol]
                 if len(df) > 0:
-                    exit_price = df.iloc[-1]['Close']
+                    exit_price = df.iloc[-1]["Close"]
                     exit_date = df.index[-1]
 
-                    if pos['side'] == 'BUY':
-                        pnl = (exit_price - pos['entry_price']) * pos['quantity']
+                    if pos["side"] == "BUY":
+                        pnl = (exit_price - pos["entry_price"]) * pos["quantity"]
                     else:
-                        pnl = (pos['entry_price'] - exit_price) * pos['quantity']
+                        pnl = (pos["entry_price"] - exit_price) * pos["quantity"]
 
-                    pnl_percent = (pnl / (pos['entry_price'] * pos['quantity'])) * 100
+                    pnl_percent = (pnl / (pos["entry_price"] * pos["quantity"])) * 100
                     capital += pnl
 
                     trade = BacktestTrade(
                         symbol=symbol,
-                        entry_date=pos['entry_date'].isoformat(),
-                        entry_price=pos['entry_price'],
-                        exit_date=exit_date.isoformat() if hasattr(exit_date, 'isoformat') else str(exit_date),
+                        entry_date=pos["entry_date"].isoformat(),
+                        entry_price=pos["entry_price"],
+                        exit_date=(
+                            exit_date.isoformat()
+                            if hasattr(exit_date, "isoformat")
+                            else str(exit_date)
+                        ),
                         exit_price=exit_price,
-                        side=pos['side'],
-                        quantity=pos['quantity'],
+                        side=pos["side"],
+                        quantity=pos["quantity"],
                         pnl=pnl,
                         pnl_percent=pnl_percent,
-                        signal=pos['signal'],
-                        confidence=pos['confidence']
+                        signal=pos["signal"],
+                        confidence=pos["confidence"],
                     )
                     trades.append(trade)
 
@@ -368,15 +386,21 @@ class Backtester:
         win_rate = len(winning_trades) / total_trades * 100 if total_trades > 0 else 0
         gross_profit = sum(t.pnl for t in winning_trades)
         gross_loss = abs(sum(t.pnl for t in losing_trades))
-        profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+        profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")
 
         avg_win = gross_profit / len(winning_trades) if winning_trades else 0
         avg_loss = gross_loss / len(losing_trades) if losing_trades else 0
-        avg_trade_pnl = sum(t.pnl for t in trades) / total_trades if total_trades > 0 else 0
+        avg_trade_pnl = (
+            sum(t.pnl for t in trades) / total_trades if total_trades > 0 else 0
+        )
 
         # Sharpe ratio (simplified - using daily returns)
         returns = pd.Series(equity_curve).pct_change().dropna()
-        sharpe_ratio = (returns.mean() / returns.std() * np.sqrt(252)) if len(returns) > 1 and returns.std() > 0 else 0
+        sharpe_ratio = (
+            (returns.mean() / returns.std() * np.sqrt(252))
+            if len(returns) > 1 and returns.std() > 0
+            else 0
+        )
 
         total_return = capital - initial_capital
         total_return_percent = (total_return / initial_capital) * 100
@@ -391,8 +415,12 @@ class Backtester:
         sampled_drawdown = drawdown_curve
         if len(equity_curve) > 60:
             step = len(equity_curve) // 50
-            sampled_equity = [equity_curve[i] for i in range(0, len(equity_curve), step)]
-            sampled_drawdown = [drawdown_curve[i] for i in range(0, len(drawdown_curve), step)]
+            sampled_equity = [
+                equity_curve[i] for i in range(0, len(equity_curve), step)
+            ]
+            sampled_drawdown = [
+                drawdown_curve[i] for i in range(0, len(drawdown_curve), step)
+            ]
 
         return BacktestResult(
             start_date=start_date,
@@ -406,7 +434,9 @@ class Backtester:
             winning_trades=len(winning_trades),
             losing_trades=len(losing_trades),
             win_rate=round(win_rate, 2),
-            profit_factor=round(profit_factor, 2) if profit_factor != float('inf') else 999.99,
+            profit_factor=(
+                round(profit_factor, 2) if profit_factor != float("inf") else 999.99
+            ),
             max_drawdown=round(max_drawdown * initial_capital, 2),
             max_drawdown_percent=round(max_drawdown * 100, 2),
             sharpe_ratio=round(sharpe_ratio, 2),
@@ -415,7 +445,7 @@ class Backtester:
             avg_loss=round(avg_loss, 2),
             trades=[asdict(t) for t in trades],
             equity_curve=[round(e, 2) for e in sampled_equity],
-            drawdown_curve=[round(d, 2) for d in sampled_drawdown]
+            drawdown_curve=[round(d, 2) for d in sampled_drawdown],
         )
 
 

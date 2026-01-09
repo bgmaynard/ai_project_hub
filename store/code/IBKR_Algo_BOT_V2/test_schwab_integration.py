@@ -7,10 +7,11 @@ Alpaca is only for order execution testing.
 Author: AI Trading Bot Team
 """
 
+import time
+from typing import Any, Dict
+
 import pytest
 import requests
-import time
-from typing import Dict, Any
 
 BASE_URL = "http://127.0.0.1:9100"
 
@@ -59,12 +60,16 @@ class TestSchwabQuotes:
         spread = (data["ask"] - data["bid"]) / data["bid"] * 100
         assert spread < 1.0, f"Spread too wide: {spread:.2f}%"
 
-        print(f"[OK] AAPL quote: ${data['last']:.2f} (bid: ${data['bid']:.2f}, ask: ${data['ask']:.2f})")
+        print(
+            f"[OK] AAPL quote: ${data['last']:.2f} (bid: ${data['bid']:.2f}, ask: ${data['ask']:.2f})"
+        )
 
     def test_batch_quotes(self):
         """Test fetching multiple quotes from Schwab"""
         symbols = ["SPY", "QQQ", "TSLA", "NVDA", "AAPL"]
-        resp = requests.get(f"{BASE_URL}/api/schwab/quotes", params={"symbols": ",".join(symbols)})
+        resp = requests.get(
+            f"{BASE_URL}/api/schwab/quotes", params={"symbols": ",".join(symbols)}
+        )
         assert resp.status_code == 200
         data = resp.json()
 
@@ -109,7 +114,9 @@ class TestSchwabFastPolling:
         assert data["poll_interval_ms"] <= 500, "Poll interval should be <= 500ms"
         assert len(data["subscribed_symbols"]) > 0, "Should have subscribed symbols"
 
-        print(f"[OK] Fast polling active: {data['poll_interval_ms']}ms interval, {len(data['subscribed_symbols'])} symbols")
+        print(
+            f"[OK] Fast polling active: {data['poll_interval_ms']}ms interval, {len(data['subscribed_symbols'])} symbols"
+        )
 
     def test_fast_polling_quote(self):
         """Test fast polling quote retrieval"""
@@ -135,7 +142,9 @@ class TestSchwabStreaming:
         assert data["available"] == True
         assert len(data["subscribed_symbols"]) > 0
 
-        print(f"[OK] Streaming configured for {len(data['subscribed_symbols'])} symbols")
+        print(
+            f"[OK] Streaming configured for {len(data['subscribed_symbols'])} symbols"
+        )
 
 
 class TestHybridDataProvider:
@@ -161,7 +170,9 @@ class TestHybridDataProvider:
         data = resp.json()
 
         assert data["symbol"] == "NVDA"
-        assert "schwab" in data["source"].lower(), f"Expected Schwab source, got {data['source']}"
+        assert (
+            "schwab" in data["source"].lower()
+        ), f"Expected Schwab source, got {data['source']}"
         assert data["channel"] == "fast"
         assert data["priority"] == "high"
         assert data["last"] > 0
@@ -199,7 +210,9 @@ class TestWatchlistWithSchwabData:
 
         # Check that quotes are from Schwab
         for symbol, quote in data["quotes"].items():
-            assert quote["source"] == "schwab", f"{symbol} should use Schwab, got {quote['source']}"
+            assert (
+                quote["source"] == "schwab"
+            ), f"{symbol} should use Schwab, got {quote['source']}"
 
         print(f"[OK] Watchlist: {len(data['quotes'])} quotes all from Schwab")
 
@@ -219,7 +232,9 @@ class TestAIPredictionsWithSchwabData:
         # Note: data_source may be Alpaca for historical training data
         # but real-time features should come from Schwab
 
-        print(f"[OK] AI prediction for AAPL: {data['prediction']} ({data['confidence']*100:.1f}% confidence)")
+        print(
+            f"[OK] AI prediction for AAPL: {data['prediction']} ({data['confidence']*100:.1f}% confidence)"
+        )
 
 
 class TestMarketDataLatency:
@@ -239,7 +254,9 @@ class TestMarketDataLatency:
         avg_latency = sum(latencies) / len(latencies)
         assert avg_latency < 500, f"Average latency too high: {avg_latency:.1f}ms"
 
-        print(f"[OK] Schwab latency: avg={avg_latency:.1f}ms, min={min(latencies):.1f}ms, max={max(latencies):.1f}ms")
+        print(
+            f"[OK] Schwab latency: avg={avg_latency:.1f}ms, min={min(latencies):.1f}ms, max={max(latencies):.1f}ms"
+        )
 
     def test_hybrid_fast_latency(self):
         """Measure hybrid fast channel latency"""
@@ -248,7 +265,9 @@ class TestMarketDataLatency:
         data = resp.json()
 
         if "latency_ms" in data:
-            assert data["latency_ms"] < 100, f"Fast channel latency too high: {data['latency_ms']:.2f}ms"
+            assert (
+                data["latency_ms"] < 100
+            ), f"Fast channel latency too high: {data['latency_ms']:.2f}ms"
             print(f"[OK] Hybrid fast latency: {data['latency_ms']:.2f}ms")
         else:
             print("[OK] Hybrid fast quote retrieved (no latency metric)")

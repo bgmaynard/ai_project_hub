@@ -12,13 +12,14 @@ EXECUTION CONTRACT:
 - Fixed schema - no placeholders
 """
 
+import asyncio
+import json
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import asyncio
-import httpx
-import json
 from pathlib import Path
+from typing import Dict, List, Optional
+
+import httpx
 
 from .task_queue_manager import Task, get_task_queue_manager
 
@@ -44,7 +45,7 @@ def _load_trade_history() -> List[Dict]:
     """Load trade history from file"""
     if TRADES_HISTORY_PATH.exists():
         try:
-            with open(TRADES_HISTORY_PATH, 'r') as f:
+            with open(TRADES_HISTORY_PATH, "r") as f:
                 return json.load(f)
         except:
             pass
@@ -69,9 +70,9 @@ SCHEMA_R12 = {
         "profit_factor": 0.0,
         "largest_win": 0.0,
         "largest_loss": 0.0,
-        "avg_hold_time_seconds": 0.0
+        "avg_hold_time_seconds": 0.0,
     },
-    "timestamp": ""
+    "timestamp": "",
 }
 
 SCHEMA_R13 = {
@@ -86,11 +87,11 @@ SCHEMA_R13 = {
         "sharpe_ratio": 0.0,
         "consecutive_losses": 0,
         "trades_today": 0,
-        "pnl_today": 0.0
+        "pnl_today": 0.0,
     },
     "alerts": [],
     "recommendations": [],
-    "timestamp": ""
+    "timestamp": "",
 }
 
 SCHEMA_R15 = {
@@ -105,16 +106,17 @@ SCHEMA_R15 = {
         "drawdown_ok": False,
         "consecutive_loss_ok": False,
         "volatility_ok": False,
-        "time_of_day_ok": False
+        "time_of_day_ok": False,
     },
     "next_review": "",
-    "timestamp": ""
+    "timestamp": "",
 }
 
 
 # =============================================================================
 # TASK 5.1 - POST_TRADE_OUTCOME
 # =============================================================================
+
 
 async def task_post_trade_outcome(inputs: Dict) -> Dict:
     """
@@ -140,7 +142,11 @@ async def task_post_trade_outcome(inputs: Dict) -> Dict:
     seen_ids = set()
 
     for t in trades + history_trades:
-        trade_id = t.get("trade_id", "") or t.get("id", "") or f"{t.get('symbol')}_{t.get('entry_time', '')}"
+        trade_id = (
+            t.get("trade_id", "")
+            or t.get("id", "")
+            or f"{t.get('symbol')}_{t.get('entry_time', '')}"
+        )
         if trade_id not in seen_ids:
             seen_ids.add(trade_id)
             all_trades.append(t)
@@ -153,7 +159,7 @@ async def task_post_trade_outcome(inputs: Dict) -> Dict:
         entry_time_str = t.get("entry_time", "") or t.get("timestamp", "")
         try:
             if entry_time_str:
-                entry_dt = datetime.fromisoformat(entry_time_str.replace('Z', '+00:00'))
+                entry_dt = datetime.fromisoformat(entry_time_str.replace("Z", "+00:00"))
                 if entry_dt.date() == today:
                     todays_trades.append(t)
         except:
@@ -193,22 +199,28 @@ async def task_post_trade_outcome(inputs: Dict) -> Dict:
         if hold_time > 0:
             hold_times.append(hold_time)
 
-        outcomes.append({
-            "symbol": symbol,
-            "pnl": round(pnl, 2),
-            "entry_price": round(entry_price, 2),
-            "exit_price": round(exit_price, 2),
-            "hold_time_seconds": hold_time,
-            "outcome": "WIN" if is_win else "LOSS",
-            "exit_reason": t.get("exit_reason", "UNKNOWN")
-        })
+        outcomes.append(
+            {
+                "symbol": symbol,
+                "pnl": round(pnl, 2),
+                "entry_price": round(entry_price, 2),
+                "exit_price": round(exit_price, 2),
+                "hold_time_seconds": hold_time,
+                "outcome": "WIN" if is_win else "LOSS",
+                "exit_reason": t.get("exit_reason", "UNKNOWN"),
+            }
+        )
 
     # Calculate metrics
     total_trades = wins + losses
     win_rate = (wins / total_trades * 100) if total_trades > 0 else 0
     avg_win = (total_win_pnl / wins) if wins > 0 else 0
     avg_loss = (total_loss_pnl / losses) if losses > 0 else 0
-    profit_factor = (total_win_pnl / total_loss_pnl) if total_loss_pnl > 0 else (999 if total_win_pnl > 0 else 0)
+    profit_factor = (
+        (total_win_pnl / total_loss_pnl)
+        if total_loss_pnl > 0
+        else (999 if total_win_pnl > 0 else 0)
+    )
     avg_hold = (sum(hold_times) / len(hold_times)) if hold_times else 0
 
     # Build report (fixed schema)
@@ -226,10 +238,10 @@ async def task_post_trade_outcome(inputs: Dict) -> Dict:
             "profit_factor": round(profit_factor, 2),
             "largest_win": round(largest_win, 2),
             "largest_loss": round(largest_loss, 2),
-            "avg_hold_time_seconds": round(avg_hold, 1)
+            "avg_hold_time_seconds": round(avg_hold, 1),
         },
         "date": str(today),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
     return report
@@ -238,6 +250,7 @@ async def task_post_trade_outcome(inputs: Dict) -> Dict:
 # =============================================================================
 # TASK 5.2 - POST_STRATEGY_HEALTH
 # =============================================================================
+
 
 async def task_post_strategy_health(inputs: Dict) -> Dict:
     """
@@ -332,11 +345,23 @@ async def task_post_strategy_health(inputs: Dict) -> Dict:
     # Generate alerts
     alerts = []
     if win_rate_7d < 30:
-        alerts.append({"level": "WARNING", "message": f"Win rate {win_rate_7d:.1f}% below 30% threshold"})
+        alerts.append(
+            {
+                "level": "WARNING",
+                "message": f"Win rate {win_rate_7d:.1f}% below 30% threshold",
+            }
+        )
     if consecutive_losses >= 3:
-        alerts.append({"level": "WARNING", "message": f"{consecutive_losses} consecutive losses"})
+        alerts.append(
+            {"level": "WARNING", "message": f"{consecutive_losses} consecutive losses"}
+        )
     if profit_factor_7d < 1.0:
-        alerts.append({"level": "CRITICAL", "message": f"Profit factor {profit_factor_7d:.2f} below 1.0"})
+        alerts.append(
+            {
+                "level": "CRITICAL",
+                "message": f"Profit factor {profit_factor_7d:.2f} below 1.0",
+            }
+        )
     if pnl_today < -100:
         alerts.append({"level": "WARNING", "message": f"Today's P&L ${pnl_today:.2f}"})
 
@@ -364,11 +389,11 @@ async def task_post_strategy_health(inputs: Dict) -> Dict:
             "sharpe_ratio": 0.0,  # Would need proper calculation
             "consecutive_losses": consecutive_losses,
             "trades_today": trades_today,
-            "pnl_today": round(pnl_today, 2)
+            "pnl_today": round(pnl_today, 2),
         },
         "alerts": alerts,
         "recommendations": recommendations,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
     return report
@@ -377,6 +402,7 @@ async def task_post_strategy_health(inputs: Dict) -> Dict:
 # =============================================================================
 # TASK 5.3 - POST_STRATEGY_TOGGLE
 # =============================================================================
+
 
 async def task_post_strategy_toggle(inputs: Dict) -> Dict:
     """
@@ -406,7 +432,7 @@ async def task_post_strategy_toggle(inputs: Dict) -> Dict:
         "drawdown_ok": metrics.get("max_drawdown_7d", 0) > -200,  # Max $200 drawdown
         "consecutive_loss_ok": metrics.get("consecutive_losses", 0) < 5,
         "volatility_ok": True,  # Would check market volatility
-        "time_of_day_ok": True  # Within trading hours
+        "time_of_day_ok": True,  # Within trading hours
     }
 
     # Check time of day
@@ -428,7 +454,9 @@ async def task_post_strategy_toggle(inputs: Dict) -> Dict:
         change_reason = "Strategy offline due to poor performance"
     elif not conditions["consecutive_loss_ok"]:
         recommended_status = "PAUSED"
-        change_reason = f"Too many consecutive losses ({metrics.get('consecutive_losses', 0)})"
+        change_reason = (
+            f"Too many consecutive losses ({metrics.get('consecutive_losses', 0)})"
+        )
     elif not conditions["time_of_day_ok"]:
         recommended_status = "DISABLED"
         change_reason = "Outside trading hours"
@@ -454,12 +482,14 @@ async def task_post_strategy_toggle(inputs: Dict) -> Dict:
         "failed_conditions": failed_conditions,
         "health_score": health_score,
         "next_review": next_review,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
     # Log status change
     if status_changed:
-        logger.warning(f"STRATEGY TOGGLE: {current_status} -> {recommended_status}: {change_reason}")
+        logger.warning(
+            f"STRATEGY TOGGLE: {current_status} -> {recommended_status}: {change_reason}"
+        )
 
     return report
 
@@ -468,44 +498,51 @@ async def task_post_strategy_toggle(inputs: Dict) -> Dict:
 # REGISTER TASKS
 # =============================================================================
 
+
 def register_post_trade_tasks():
     """Register all Task Group 5 tasks with the manager"""
     manager = get_task_queue_manager()
 
     # Task 5.1 - Trade Outcome
-    manager.register_task(Task(
-        id="POST_TRADE_OUTCOME",
-        name="Trade Outcome Analysis",
-        group="POST_TRADE",
-        inputs=["report_R11_trade_queue.json"],
-        process=task_post_trade_outcome,
-        output_file="report_R12_trade_outcomes.json",
-        fail_conditions=[],
-        next_task="POST_STRATEGY_HEALTH"
-    ))
+    manager.register_task(
+        Task(
+            id="POST_TRADE_OUTCOME",
+            name="Trade Outcome Analysis",
+            group="POST_TRADE",
+            inputs=["report_R11_trade_queue.json"],
+            process=task_post_trade_outcome,
+            output_file="report_R12_trade_outcomes.json",
+            fail_conditions=[],
+            next_task="POST_STRATEGY_HEALTH",
+        )
+    )
 
     # Task 5.2 - Strategy Health
-    manager.register_task(Task(
-        id="POST_STRATEGY_HEALTH",
-        name="Strategy Health Monitor",
-        group="POST_TRADE",
-        inputs=["report_R12_trade_outcomes.json"],
-        process=task_post_strategy_health,
-        output_file="report_R13_strategy_health.json",
-        fail_conditions=[],
-        next_task="POST_STRATEGY_TOGGLE"
-    ))
+    manager.register_task(
+        Task(
+            id="POST_STRATEGY_HEALTH",
+            name="Strategy Health Monitor",
+            group="POST_TRADE",
+            inputs=["report_R12_trade_outcomes.json"],
+            process=task_post_strategy_health,
+            output_file="report_R13_strategy_health.json",
+            fail_conditions=[],
+            next_task="POST_STRATEGY_TOGGLE",
+        )
+    )
 
     # Task 5.3 - Strategy Toggle
-    manager.register_task(Task(
-        id="POST_STRATEGY_TOGGLE",
-        name="Daily Strategy Enable/Disable",
-        group="POST_TRADE",
-        inputs=["report_R13_strategy_health.json"],
-        process=task_post_strategy_toggle,
-        output_file="report_R15_strategy_status.json",
-        fail_conditions=[],
-        next_task=None  # End of pipeline
-    ))
+    manager.register_task(
+        Task(
+            id="POST_STRATEGY_TOGGLE",
+            name="Daily Strategy Enable/Disable",
+            group="POST_TRADE",
+            inputs=["report_R13_strategy_health.json"],
+            process=task_post_strategy_toggle,
+            output_file="report_R15_strategy_status.json",
+            fail_conditions=[],
+            next_task=None,  # End of pipeline
+        )
+    )
 
     logger.info("Task Group 5 (Post-Trade) registered: 3 tasks")

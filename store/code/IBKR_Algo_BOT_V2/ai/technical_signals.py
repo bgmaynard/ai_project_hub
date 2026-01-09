@@ -12,17 +12,20 @@ Provides confluence scoring for entry/exit decisions.
 """
 
 import logging
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional, Tuple
+from dataclasses import asdict, dataclass
 from datetime import datetime
-import pandas as pd
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class SignalState:
     """Current state of all technical signals"""
+
     symbol: str
     timeframe: str
     timestamp: int
@@ -67,6 +70,7 @@ class SignalState:
 @dataclass
 class SignalEvent:
     """A signal event for charting"""
+
     time: int
     event_type: str  # "EMA_CROSS", "MACD_CROSS", "VWAP_CROSS", "MOMENTUM_SHIFT"
     direction: str  # "BULLISH" or "BEARISH"
@@ -81,9 +85,11 @@ class TechnicalSignalAnalyzer:
 
     def __init__(self):
         self.signal_cache = {}  # symbol -> SignalState
-        self.event_cache = {}   # symbol -> List[SignalEvent]
+        self.event_cache = {}  # symbol -> List[SignalEvent]
 
-    def analyze(self, symbol: str, ohlc_data: List[Dict], timeframe: str = "5m") -> SignalState:
+    def analyze(
+        self, symbol: str, ohlc_data: List[Dict], timeframe: str = "5m"
+    ) -> SignalState:
         """
         Analyze OHLC data and return current signal state.
 
@@ -96,31 +102,37 @@ class TechnicalSignalAnalyzer:
             SignalState with all calculated signals
         """
         if not ohlc_data or len(ohlc_data) < 50:
-            logger.warning(f"Insufficient data for {symbol}: {len(ohlc_data) if ohlc_data else 0} bars")
+            logger.warning(
+                f"Insufficient data for {symbol}: {len(ohlc_data) if ohlc_data else 0} bars"
+            )
             return None
 
         # Convert to DataFrame
         df = pd.DataFrame(ohlc_data)
-        df = df.sort_values('time').reset_index(drop=True)
+        df = df.sort_values("time").reset_index(drop=True)
 
         # Calculate EMAs
-        df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
-        df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
-        df['ema200'] = df['close'].ewm(span=200, adjust=False).mean() if len(df) >= 200 else df['close'].ewm(span=len(df), adjust=False).mean()
+        df["ema9"] = df["close"].ewm(span=9, adjust=False).mean()
+        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
+        df["ema200"] = (
+            df["close"].ewm(span=200, adjust=False).mean()
+            if len(df) >= 200
+            else df["close"].ewm(span=len(df), adjust=False).mean()
+        )
 
         # Calculate MACD
-        ema12 = df['close'].ewm(span=12, adjust=False).mean()
-        ema26 = df['close'].ewm(span=26, adjust=False).mean()
-        df['macd_line'] = ema12 - ema26
-        df['macd_signal'] = df['macd_line'].ewm(span=9, adjust=False).mean()
-        df['macd_histogram'] = df['macd_line'] - df['macd_signal']
+        ema12 = df["close"].ewm(span=12, adjust=False).mean()
+        ema26 = df["close"].ewm(span=26, adjust=False).mean()
+        df["macd_line"] = ema12 - ema26
+        df["macd_signal"] = df["macd_line"].ewm(span=9, adjust=False).mean()
+        df["macd_histogram"] = df["macd_line"] - df["macd_signal"]
 
         # Calculate VWAP
-        df['typical_price'] = (df['high'] + df['low'] + df['close']) / 3
-        df['tp_volume'] = df['typical_price'] * df['volume']
-        df['cum_tp_vol'] = df['tp_volume'].cumsum()
-        df['cum_vol'] = df['volume'].cumsum()
-        df['vwap'] = df['cum_tp_vol'] / df['cum_vol']
+        df["typical_price"] = (df["high"] + df["low"] + df["close"]) / 3
+        df["tp_volume"] = df["typical_price"] * df["volume"]
+        df["cum_tp_vol"] = df["tp_volume"].cumsum()
+        df["cum_vol"] = df["volume"].cumsum()
+        df["vwap"] = df["cum_tp_vol"] / df["cum_vol"]
 
         # Get current and previous values
         current = df.iloc[-1]
@@ -128,14 +140,14 @@ class TechnicalSignalAnalyzer:
         prev2 = df.iloc[-3] if len(df) > 2 else prev
 
         # EMA analysis
-        ema9 = current['ema9']
-        ema20 = current['ema20']
-        ema200 = current['ema200']
+        ema9 = current["ema9"]
+        ema20 = current["ema20"]
+        ema200 = current["ema200"]
         ema_9_above_20 = ema9 > ema20
         ema_bullish = ema_9_above_20
 
         # EMA crossover detection
-        prev_ema9_above = prev['ema9'] > prev['ema20']
+        prev_ema9_above = prev["ema9"] > prev["ema20"]
         if ema_9_above_20 and not prev_ema9_above:
             ema_crossover = "BULLISH"
         elif not ema_9_above_20 and prev_ema9_above:
@@ -143,16 +155,16 @@ class TechnicalSignalAnalyzer:
         else:
             ema_crossover = "NONE"
 
-        price_above_200 = current['close'] > ema200
+        price_above_200 = current["close"] > ema200
 
         # MACD analysis
-        macd_line = current['macd_line']
-        macd_signal_val = current['macd_signal']
-        macd_histogram = current['macd_histogram']
+        macd_line = current["macd_line"]
+        macd_signal_val = current["macd_signal"]
+        macd_histogram = current["macd_histogram"]
         macd_bullish = macd_line > macd_signal_val
 
         # MACD crossover detection
-        prev_macd_bullish = prev['macd_line'] > prev['macd_signal']
+        prev_macd_bullish = prev["macd_line"] > prev["macd_signal"]
         if macd_bullish and not prev_macd_bullish:
             macd_crossover = "BULLISH"
         elif not macd_bullish and prev_macd_bullish:
@@ -161,14 +173,14 @@ class TechnicalSignalAnalyzer:
             macd_crossover = "NONE"
 
         # MACD histogram momentum
-        macd_histogram_growing = abs(macd_histogram) > abs(prev['macd_histogram'])
+        macd_histogram_growing = abs(macd_histogram) > abs(prev["macd_histogram"])
 
         # VWAP analysis
-        vwap = current['vwap']
-        price_above_vwap = current['close'] > vwap
+        vwap = current["vwap"]
+        price_above_vwap = current["close"] > vwap
 
         # VWAP crossover detection
-        prev_above_vwap = prev['close'] > prev['vwap']
+        prev_above_vwap = prev["close"] > prev["vwap"]
         if price_above_vwap and not prev_above_vwap:
             vwap_crossover = "BULLISH"
         elif not price_above_vwap and prev_above_vwap:
@@ -177,32 +189,44 @@ class TechnicalSignalAnalyzer:
             vwap_crossover = "NONE"
 
         # Volume/Candle momentum analysis
-        volume_increasing = current['volume'] > prev['volume']
+        volume_increasing = current["volume"] > prev["volume"]
 
         # Analyze last 10 candles for green/red dominance
         recent = df.tail(10).copy()  # Use .copy() to avoid SettingWithCopyWarning
-        green_candles = (recent['close'] > recent['open']).sum()
-        red_candles = (recent['close'] < recent['open']).sum()
+        green_candles = (recent["close"] > recent["open"]).sum()
+        red_candles = (recent["close"] < recent["open"]).sum()
         total_candles = green_candles + red_candles
-        green_candle_dominance = green_candles / total_candles if total_candles > 0 else 0.5
+        green_candle_dominance = (
+            green_candles / total_candles if total_candles > 0 else 0.5
+        )
 
         # Candle size analysis for momentum
-        recent.loc[:, 'candle_size'] = abs(recent['close'] - recent['open'])
-        recent.loc[:, 'is_green'] = recent['close'] > recent['open']
+        recent.loc[:, "candle_size"] = abs(recent["close"] - recent["open"])
+        recent.loc[:, "is_green"] = recent["close"] > recent["open"]
 
         # Compare first half to second half
         first_half = recent.head(5)
         second_half = recent.tail(5)
 
-        first_green_size = first_half[first_half['is_green']]['candle_size'].mean() or 0
-        second_green_size = second_half[second_half['is_green']]['candle_size'].mean() or 0
-        first_red_size = first_half[~first_half['is_green']]['candle_size'].mean() or 0
-        second_red_size = second_half[~second_half['is_green']]['candle_size'].mean() or 0
+        first_green_size = first_half[first_half["is_green"]]["candle_size"].mean() or 0
+        second_green_size = (
+            second_half[second_half["is_green"]]["candle_size"].mean() or 0
+        )
+        first_red_size = first_half[~first_half["is_green"]]["candle_size"].mean() or 0
+        second_red_size = (
+            second_half[~second_half["is_green"]]["candle_size"].mean() or 0
+        )
 
         # Momentum: greens growing + reds shrinking = BUILDING
-        if second_green_size > first_green_size * 1.1 and second_red_size < first_red_size * 0.9:
+        if (
+            second_green_size > first_green_size * 1.1
+            and second_red_size < first_red_size * 0.9
+        ):
             candle_momentum = "BUILDING"
-        elif second_red_size > first_red_size * 1.1 and second_green_size < first_green_size * 0.9:
+        elif (
+            second_red_size > first_red_size * 1.1
+            and second_green_size < first_green_size * 0.9
+        ):
             candle_momentum = "FADING"
         else:
             candle_momentum = "NEUTRAL"
@@ -294,7 +318,7 @@ class TechnicalSignalAnalyzer:
         state = SignalState(
             symbol=symbol,
             timeframe=timeframe,
-            timestamp=int(current['time']),
+            timestamp=int(current["time"]),
             ema9=float(round(ema9, 4)),
             ema20=float(round(ema20, 4)),
             ema200=float(round(ema200, 4)),
@@ -317,13 +341,15 @@ class TechnicalSignalAnalyzer:
             bullish_signals=int(bullish_signals),
             bearish_signals=int(bearish_signals),
             confluence_score=float(round(confluence_score, 1)),
-            signal_bias=signal_bias
+            signal_bias=signal_bias,
         )
 
         self.signal_cache[symbol] = state
         return state
 
-    def get_signal_events(self, symbol: str, ohlc_data: List[Dict], timeframe: str = "5m") -> List[SignalEvent]:
+    def get_signal_events(
+        self, symbol: str, ohlc_data: List[Dict], timeframe: str = "5m"
+    ) -> List[SignalEvent]:
         """
         Scan historical data and return all signal events for charting.
 
@@ -334,100 +360,112 @@ class TechnicalSignalAnalyzer:
 
         # Convert to DataFrame
         df = pd.DataFrame(ohlc_data)
-        df = df.sort_values('time').reset_index(drop=True)
+        df = df.sort_values("time").reset_index(drop=True)
 
         # Calculate indicators
-        df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
-        df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
+        df["ema9"] = df["close"].ewm(span=9, adjust=False).mean()
+        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
 
-        ema12 = df['close'].ewm(span=12, adjust=False).mean()
-        ema26 = df['close'].ewm(span=26, adjust=False).mean()
-        df['macd_line'] = ema12 - ema26
-        df['macd_signal'] = df['macd_line'].ewm(span=9, adjust=False).mean()
+        ema12 = df["close"].ewm(span=12, adjust=False).mean()
+        ema26 = df["close"].ewm(span=26, adjust=False).mean()
+        df["macd_line"] = ema12 - ema26
+        df["macd_signal"] = df["macd_line"].ewm(span=9, adjust=False).mean()
 
-        df['typical_price'] = (df['high'] + df['low'] + df['close']) / 3
-        df['tp_volume'] = df['typical_price'] * df['volume']
-        df['cum_tp_vol'] = df['tp_volume'].cumsum()
-        df['cum_vol'] = df['volume'].cumsum()
-        df['vwap'] = df['cum_tp_vol'] / df['cum_vol']
+        df["typical_price"] = (df["high"] + df["low"] + df["close"]) / 3
+        df["tp_volume"] = df["typical_price"] * df["volume"]
+        df["cum_tp_vol"] = df["tp_volume"].cumsum()
+        df["cum_vol"] = df["volume"].cumsum()
+        df["vwap"] = df["cum_tp_vol"] / df["cum_vol"]
 
         # Detect crossover events
         events = []
 
         for i in range(1, len(df)):
             curr = df.iloc[i]
-            prev = df.iloc[i-1]
-            time = int(curr['time'])
+            prev = df.iloc[i - 1]
+            time = int(curr["time"])
 
             # EMA 9/20 crossover
-            curr_ema_bullish = curr['ema9'] > curr['ema20']
-            prev_ema_bullish = prev['ema9'] > prev['ema20']
+            curr_ema_bullish = curr["ema9"] > curr["ema20"]
+            prev_ema_bullish = prev["ema9"] > prev["ema20"]
 
             if curr_ema_bullish and not prev_ema_bullish:
-                events.append(SignalEvent(
-                    time=time,
-                    event_type="EMA_CROSS",
-                    direction="BULLISH",
-                    description="EMA 9 crossed above 20",
-                    strength=0.8
-                ))
+                events.append(
+                    SignalEvent(
+                        time=time,
+                        event_type="EMA_CROSS",
+                        direction="BULLISH",
+                        description="EMA 9 crossed above 20",
+                        strength=0.8,
+                    )
+                )
             elif not curr_ema_bullish and prev_ema_bullish:
-                events.append(SignalEvent(
-                    time=time,
-                    event_type="EMA_CROSS",
-                    direction="BEARISH",
-                    description="EMA 9 crossed below 20",
-                    strength=0.8
-                ))
+                events.append(
+                    SignalEvent(
+                        time=time,
+                        event_type="EMA_CROSS",
+                        direction="BEARISH",
+                        description="EMA 9 crossed below 20",
+                        strength=0.8,
+                    )
+                )
 
             # MACD crossover
-            curr_macd_bullish = curr['macd_line'] > curr['macd_signal']
-            prev_macd_bullish = prev['macd_line'] > prev['macd_signal']
+            curr_macd_bullish = curr["macd_line"] > curr["macd_signal"]
+            prev_macd_bullish = prev["macd_line"] > prev["macd_signal"]
 
             if curr_macd_bullish and not prev_macd_bullish:
-                events.append(SignalEvent(
-                    time=time,
-                    event_type="MACD_CROSS",
-                    direction="BULLISH",
-                    description="MACD crossed above signal",
-                    strength=0.7
-                ))
+                events.append(
+                    SignalEvent(
+                        time=time,
+                        event_type="MACD_CROSS",
+                        direction="BULLISH",
+                        description="MACD crossed above signal",
+                        strength=0.7,
+                    )
+                )
             elif not curr_macd_bullish and prev_macd_bullish:
-                events.append(SignalEvent(
-                    time=time,
-                    event_type="MACD_CROSS",
-                    direction="BEARISH",
-                    description="MACD crossed below signal",
-                    strength=0.7
-                ))
+                events.append(
+                    SignalEvent(
+                        time=time,
+                        event_type="MACD_CROSS",
+                        direction="BEARISH",
+                        description="MACD crossed below signal",
+                        strength=0.7,
+                    )
+                )
 
             # VWAP crossover
-            curr_above_vwap = curr['close'] > curr['vwap']
-            prev_above_vwap = prev['close'] > prev['vwap']
+            curr_above_vwap = curr["close"] > curr["vwap"]
+            prev_above_vwap = prev["close"] > prev["vwap"]
 
             if curr_above_vwap and not prev_above_vwap:
-                events.append(SignalEvent(
-                    time=time,
-                    event_type="VWAP_CROSS",
-                    direction="BULLISH",
-                    description="Price crossed above VWAP",
-                    strength=0.6
-                ))
+                events.append(
+                    SignalEvent(
+                        time=time,
+                        event_type="VWAP_CROSS",
+                        direction="BULLISH",
+                        description="Price crossed above VWAP",
+                        strength=0.6,
+                    )
+                )
             elif not curr_above_vwap and prev_above_vwap:
-                events.append(SignalEvent(
-                    time=time,
-                    event_type="VWAP_CROSS",
-                    direction="BEARISH",
-                    description="Price crossed below VWAP",
-                    strength=0.6
-                ))
+                events.append(
+                    SignalEvent(
+                        time=time,
+                        event_type="VWAP_CROSS",
+                        direction="BEARISH",
+                        description="Price crossed below VWAP",
+                        strength=0.6,
+                    )
+                )
 
         self.event_cache[symbol] = events
         return events
 
-    def get_multi_timeframe_alignment(self, symbol: str,
-                                       ohlc_1m: List[Dict],
-                                       ohlc_5m: List[Dict]) -> Dict:
+    def get_multi_timeframe_alignment(
+        self, symbol: str, ohlc_1m: List[Dict], ohlc_5m: List[Dict]
+    ) -> Dict:
         """
         Check alignment between 1M and 5M timeframes.
 
@@ -451,7 +489,11 @@ class TechnicalSignalAnalyzer:
             recommendation = "STRONG_BUY"
             aligned = True
         # Both bearish
-        elif not state_1m.ema_bullish and not state_5m.ema_bullish and alignment_count >= 2:
+        elif (
+            not state_1m.ema_bullish
+            and not state_5m.ema_bullish
+            and alignment_count >= 2
+        ):
             recommendation = "STRONG_SELL"
             aligned = True
         # Mixed signals
@@ -473,8 +515,8 @@ class TechnicalSignalAnalyzer:
             "details": {
                 "ema_aligned": ema_aligned,
                 "macd_aligned": macd_aligned,
-                "vwap_aligned": vwap_aligned
-            }
+                "vwap_aligned": vwap_aligned,
+            },
         }
 
     def should_enter(self, state: SignalState) -> Tuple[bool, str]:
@@ -489,11 +531,17 @@ class TechnicalSignalAnalyzer:
         # Strong buy conditions
         if state.confluence_score >= 70:
             if state.ema_crossover == "BULLISH" or state.macd_crossover == "BULLISH":
-                return True, f"Confluence {state.confluence_score}% with crossover trigger"
+                return (
+                    True,
+                    f"Confluence {state.confluence_score}% with crossover trigger",
+                )
             elif state.vwap_crossover == "BULLISH":
                 return True, f"Confluence {state.confluence_score}% with VWAP breakout"
             elif state.ema_bullish and state.macd_bullish and state.price_above_vwap:
-                return True, f"Confluence {state.confluence_score}% - all signals aligned"
+                return (
+                    True,
+                    f"Confluence {state.confluence_score}% - all signals aligned",
+                )
 
         # Moderate buy with fresh crossover
         if state.confluence_score >= 55:
@@ -504,7 +552,9 @@ class TechnicalSignalAnalyzer:
 
         return False, f"Confluence {state.confluence_score}% - waiting for better setup"
 
-    def should_exit(self, state: SignalState, entry_price: float, current_price: float) -> Tuple[bool, str]:
+    def should_exit(
+        self, state: SignalState, entry_price: float, current_price: float
+    ) -> Tuple[bool, str]:
         """
         Determine if conditions suggest exit.
 
@@ -541,6 +591,7 @@ class TechnicalSignalAnalyzer:
 
 # Singleton instance
 _analyzer = None
+
 
 def get_signal_analyzer() -> TechnicalSignalAnalyzer:
     global _analyzer

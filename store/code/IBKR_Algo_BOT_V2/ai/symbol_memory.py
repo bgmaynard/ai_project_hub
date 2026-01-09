@@ -17,24 +17,28 @@ USE CASES:
 4. Learn which sectors work best for the strategy
 """
 
-import logging
 import json
+import logging
 import os
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field, asdict
-from collections import defaultdict
+
 import pytz
 
 logger = logging.getLogger(__name__)
 
 # Storage path
-MEMORY_FILE = os.path.join(os.path.dirname(__file__), "..", "store", "symbol_memory.json")
+MEMORY_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "store", "symbol_memory.json"
+)
 
 
 @dataclass
 class TradeRecord:
     """Single trade record"""
+
     symbol: str
     side: str  # BUY or SELL
     entry_price: float
@@ -52,13 +56,14 @@ class TradeRecord:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'TradeRecord':
+    def from_dict(cls, data: Dict) -> "TradeRecord":
         return cls(**data)
 
 
 @dataclass
 class SymbolStats:
     """Aggregated stats for a symbol"""
+
     symbol: str
     total_trades: int = 0
     wins: int = 0
@@ -82,7 +87,7 @@ class SymbolStats:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'SymbolStats':
+    def from_dict(cls, data: Dict) -> "SymbolStats":
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
@@ -97,7 +102,7 @@ class SymbolMemory:
     """
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # Trade history per symbol
         self.trades: Dict[str, List[TradeRecord]] = defaultdict(list)
@@ -106,15 +111,27 @@ class SymbolMemory:
         self.stats: Dict[str, SymbolStats] = {}
 
         # Hourly performance tracking
-        self.hourly_pnl: Dict[str, Dict[int, List[float]]] = defaultdict(lambda: defaultdict(list))
+        self.hourly_pnl: Dict[str, Dict[int, List[float]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
 
         # Sector mapping (can be expanded)
         self.sector_map: Dict[str, str] = {
-            "AAPL": "Technology", "MSFT": "Technology", "GOOGL": "Technology",
-            "AMZN": "Consumer", "TSLA": "Automotive", "NVDA": "Technology",
-            "META": "Technology", "AMD": "Technology", "INTC": "Technology",
-            "JPM": "Financial", "BAC": "Financial", "GS": "Financial",
-            "XOM": "Energy", "CVX": "Energy", "OXY": "Energy",
+            "AAPL": "Technology",
+            "MSFT": "Technology",
+            "GOOGL": "Technology",
+            "AMZN": "Consumer",
+            "TSLA": "Automotive",
+            "NVDA": "Technology",
+            "META": "Technology",
+            "AMD": "Technology",
+            "INTC": "Technology",
+            "JPM": "Financial",
+            "BAC": "Financial",
+            "GS": "Financial",
+            "XOM": "Energy",
+            "CVX": "Energy",
+            "OXY": "Energy",
         }
 
         # Load existing data
@@ -126,20 +143,20 @@ class SymbolMemory:
         """Load memory from disk"""
         try:
             if os.path.exists(MEMORY_FILE):
-                with open(MEMORY_FILE, 'r') as f:
+                with open(MEMORY_FILE, "r") as f:
                     data = json.load(f)
 
                 # Load trades
-                for symbol, trade_list in data.get('trades', {}).items():
+                for symbol, trade_list in data.get("trades", {}).items():
                     self.trades[symbol] = [TradeRecord.from_dict(t) for t in trade_list]
 
                 # Load stats
-                for symbol, stat_data in data.get('stats', {}).items():
+                for symbol, stat_data in data.get("stats", {}).items():
                     self.stats[symbol] = SymbolStats.from_dict(stat_data)
 
                 # Load hourly data
                 self.hourly_pnl = defaultdict(lambda: defaultdict(list))
-                for symbol, hours in data.get('hourly_pnl', {}).items():
+                for symbol, hours in data.get("hourly_pnl", {}).items():
                     for hour, pnls in hours.items():
                         self.hourly_pnl[symbol][int(hour)] = pnls
 
@@ -154,38 +171,39 @@ class SymbolMemory:
             os.makedirs(os.path.dirname(MEMORY_FILE), exist_ok=True)
 
             data = {
-                'trades': {
+                "trades": {
                     symbol: [t.to_dict() for t in trades]
                     for symbol, trades in self.trades.items()
                 },
-                'stats': {
-                    symbol: stats.to_dict()
-                    for symbol, stats in self.stats.items()
+                "stats": {
+                    symbol: stats.to_dict() for symbol, stats in self.stats.items()
                 },
-                'hourly_pnl': {
+                "hourly_pnl": {
                     symbol: {str(hour): pnls for hour, pnls in hours.items()}
                     for symbol, hours in self.hourly_pnl.items()
                 },
-                'last_updated': datetime.now(self.et_tz).isoformat()
+                "last_updated": datetime.now(self.et_tz).isoformat(),
             }
 
-            with open(MEMORY_FILE, 'w') as f:
+            with open(MEMORY_FILE, "w") as f:
                 json.dump(data, f, indent=2)
 
             logger.debug("Symbol memory saved")
         except Exception as e:
             logger.error(f"Error saving symbol memory: {e}")
 
-    def record_trade(self,
-                     symbol: str,
-                     side: str,
-                     entry_price: float,
-                     exit_price: float,
-                     quantity: int,
-                     entry_time: datetime,
-                     exit_time: datetime,
-                     prediction_confidence: float = 0.0,
-                     indicators: Dict = None) -> TradeRecord:
+    def record_trade(
+        self,
+        symbol: str,
+        side: str,
+        entry_price: float,
+        exit_price: float,
+        quantity: int,
+        entry_time: datetime,
+        exit_time: datetime,
+        prediction_confidence: float = 0.0,
+        indicators: Dict = None,
+    ) -> TradeRecord:
         """
         Record a completed trade.
 
@@ -217,7 +235,7 @@ class SymbolMemory:
             exit_time=exit_time.isoformat(),
             hold_duration_minutes=hold_duration,
             prediction_confidence=prediction_confidence,
-            indicators=indicators or {}
+            indicators=indicators or {},
         )
 
         # Store trade
@@ -233,7 +251,9 @@ class SymbolMemory:
         # Save to disk
         self._save()
 
-        logger.info(f"Recorded trade: {symbol} {side} P&L: ${pnl:.2f} ({pnl_percent:.2f}%)")
+        logger.info(
+            f"Recorded trade: {symbol} {side} P&L: ${pnl:.2f} ({pnl_percent:.2f}%)"
+        )
 
         return trade
 
@@ -279,7 +299,7 @@ class SymbolMemory:
         # Best/worst hour
         hourly = self.hourly_pnl.get(symbol, {})
         if hourly:
-            hour_avgs = {h: sum(pnls)/len(pnls) for h, pnls in hourly.items() if pnls}
+            hour_avgs = {h: sum(pnls) / len(pnls) for h, pnls in hourly.items() if pnls}
             if hour_avgs:
                 best_hour = max(hour_avgs, key=hour_avgs.get)
                 worst_hour = min(hour_avgs, key=hour_avgs.get)
@@ -316,7 +336,7 @@ class SymbolMemory:
             last_trade_date=trades[-1].exit_time if trades else "",
             avg_winner_pnl=round(avg_winner, 2),
             avg_loser_pnl=round(avg_loser, 2),
-            profit_factor=round(profit_factor, 2)
+            profit_factor=round(profit_factor, 2),
         )
 
     def get_stats(self, symbol: str) -> Optional[SymbolStats]:
@@ -327,7 +347,9 @@ class SymbolMemory:
         """Get stats for all symbols"""
         return self.stats.copy()
 
-    def should_trade(self, symbol: str, min_trades: int = 5, min_win_rate: float = 40.0) -> Tuple[bool, str]:
+    def should_trade(
+        self, symbol: str, min_trades: int = 5, min_win_rate: float = 40.0
+    ) -> Tuple[bool, str]:
         """
         Should we trade this symbol based on history?
 
@@ -352,13 +374,19 @@ class SymbolMemory:
 
         # Check profit factor
         if stats.profit_factor < 0.8 and stats.total_trades >= 10:
-            return False, f"Poor profit factor: {stats.profit_factor} (losing money overall)"
+            return (
+                False,
+                f"Poor profit factor: {stats.profit_factor} (losing money overall)",
+            )
 
         # Hot streak bonus
         if stats.current_streak >= 3:
             return True, f"HOT STREAK: {stats.current_streak} wins! Consider sizing up"
 
-        return True, f"OK to trade: {stats.win_rate}% win rate, PF: {stats.profit_factor}"
+        return (
+            True,
+            f"OK to trade: {stats.win_rate}% win rate, PF: {stats.profit_factor}",
+        )
 
     def get_position_size_multiplier(self, symbol: str) -> float:
         """
@@ -402,10 +430,13 @@ class SymbolMemory:
         # Clamp to range
         return max(0.5, min(1.5, multiplier))
 
-    def get_best_symbols(self, min_trades: int = 5, top_n: int = 10) -> List[Tuple[str, SymbolStats]]:
+    def get_best_symbols(
+        self, min_trades: int = 5, top_n: int = 10
+    ) -> List[Tuple[str, SymbolStats]]:
         """Get top performing symbols"""
         qualified = [
-            (symbol, stats) for symbol, stats in self.stats.items()
+            (symbol, stats)
+            for symbol, stats in self.stats.items()
             if stats.total_trades >= min_trades
         ]
 
@@ -414,10 +445,13 @@ class SymbolMemory:
 
         return qualified[:top_n]
 
-    def get_worst_symbols(self, min_trades: int = 5, top_n: int = 10) -> List[Tuple[str, SymbolStats]]:
+    def get_worst_symbols(
+        self, min_trades: int = 5, top_n: int = 10
+    ) -> List[Tuple[str, SymbolStats]]:
         """Get worst performing symbols (avoid these!)"""
         qualified = [
-            (symbol, stats) for symbol, stats in self.stats.items()
+            (symbol, stats)
+            for symbol, stats in self.stats.items()
             if stats.total_trades >= min_trades
         ]
 
@@ -468,15 +502,24 @@ class SymbolMemory:
                 result[hour] = {
                     "trades": len(pnls),
                     "avg_pnl_percent": round(sum(pnls) / len(pnls), 2),
-                    "win_rate": round(len([p for p in pnls if p > 0]) / len(pnls) * 100, 1),
-                    "total_pnl_percent": round(sum(pnls), 2)
+                    "win_rate": round(
+                        len([p for p in pnls if p > 0]) / len(pnls) * 100, 1
+                    ),
+                    "total_pnl_percent": round(sum(pnls), 2),
                 }
             else:
-                result[hour] = {"trades": 0, "avg_pnl_percent": 0, "win_rate": 0, "total_pnl_percent": 0}
+                result[hour] = {
+                    "trades": 0,
+                    "avg_pnl_percent": 0,
+                    "win_rate": 0,
+                    "total_pnl_percent": 0,
+                }
 
         return result
 
-    def get_recent_trades(self, symbol: str = None, limit: int = 20) -> List[TradeRecord]:
+    def get_recent_trades(
+        self, symbol: str = None, limit: int = 20
+    ) -> List[TradeRecord]:
         """Get recent trades, optionally filtered by symbol"""
         if symbol:
             trades = self.trades.get(symbol.upper(), [])
@@ -498,25 +541,35 @@ class SymbolMemory:
                 "overall_win_rate": 0,
                 "total_pnl": 0,
                 "best_symbol": None,
-                "worst_symbol": None
+                "worst_symbol": None,
             }
 
         total_trades = sum(s.total_trades for s in self.stats.values())
         total_wins = sum(s.wins for s in self.stats.values())
         total_pnl = sum(s.total_pnl for s in self.stats.values())
 
-        best = max(self.stats.values(), key=lambda s: s.profit_factor) if self.stats else None
-        worst = min(self.stats.values(), key=lambda s: s.profit_factor) if self.stats else None
+        best = (
+            max(self.stats.values(), key=lambda s: s.profit_factor)
+            if self.stats
+            else None
+        )
+        worst = (
+            min(self.stats.values(), key=lambda s: s.profit_factor)
+            if self.stats
+            else None
+        )
 
         return {
             "total_symbols": len(self.stats),
             "total_trades": total_trades,
-            "overall_win_rate": round(total_wins / total_trades * 100, 1) if total_trades > 0 else 0,
+            "overall_win_rate": (
+                round(total_wins / total_trades * 100, 1) if total_trades > 0 else 0
+            ),
             "total_pnl": round(total_pnl, 2),
             "best_symbol": best.symbol if best else None,
             "best_win_rate": best.win_rate if best else 0,
             "worst_symbol": worst.symbol if worst else None,
-            "worst_win_rate": worst.win_rate if worst else 0
+            "worst_win_rate": worst.win_rate if worst else 0,
         }
 
     def clear_symbol(self, symbol: str):

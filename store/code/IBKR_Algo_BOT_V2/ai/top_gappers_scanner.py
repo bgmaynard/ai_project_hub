@@ -20,9 +20,10 @@ Sources:
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GapperStock:
     """A stock from the gapper scan"""
+
     symbol: str
     price: float
     change_pct: float
@@ -65,7 +67,7 @@ class GapperStock:
             "grade": self.grade,
             "criteria_met": self.criteria_met,
             "criteria_details": self.criteria_details,
-            "detected_at": self.detected_at.isoformat()
+            "detected_at": self.detected_at.isoformat(),
         }
 
 
@@ -105,41 +107,41 @@ class TopGappersScanner:
         # 1. Relative Volume >= 5x
         if stock.relative_volume >= 5.0:
             criteria_met += 1
-            details['rvol'] = f"✓ RVol {stock.relative_volume:.1f}x"
+            details["rvol"] = f"✓ RVol {stock.relative_volume:.1f}x"
         else:
-            details['rvol'] = f"✗ RVol {stock.relative_volume:.1f}x < 5x"
+            details["rvol"] = f"✗ RVol {stock.relative_volume:.1f}x < 5x"
 
         # 2. Already up 10%
         if stock.change_pct >= 10.0:
             criteria_met += 1
-            details['change'] = f"✓ Up {stock.change_pct:.1f}%"
+            details["change"] = f"✓ Up {stock.change_pct:.1f}%"
         else:
-            details['change'] = f"✗ Up {stock.change_pct:.1f}% < 10%"
+            details["change"] = f"✗ Up {stock.change_pct:.1f}% < 10%"
 
         # 3. News catalyst
         if stock.has_news:
             criteria_met += 1
-            details['news'] = "✓ Has news"
+            details["news"] = "✓ Has news"
         else:
-            details['news'] = "✗ No news"
+            details["news"] = "✗ No news"
 
         # 4. Price $1-$20
         if self.min_price <= stock.price <= self.max_price:
             criteria_met += 1
-            details['price'] = f"✓ ${stock.price:.2f}"
+            details["price"] = f"✓ ${stock.price:.2f}"
         else:
-            details['price'] = f"✗ ${stock.price:.2f}"
+            details["price"] = f"✗ ${stock.price:.2f}"
 
         # 5. Float < 10M
         if stock.float_shares > 0 and stock.float_shares < self.max_float:
             criteria_met += 1
             float_m = stock.float_shares / 1_000_000
-            details['float'] = f"✓ {float_m:.1f}M"
+            details["float"] = f"✓ {float_m:.1f}M"
         elif stock.float_shares == 0:
-            details['float'] = "? Unknown"
+            details["float"] = "? Unknown"
         else:
             float_m = stock.float_shares / 1_000_000
-            details['float'] = f"✗ {float_m:.1f}M >= 10M"
+            details["float"] = f"✗ {float_m:.1f}M >= 10M"
 
         # Grade
         if criteria_met >= 5:
@@ -157,19 +159,18 @@ class TopGappersScanner:
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
-                    "http://localhost:9100/api/market/movers/scalp",
-                    timeout=10.0
+                    "http://localhost:9100/api/market/movers/scalp", timeout=10.0
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    for item in data.get('movers', []):
+                    for item in data.get("movers", []):
                         stock = GapperStock(
-                            symbol=item.get('symbol', ''),
-                            price=float(item.get('price', 0)),
-                            change_pct=float(item.get('change_pct', 0)),
-                            volume=int(item.get('volume', 0)),
-                            avg_volume=int(item.get('avg_volume', 0)),
-                            gap_pct=float(item.get('gap_pct', 0))
+                            symbol=item.get("symbol", ""),
+                            price=float(item.get("price", 0)),
+                            change_pct=float(item.get("change_pct", 0)),
+                            volume=int(item.get("volume", 0)),
+                            avg_volume=int(item.get("avg_volume", 0)),
+                            gap_pct=float(item.get("gap_pct", 0)),
                         )
                         if stock.avg_volume > 0:
                             stock.relative_volume = stock.volume / stock.avg_volume
@@ -184,17 +185,18 @@ class TopGappersScanner:
         stocks = []
         try:
             from .finviz_momentum_scanner import get_finviz_scanner
+
             scanner = get_finviz_scanner()
             movers = scanner.scan_movers(limit=20)
 
             for m in movers:
                 stock = GapperStock(
-                    symbol=m.get('symbol', ''),
-                    price=float(m.get('price', 0)),
-                    change_pct=float(m.get('change', 0)),
-                    volume=int(m.get('volume', 0)),
-                    avg_volume=int(m.get('avg_volume', 0)),
-                    float_shares=float(m.get('float', 0))
+                    symbol=m.get("symbol", ""),
+                    price=float(m.get("price", 0)),
+                    change_pct=float(m.get("change", 0)),
+                    volume=int(m.get("volume", 0)),
+                    avg_volume=int(m.get("avg_volume", 0)),
+                    float_shares=float(m.get("float", 0)),
                 )
                 if stock.avg_volume > 0:
                     stock.relative_volume = stock.volume / stock.avg_volume
@@ -211,24 +213,24 @@ class TopGappersScanner:
             import yfinance as yf
 
             # Get day gainers
-            gainers = yf.Screener().get_screeners(['day_gainers'], count=25)
+            gainers = yf.Screener().get_screeners(["day_gainers"], count=25)
 
-            for item in gainers.get('day_gainers', {}).get('quotes', []):
-                symbol = item.get('symbol', '')
-                if not symbol or '.' in symbol:  # Skip non-US symbols
+            for item in gainers.get("day_gainers", {}).get("quotes", []):
+                symbol = item.get("symbol", "")
+                if not symbol or "." in symbol:  # Skip non-US symbols
                     continue
 
-                price = float(item.get('regularMarketPrice', 0))
-                change_pct = float(item.get('regularMarketChangePercent', 0))
-                volume = int(item.get('regularMarketVolume', 0))
-                avg_volume = int(item.get('averageDailyVolume10Day', 0))
+                price = float(item.get("regularMarketPrice", 0))
+                change_pct = float(item.get("regularMarketChangePercent", 0))
+                volume = int(item.get("regularMarketVolume", 0))
+                avg_volume = int(item.get("averageDailyVolume10Day", 0))
 
                 stock = GapperStock(
                     symbol=symbol,
                     price=price,
                     change_pct=change_pct,
                     volume=volume,
-                    avg_volume=avg_volume
+                    avg_volume=avg_volume,
                 )
 
                 if avg_volume > 0:
@@ -249,11 +251,11 @@ class TopGappersScanner:
                     try:
                         resp = await client.get(
                             f"http://localhost:9100/api/stock/float/{stock.symbol}",
-                            timeout=3.0
+                            timeout=3.0,
                         )
                         if resp.status_code == 200:
                             data = resp.json()
-                            stock.float_shares = float(data.get('float', 0))
+                            stock.float_shares = float(data.get("float", 0))
                     except:
                         pass
         return stocks
@@ -265,12 +267,12 @@ class TopGappersScanner:
                 try:
                     resp = await client.get(
                         f"http://localhost:9100/api/stock/news-check/{stock.symbol}",
-                        timeout=3.0
+                        timeout=3.0,
                     )
                     if resp.status_code == 200:
                         data = resp.json()
-                        stock.has_news = data.get('has_news', False)
-                        stock.news_headline = data.get('headline', '')
+                        stock.has_news = data.get("has_news", False)
+                        stock.news_headline = data.get("headline", "")
                 except:
                     pass
         return stocks
@@ -321,18 +323,17 @@ class TopGappersScanner:
         stocks.sort(key=lambda x: x.change_pct, reverse=True)
 
         # Apply minimum filters
-        filtered = [
-            s for s in stocks
-            if s.price >= 0.50 and s.change_pct >= 5.0
-        ]
+        filtered = [s for s in stocks if s.price >= 0.50 and s.change_pct >= 5.0]
 
-        self.gappers = filtered[:self.max_results]
+        self.gappers = filtered[: self.max_results]
         self.last_scan = datetime.now()
 
         # Log results
         a_count = sum(1 for s in self.gappers if s.grade == "A")
         b_count = sum(1 for s in self.gappers if s.grade == "B")
-        logger.info(f"Top Gappers: {len(self.gappers)} stocks, {a_count} A-grade, {b_count} B-grade")
+        logger.info(
+            f"Top Gappers: {len(self.gappers)} stocks, {a_count} A-grade, {b_count} B-grade"
+        )
 
         return self.gappers
 
@@ -361,8 +362,8 @@ class TopGappersScanner:
                 "max_price": self.max_price,
                 "min_change_pct": self.min_change_pct,
                 "min_relative_volume": self.min_relative_volume,
-                "max_float": self.max_float
-            }
+                "max_float": self.max_float,
+            },
         }
 
     def to_dict(self) -> dict:
@@ -372,7 +373,7 @@ class TopGappersScanner:
             "a_grade": [g.to_dict() for g in self.get_a_grade()],
             "b_grade": [g.to_dict() for g in self.get_b_grade()],
             "top_3": [g.to_dict() for g in self.get_top_3()],
-            "scan_time": self.last_scan.isoformat() if self.last_scan else None
+            "scan_time": self.last_scan.isoformat() if self.last_scan else None,
         }
 
 

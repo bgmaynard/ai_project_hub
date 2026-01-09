@@ -15,28 +15,31 @@ from typing import Tuple
 
 try:
     import pytz
+
     ET_TZ = pytz.timezone("US/Eastern")
 except ImportError:
     # Fallback if pytz not available
-    from datetime import timezone, timedelta
+    from datetime import timedelta, timezone
+
     class ET_TZ:
         @staticmethod
         def localize(dt):
             return dt.replace(tzinfo=timezone(timedelta(hours=-5)))
 
+
 logger = logging.getLogger(__name__)
 
 # Trading Window Configuration
-WARRIOR_WINDOW_START = time(7, 0)   # 07:00 AM ET
-WARRIOR_WINDOW_END = time(16, 0)    # 04:00 PM ET (extended for full market day)
+WARRIOR_WINDOW_START = time(7, 0)  # 07:00 AM ET
+WARRIOR_WINDOW_END = time(16, 0)  # 04:00 PM ET (extended for full market day)
 
 # Extended Pre-Market Window (for monitoring only)
-PREMARKET_START = time(4, 0)        # 04:00 AM ET
-PREMARKET_END = time(9, 30)         # 09:30 AM ET
+PREMARKET_START = time(4, 0)  # 04:00 AM ET
+PREMARKET_END = time(9, 30)  # 09:30 AM ET
 
 # Regular Market Hours
-MARKET_OPEN = time(9, 30)           # 09:30 AM ET
-MARKET_CLOSE = time(16, 0)          # 04:00 PM ET
+MARKET_OPEN = time(9, 30)  # 09:30 AM ET
+MARKET_CLOSE = time(16, 0)  # 04:00 PM ET
 
 
 def get_eastern_time() -> datetime:
@@ -62,7 +65,9 @@ def is_in_warrior_window() -> bool:
     in_window = WARRIOR_WINDOW_START <= now <= WARRIOR_WINDOW_END
 
     if not in_window:
-        logger.debug(f"Outside trading window: {now.strftime('%H:%M:%S')} ET (window: 07:00-09:30)")
+        logger.debug(
+            f"Outside trading window: {now.strftime('%H:%M:%S')} ET (window: 07:00-09:30)"
+        )
 
     return in_window
 
@@ -131,7 +136,10 @@ def check_entry_allowed(action_type: str = "ENTRY") -> Tuple[bool, str]:
         return (True, "Within trading window (07:00-09:30 AM ET)")
 
     now = get_eastern_time()
-    return (False, f"TRADING_WINDOW_CLOSED: Current time {now.strftime('%H:%M:%S')} ET is outside 07:00-09:30 window")
+    return (
+        False,
+        f"TRADING_WINDOW_CLOSED: Current time {now.strftime('%H:%M:%S')} ET is outside 07:00-09:30 window",
+    )
 
 
 # Veto reason constant for gating engine
@@ -140,7 +148,9 @@ VETO_TRADING_WINDOW_CLOSED = "TRADING_WINDOW_CLOSED"
 
 if __name__ == "__main__":
     # Test the module
-    print(f"Current Eastern Time: {get_eastern_time().strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    print(
+        f"Current Eastern Time: {get_eastern_time().strftime('%Y-%m-%d %H:%M:%S %Z')}"
+    )
     print(f"In Warrior Window: {is_in_warrior_window()}")
     print(f"In Pre-Market: {is_in_premarket()}")
     print(f"Market Open: {is_market_open()}")

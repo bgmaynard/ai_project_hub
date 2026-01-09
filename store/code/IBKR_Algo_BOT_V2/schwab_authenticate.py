@@ -2,20 +2,23 @@
 Schwab API Authentication Script
 Run this script ONCE to authenticate with Schwab and save your token.
 """
+
+import base64
+import json
 import os
 import sys
-import json
 import webbrowser
-import base64
 from pathlib import Path
-from urllib.parse import urlencode, urlparse, parse_qs
-from dotenv import load_dotenv
+from urllib.parse import parse_qs, urlencode, urlparse
+
 import httpx
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
 TOKEN_FILE = Path(__file__).parent / "schwab_token.json"
+
 
 def main():
     print("=" * 60)
@@ -24,16 +27,16 @@ def main():
     print()
 
     # Check for credentials
-    app_key = os.getenv('SCHWAB_APP_KEY')
-    app_secret = os.getenv('SCHWAB_APP_SECRET')
-    callback_url = os.getenv('SCHWAB_CALLBACK_URL', 'https://127.0.0.1:6969')
+    app_key = os.getenv("SCHWAB_APP_KEY")
+    app_secret = os.getenv("SCHWAB_APP_SECRET")
+    callback_url = os.getenv("SCHWAB_CALLBACK_URL", "https://127.0.0.1:6969")
 
-    if not app_key or app_key == 'YOUR_APP_KEY_HERE':
+    if not app_key or app_key == "YOUR_APP_KEY_HERE":
         print("ERROR: SCHWAB_APP_KEY not configured in .env!")
         input("\nPress Enter to exit...")
         return False
 
-    if not app_secret or app_secret == 'YOUR_APP_SECRET_HERE':
+    if not app_secret or app_secret == "YOUR_APP_SECRET_HERE":
         print("ERROR: SCHWAB_APP_SECRET not configured in .env!")
         input("\nPress Enter to exit...")
         return False
@@ -47,7 +50,7 @@ def main():
     params = {
         "client_id": app_key,
         "redirect_uri": callback_url,
-        "response_type": "code"
+        "response_type": "code",
     }
     full_auth_url = f"{auth_url}?{urlencode(params)}"
 
@@ -86,14 +89,14 @@ def main():
         parsed = urlparse(redirect_url)
         query_params = parse_qs(parsed.query)
 
-        if 'code' not in query_params:
+        if "code" not in query_params:
             print(f"\nERROR: No authorization code found in URL!")
             print(f"URL received: {redirect_url}")
             print(f"Query params: {query_params}")
             input("\nPress Enter to exit...")
             return False
 
-        auth_code = query_params['code'][0]
+        auth_code = query_params["code"][0]
         print(f"\nAuthorization code received: {auth_code[:20]}...")
 
     except Exception as e:
@@ -116,13 +119,13 @@ def main():
 
     headers = {
         "Authorization": f"Basic {encoded_credentials}",
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
     }
 
     data = {
         "grant_type": "authorization_code",
         "code": auth_code,
-        "redirect_uri": callback_url
+        "redirect_uri": callback_url,
     }
 
     print("Requesting access token...")
@@ -136,7 +139,7 @@ def main():
             token_data = response.json()
 
             # Save token to file
-            with open(TOKEN_FILE, 'w') as f:
+            with open(TOKEN_FILE, "w") as f:
                 json.dump(token_data, f, indent=2)
 
             print()
@@ -146,8 +149,15 @@ def main():
             print()
             print(f"Token saved to: {TOKEN_FILE}")
             print()
-            print("Access token expires in:", token_data.get('expires_in', 'unknown'), "seconds")
-            print("Refresh token received:", "Yes" if 'refresh_token' in token_data else "No")
+            print(
+                "Access token expires in:",
+                token_data.get("expires_in", "unknown"),
+                "seconds",
+            )
+            print(
+                "Refresh token received:",
+                "Yes" if "refresh_token" in token_data else "No",
+            )
             print()
             print("Your Schwab integration is now ready!")
             print("Restart the trading platform to use real-time TOS data.")
@@ -187,5 +197,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nUnexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         input("\nPress Enter to exit...")

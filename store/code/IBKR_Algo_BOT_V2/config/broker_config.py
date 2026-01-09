@@ -2,9 +2,11 @@
 Unified Broker Configuration Manager
 Supports both Alpaca and IBKR brokers
 """
+
 import os
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
@@ -13,12 +15,14 @@ load_dotenv()
 
 class BrokerType(str, Enum):
     """Supported broker types"""
+
     ALPACA = "alpaca"
     IBKR = "ibkr"
 
 
 class AlpacaConfig(BaseModel):
     """Alpaca API configuration"""
+
     api_key: str
     secret_key: str
     paper: bool = True
@@ -27,6 +31,7 @@ class AlpacaConfig(BaseModel):
 
 class IBKRConfig(BaseModel):
     """IBKR API configuration"""
+
     host: str = "127.0.0.1"
     port: int = 7497
     client_id: int = 1
@@ -45,7 +50,7 @@ class BrokerConfig:
         """
         # Determine broker type from environment or use default
         self.broker_type = broker_type or BrokerType(
-            os.getenv('BROKER_TYPE', 'alpaca').lower()
+            os.getenv("BROKER_TYPE", "alpaca").lower()
         )
 
         # Load appropriate configuration
@@ -60,8 +65,8 @@ class BrokerConfig:
 
     def _load_alpaca_config(self) -> AlpacaConfig:
         """Load Alpaca configuration from environment"""
-        api_key = os.getenv('ALPACA_API_KEY')
-        secret_key = os.getenv('ALPACA_SECRET_KEY')
+        api_key = os.getenv("ALPACA_API_KEY")
+        secret_key = os.getenv("ALPACA_SECRET_KEY")
 
         if not api_key or not secret_key:
             raise ValueError(
@@ -71,17 +76,17 @@ class BrokerConfig:
         return AlpacaConfig(
             api_key=api_key,
             secret_key=secret_key,
-            paper=os.getenv('ALPACA_PAPER', 'true').lower() == 'true',
-            base_url=os.getenv('ALPACA_ENDPOINT', 'https://paper-api.alpaca.markets')
+            paper=os.getenv("ALPACA_PAPER", "true").lower() == "true",
+            base_url=os.getenv("ALPACA_ENDPOINT", "https://paper-api.alpaca.markets"),
         )
 
     def _load_ibkr_config(self) -> IBKRConfig:
         """Load IBKR configuration from environment"""
         return IBKRConfig(
-            host=os.getenv('IBKR_HOST', '127.0.0.1'),
-            port=int(os.getenv('IBKR_PORT', '7497')),
-            client_id=int(os.getenv('IBKR_CLIENT_ID', '1')),
-            readonly=os.getenv('IBKR_READONLY', 'false').lower() == 'true'
+            host=os.getenv("IBKR_HOST", "127.0.0.1"),
+            port=int(os.getenv("IBKR_PORT", "7497")),
+            client_id=int(os.getenv("IBKR_CLIENT_ID", "1")),
+            readonly=os.getenv("IBKR_READONLY", "false").lower() == "true",
         )
 
     def get_config_dict(self) -> Dict[str, Any]:
@@ -91,7 +96,7 @@ class BrokerConfig:
                 "broker": "alpaca",
                 "paper_trading": self.alpaca.paper,
                 "api_key": f"{self.alpaca.api_key[:8]}...",  # Masked
-                "endpoint": self.alpaca.base_url
+                "endpoint": self.alpaca.base_url,
             }
         else:
             return {
@@ -99,7 +104,7 @@ class BrokerConfig:
                 "host": self.ibkr.host,
                 "port": self.ibkr.port,
                 "client_id": self.ibkr.client_id,
-                "readonly": self.ibkr.readonly
+                "readonly": self.ibkr.readonly,
             }
 
     def is_alpaca(self) -> bool:

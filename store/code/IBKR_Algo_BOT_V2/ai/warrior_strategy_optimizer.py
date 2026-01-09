@@ -14,13 +14,13 @@ Features:
 
 import json
 import logging
-from typing import Dict, List, Any, Optional
-from datetime import datetime, date, timedelta
-from dataclasses import dataclass, asdict
 from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional
 
+from claude_integration import ClaudeRequest, get_claude_integration
 from warrior_database import WarriorDatabase
-from claude_integration import get_claude_integration, ClaudeRequest
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for analysis"""
+
     total_trades: int
     winning_trades: int
     losing_trades: int
@@ -45,6 +46,7 @@ class PerformanceMetrics:
 @dataclass
 class PatternPerformance:
     """Performance metrics for a specific pattern"""
+
     pattern_type: str
     total_trades: int
     win_rate: float
@@ -59,6 +61,7 @@ class PatternPerformance:
 @dataclass
 class OptimizationSuggestion:
     """Suggested parameter optimization"""
+
     parameter: str
     current_value: Any
     suggested_value: Any
@@ -92,9 +95,7 @@ class StrategyOptimizer:
         logger.info("Strategy optimizer initialized")
 
     def analyze_overall_performance(
-        self,
-        days: int = 30,
-        min_trades: int = 10
+        self, days: int = 30, min_trades: int = 10
     ) -> Optional[PerformanceMetrics]:
         """
         Analyze overall trading performance
@@ -107,21 +108,20 @@ class StrategyOptimizer:
             PerformanceMetrics or None if insufficient data
         """
         start_date = date.today() - timedelta(days=days)
-        trades = self.db.get_trades(
-            status="CLOSED",
-            start_date=start_date
-        )
+        trades = self.db.get_trades(status="CLOSED", start_date=start_date)
 
         if len(trades) < min_trades:
-            logger.warning(f"Insufficient trades for analysis ({len(trades)} < {min_trades})")
+            logger.warning(
+                f"Insufficient trades for analysis ({len(trades)} < {min_trades})"
+            )
             return None
 
         # Calculate metrics
-        winning_trades = [t for t in trades if t.get('pnl', 0) > 0]
-        losing_trades = [t for t in trades if t.get('pnl', 0) < 0]
+        winning_trades = [t for t in trades if t.get("pnl", 0) > 0]
+        losing_trades = [t for t in trades if t.get("pnl", 0) < 0]
 
-        total_wins = sum(t.get('pnl', 0) for t in winning_trades)
-        total_losses = abs(sum(t.get('pnl', 0) for t in losing_trades))
+        total_wins = sum(t.get("pnl", 0) for t in winning_trades)
+        total_losses = abs(sum(t.get("pnl", 0) for t in losing_trades))
 
         avg_win = total_wins / len(winning_trades) if winning_trades else 0
         avg_loss = total_losses / len(losing_trades) if losing_trades else 0
@@ -131,9 +131,9 @@ class StrategyOptimizer:
         # Calculate average hold time
         hold_times = []
         for trade in trades:
-            if trade.get('entry_time') and trade.get('exit_time'):
-                entry = datetime.fromisoformat(trade['entry_time'])
-                exit_dt = datetime.fromisoformat(trade['exit_time'])
+            if trade.get("entry_time") and trade.get("exit_time"):
+                entry = datetime.fromisoformat(trade["entry_time"])
+                exit_dt = datetime.fromisoformat(trade["exit_time"])
                 hold_times.append((exit_dt - entry).total_seconds() / 60)
 
         avg_hold_time = sum(hold_times) / len(hold_times) if hold_times else 0
@@ -145,18 +145,19 @@ class StrategyOptimizer:
             win_rate=(len(winning_trades) / len(trades)) * 100 if trades else 0,
             avg_win=avg_win,
             avg_loss=avg_loss,
-            avg_r_multiple=sum(t.get('r_multiple', 0) for t in trades) / len(trades) if trades else 0,
+            avg_r_multiple=(
+                sum(t.get("r_multiple", 0) for t in trades) / len(trades)
+                if trades
+                else 0
+            ),
             profit_factor=profit_factor,
-            net_pnl=sum(t.get('pnl', 0) for t in trades),
-            best_trade=max((t.get('pnl', 0) for t in trades), default=0),
-            worst_trade=min((t.get('pnl', 0) for t in trades), default=0),
-            avg_hold_time_minutes=avg_hold_time
+            net_pnl=sum(t.get("pnl", 0) for t in trades),
+            best_trade=max((t.get("pnl", 0) for t in trades), default=0),
+            worst_trade=min((t.get("pnl", 0) for t in trades), default=0),
+            avg_hold_time_minutes=avg_hold_time,
         )
 
-    def analyze_pattern_performance(
-        self,
-        days: int = 30
-    ) -> List[PatternPerformance]:
+    def analyze_pattern_performance(self, days: int = 30) -> List[PatternPerformance]:
         """
         Analyze performance by pattern type
 
@@ -167,15 +168,12 @@ class StrategyOptimizer:
             List of PatternPerformance objects
         """
         start_date = date.today() - timedelta(days=days)
-        trades = self.db.get_trades(
-            status="CLOSED",
-            start_date=start_date
-        )
+        trades = self.db.get_trades(status="CLOSED", start_date=start_date)
 
         # Group by pattern
         pattern_trades = defaultdict(list)
         for trade in trades:
-            pattern_type = trade.get('setup_type', 'UNKNOWN')
+            pattern_type = trade.get("setup_type", "UNKNOWN")
             pattern_trades[pattern_type].append(trade)
 
         # Analyze each pattern
@@ -184,34 +182,41 @@ class StrategyOptimizer:
             if len(pattern_trade_list) < 3:  # Skip patterns with too few trades
                 continue
 
-            winning = [t for t in pattern_trade_list if t.get('pnl', 0) > 0]
-            losing = [t for t in pattern_trade_list if t.get('pnl', 0) < 0]
+            winning = [t for t in pattern_trade_list if t.get("pnl", 0) > 0]
+            losing = [t for t in pattern_trade_list if t.get("pnl", 0) < 0]
 
-            total_wins = sum(t.get('pnl', 0) for t in winning)
-            total_losses = abs(sum(t.get('pnl', 0) for t in losing))
+            total_wins = sum(t.get("pnl", 0) for t in winning)
+            total_losses = abs(sum(t.get("pnl", 0) for t in losing))
 
-            best_trade = max(pattern_trade_list, key=lambda t: t.get('pnl', 0))
-            worst_trade = min(pattern_trade_list, key=lambda t: t.get('pnl', 0))
+            best_trade = max(pattern_trade_list, key=lambda t: t.get("pnl", 0))
+            worst_trade = min(pattern_trade_list, key=lambda t: t.get("pnl", 0))
 
-            results.append(PatternPerformance(
-                pattern_type=pattern_type,
-                total_trades=len(pattern_trade_list),
-                win_rate=(len(winning) / len(pattern_trade_list)) * 100,
-                avg_r_multiple=sum(t.get('r_multiple', 0) for t in pattern_trade_list) / len(pattern_trade_list),
-                avg_win=total_wins / len(winning) if winning else 0,
-                avg_loss=total_losses / len(losing) if losing else 0,
-                profit_factor=(total_wins / total_losses) if total_losses > 0 else 0,
-                best_trade={
-                    'symbol': best_trade.get('symbol'),
-                    'pnl': best_trade.get('pnl', 0),
-                    'r_multiple': best_trade.get('r_multiple', 0)
-                },
-                worst_trade={
-                    'symbol': worst_trade.get('symbol'),
-                    'pnl': worst_trade.get('pnl', 0),
-                    'r_multiple': worst_trade.get('r_multiple', 0)
-                }
-            ))
+            results.append(
+                PatternPerformance(
+                    pattern_type=pattern_type,
+                    total_trades=len(pattern_trade_list),
+                    win_rate=(len(winning) / len(pattern_trade_list)) * 100,
+                    avg_r_multiple=sum(
+                        t.get("r_multiple", 0) for t in pattern_trade_list
+                    )
+                    / len(pattern_trade_list),
+                    avg_win=total_wins / len(winning) if winning else 0,
+                    avg_loss=total_losses / len(losing) if losing else 0,
+                    profit_factor=(
+                        (total_wins / total_losses) if total_losses > 0 else 0
+                    ),
+                    best_trade={
+                        "symbol": best_trade.get("symbol"),
+                        "pnl": best_trade.get("pnl", 0),
+                        "r_multiple": best_trade.get("r_multiple", 0),
+                    },
+                    worst_trade={
+                        "symbol": worst_trade.get("symbol"),
+                        "pnl": worst_trade.get("pnl", 0),
+                        "r_multiple": worst_trade.get("r_multiple", 0),
+                    },
+                )
+            )
 
         # Sort by profit factor (best performing first)
         results.sort(key=lambda x: x.profit_factor, reverse=True)
@@ -219,8 +224,7 @@ class StrategyOptimizer:
         return results
 
     def analyze_time_of_day_performance(
-        self,
-        days: int = 30
+        self, days: int = 30
     ) -> Dict[str, Dict[str, Any]]:
         """
         Analyze performance by time of day
@@ -232,26 +236,23 @@ class StrategyOptimizer:
             Dictionary mapping time periods to performance metrics
         """
         start_date = date.today() - timedelta(days=days)
-        trades = self.db.get_trades(
-            status="CLOSED",
-            start_date=start_date
-        )
+        trades = self.db.get_trades(status="CLOSED", start_date=start_date)
 
         # Define time periods
         time_periods = {
-            "open": (9, 30, 10, 30),     # 9:30-10:30 AM
+            "open": (9, 30, 10, 30),  # 9:30-10:30 AM
             "mid_morning": (10, 30, 12, 0),  # 10:30-12:00 PM
-            "midday": (12, 0, 14, 0),    # 12:00-2:00 PM
-            "afternoon": (14, 0, 16, 0)   # 2:00-4:00 PM
+            "midday": (12, 0, 14, 0),  # 12:00-2:00 PM
+            "afternoon": (14, 0, 16, 0),  # 2:00-4:00 PM
         }
 
         period_trades = defaultdict(list)
 
         for trade in trades:
-            if not trade.get('entry_time'):
+            if not trade.get("entry_time"):
                 continue
 
-            entry_time = datetime.fromisoformat(trade['entry_time'])
+            entry_time = datetime.fromisoformat(trade["entry_time"])
             hour = entry_time.hour
             minute = entry_time.minute
 
@@ -270,22 +271,21 @@ class StrategyOptimizer:
             if not period_trade_list:
                 continue
 
-            winning = [t for t in period_trade_list if t.get('pnl', 0) > 0]
-            total_pnl = sum(t.get('pnl', 0) for t in period_trade_list)
+            winning = [t for t in period_trade_list if t.get("pnl", 0) > 0]
+            total_pnl = sum(t.get("pnl", 0) for t in period_trade_list)
 
             results[period_name] = {
                 "total_trades": len(period_trade_list),
                 "win_rate": (len(winning) / len(period_trade_list)) * 100,
                 "net_pnl": total_pnl,
-                "avg_r_multiple": sum(t.get('r_multiple', 0) for t in period_trade_list) / len(period_trade_list)
+                "avg_r_multiple": sum(t.get("r_multiple", 0) for t in period_trade_list)
+                / len(period_trade_list),
             }
 
         return results
 
     def generate_optimization_suggestions(
-        self,
-        current_config: Dict[str, Any],
-        days: int = 30
+        self, current_config: Dict[str, Any], days: int = 30
     ) -> List[OptimizationSuggestion]:
         """
         Generate parameter optimization suggestions using Claude AI
@@ -312,7 +312,7 @@ class StrategyOptimizer:
             "overall_performance": asdict(overall_metrics),
             "pattern_performance": [asdict(p) for p in pattern_metrics],
             "time_of_day_performance": time_metrics,
-            "current_configuration": current_config
+            "current_configuration": current_config,
         }
 
         # Request Claude analysis
@@ -363,7 +363,7 @@ Return as JSON array of suggestions. Be specific and actionable."""
             prompt=prompt,
             max_tokens=3000,
             temperature=0.5,
-            system_prompt="You are a quantitative trading strategist. Analyze performance data and suggest specific, data-driven parameter optimizations for a day trading strategy."
+            system_prompt="You are a quantitative trading strategist. Analyze performance data and suggest specific, data-driven parameter optimizations for a day trading strategy.",
         )
 
         response = self.claude.request(request)
@@ -378,15 +378,17 @@ Return as JSON array of suggestions. Be specific and actionable."""
             suggestions = []
 
             for item in suggestions_data:
-                suggestions.append(OptimizationSuggestion(
-                    parameter=item['parameter'],
-                    current_value=item['current_value'],
-                    suggested_value=item['suggested_value'],
-                    reasoning=item['reasoning'],
-                    expected_impact=item['expected_impact'],
-                    confidence=item['confidence'],
-                    priority=item['priority']
-                ))
+                suggestions.append(
+                    OptimizationSuggestion(
+                        parameter=item["parameter"],
+                        current_value=item["current_value"],
+                        suggested_value=item["suggested_value"],
+                        reasoning=item["reasoning"],
+                        expected_impact=item["expected_impact"],
+                        confidence=item["confidence"],
+                        priority=item["priority"],
+                    )
+                )
 
             logger.info(f"Generated {len(suggestions)} optimization suggestions")
             return suggestions
@@ -397,8 +399,7 @@ Return as JSON array of suggestions. Be specific and actionable."""
             return []
 
     def generate_daily_review(
-        self,
-        review_date: Optional[date] = None
+        self, review_date: Optional[date] = None
     ) -> Dict[str, Any]:
         """
         Generate end-of-day performance review using Claude AI
@@ -414,26 +415,26 @@ Return as JSON array of suggestions. Be specific and actionable."""
 
         # Get trades for the day
         trades = self.db.get_trades(
-            status="CLOSED",
-            start_date=review_date,
-            end_date=review_date
+            status="CLOSED", start_date=review_date, end_date=review_date
         )
 
         if not trades:
             return {
                 "date": review_date.isoformat(),
                 "summary": "No trades taken today",
-                "trades": []
+                "trades": [],
             }
 
         # Separate wins and losses
-        wins = [t for t in trades if t.get('pnl', 0) > 0]
-        losses = [t for t in trades if t.get('pnl', 0) < 0]
+        wins = [t for t in trades if t.get("pnl", 0) > 0]
+        losses = [t for t in trades if t.get("pnl", 0) < 0]
 
         # Calculate daily metrics
-        total_pnl = sum(t.get('pnl', 0) for t in trades)
+        total_pnl = sum(t.get("pnl", 0) for t in trades)
         win_rate = (len(wins) / len(trades)) * 100 if trades else 0
-        avg_r = sum(t.get('r_multiple', 0) for t in trades) / len(trades) if trades else 0
+        avg_r = (
+            sum(t.get("r_multiple", 0) for t in trades) / len(trades) if trades else 0
+        )
 
         # Build context
         prompt = f"""Provide a comprehensive end-of-day trading review for {review_date.strftime('%B %d, %Y')}:
@@ -480,7 +481,7 @@ Be specific, constructive, and actionable."""
             prompt=prompt,
             max_tokens=2048,
             temperature=0.6,
-            system_prompt="You are an experienced day trading coach providing constructive daily feedback."
+            system_prompt="You are an experienced day trading coach providing constructive daily feedback.",
         )
 
         response = self.claude.request(request)
@@ -488,10 +489,10 @@ Be specific, constructive, and actionable."""
         if response.success:
             try:
                 review = json.loads(response.content)
-                review['date'] = review_date.isoformat()
-                review['trades_count'] = len(trades)
-                review['win_rate'] = win_rate
-                review['net_pnl'] = total_pnl
+                review["date"] = review_date.isoformat()
+                review["trades_count"] = len(trades)
+                review["win_rate"] = win_rate
+                review["net_pnl"] = total_pnl
                 return review
             except json.JSONDecodeError:
                 logger.error("Failed to parse daily review")
@@ -499,10 +500,7 @@ Be specific, constructive, and actionable."""
         else:
             return {"error": response.error}
 
-    def get_performance_summary(
-        self,
-        days: int = 30
-    ) -> Dict[str, Any]:
+    def get_performance_summary(self, days: int = 30) -> Dict[str, Any]:
         """
         Get comprehensive performance summary
 
@@ -521,7 +519,7 @@ Be specific, constructive, and actionable."""
             "overall": asdict(overall) if overall else None,
             "patterns": [asdict(p) for p in patterns],
             "time_of_day": time_metrics,
-            "analysis_timestamp": datetime.now().isoformat()
+            "analysis_timestamp": datetime.now().isoformat(),
         }
 
 

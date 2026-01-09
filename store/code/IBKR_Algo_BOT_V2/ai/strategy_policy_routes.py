@@ -13,15 +13,15 @@ Endpoints:
 - POST /api/strategy/policy/record-veto - Record veto
 """
 
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional, Dict, List, Any
-from datetime import datetime
-from .strategy_policy_engine import (
-    get_strategy_policy_engine,
-    PerformanceMetrics
-)
-import logging
+
+from .strategy_policy_engine import (PerformanceMetrics,
+                                     get_strategy_policy_engine)
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ async def get_all_policies():
 @router.get("/audit")
 async def get_audit_log(
     strategy_id: Optional[str] = Query(None, description="Filter by strategy"),
-    limit: int = Query(100, description="Max entries to return")
+    limit: int = Query(100, description="Max entries to return"),
 ):
     """
     Get gating decisions audit log for frontend display.
@@ -87,16 +87,26 @@ async def get_audit_log(
         # Convert GateResult objects to frontend-expected format
         decisions = []
         for result in history[-limit:]:
-            decisions.append({
-                "timestamp": result.gated_at if hasattr(result, 'gated_at') else datetime.utcnow().isoformat(),
-                "approved": result.approved,
-                "symbol": result.symbol,
-                "type": "entry",
-                "reasons": [result.veto_details] if result.veto_details else [result.veto_reason or "No reason"],
-                "veto_reason": result.veto_reason,
-                "regime": result.current_regime,
-                "confidence": result.chronos_confidence
-            })
+            decisions.append(
+                {
+                    "timestamp": (
+                        result.gated_at
+                        if hasattr(result, "gated_at")
+                        else datetime.utcnow().isoformat()
+                    ),
+                    "approved": result.approved,
+                    "symbol": result.symbol,
+                    "type": "entry",
+                    "reasons": (
+                        [result.veto_details]
+                        if result.veto_details
+                        else [result.veto_reason or "No reason"]
+                    ),
+                    "veto_reason": result.veto_reason,
+                    "regime": result.current_regime,
+                    "confidence": result.chronos_confidence,
+                }
+            )
 
         # Return newest first
         decisions.reverse()
@@ -111,13 +121,11 @@ async def get_audit_log(
 @router.get("/audit-log")
 async def get_policy_audit_log(
     strategy_id: Optional[str] = Query(None, description="Filter by strategy"),
-    limit: int = Query(100, description="Max entries to return")
+    limit: int = Query(100, description="Max entries to return"),
 ):
     """Get policy change audit log (enable/disable/adjust events)"""
     engine = get_strategy_policy_engine()
-    return {
-        "entries": engine.get_audit_log(strategy_id=strategy_id, limit=limit)
-    }
+    return {"entries": engine.get_audit_log(strategy_id=strategy_id, limit=limit)}
 
 
 @router.get("/{strategy_id}")
@@ -131,7 +139,7 @@ async def get_strategy_policy(strategy_id: str):
         "confidence_threshold_override": policy.confidence_threshold_override,
         "position_size_multiplier": policy.position_size_multiplier,
         "reason": policy.reason,
-        "last_updated": policy.last_updated
+        "last_updated": policy.last_updated,
     }
 
 
@@ -160,7 +168,7 @@ async def evaluate_policy(request: EvaluateRequest):
     result = engine.evaluate(
         strategy_id=request.strategy_id,
         chronos_context=request.chronos_context,
-        force_reevaluate=request.force_reevaluate
+        force_reevaluate=request.force_reevaluate,
     )
 
     return {
@@ -169,7 +177,7 @@ async def evaluate_policy(request: EvaluateRequest):
         "confidence_override": result.confidence_override,
         "position_multiplier": result.position_multiplier,
         "actions_taken": result.actions_taken,
-        "reasons": result.reasons
+        "reasons": result.reasons,
     }
 
 
@@ -178,11 +186,7 @@ async def enable_strategy(strategy_id: str, reason: str = "manual"):
     """Manually enable a strategy"""
     engine = get_strategy_policy_engine()
     engine.enable_strategy(strategy_id, reason)
-    return {
-        "status": "enabled",
-        "strategy_id": strategy_id,
-        "reason": reason
-    }
+    return {"status": "enabled", "strategy_id": strategy_id, "reason": reason}
 
 
 @router.post("/disable/{strategy_id}")
@@ -190,11 +194,7 @@ async def disable_strategy(strategy_id: str, reason: str = "manual"):
     """Manually disable a strategy"""
     engine = get_strategy_policy_engine()
     engine.disable_strategy(strategy_id, reason)
-    return {
-        "status": "disabled",
-        "strategy_id": strategy_id,
-        "reason": reason
-    }
+    return {"status": "disabled", "strategy_id": strategy_id, "reason": reason}
 
 
 @router.post("/reset/{strategy_id}")
@@ -202,11 +202,7 @@ async def reset_strategy(strategy_id: str, reason: str = "manual reset"):
     """Reset a strategy to default policy"""
     engine = get_strategy_policy_engine()
     engine.reset_strategy(strategy_id, reason)
-    return {
-        "status": "reset",
-        "strategy_id": strategy_id,
-        "reason": reason
-    }
+    return {"status": "reset", "strategy_id": strategy_id, "reason": reason}
 
 
 @router.post("/config")
@@ -214,10 +210,7 @@ async def update_config(request: ConfigUpdateRequest):
     """Update policy engine configuration"""
     engine = get_strategy_policy_engine()
     new_config = engine.update_config(request.config)
-    return {
-        "status": "updated",
-        "config": new_config
-    }
+    return {"status": "updated", "config": new_config}
 
 
 @router.post("/record-trade")
@@ -229,15 +222,13 @@ async def record_trade_result(request: TradeResultRequest):
     """
     engine = get_strategy_policy_engine()
     engine.record_trade_result(
-        strategy_id=request.strategy_id,
-        is_win=request.is_win,
-        pnl=request.pnl
+        strategy_id=request.strategy_id, is_win=request.is_win, pnl=request.pnl
     )
     return {
         "status": "recorded",
         "strategy_id": request.strategy_id,
         "is_win": request.is_win,
-        "pnl": request.pnl
+        "pnl": request.pnl,
     }
 
 
@@ -249,14 +240,11 @@ async def record_veto(request: VetoRecordRequest):
     Used for veto pattern detection.
     """
     engine = get_strategy_policy_engine()
-    engine.record_veto(
-        strategy_id=request.strategy_id,
-        veto_reason=request.veto_reason
-    )
+    engine.record_veto(strategy_id=request.strategy_id, veto_reason=request.veto_reason)
     return {
         "status": "recorded",
         "strategy_id": request.strategy_id,
-        "veto_reason": request.veto_reason
+        "veto_reason": request.veto_reason,
     }
 
 
@@ -269,7 +257,7 @@ async def get_performance_metrics(strategy_id: str):
     if not metrics:
         return {
             "strategy_id": strategy_id,
-            "message": "No performance data recorded yet"
+            "message": "No performance data recorded yet",
         }
 
     return {
@@ -280,5 +268,5 @@ async def get_performance_metrics(strategy_id: str):
         "losing_trades": metrics.losing_trades,
         "total_pnl": metrics.total_pnl,
         "consecutive_losses": metrics.consecutive_losses,
-        "last_5_trades": metrics.last_5_trades
+        "last_5_trades": metrics.last_5_trades,
     }

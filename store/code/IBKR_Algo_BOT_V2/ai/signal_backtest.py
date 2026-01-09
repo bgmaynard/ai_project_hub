@@ -9,27 +9,30 @@ Backtests the technical signal strategy to see if:
 Uses historical Polygon data and simulates scalp trades.
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
 import logging
-import httpx
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional, Tuple
 from collections import defaultdict
-import pandas as pd
-import numpy as np
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
 
+import httpx
+import numpy as np
+import pandas as pd
 # Load environment
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Import our modules
 try:
-    from ai.technical_signals import TechnicalSignalAnalyzer, SignalState
+    from ai.technical_signals import SignalState, TechnicalSignalAnalyzer
+
     HAS_DEPS = True
 except ImportError as e:
     print(f"Import error: {e}")
@@ -45,6 +48,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BacktestTrade:
     """A simulated trade"""
+
     symbol: str
     entry_time: int
     entry_price: float
@@ -86,13 +90,15 @@ class SignalBacktester:
         self.trades: List[BacktestTrade] = []
         self.signal_correlations = {}
 
-    def fetch_ohlc(self, symbol: str, days: int = 30, timeframe: str = "5m") -> List[Dict]:
+    def fetch_ohlc(
+        self, symbol: str, days: int = 30, timeframe: str = "5m"
+    ) -> List[Dict]:
         """Fetch OHLC data from API server"""
         try:
             # Use the charts API which fetches from Polygon
             resp = self.client.get(
                 f"{API_BASE}/api/charts/ohlc/{symbol}",
-                params={"timeframe": timeframe, "days": days}
+                params={"timeframe": timeframe, "days": days},
             )
 
             if resp.status_code != 200:
@@ -119,7 +125,9 @@ class SignalBacktester:
             logger.error(f"Error fetching {symbol}: {e}")
             return []
 
-    def simulate_trade(self, df: pd.DataFrame, entry_idx: int, signal: SignalState) -> Optional[BacktestTrade]:
+    def simulate_trade(
+        self, df: pd.DataFrame, entry_idx: int, signal: SignalState
+    ) -> Optional[BacktestTrade]:
         """
         Simulate a trade from entry point.
         Uses trailing stop logic similar to scalper.
@@ -128,8 +136,8 @@ class SignalBacktester:
             return None
 
         entry_bar = df.iloc[entry_idx]
-        entry_price = entry_bar['close']
-        entry_time = int(entry_bar['time'])
+        entry_price = entry_bar["close"]
+        entry_time = int(entry_bar["time"])
 
         # Track position
         high_water = entry_price
@@ -139,9 +147,9 @@ class SignalBacktester:
         # Simulate bar by bar
         for i in range(entry_idx + 1, min(entry_idx + self.max_hold_bars + 1, len(df))):
             bar = df.iloc[i]
-            current_price = bar['close']
-            bar_high = bar['high']
-            bar_low = bar['low']
+            current_price = bar["close"]
+            bar_high = bar["high"]
+            bar_low = bar["low"]
 
             # Update high water mark
             if current_price > high_water:
@@ -149,7 +157,11 @@ class SignalBacktester:
 
             # Calculate P&L
             pnl_pct = ((current_price - entry_price) / entry_price) * 100
-            drawdown_from_high = ((high_water - current_price) / high_water) * 100 if high_water > 0 else 0
+            drawdown_from_high = (
+                ((high_water - current_price) / high_water) * 100
+                if high_water > 0
+                else 0
+            )
 
             # Check stop loss (use bar low for realism)
             low_pnl = ((bar_low - entry_price) / entry_price) * 100
@@ -173,8 +185,10 @@ class SignalBacktester:
             if i >= entry_idx + 3:  # Give it a few bars
                 # Calculate signal at this bar
                 window_start = max(0, i - 200)
-                window_data = df.iloc[window_start:i+1].to_dict('records')
-                current_signal = self.analyzer.analyze(signal.symbol, window_data, signal.timeframe)
+                window_data = df.iloc[window_start : i + 1].to_dict("records")
+                current_signal = self.analyzer.analyze(
+                    signal.symbol, window_data, signal.timeframe
+                )
 
                 if current_signal:
                     # Exit on bearish crossover if in profit
@@ -197,8 +211,8 @@ class SignalBacktester:
             exit_idx = min(entry_idx + self.max_hold_bars, len(df) - 1)
 
         exit_bar = df.iloc[exit_idx]
-        exit_price = exit_bar['close']
-        exit_time = int(exit_bar['time'])
+        exit_price = exit_bar["close"]
+        exit_time = int(exit_bar["time"])
 
         pnl = exit_price - entry_price
         pnl_pct = ((exit_price - entry_price) / entry_price) * 100
@@ -222,11 +236,16 @@ class SignalBacktester:
             ema_crossover=signal.ema_crossover,
             macd_crossover=signal.macd_crossover,
             vwap_crossover=signal.vwap_crossover,
-            candle_momentum=signal.candle_momentum
+            candle_momentum=signal.candle_momentum,
         )
 
-    def run_backtest(self, symbols: List[str], days: int = 30,
-                     min_confluence: float = 0, timeframe: str = "5m") -> Dict:
+    def run_backtest(
+        self,
+        symbols: List[str],
+        days: int = 30,
+        min_confluence: float = 0,
+        timeframe: str = "5m",
+    ) -> Dict:
         """
         Run backtest on multiple symbols.
 
@@ -258,7 +277,7 @@ class SignalBacktester:
 
             for i in range(lookback, len(df) - self.max_hold_bars):
                 # Get signal at this bar
-                window = df.iloc[max(0, i-200):i+1].to_dict('records')
+                window = df.iloc[max(0, i - 200) : i + 1].to_dict("records")
                 signal = self.analyzer.analyze(symbol, window, timeframe)
 
                 if not signal:
@@ -275,7 +294,11 @@ class SignalBacktester:
                         should_enter = True
                     elif signal.macd_crossover == "BULLISH" and signal.ema_bullish:
                         should_enter = True
-                    elif signal.vwap_crossover == "BULLISH" and signal.ema_bullish and signal.macd_bullish:
+                    elif (
+                        signal.vwap_crossover == "BULLISH"
+                        and signal.ema_bullish
+                        and signal.macd_bullish
+                    ):
                         should_enter = True
 
                 if should_enter:
@@ -333,13 +356,13 @@ class SignalBacktester:
                 "avg_win_pct": round(avg_win, 2),
                 "avg_loss_pct": round(avg_loss, 2),
                 "profit_factor": round(profit_factor, 2),
-                "avg_hold_bars": round(np.mean([t.hold_bars for t in self.trades]), 1)
+                "avg_hold_bars": round(np.mean([t.hold_bars for t in self.trades]), 1),
             },
             "correlations": correlations,
             "confluence_buckets": confluence_analysis,
             "signal_combinations": combo_analysis,
             "exit_reasons": exit_analysis,
-            "trades": [asdict(t) for t in self.trades[-20:]]  # Last 20 trades
+            "trades": [asdict(t) for t in self.trades[-20:]],  # Last 20 trades
         }
 
         return results
@@ -351,43 +374,56 @@ class SignalBacktester:
             return {"error": "Not enough trades for correlation"}
 
         # Create DataFrame for correlation
-        df = pd.DataFrame([{
-            "pnl": t.pnl,
-            "win": 1 if t.pnl > 0 else 0,
-            "confluence": t.confluence_score,
-            "ema_bullish": 1 if t.ema_bullish else 0,
-            "macd_bullish": 1 if t.macd_bullish else 0,
-            "above_vwap": 1 if t.price_above_vwap else 0,
-            "ema_cross": 1 if t.ema_crossover == "BULLISH" else 0,
-            "macd_cross": 1 if t.macd_crossover == "BULLISH" else 0,
-            "vwap_cross": 1 if t.vwap_crossover == "BULLISH" else 0,
-            "momentum_building": 1 if t.candle_momentum == "BUILDING" else 0
-        } for t in self.trades])
+        df = pd.DataFrame(
+            [
+                {
+                    "pnl": t.pnl,
+                    "win": 1 if t.pnl > 0 else 0,
+                    "confluence": t.confluence_score,
+                    "ema_bullish": 1 if t.ema_bullish else 0,
+                    "macd_bullish": 1 if t.macd_bullish else 0,
+                    "above_vwap": 1 if t.price_above_vwap else 0,
+                    "ema_cross": 1 if t.ema_crossover == "BULLISH" else 0,
+                    "macd_cross": 1 if t.macd_crossover == "BULLISH" else 0,
+                    "vwap_cross": 1 if t.vwap_crossover == "BULLISH" else 0,
+                    "momentum_building": 1 if t.candle_momentum == "BUILDING" else 0,
+                }
+                for t in self.trades
+            ]
+        )
 
         # Correlation with win
-        win_corr = df.corr()['win'].drop('win').to_dict()
+        win_corr = df.corr()["win"].drop("win").to_dict()
 
         # Correlation with P&L
-        pnl_corr = df.corr()['pnl'].drop('pnl').to_dict()
+        pnl_corr = df.corr()["pnl"].drop("pnl").to_dict()
 
         return {
             "win_correlation": {k: round(v, 3) for k, v in win_corr.items()},
             "pnl_correlation": {k: round(v, 3) for k, v in pnl_corr.items()},
-            "interpretation": self.interpret_correlations(win_corr)
+            "interpretation": self.interpret_correlations(win_corr),
         }
 
     def interpret_correlations(self, correlations: Dict) -> List[str]:
         """Interpret correlation results"""
         insights = []
 
-        for signal, corr in sorted(correlations.items(), key=lambda x: abs(x[1]), reverse=True):
+        for signal, corr in sorted(
+            correlations.items(), key=lambda x: abs(x[1]), reverse=True
+        ):
             if abs(corr) < 0.05:
                 continue
 
             direction = "positively" if corr > 0 else "negatively"
-            strength = "strongly" if abs(corr) > 0.3 else "moderately" if abs(corr) > 0.15 else "weakly"
+            strength = (
+                "strongly"
+                if abs(corr) > 0.3
+                else "moderately" if abs(corr) > 0.15 else "weakly"
+            )
 
-            insights.append(f"{signal} is {strength} {direction} correlated with wins ({corr:.3f})")
+            insights.append(
+                f"{signal} is {strength} {direction} correlated with wins ({corr:.3f})"
+            )
 
         return insights[:5]  # Top 5 insights
 
@@ -398,7 +434,7 @@ class SignalBacktester:
             "0-40": {"trades": [], "label": "Low (0-40%)"},
             "40-60": {"trades": [], "label": "Medium (40-60%)"},
             "60-80": {"trades": [], "label": "High (60-80%)"},
-            "80-100": {"trades": [], "label": "Very High (80-100%)"}
+            "80-100": {"trades": [], "label": "Very High (80-100%)"},
         }
 
         for t in self.trades:
@@ -424,7 +460,7 @@ class SignalBacktester:
                 "count": len(trades),
                 "win_rate": round(wins / len(trades) * 100, 1),
                 "avg_pnl_pct": round(np.mean([t.pnl_pct for t in trades]), 2),
-                "total_pnl": round(sum(t.pnl for t in trades), 2)
+                "total_pnl": round(sum(t.pnl for t in trades), 2),
             }
 
         return results
@@ -459,11 +495,13 @@ class SignalBacktester:
                 "count": len(trades),
                 "win_rate": round(wins / len(trades) * 100, 1),
                 "avg_pnl_pct": round(np.mean([t.pnl_pct for t in trades]), 2),
-                "total_pnl": round(sum(t.pnl for t in trades), 2)
+                "total_pnl": round(sum(t.pnl for t in trades), 2),
             }
 
         # Sort by win rate
-        return dict(sorted(results.items(), key=lambda x: x[1]["win_rate"], reverse=True))
+        return dict(
+            sorted(results.items(), key=lambda x: x[1]["win_rate"], reverse=True)
+        )
 
     def analyze_exits(self) -> Dict:
         """Analyze exit reasons"""
@@ -478,7 +516,9 @@ class SignalBacktester:
             results[reason] = {
                 "count": len(trades),
                 "win_rate": round(wins / len(trades) * 100, 1) if trades else 0,
-                "avg_pnl_pct": round(np.mean([t.pnl_pct for t in trades]), 2) if trades else 0
+                "avg_pnl_pct": (
+                    round(np.mean([t.pnl_pct for t in trades]), 2) if trades else 0
+                ),
             }
 
         return results
@@ -503,7 +543,12 @@ class SignalBacktester:
                     "win_rate": results["summary"]["win_rate"],
                     "profit_factor": results["summary"]["profit_factor"],
                     "total_pnl": results["summary"]["total_pnl"],
-                    "avg_pnl": results["summary"]["total_pnl"] / results["summary"]["total_trades"] if results["summary"]["total_trades"] > 0 else 0
+                    "avg_pnl": (
+                        results["summary"]["total_pnl"]
+                        / results["summary"]["total_trades"]
+                        if results["summary"]["total_trades"] > 0
+                        else 0
+                    ),
                 }
 
         return comparison
@@ -520,13 +565,13 @@ def run_backtest_analysis(symbols: List[str] = None, days: int = 30):
         # Default momentum stocks
         symbols = ["AAPL", "TSLA", "NVDA", "AMD", "SPY", "QQQ", "META", "MSFT"]
 
-    print("="*70)
+    print("=" * 70)
     print("TECHNICAL SIGNAL BACKTEST")
-    print("="*70)
+    print("=" * 70)
     print(f"Symbols: {', '.join(symbols)}")
     print(f"Days: {days}")
     print(f"Timeframe: 5m")
-    print("="*70)
+    print("=" * 70)
 
     backtester = SignalBacktester()
 
@@ -559,29 +604,39 @@ def run_backtest_analysis(symbols: List[str] = None, days: int = 30):
     print(f"\n[CONFLUENCE ANALYSIS]")
     for bucket, data in results.get("confluence_buckets", {}).items():
         if data.get("count", 0) > 0:
-            print(f"   {data.get('label', bucket)}: {data['count']} trades, {data['win_rate']}% win rate, {data['avg_pnl_pct']:+.2f}% avg")
+            print(
+                f"   {data.get('label', bucket)}: {data['count']} trades, {data['win_rate']}% win rate, {data['avg_pnl_pct']:+.2f}% avg"
+            )
 
     # Print best signal combinations
     print(f"\n[BEST SIGNAL COMBINATIONS]")
     combos = results.get("signal_combinations", {})
     for combo, data in list(combos.items())[:5]:
-        print(f"   {combo}: {data['count']} trades, {data['win_rate']}% win rate, ${data['total_pnl']:.2f} P&L")
+        print(
+            f"   {combo}: {data['count']} trades, {data['win_rate']}% win rate, ${data['total_pnl']:.2f} P&L"
+        )
 
     # Print exit analysis
     print(f"\n[EXIT ANALYSIS]")
     for reason, data in results.get("exit_reasons", {}).items():
-        print(f"   {reason}: {data['count']} trades, {data['win_rate']}% win rate, {data['avg_pnl_pct']:+.2f}% avg")
+        print(
+            f"   {reason}: {data['count']} trades, {data['win_rate']}% win rate, {data['avg_pnl_pct']:+.2f}% avg"
+        )
 
     # Compare thresholds
     print(f"\n[2] Comparing confluence thresholds...")
     comparison = backtester.compare_confluence_thresholds(symbols, days)
 
     print(f"\n[THRESHOLD COMPARISON]")
-    print(f"   {'Threshold':<12} {'Trades':<8} {'Win Rate':<10} {'PF':<6} {'Total P&L':<12}")
+    print(
+        f"   {'Threshold':<12} {'Trades':<8} {'Win Rate':<10} {'PF':<6} {'Total P&L':<12}"
+    )
     print(f"   {'-'*50}")
     for thresh, data in comparison.items():
         if "error" not in data:
-            print(f"   {thresh:<12} {data['trades']:<8} {data['win_rate']:<10.1f} {data['profit_factor']:<6.2f} ${data['total_pnl']:<12.2f}")
+            print(
+                f"   {thresh:<12} {data['trades']:<8} {data['win_rate']:<10.1f} {data['profit_factor']:<6.2f} ${data['total_pnl']:<12.2f}"
+            )
 
     # Save results
     output = {
@@ -589,10 +644,12 @@ def run_backtest_analysis(symbols: List[str] = None, days: int = 30):
         "symbols": symbols,
         "days": days,
         "results": results,
-        "threshold_comparison": comparison
+        "threshold_comparison": comparison,
     }
 
-    output_path = os.path.join(os.path.dirname(__file__), "signal_backtest_results.json")
+    output_path = os.path.join(
+        os.path.dirname(__file__), "signal_backtest_results.json"
+    )
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2, default=str)
     print(f"\n[OK] Results saved to {output_path}")

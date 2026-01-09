@@ -13,11 +13,12 @@ Version: 2.0
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional, List, Dict
-from enum import Enum
-import time
+
 import math
+import time
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List, Optional
 
 
 class OrderType(Enum):
@@ -35,6 +36,7 @@ class Side(Enum):
 @dataclass
 class TradingSignal:
     """Trading signal with sizing and order type"""
+
     timestamp: float
     symbol: str
     side: Side
@@ -51,6 +53,7 @@ class TradingSignal:
 @dataclass
 class Position:
     """Current position"""
+
     symbol: str
     quantity: int  # Positive = long, Negative = short
     entry_price: float
@@ -86,6 +89,7 @@ class Position:
 @dataclass
 class RiskLimits:
     """Risk management parameters with 3-5-7 strategy"""
+
     # Position sizing
     max_position_size_usd: float = 10000.0  # Max $ per position
     max_position_size_pct: float = 0.10  # Max 10% of account per position
@@ -118,9 +122,7 @@ class TradingEngine:
     Uses AlphaFusion predictions to make trading decisions
     """
 
-    def __init__(self,
-                 account_size: float,
-                 risk_limits: Optional[RiskLimits] = None):
+    def __init__(self, account_size: float, risk_limits: Optional[RiskLimits] = None):
 
         self.account_size = account_size
         self.risk_limits = risk_limits or RiskLimits()
@@ -141,15 +143,17 @@ class TradingEngine:
         # Trading enabled flag
         self.trading_enabled = True
 
-    def evaluate_signal(self,
-                       symbol: str,
-                       p_final: float,
-                       reliability: float,
-                       bid: float,
-                       ask: float,
-                       spread_pct: float,
-                       expected_slippage: float = 0.0,
-                       fill_probability: float = 0.8) -> Optional[TradingSignal]:
+    def evaluate_signal(
+        self,
+        symbol: str,
+        p_final: float,
+        reliability: float,
+        bid: float,
+        ask: float,
+        spread_pct: float,
+        expected_slippage: float = 0.0,
+        fill_probability: float = 0.8,
+    ) -> Optional[TradingSignal]:
         """
         Evaluate if we should trade based on AlphaFusion prediction
 
@@ -192,7 +196,7 @@ class TradingEngine:
         kelly_fraction = self._calculate_kelly_size(
             p_win=p_final if side == Side.BUY else (1 - p_final),
             edge=edge,
-            reliability=reliability
+            reliability=reliability,
         )
 
         # Position size in USD
@@ -209,12 +213,15 @@ class TradingEngine:
             position_size_usd,
             max_position_from_risk,  # 3% max risk per trade
             self.risk_limits.max_position_size_usd,
-            self.account_size * self.risk_limits.max_position_size_pct
+            self.account_size * self.risk_limits.max_position_size_pct,
         )
 
         # Check total exposure
         current_exposure = sum(pos.market_value for pos in self.positions.values())
-        available_exposure = self.account_size * self.risk_limits.max_total_exposure_pct - current_exposure
+        available_exposure = (
+            self.account_size * self.risk_limits.max_total_exposure_pct
+            - current_exposure
+        )
 
         if position_size_usd > available_exposure:
             position_size_usd = available_exposure
@@ -233,7 +240,7 @@ class TradingEngine:
             bid=bid,
             ask=ask,
             fill_probability=fill_probability,
-            expected_slippage=expected_slippage
+            expected_slippage=expected_slippage,
         )
 
         # Create signal
@@ -246,15 +253,12 @@ class TradingEngine:
             limit_price=limit_price,
             confidence=p_final,
             expected_edge=edge,
-            reason=f"p_final={p_final:.3f}, edge={edge:.3f}, reliability={reliability:.3f}"
+            reason=f"p_final={p_final:.3f}, edge={edge:.3f}, reliability={reliability:.3f}",
         )
 
         return signal
 
-    def add_position(self,
-                    symbol: str,
-                    quantity: int,
-                    entry_price: float):
+    def add_position(self, symbol: str, quantity: int, entry_price: float):
         """Add new position after fill"""
         timestamp = time.time()
 
@@ -276,7 +280,7 @@ class TradingEngine:
             timestamp=timestamp,
             stop_loss=stop_loss,
             take_profit=take_profit,
-            trail_stop=trail_stop
+            trail_stop=trail_stop,
         )
 
         self.positions[symbol] = position
@@ -345,7 +349,7 @@ class TradingEngine:
                 side=Side.SELL if position.quantity > 0 else Side.BUY,
                 order_type=OrderType.MARKET,
                 quantity=abs(position.quantity),
-                reason=f"Exit: {exit_reason}, P&L: ${position.unrealized_pnl:.2f}"
+                reason=f"Exit: {exit_reason}, P&L: ${position.unrealized_pnl:.2f}",
             )
 
             return signal
@@ -372,10 +376,9 @@ class TradingEngine:
         # Check if we hit risk limits (3-5-7 strategy)
         self._check_risk_limits()
 
-    def _calculate_kelly_size(self,
-                             p_win: float,
-                             edge: float,
-                             reliability: float) -> float:
+    def _calculate_kelly_size(
+        self, p_win: float, edge: float, reliability: float
+    ) -> float:
         """
         Calculate Kelly fraction
 
@@ -398,12 +401,14 @@ class TradingEngine:
         # Clip to reasonable range
         return max(0.0, min(kelly, 0.20))  # Max 20% of account
 
-    def _decide_order_type(self,
-                          side: Side,
-                          bid: float,
-                          ask: float,
-                          fill_probability: float,
-                          expected_slippage: float) -> tuple[OrderType, Optional[float]]:
+    def _decide_order_type(
+        self,
+        side: Side,
+        bid: float,
+        ask: float,
+        fill_probability: float,
+        expected_slippage: float,
+    ) -> tuple[OrderType, Optional[float]]:
         """
         Decide between market and limit order
 
@@ -469,7 +474,9 @@ class TradingEngine:
                 return True
         else:
             # Use percentage limit (7% from 3-5-7 strategy)
-            weekly_loss_limit = self.account_size * self.risk_limits.weekly_loss_limit_pct
+            weekly_loss_limit = (
+                self.account_size * self.risk_limits.weekly_loss_limit_pct
+            )
             if self.weekly_pnl < -weekly_loss_limit:
                 self.trading_enabled = False
                 return True
@@ -481,22 +488,30 @@ class TradingEngine:
         if self.risk_limits.weekly_loss_limit_usd is not None:
             return self.weekly_pnl < -self.risk_limits.weekly_loss_limit_usd
         else:
-            weekly_loss_limit = self.account_size * self.risk_limits.weekly_loss_limit_pct
+            weekly_loss_limit = (
+                self.account_size * self.risk_limits.weekly_loss_limit_pct
+            )
             return self.weekly_pnl < -weekly_loss_limit
 
     def get_stats(self) -> Dict:
         """Get current trading statistics"""
         total_pnl = sum(pos.unrealized_pnl for pos in self.positions.values())
         total_exposure = sum(pos.market_value for pos in self.positions.values())
-        exposure_pct = (total_exposure / self.account_size) * 100 if self.account_size > 0 else 0
+        exposure_pct = (
+            (total_exposure / self.account_size) * 100 if self.account_size > 0 else 0
+        )
 
         # Calculate 3-5-7 risk limits
-        daily_loss_limit = (self.risk_limits.daily_loss_limit_usd
-                           if self.risk_limits.daily_loss_limit_usd is not None
-                           else self.account_size * self.risk_limits.daily_loss_limit_pct)
-        weekly_loss_limit = (self.risk_limits.weekly_loss_limit_usd
-                            if self.risk_limits.weekly_loss_limit_usd is not None
-                            else self.account_size * self.risk_limits.weekly_loss_limit_pct)
+        daily_loss_limit = (
+            self.risk_limits.daily_loss_limit_usd
+            if self.risk_limits.daily_loss_limit_usd is not None
+            else self.account_size * self.risk_limits.daily_loss_limit_pct
+        )
+        weekly_loss_limit = (
+            self.risk_limits.weekly_loss_limit_usd
+            if self.risk_limits.weekly_loss_limit_usd is not None
+            else self.account_size * self.risk_limits.weekly_loss_limit_pct
+        )
 
         return {
             "trading_enabled": self.trading_enabled,
@@ -505,25 +520,29 @@ class TradingEngine:
             "total_exposure_usd": total_exposure,
             "total_exposure_pct": exposure_pct,
             "unrealized_pnl": total_pnl,
-
             # Daily tracking
             "daily_pnl": self.daily_pnl,
             "trades_today": self.trades_today,
             "daily_loss_limit": daily_loss_limit,
-            "daily_pnl_pct": (self.daily_pnl / self.account_size * 100) if self.account_size > 0 else 0,
-
+            "daily_pnl_pct": (
+                (self.daily_pnl / self.account_size * 100)
+                if self.account_size > 0
+                else 0
+            ),
             # Weekly tracking (3-5-7 strategy)
             "weekly_pnl": self.weekly_pnl,
             "trades_this_week": self.trades_this_week,
             "weekly_loss_limit": weekly_loss_limit,
-            "weekly_pnl_pct": (self.weekly_pnl / self.account_size * 100) if self.account_size > 0 else 0,
-
+            "weekly_pnl_pct": (
+                (self.weekly_pnl / self.account_size * 100)
+                if self.account_size > 0
+                else 0
+            ),
             # 3-5-7 Risk Management
             "risk_357_enabled": True,
             "max_risk_per_trade_pct": self.risk_limits.max_risk_per_trade_pct * 100,
             "daily_loss_limit_pct": self.risk_limits.daily_loss_limit_pct * 100,
             "weekly_loss_limit_pct": self.risk_limits.weekly_loss_limit_pct * 100,
-
             "positions": {
                 symbol: {
                     "quantity": pos.quantity,
@@ -533,10 +552,10 @@ class TradingEngine:
                     "unrealized_pnl_pct": pos.unrealized_pnl_pct,
                     "stop_loss": pos.stop_loss,
                     "take_profit": pos.take_profit,
-                    "trail_stop": pos.trail_stop
+                    "trail_stop": pos.trail_stop,
                 }
                 for symbol, pos in self.positions.items()
-            }
+            },
         }
 
 
@@ -551,8 +570,8 @@ if __name__ == "__main__":
         risk_limits=RiskLimits(
             max_position_size_usd=5000.0,
             daily_loss_limit_usd=500.0,
-            min_probability_threshold=0.60
-        )
+            min_probability_threshold=0.60,
+        ),
     )
 
     # Evaluate a signal
@@ -564,7 +583,7 @@ if __name__ == "__main__":
         ask=150.05,
         spread_pct=0.0003,  # 0.03% spread
         expected_slippage=0.02,
-        fill_probability=0.8
+        fill_probability=0.8,
     )
 
     if signal:
@@ -573,7 +592,11 @@ if __name__ == "__main__":
         print(f"  Side: {signal.side.value}")
         print(f"  Order Type: {signal.order_type.value}")
         print(f"  Quantity: {signal.quantity}")
-        print(f"  Limit Price: ${signal.limit_price:.2f}" if signal.limit_price else "  Market Order")
+        print(
+            f"  Limit Price: ${signal.limit_price:.2f}"
+            if signal.limit_price
+            else "  Market Order"
+        )
         print(f"  Confidence: {signal.confidence:.3f}")
         print(f"  Expected Edge: {signal.expected_edge:.3f}")
         print(f"  Reason: {signal.reason}")
@@ -582,13 +605,15 @@ if __name__ == "__main__":
         engine.add_position(
             symbol=signal.symbol,
             quantity=signal.quantity if signal.side == Side.BUY else -signal.quantity,
-            entry_price=signal.limit_price or 150.02
+            entry_price=signal.limit_price or 150.02,
         )
 
         print(f"\n✓ Position Opened:")
         stats = engine.get_stats()
         print(f"  Open Positions: {stats['open_positions']}")
-        print(f"  Total Exposure: ${stats['total_exposure_usd']:.2f} ({stats['total_exposure_pct']:.1f}%)")
+        print(
+            f"  Total Exposure: ${stats['total_exposure_usd']:.2f} ({stats['total_exposure_pct']:.1f}%)"
+        )
 
         # Check exits at higher price
         exit_signal = engine.check_exits("AAPL", 156.00)  # +4% profit

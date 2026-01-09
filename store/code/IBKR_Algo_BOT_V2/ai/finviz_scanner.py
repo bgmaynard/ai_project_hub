@@ -4,16 +4,18 @@ Finviz Scanner Integration
 Free stock screening using Finviz data.
 Provides gap scanners, momentum filters, and pre-market movers.
 """
+
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
-from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
 try:
     from finvizfinance.screener.overview import Overview
     from finvizfinance.screener.performance import Performance
+
     HAS_FINVIZ = True
 except ImportError:
     logger.warning("finvizfinance not installed: pip install finvizfinance")
@@ -47,10 +49,9 @@ class FinvizScanner:
         elapsed = (datetime.now() - self._cache_time[scan_type]).total_seconds()
         return elapsed < self._cache_ttl
 
-    def get_top_gainers(self,
-                        min_change: float = 5.0,
-                        max_price: float = 20.0,
-                        min_volume: int = 500000) -> List[ScanResult]:
+    def get_top_gainers(
+        self, min_change: float = 5.0, max_price: float = 20.0, min_volume: int = 500000
+    ) -> List[ScanResult]:
         """
         Get top percentage gainers matching scalping criteria
 
@@ -94,9 +95,9 @@ class FinvizScanner:
                 price_filter = "Under $50"
 
             filters = {
-                'Change': change_filter,
-                'Price': price_filter,
-                'Average Volume': 'Over 500K' if min_volume >= 500000 else 'Over 200K'
+                "Change": change_filter,
+                "Price": price_filter,
+                "Average Volume": "Over 500K" if min_volume >= 500000 else "Over 200K",
             }
 
             foverview.set_filter(filters_dict=filters)
@@ -105,15 +106,15 @@ class FinvizScanner:
             results = []
             for _, row in df.iterrows():
                 try:
-                    change = row.get('Change', 0)
+                    change = row.get("Change", 0)
                     if isinstance(change, str):
-                        change = float(change.replace('%', '')) / 100
+                        change = float(change.replace("%", "")) / 100
 
-                    volume = row.get('Volume', 0)
+                    volume = row.get("Volume", 0)
                     if isinstance(volume, str):
-                        volume = int(volume.replace(',', ''))
+                        volume = int(volume.replace(",", ""))
 
-                    price = float(row.get('Price', 0))
+                    price = float(row.get("Price", 0))
 
                     # Apply our filters
                     if price > max_price:
@@ -121,14 +122,16 @@ class FinvizScanner:
                     if change * 100 < min_change:
                         continue
 
-                    results.append(ScanResult(
-                        symbol=row.get('Ticker', ''),
-                        price=price,
-                        change_pct=change * 100,
-                        volume=int(volume),
-                        market_cap=str(row.get('Market Cap', '')),
-                        sector=str(row.get('Sector', ''))
-                    ))
+                    results.append(
+                        ScanResult(
+                            symbol=row.get("Ticker", ""),
+                            price=price,
+                            change_pct=change * 100,
+                            volume=int(volume),
+                            market_cap=str(row.get("Market Cap", "")),
+                            sector=str(row.get("Sector", "")),
+                        )
+                    )
                 except Exception as e:
                     logger.debug(f"Error parsing row: {e}")
                     continue
@@ -161,10 +164,10 @@ class FinvizScanner:
             foverview = Overview()
 
             filters = {
-                'Change': 'Up 5%',
-                'Price': 'Under $20',
-                'Float Short': 'Low (<10%)',
-                'Average Volume': 'Over 200K'
+                "Change": "Up 5%",
+                "Price": "Under $20",
+                "Float Short": "Low (<10%)",
+                "Average Volume": "Over 200K",
             }
 
             foverview.set_filter(filters_dict=filters)
@@ -173,18 +176,20 @@ class FinvizScanner:
             results = []
             for _, row in df.iterrows():
                 try:
-                    change = row.get('Change', 0)
+                    change = row.get("Change", 0)
                     if isinstance(change, str):
-                        change = float(change.replace('%', '')) / 100
+                        change = float(change.replace("%", "")) / 100
 
-                    results.append(ScanResult(
-                        symbol=row.get('Ticker', ''),
-                        price=float(row.get('Price', 0)),
-                        change_pct=change * 100,
-                        volume=int(str(row.get('Volume', 0)).replace(',', '')),
-                        market_cap=str(row.get('Market Cap', '')),
-                        sector=str(row.get('Sector', ''))
-                    ))
+                    results.append(
+                        ScanResult(
+                            symbol=row.get("Ticker", ""),
+                            price=float(row.get("Price", 0)),
+                            change_pct=change * 100,
+                            volume=int(str(row.get("Volume", 0)).replace(",", "")),
+                            market_cap=str(row.get("Market Cap", "")),
+                            sector=str(row.get("Sector", "")),
+                        )
+                    )
                 except:
                     continue
 
@@ -212,10 +217,10 @@ class FinvizScanner:
             foverview = Overview()
 
             filters = {
-                'Change': 'Up',
-                'Price': 'Under $20',
-                'Relative Volume': 'Over 3',  # 3x normal volume
-                'Average Volume': 'Over 200K'
+                "Change": "Up",
+                "Price": "Under $20",
+                "Relative Volume": "Over 3",  # 3x normal volume
+                "Average Volume": "Over 200K",
             }
 
             foverview.set_filter(filters_dict=filters)
@@ -224,18 +229,20 @@ class FinvizScanner:
             results = []
             for _, row in df.iterrows():
                 try:
-                    change = row.get('Change', 0)
+                    change = row.get("Change", 0)
                     if isinstance(change, str):
-                        change = float(change.replace('%', '')) / 100
+                        change = float(change.replace("%", "")) / 100
 
-                    results.append(ScanResult(
-                        symbol=row.get('Ticker', ''),
-                        price=float(row.get('Price', 0)),
-                        change_pct=change * 100,
-                        volume=int(str(row.get('Volume', 0)).replace(',', '')),
-                        market_cap=str(row.get('Market Cap', '')),
-                        sector=str(row.get('Sector', ''))
-                    ))
+                    results.append(
+                        ScanResult(
+                            symbol=row.get("Ticker", ""),
+                            price=float(row.get("Price", 0)),
+                            change_pct=change * 100,
+                            volume=int(str(row.get("Volume", 0)).replace(",", "")),
+                            market_cap=str(row.get("Market Cap", "")),
+                            sector=str(row.get("Sector", "")),
+                        )
+                    )
                 except:
                     continue
 
@@ -263,7 +270,7 @@ class FinvizScanner:
             "top_gainers": self.get_top_gainers(),
             "low_float": self.get_low_float_movers(),
             "high_volume": self.get_high_volume_breakouts(),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
 
@@ -289,7 +296,7 @@ def scan_top_gainers(min_change: float = 5.0, max_price: float = 20.0) -> List[D
             "price": r.price,
             "change_pct": r.change_pct,
             "volume": r.volume,
-            "source": "finviz"
+            "source": "finviz",
         }
         for r in results
     ]

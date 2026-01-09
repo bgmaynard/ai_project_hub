@@ -8,23 +8,21 @@ and trading triggers.
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
-from .news_feed_monitor import (
-    get_news_monitor, NewsFeedMonitor, NewsTrigger,
-    NewsCategory, NewsImpact, NewsSentiment
-)
-from .fundamental_analysis import (
-    get_fundamental_analyzer, FundamentalAnalyzer
-)
+from .fundamental_analysis import FundamentalAnalyzer, get_fundamental_analyzer
+from .news_feed_monitor import (NewsCategory, NewsFeedMonitor, NewsImpact,
+                                NewsSentiment, NewsTrigger, get_news_monitor)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/news")
 
 
 # ============ Pydantic Models ============
+
 
 class TriggerCreate(BaseModel):
     id: str
@@ -52,6 +50,7 @@ class FundamentalsRequest(BaseModel):
 
 # ============ News Endpoints ============
 
+
 @router.get("/info")
 async def get_news_info():
     """Get news system information"""
@@ -69,8 +68,8 @@ async def get_news_info():
             "AI sentiment analysis",
             "Custom triggers and alerts",
             "Multi-source aggregation",
-            "Claude AI deep analysis"
-        ]
+            "Claude AI deep analysis",
+        ],
     }
 
 
@@ -78,10 +77,7 @@ async def get_news_info():
 
 
 @router.get("/fetch")
-async def fetch_fresh_news(
-    symbols: Optional[str] = None,
-    limit: int = 20
-):
+async def fetch_fresh_news(symbols: Optional[str] = None, limit: int = 20):
     """Fetch fresh news from sources"""
     monitor = get_news_monitor()
     symbol_list = symbols.split(",") if symbols else None
@@ -93,10 +89,7 @@ async def fetch_fresh_news(
         if not any(cached.id == item.id for cached in monitor.news_cache):
             monitor.news_cache.insert(0, item)
 
-    return {
-        "count": len(news),
-        "news": [item.to_dict() for item in news]
-    }
+    return {"count": len(news), "news": [item.to_dict() for item in news]}
 
 
 @router.get("/feed")
@@ -105,7 +98,7 @@ async def get_news_feed(
     symbols: Optional[str] = None,
     small_cap_only: bool = True,
     max_price: float = 20.0,
-    actionable_only: bool = True
+    actionable_only: bool = True,
 ):
     """
     Get a clean news feed with time, symbol, headline, and URL.
@@ -123,43 +116,166 @@ async def get_news_feed(
 
     # Known large cap symbols to always filter out
     LARGE_CAP_EXCLUSIONS = {
-        'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'META', 'TSLA', 'NVDA',
-        'BRK.A', 'BRK.B', 'JPM', 'JNJ', 'V', 'PG', 'XOM', 'HD', 'CVX',
-        'MA', 'ABBV', 'MRK', 'PFE', 'KO', 'PEP', 'COST', 'WMT', 'NKE',
-        'DIS', 'NFLX', 'ADBE', 'CRM', 'TMO', 'ABT', 'DHR', 'LLY', 'UNH',
-        'AVGO', 'CSCO', 'ACN', 'ORCL', 'TXN', 'QCOM', 'IBM', 'AMD', 'INTC',
-        'BA', 'CAT', 'GE', 'MMM', 'HON', 'UPS', 'RTX', 'LMT', 'GS', 'MS',
-        'BAC', 'WFC', 'C', 'AXP', 'BLK', 'SCHW', 'SPY', 'QQQ', 'IWM', 'DIA'
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "GOOG",
+        "AMZN",
+        "META",
+        "TSLA",
+        "NVDA",
+        "BRK.A",
+        "BRK.B",
+        "JPM",
+        "JNJ",
+        "V",
+        "PG",
+        "XOM",
+        "HD",
+        "CVX",
+        "MA",
+        "ABBV",
+        "MRK",
+        "PFE",
+        "KO",
+        "PEP",
+        "COST",
+        "WMT",
+        "NKE",
+        "DIS",
+        "NFLX",
+        "ADBE",
+        "CRM",
+        "TMO",
+        "ABT",
+        "DHR",
+        "LLY",
+        "UNH",
+        "AVGO",
+        "CSCO",
+        "ACN",
+        "ORCL",
+        "TXN",
+        "QCOM",
+        "IBM",
+        "AMD",
+        "INTC",
+        "BA",
+        "CAT",
+        "GE",
+        "MMM",
+        "HON",
+        "UPS",
+        "RTX",
+        "LMT",
+        "GS",
+        "MS",
+        "BAC",
+        "WFC",
+        "C",
+        "AXP",
+        "BLK",
+        "SCHW",
+        "SPY",
+        "QQQ",
+        "IWM",
+        "DIA",
     }
 
     # Commentary/opinion keywords to filter out (not actionable news)
     COMMENTARY_KEYWORDS = [
-        'says', 'believes', 'thinks', 'predicts', 'expects', 'sees',
-        'according to', 'analyst says', 'jim cramer', 'ed yardeni',
-        'morning brief', 'market wrap', 'daily roundup', 'top stories',
-        'what to watch', 'stocks to watch', 'movers and shakers',
-        'options activity', 'options trading', 'whale', 'unusual options', 'dark pool',
-        'most active', 'trending', 'buzzing', 'social sentiment',
-        'reddit', 'wallstreetbets', 'meme stock', 'retail traders',
-        'check out what', 'here\'s why', 'here is why', '5 things',
-        '3 things', 'top picks', 'best stocks', 'worst stocks',
-        'market outlook', 'weekly preview', 'monthly outlook',
-        'kevin o\'leary', 'warren buffett', 'elon musk', 'cathie wood',
-        'magnificent 7', 'magnificent seven', 'retail investor',
-        'you should know', 'need to know', 'everything you need',
-        'quick look', 'in focus', 'spotlight', 'deep dive',
-        'complete guide', 'essential guide', 'beginners guide'
+        "says",
+        "believes",
+        "thinks",
+        "predicts",
+        "expects",
+        "sees",
+        "according to",
+        "analyst says",
+        "jim cramer",
+        "ed yardeni",
+        "morning brief",
+        "market wrap",
+        "daily roundup",
+        "top stories",
+        "what to watch",
+        "stocks to watch",
+        "movers and shakers",
+        "options activity",
+        "options trading",
+        "whale",
+        "unusual options",
+        "dark pool",
+        "most active",
+        "trending",
+        "buzzing",
+        "social sentiment",
+        "reddit",
+        "wallstreetbets",
+        "meme stock",
+        "retail traders",
+        "check out what",
+        "here's why",
+        "here is why",
+        "5 things",
+        "3 things",
+        "top picks",
+        "best stocks",
+        "worst stocks",
+        "market outlook",
+        "weekly preview",
+        "monthly outlook",
+        "kevin o'leary",
+        "warren buffett",
+        "elon musk",
+        "cathie wood",
+        "magnificent 7",
+        "magnificent seven",
+        "retail investor",
+        "you should know",
+        "need to know",
+        "everything you need",
+        "quick look",
+        "in focus",
+        "spotlight",
+        "deep dive",
+        "complete guide",
+        "essential guide",
+        "beginners guide",
     ]
 
     # Keywords that indicate momentum-worthy news (prioritize these)
     MOMENTUM_KEYWORDS = [
-        'fda approval', 'fda clears', 'fda grants', 'breakthrough',
-        'earnings beat', 'revenue beat', 'guidance raise', 'upgrades',
-        'contract win', 'partnership', 'acquisition', 'merger',
-        'insider buy', 'insider purchase', 'buyback', 'share repurchase',
-        'patent', 'clinical trial', 'phase 3', 'phase 2', 'positive results',
-        'sec filing', 'form 4', '8-k', 's-1', 'ipo prices',
-        'halted', 'resumes trading', 'short squeeze', 'gamma squeeze'
+        "fda approval",
+        "fda clears",
+        "fda grants",
+        "breakthrough",
+        "earnings beat",
+        "revenue beat",
+        "guidance raise",
+        "upgrades",
+        "contract win",
+        "partnership",
+        "acquisition",
+        "merger",
+        "insider buy",
+        "insider purchase",
+        "buyback",
+        "share repurchase",
+        "patent",
+        "clinical trial",
+        "phase 3",
+        "phase 2",
+        "positive results",
+        "sec filing",
+        "form 4",
+        "8-k",
+        "s-1",
+        "ipo prices",
+        "halted",
+        "resumes trading",
+        "short squeeze",
+        "gamma squeeze",
     ]
 
     # For small cap mode, fetch news for scalper watchlist symbols
@@ -168,8 +284,9 @@ async def get_news_feed(
         # Get scalper watchlist for targeted small cap news
         try:
             import json
+
             config_path = "ai/scalper_config.json"
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 scalper_config = json.load(f)
             watchlist = scalper_config.get("watchlist", [])
             if watchlist:
@@ -190,7 +307,7 @@ async def get_news_feed(
             logger.warning(f"Could not fetch news: {e}")
 
     # Filter by symbols if specified
-    news_items = monitor.news_cache[:limit * 5]  # Get more to filter from
+    news_items = monitor.news_cache[: limit * 5]  # Get more to filter from
     if symbol_list:
         news_items = [n for n in news_items if any(s in n.symbols for s in symbol_list)]
 
@@ -231,17 +348,27 @@ async def get_news_feed(
         else:
             time_str = ""
 
-        feed.append({
-            "time": time_str,
-            "symbol": item.symbols[0] if item.symbols else "",
-            "symbols": item.symbols,
-            "headline": item.headline,
-            "summary": item.summary,
-            "url": item.url,
-            "sentiment": item.sentiment.value if hasattr(item.sentiment, 'value') else str(item.sentiment),
-            "impact": item.impact.value if hasattr(item.impact, 'value') else str(item.impact),
-            "id": item.id
-        })
+        feed.append(
+            {
+                "time": time_str,
+                "symbol": item.symbols[0] if item.symbols else "",
+                "symbols": item.symbols,
+                "headline": item.headline,
+                "summary": item.summary,
+                "url": item.url,
+                "sentiment": (
+                    item.sentiment.value
+                    if hasattr(item.sentiment, "value")
+                    else str(item.sentiment)
+                ),
+                "impact": (
+                    item.impact.value
+                    if hasattr(item.impact, "value")
+                    else str(item.impact)
+                ),
+                "id": item.id,
+            }
+        )
 
     return {
         "success": True,
@@ -249,16 +376,13 @@ async def get_news_feed(
         "count": len(feed),
         "filters": {
             "small_cap_only": small_cap_only,
-            "actionable_only": actionable_only
-        }
+            "actionable_only": actionable_only,
+        },
     }
 
 
 @router.get("/sentiment")
-async def get_sentiment_summary(
-    symbols: Optional[str] = None,
-    hours: int = 24
-):
+async def get_sentiment_summary(symbols: Optional[str] = None, hours: int = 24):
     """Get aggregated sentiment summary"""
     monitor = get_news_monitor()
     symbol_list = symbols.split(",") if symbols else None
@@ -296,11 +420,12 @@ async def analyze_news_item(news_id: str):
         "ai_analysis": analysis,
         "sentiment": item.sentiment.value,
         "sentiment_score": item.sentiment_score,
-        "impact": item.impact.value
+        "impact": item.impact.value,
     }
 
 
 # ============ Trigger Endpoints ============
+
 
 @router.get("/triggers")
 async def get_all_triggers():
@@ -309,20 +434,30 @@ async def get_all_triggers():
 
     triggers = []
     for trigger_id, trigger in monitor.triggers.items():
-        triggers.append({
-            "id": trigger.id,
-            "name": trigger.name,
-            "enabled": trigger.enabled,
-            "category_filters": [c.value for c in trigger.category_filters],
-            "impact_threshold": trigger.impact_threshold.value,
-            "sentiment_threshold": trigger.sentiment_threshold.value if trigger.sentiment_threshold else None,
-            "symbol_filters": trigger.symbol_filters,
-            "keyword_filters": trigger.keyword_filters,
-            "action": trigger.action,
-            "action_params": trigger.action_params,
-            "cooldown_minutes": trigger.cooldown_minutes,
-            "last_triggered": trigger.last_triggered.isoformat() if trigger.last_triggered else None
-        })
+        triggers.append(
+            {
+                "id": trigger.id,
+                "name": trigger.name,
+                "enabled": trigger.enabled,
+                "category_filters": [c.value for c in trigger.category_filters],
+                "impact_threshold": trigger.impact_threshold.value,
+                "sentiment_threshold": (
+                    trigger.sentiment_threshold.value
+                    if trigger.sentiment_threshold
+                    else None
+                ),
+                "symbol_filters": trigger.symbol_filters,
+                "keyword_filters": trigger.keyword_filters,
+                "action": trigger.action,
+                "action_params": trigger.action_params,
+                "cooldown_minutes": trigger.cooldown_minutes,
+                "last_triggered": (
+                    trigger.last_triggered.isoformat()
+                    if trigger.last_triggered
+                    else None
+                ),
+            }
+        )
 
     return {"triggers": triggers}
 
@@ -335,7 +470,11 @@ async def create_trigger(trigger_data: TriggerCreate):
     # Parse enums
     category_filters = [NewsCategory(c) for c in trigger_data.category_filters]
     impact_threshold = NewsImpact(trigger_data.impact_threshold)
-    sentiment_threshold = NewsSentiment(trigger_data.sentiment_threshold) if trigger_data.sentiment_threshold else None
+    sentiment_threshold = (
+        NewsSentiment(trigger_data.sentiment_threshold)
+        if trigger_data.sentiment_threshold
+        else None
+    )
 
     trigger = NewsTrigger(
         id=trigger_data.id,
@@ -348,7 +487,7 @@ async def create_trigger(trigger_data: TriggerCreate):
         keyword_filters=trigger_data.keyword_filters,
         action=trigger_data.action,
         action_params=trigger_data.action_params,
-        cooldown_minutes=trigger_data.cooldown_minutes
+        cooldown_minutes=trigger_data.cooldown_minutes,
     )
 
     monitor.add_trigger(trigger)
@@ -366,11 +505,7 @@ async def enable_trigger(trigger_id: str, enabled: bool = True):
 
     monitor.triggers[trigger_id].enabled = enabled
 
-    return {
-        "status": "updated",
-        "trigger_id": trigger_id,
-        "enabled": enabled
-    }
+    return {"status": "updated", "trigger_id": trigger_id, "enabled": enabled}
 
 
 @router.delete("/triggers/{trigger_id}")
@@ -388,28 +523,26 @@ async def delete_trigger(trigger_id: str):
 
 # ============ Monitoring Endpoints ============
 
+
 @router.post("/monitor/start")
-async def start_monitoring(request: MonitorStartRequest, background_tasks: BackgroundTasks):
+async def start_monitoring(
+    request: MonitorStartRequest, background_tasks: BackgroundTasks
+):
     """Start news monitoring"""
     monitor = get_news_monitor()
 
     if monitor.is_monitoring:
-        return {
-            "status": "already_running",
-            "watched_symbols": monitor.watched_symbols
-        }
+        return {"status": "already_running", "watched_symbols": monitor.watched_symbols}
 
     # Start monitoring in background
     background_tasks.add_task(
-        monitor.start_monitoring,
-        request.symbols,
-        request.poll_interval
+        monitor.start_monitoring, request.symbols, request.poll_interval
     )
 
     return {
         "status": "started",
         "symbols": request.symbols or "ALL",
-        "poll_interval": request.poll_interval
+        "poll_interval": request.poll_interval,
     }
 
 
@@ -432,11 +565,12 @@ async def get_monitor_status():
         "watched_symbols": monitor.watched_symbols,
         "poll_interval": monitor.poll_interval,
         "cache_size": len(monitor.news_cache),
-        "active_triggers": len([t for t in monitor.triggers.values() if t.enabled])
+        "active_triggers": len([t for t in monitor.triggers.values() if t.enabled]),
     }
 
 
 # ============ Fundamentals Endpoints ============
+
 
 @router.get("/fundamentals/{symbol}")
 async def get_fundamentals(symbol: str, force_refresh: bool = False):
@@ -486,21 +620,16 @@ async def get_batch_fundamentals(symbols: List[str]):
 
 # ============ Calendar Endpoints ============
 
+
 @router.get("/calendar/earnings")
-async def get_earnings_calendar(
-    symbols: Optional[str] = None,
-    days_ahead: int = 14
-):
+async def get_earnings_calendar(symbols: Optional[str] = None, days_ahead: int = 14):
     """Get upcoming earnings calendar"""
     analyzer = get_fundamental_analyzer()
     symbol_list = symbols.split(",") if symbols else None
 
     events = await analyzer.get_earnings_calendar(symbol_list, days_ahead)
 
-    return {
-        "count": len(events),
-        "events": [event.to_dict() for event in events]
-    }
+    return {"count": len(events), "events": [event.to_dict() for event in events]}
 
 
 @router.get("/calendar/economic")
@@ -509,13 +638,11 @@ async def get_economic_calendar(days_ahead: int = 7):
     analyzer = get_fundamental_analyzer()
     events = analyzer.get_economic_calendar(days_ahead)
 
-    return {
-        "count": len(events),
-        "events": [event.to_dict() for event in events]
-    }
+    return {"count": len(events), "events": [event.to_dict() for event in events]}
 
 
 # ============ Combined Analysis ============
+
 
 @router.get("/combined/{symbol}")
 async def get_combined_analysis(symbol: str):
@@ -537,7 +664,7 @@ async def get_combined_analysis(symbol: str):
         "fundamentals": fundamentals,
         "news_sentiment": sentiment,
         "recent_news": [item.to_dict() for item in news],
-        "combined_outlook": _calculate_combined_outlook(fundamentals, sentiment)
+        "combined_outlook": _calculate_combined_outlook(fundamentals, sentiment),
     }
 
 
@@ -546,12 +673,10 @@ def _calculate_combined_outlook(fundamentals: Dict, sentiment: Dict) -> Dict:
     fundamental_score = fundamentals.get("overall_score", 50)
 
     # Convert sentiment to score
-    sentiment_score_map = {
-        "bullish": 70,
-        "neutral": 50,
-        "bearish": 30
-    }
-    news_score = sentiment_score_map.get(sentiment.get("overall_sentiment", "neutral"), 50)
+    sentiment_score_map = {"bullish": 70, "neutral": 50, "bearish": 30}
+    news_score = sentiment_score_map.get(
+        sentiment.get("overall_sentiment", "neutral"), 50
+    )
 
     # Weight: 60% fundamentals, 40% news sentiment
     combined_score = (fundamental_score * 0.6) + (news_score * 0.4)
@@ -571,11 +696,12 @@ def _calculate_combined_outlook(fundamentals: Dict, sentiment: Dict) -> Dict:
         "outlook": outlook,
         "suggested_action": action,
         "fundamental_weight": fundamental_score,
-        "news_weight": news_score
+        "news_weight": news_score,
     }
 
 
 # ============ Alerts History ============
+
 
 @router.get("/alerts/history")
 async def get_alert_history(limit: int = 50):
@@ -591,27 +717,26 @@ async def get_alert_history(limit: int = 50):
             "symbols": item.symbols,
             "triggered_actions": item.triggered_actions,
             "impact": item.impact.value,
-            "sentiment": item.sentiment.value
+            "sentiment": item.sentiment.value,
         }
         for item in monitor.news_cache
         if item.triggered_actions
     ][:limit]
 
-    return {
-        "count": len(triggered_news),
-        "alerts": triggered_news
-    }
+    return {"count": len(triggered_news), "alerts": triggered_news}
 
 
 # ============ FinViz News Endpoints ============
 
 import os
+
 import aiohttp
 
 # Import finvizfinance for news
 try:
-    from finvizfinance.quote import finvizfinance
     from finvizfinance.news import News as FinvizNews
+    from finvizfinance.quote import finvizfinance
+
     FINVIZ_AVAILABLE = True
 except ImportError:
     FINVIZ_AVAILABLE = False
@@ -640,30 +765,30 @@ async def get_finviz_news():
         # Handle different return formats
         if isinstance(news_data, dict):
             # Get news DataFrame
-            news_df = news_data.get('news')
-            if news_df is not None and hasattr(news_df, 'iterrows'):
+            news_df = news_data.get("news")
+            if news_df is not None and hasattr(news_df, "iterrows"):
                 for idx, row in news_df.head(50).iterrows():
-                    news_list.append({
+                    news_list.append(
+                        {
+                            "time": str(row.get("Date", "")),
+                            "headline": row.get("Title", ""),
+                            "url": row.get("Link", ""),
+                            "source": "FinViz",
+                        }
+                    )
+        elif hasattr(news_data, "iterrows"):
+            # Direct DataFrame
+            for idx, row in news_data.head(50).iterrows():
+                news_list.append(
+                    {
                         "time": str(row.get("Date", "")),
                         "headline": row.get("Title", ""),
                         "url": row.get("Link", ""),
-                        "source": "FinViz"
-                    })
-        elif hasattr(news_data, 'iterrows'):
-            # Direct DataFrame
-            for idx, row in news_data.head(50).iterrows():
-                news_list.append({
-                    "time": str(row.get("Date", "")),
-                    "headline": row.get("Title", ""),
-                    "url": row.get("Link", ""),
-                    "source": "FinViz"
-                })
+                        "source": "FinViz",
+                    }
+                )
 
-        return {
-            "success": True,
-            "count": len(news_list),
-            "news": news_list
-        }
+        return {"success": True, "count": len(news_list), "news": news_list}
     except Exception as e:
         logger.error(f"FinViz news error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -685,19 +810,21 @@ async def get_finviz_stock_news(symbol: str):
         news_list = []
         if news_df is not None and not news_df.empty:
             for idx, row in news_df.head(20).iterrows():
-                news_list.append({
-                    "time": str(row.get("Date", "")),
-                    "headline": row.get("Title", ""),
-                    "url": row.get("Link", ""),
-                    "symbol": symbol.upper(),
-                    "source": "FinViz"
-                })
+                news_list.append(
+                    {
+                        "time": str(row.get("Date", "")),
+                        "headline": row.get("Title", ""),
+                        "url": row.get("Link", ""),
+                        "symbol": symbol.upper(),
+                        "source": "FinViz",
+                    }
+                )
 
         return {
             "success": True,
             "symbol": symbol.upper(),
             "count": len(news_list),
-            "news": news_list
+            "news": news_list,
         }
     except Exception as e:
         logger.error(f"FinViz stock news error for {symbol}: {e}")
@@ -723,13 +850,15 @@ async def get_finviz_batch_news(symbols: str):
 
             if news_df is not None and not news_df.empty:
                 for idx, row in news_df.head(5).iterrows():
-                    all_news.append({
-                        "time": str(row.get("Date", "")),
-                        "symbol": sym,
-                        "headline": row.get("Title", ""),
-                        "url": row.get("Link", ""),
-                        "source": "FinViz"
-                    })
+                    all_news.append(
+                        {
+                            "time": str(row.get("Date", "")),
+                            "symbol": sym,
+                            "headline": row.get("Title", ""),
+                            "url": row.get("Link", ""),
+                            "source": "FinViz",
+                        }
+                    )
         except Exception as e:
             logger.warning(f"FinViz news error for {sym}: {e}")
             continue
@@ -741,7 +870,7 @@ async def get_finviz_batch_news(symbols: str):
         "success": True,
         "symbols": symbol_list,
         "count": len(all_news),
-        "news": all_news
+        "news": all_news,
     }
 
 
@@ -764,34 +893,42 @@ async def get_finviz_elite_movers():
         url = f"https://elite.finviz.com/export.ashx?v=111&f={filters}&auth={FINVIZ_ELITE_TOKEN}"
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
                 if response.status == 200:
                     import csv
                     import io
+
                     text = await response.text()
                     reader = csv.DictReader(io.StringIO(text))
                     movers = []
                     for row in reader:
-                        movers.append({
-                            "symbol": row.get("Ticker", ""),
-                            "company": row.get("Company", ""),
-                            "sector": row.get("Sector", ""),
-                            "industry": row.get("Industry", ""),
-                            "price": row.get("Price", ""),
-                            "change": row.get("Change", ""),
-                            "volume": row.get("Volume", ""),
-                            "market_cap": row.get("Market Cap", ""),
-                            "float": row.get("Float", ""),
-                            "short_float": row.get("Short Float", "")
-                        })
+                        movers.append(
+                            {
+                                "symbol": row.get("Ticker", ""),
+                                "company": row.get("Company", ""),
+                                "sector": row.get("Sector", ""),
+                                "industry": row.get("Industry", ""),
+                                "price": row.get("Price", ""),
+                                "change": row.get("Change", ""),
+                                "volume": row.get("Volume", ""),
+                                "market_cap": row.get("Market Cap", ""),
+                                "float": row.get("Float", ""),
+                                "short_float": row.get("Short Float", ""),
+                            }
+                        )
                     return {
                         "success": True,
                         "count": len(movers),
-                        "movers": movers[:50]  # Limit to top 50
+                        "movers": movers[:50],  # Limit to top 50
                     }
                 else:
                     error = await response.text()
-                    raise HTTPException(status_code=response.status, detail=f"FinViz Elite error: {error}")
+                    raise HTTPException(
+                        status_code=response.status,
+                        detail=f"FinViz Elite error: {error}",
+                    )
 
     except aiohttp.ClientError as e:
         logger.error(f"FinViz Elite network error: {e}")
@@ -803,7 +940,9 @@ async def get_finviz_elite_movers():
 
 # Import momentum scanner
 try:
-    from .finviz_momentum_scanner import get_finviz_scanner, FinVizMomentumScanner
+    from .finviz_momentum_scanner import (FinVizMomentumScanner,
+                                          get_finviz_scanner)
+
     SCANNER_AVAILABLE = True
 except ImportError:
     SCANNER_AVAILABLE = False
@@ -831,7 +970,7 @@ async def get_finviz_top_plays(limit: int = 10, min_score: float = 15.0):
             "success": True,
             "count": len(qualified),
             "scan_time": scanner.last_scan.isoformat() if scanner.last_scan else None,
-            "plays": [c.to_dict() for c in qualified]
+            "plays": [c.to_dict() for c in qualified],
         }
     except Exception as e:
         logger.error(f"Top plays error: {e}")
@@ -849,11 +988,10 @@ async def sync_finviz_to_watchlist(min_score: float = 20.0, max_add: int = 5):
 
     try:
         scanner = get_finviz_scanner()
-        result = await scanner.sync_to_scalper_watchlist(min_score=min_score, max_add=max_add)
-        return {
-            "success": True,
-            **result
-        }
+        result = await scanner.sync_to_scalper_watchlist(
+            min_score=min_score, max_add=max_add
+        )
+        return {"success": True, **result}
     except Exception as e:
         logger.error(f"Watchlist sync error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -876,32 +1014,40 @@ async def get_finviz_elite_gappers():
         url = f"https://elite.finviz.com/export.ashx?v=111&f={filters}&auth={FINVIZ_ELITE_TOKEN}"
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
                 if response.status == 200:
                     import csv
                     import io
+
                     text = await response.text()
                     reader = csv.DictReader(io.StringIO(text))
                     gappers = []
                     for row in reader:
-                        gappers.append({
-                            "symbol": row.get("Ticker", ""),
-                            "company": row.get("Company", ""),
-                            "price": row.get("Price", ""),
-                            "change": row.get("Change", ""),
-                            "gap": row.get("Gap", ""),
-                            "volume": row.get("Volume", ""),
-                            "float": row.get("Float", ""),
-                            "sector": row.get("Sector", "")
-                        })
+                        gappers.append(
+                            {
+                                "symbol": row.get("Ticker", ""),
+                                "company": row.get("Company", ""),
+                                "price": row.get("Price", ""),
+                                "change": row.get("Change", ""),
+                                "gap": row.get("Gap", ""),
+                                "volume": row.get("Volume", ""),
+                                "float": row.get("Float", ""),
+                                "sector": row.get("Sector", ""),
+                            }
+                        )
                     return {
                         "success": True,
                         "count": len(gappers),
-                        "gappers": gappers[:30]
+                        "gappers": gappers[:30],
                     }
                 else:
                     error = await response.text()
-                    raise HTTPException(status_code=response.status, detail=f"FinViz Elite error: {error}")
+                    raise HTTPException(
+                        status_code=response.status,
+                        detail=f"FinViz Elite error: {error}",
+                    )
 
     except Exception as e:
         logger.error(f"FinViz Elite gappers error: {e}")

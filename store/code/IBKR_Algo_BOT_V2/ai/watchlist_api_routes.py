@@ -7,17 +7,20 @@ API endpoints for AI-powered watchlist management.
 import asyncio
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
-from .claude_watchlist_manager import get_watchlist_manager, ClaudeWatchlistManager
+from .claude_watchlist_manager import (ClaudeWatchlistManager,
+                                       get_watchlist_manager)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/watchlist-ai")
 
 
 # ============ Pydantic Models ============
+
 
 class MomentumScanRequest(BaseModel):
     min_change: float = 2.0
@@ -43,6 +46,7 @@ class PerformanceUpdateRequest(BaseModel):
 
 # ============ Endpoints ============
 
+
 @router.get("/info")
 async def get_watchlist_info():
     """Get watchlist manager information"""
@@ -60,8 +64,8 @@ async def get_watchlist_info():
             "Claude AI stock selection",
             "Automatic AI model training",
             "Performance tracking",
-            "Watchlist sync"
-        ]
+            "Watchlist sync",
+        ],
     }
 
 
@@ -71,10 +75,7 @@ async def get_working_list():
     manager = get_watchlist_manager()
     working_list = manager.get_working_list()
 
-    return {
-        "count": len(working_list),
-        "symbols": working_list
-    }
+    return {"count": len(working_list), "symbols": working_list}
 
 
 @router.post("/scan-momentum")
@@ -83,8 +84,7 @@ async def scan_momentum(request: MomentumScanRequest):
     manager = get_watchlist_manager()
 
     momentum_stocks = await manager.scan_after_hours_momentum(
-        min_change=request.min_change,
-        min_volume_ratio=request.min_volume_ratio
+        min_change=request.min_change, min_volume_ratio=request.min_volume_ratio
     )
 
     return {
@@ -97,10 +97,10 @@ async def scan_momentum(request: MomentumScanRequest):
                 "change_percent": s.change_percent,
                 "volume_ratio": s.volume_ratio,
                 "momentum_score": s.momentum_score,
-                "reason": s.reason
+                "reason": s.reason,
             }
             for s in momentum_stocks[:20]  # Return top 20
-        ]
+        ],
     }
 
 
@@ -113,7 +113,10 @@ async def claude_select_stocks(max_selections: int = 10):
     momentum_stocks = await manager.scan_after_hours_momentum()
 
     if not momentum_stocks:
-        return {"status": "no_momentum_found", "message": "No stocks with sufficient momentum"}
+        return {
+            "status": "no_momentum_found",
+            "message": "No stocks with sufficient momentum",
+        }
 
     # Have Claude select
     selected = await manager.claude_analyze_and_select(momentum_stocks, max_selections)
@@ -122,12 +125,14 @@ async def claude_select_stocks(max_selections: int = 10):
         "status": "success",
         "selected": selected,
         "count": len(selected),
-        "message": f"Claude AI selected {len(selected)} stocks for the working list"
+        "message": f"Claude AI selected {len(selected)} stocks for the working list",
     }
 
 
 @router.post("/run-workflow")
-async def run_full_workflow(request: FullWorkflowRequest, background_tasks: BackgroundTasks):
+async def run_full_workflow(
+    request: FullWorkflowRequest, background_tasks: BackgroundTasks
+):
     """
     Run the full momentum workflow:
     1. Scan for after-hours momentum
@@ -142,7 +147,7 @@ async def run_full_workflow(request: FullWorkflowRequest, background_tasks: Back
     result = await manager.execute_full_workflow(
         min_change=request.min_change,
         max_selections=request.max_selections,
-        train_models=request.train_models
+        train_models=request.train_models,
     )
 
     return result
@@ -154,13 +159,15 @@ async def add_to_working_list(request: AddSymbolRequest):
     manager = get_watchlist_manager()
 
     success = manager.add_to_working_list(
-        symbol=request.symbol,
-        reason=request.reason,
-        added_by="user"
+        symbol=request.symbol, reason=request.reason, added_by="user"
     )
 
     if success:
-        return {"status": "success", "symbol": request.symbol.upper(), "message": "Added to working list"}
+        return {
+            "status": "success",
+            "symbol": request.symbol.upper(),
+            "message": "Added to working list",
+        }
     else:
         raise HTTPException(status_code=400, detail="Failed to add symbol")
 
@@ -173,7 +180,11 @@ async def remove_from_working_list(symbol: str):
     success = manager.remove_from_working_list(symbol)
 
     if success:
-        return {"status": "success", "symbol": symbol.upper(), "message": "Removed from working list"}
+        return {
+            "status": "success",
+            "symbol": symbol.upper(),
+            "message": "Removed from working list",
+        }
     else:
         raise HTTPException(status_code=404, detail="Symbol not found in working list")
 
@@ -195,10 +206,7 @@ async def get_ranked_list():
 
     ranked = await manager.rank_and_filter_working_list()
 
-    return {
-        "count": len(ranked),
-        "ranked_list": ranked
-    }
+    return {"count": len(ranked), "ranked_list": ranked}
 
 
 @router.post("/sync")
@@ -216,16 +224,12 @@ async def update_symbol_performance(request: PerformanceUpdateRequest):
     """Update performance metrics after a trade"""
     manager = get_watchlist_manager()
 
-    manager.update_performance(
-        symbol=request.symbol,
-        won=request.won,
-        pnl=request.pnl
-    )
+    manager.update_performance(symbol=request.symbol, won=request.won, pnl=request.pnl)
 
     return {
         "status": "success",
         "symbol": request.symbol.upper(),
-        "message": "Performance updated"
+        "message": "Performance updated",
     }
 
 
@@ -238,14 +242,10 @@ async def get_top_picks(limit: int = 5):
 
     # Filter for BUY signals with high confidence
     top_picks = [
-        r for r in ranked
-        if r.get("signal") == "BUY" and r.get("confidence", 0) > 0.6
+        r for r in ranked if r.get("signal") == "BUY" and r.get("confidence", 0) > 0.6
     ][:limit]
 
-    return {
-        "count": len(top_picks),
-        "top_picks": top_picks
-    }
+    return {"count": len(top_picks), "top_picks": top_picks}
 
 
 logger.info("Watchlist AI API routes initialized")

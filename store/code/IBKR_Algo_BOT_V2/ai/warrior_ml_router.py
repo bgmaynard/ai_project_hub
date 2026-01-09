@@ -9,15 +9,15 @@ Provides endpoints for:
 - Predictions and confidence scores
 """
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Body
-from typing import Optional, List
-from pydantic import BaseModel, Field
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import List, Optional
 
-from ai.warrior_transformer_detector import get_transformer_detector, PatternDetection
-from ai.warrior_rl_agent import get_rl_agent, TradingState, TradingAction
-
+from ai.warrior_rl_agent import TradingAction, TradingState, get_rl_agent
+from ai.warrior_transformer_detector import (PatternDetection,
+                                             get_transformer_detector)
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Query
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,10 @@ router = APIRouter(prefix="/api/ml", tags=["Advanced ML"])
 
 # Request/Response models
 
+
 class CandleData(BaseModel):
     """Single candlestick data"""
+
     timestamp: datetime
     open: float
     high: float
@@ -39,6 +41,7 @@ class CandleData(BaseModel):
 
 class PatternDetectionRequest(BaseModel):
     """Request for pattern detection"""
+
     symbol: str
     candles: List[CandleData] = Field(..., min_length=20, max_length=500)
     timeframe: str = Field("5min", pattern="^(1min|5min|15min|1h|1d)$")
@@ -46,6 +49,7 @@ class PatternDetectionRequest(BaseModel):
 
 class PatternDetectionResponse(BaseModel):
     """Pattern detection result"""
+
     symbol: str
     pattern_type: Optional[str]
     confidence: float
@@ -58,6 +62,7 @@ class PatternDetectionResponse(BaseModel):
 
 class TradingStateRequest(BaseModel):
     """Request for RL agent action"""
+
     symbol: str
     price: float
     volume: float
@@ -76,6 +81,7 @@ class TradingStateRequest(BaseModel):
 
 class RLActionResponse(BaseModel):
     """RL agent action recommendation"""
+
     symbol: str
     action_type: str
     size_change: float
@@ -85,6 +91,7 @@ class RLActionResponse(BaseModel):
 
 class MLHealthResponse(BaseModel):
     """ML system health status"""
+
     status: str
     transformer_loaded: bool
     rl_agent_loaded: bool
@@ -93,6 +100,7 @@ class MLHealthResponse(BaseModel):
 
 
 # Endpoints
+
 
 @router.get("/health", response_model=MLHealthResponse)
 async def get_ml_health():
@@ -136,7 +144,7 @@ async def get_ml_health():
             transformer_loaded=transformer_loaded,
             rl_agent_loaded=rl_loaded,
             models_trained=models_trained,
-            device=device
+            device=device,
         )
 
     except Exception as e:
@@ -169,20 +177,18 @@ async def detect_pattern(request: PatternDetectionRequest):
         # Convert candles to dict format
         candles = [
             {
-                'open': c.open,
-                'high': c.high,
-                'low': c.low,
-                'close': c.close,
-                'volume': c.volume
+                "open": c.open,
+                "high": c.high,
+                "low": c.low,
+                "close": c.close,
+                "volume": c.volume,
             }
             for c in request.candles
         ]
 
         # Detect pattern
         pattern = detector.detect_pattern(
-            candles=candles,
-            symbol=request.symbol,
-            timeframe=request.timeframe
+            candles=candles, symbol=request.symbol, timeframe=request.timeframe
         )
 
         if pattern:
@@ -194,7 +200,7 @@ async def detect_pattern(request: PatternDetectionRequest):
                 timestamp=pattern.timestamp,
                 price_target=pattern.price_target,
                 stop_loss=pattern.stop_loss,
-                features=pattern.features
+                features=pattern.features,
             )
         else:
             # No pattern detected
@@ -206,7 +212,7 @@ async def detect_pattern(request: PatternDetectionRequest):
                 timestamp=datetime.now(),
                 price_target=None,
                 stop_loss=None,
-                features={}
+                features={},
             )
 
     except Exception as e:
@@ -251,7 +257,7 @@ async def recommend_action(request: TradingStateRequest):
             time_in_position=request.time_in_position,
             current_drawdown=request.current_drawdown,
             sharpe_ratio=request.sharpe_ratio,
-            win_rate=request.win_rate
+            win_rate=request.win_rate,
         )
 
         # Get action recommendation (inference mode)
@@ -265,7 +271,7 @@ async def recommend_action(request: TradingStateRequest):
             action_type=action.action_type,
             size_change=action.size_change,
             confidence=action.confidence,
-            reasoning=reasoning
+            reasoning=reasoning,
         )
 
     except Exception as e:
@@ -285,7 +291,7 @@ async def get_supported_patterns():
         detector = get_transformer_detector()
         return {
             "patterns": detector.PATTERN_NAMES,
-            "count": len(detector.PATTERN_NAMES)
+            "count": len(detector.PATTERN_NAMES),
         }
     except Exception as e:
         logger.error(f"Failed to get patterns: {e}")
@@ -310,8 +316,8 @@ async def get_available_actions():
                 "hold": "Hold current position",
                 "exit": "Exit current position",
                 "size_up": "Increase position size",
-                "size_down": "Decrease position size"
-            }
+                "size_down": "Decrease position size",
+            },
         }
     except Exception as e:
         logger.error(f"Failed to get actions: {e}")
@@ -349,6 +355,7 @@ async def batch_detect_patterns(
 
 # Helper functions
 
+
 def _generate_reasoning(state: TradingState, action: TradingAction) -> str:
     """Generate human-readable reasoning for RL action"""
     reasons = []
@@ -358,14 +365,18 @@ def _generate_reasoning(state: TradingState, action: TradingAction) -> str:
         reasons.append("No current position.")
     else:
         pnl_pct = state.unrealized_pnl * 100
-        reasons.append(f"Current position: {state.position_size:.1%}, P&L: {pnl_pct:+.1f}%")
+        reasons.append(
+            f"Current position: {state.position_size:.1%}, P&L: {pnl_pct:+.1f}%"
+        )
 
     # Action reasoning
     if action.action_type == "enter":
         if state.sentiment_score > 0.3:
             reasons.append(f"Positive sentiment ({state.sentiment_score:+.2f})")
         if state.pattern_confidence > 0.6:
-            reasons.append(f"Strong pattern detected (confidence: {state.pattern_confidence:.1%})")
+            reasons.append(
+                f"Strong pattern detected (confidence: {state.pattern_confidence:.1%})"
+            )
         reasons.append("Recommending entry")
 
     elif action.action_type == "exit":

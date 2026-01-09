@@ -11,14 +11,14 @@ Features:
 - Rolling performance metrics
 """
 
-import logging
 import json
+import logging
 import os
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from collections import defaultdict
 import threading
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ TELEMETRY_PATH = os.path.join(os.path.dirname(__file__), "momentum_telemetry.jso
 @dataclass
 class TradeRecord:
     """Complete record of a trade from entry to exit"""
+
     trade_id: str
     symbol: str
     entry_time: datetime
@@ -54,10 +55,10 @@ class TradeRecord:
     target_price: float = 0
 
     # Excursions
-    high_price: float = 0         # Highest price during trade
-    low_price: float = 0          # Lowest price during trade
-    mfe: float = 0                # Maximum Favorable Excursion %
-    mae: float = 0                # Maximum Adverse Excursion %
+    high_price: float = 0  # Highest price during trade
+    low_price: float = 0  # Lowest price during trade
+    mfe: float = 0  # Maximum Favorable Excursion %
+    mae: float = 0  # Maximum Adverse Excursion %
 
     # Exit conditions
     exit_price: float = 0
@@ -77,22 +78,23 @@ class TradeRecord:
 
     def to_dict(self) -> Dict:
         d = asdict(self)
-        d['entry_time'] = self.entry_time.isoformat() if self.entry_time else None
-        d['exit_time'] = self.exit_time.isoformat() if self.exit_time else None
+        d["entry_time"] = self.entry_time.isoformat() if self.entry_time else None
+        d["exit_time"] = self.exit_time.isoformat() if self.exit_time else None
         return d
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'TradeRecord':
-        if data.get('entry_time'):
-            data['entry_time'] = datetime.fromisoformat(data['entry_time'])
-        if data.get('exit_time'):
-            data['exit_time'] = datetime.fromisoformat(data['exit_time'])
+    def from_dict(cls, data: Dict) -> "TradeRecord":
+        if data.get("entry_time"):
+            data["entry_time"] = datetime.fromisoformat(data["entry_time"])
+        if data.get("exit_time"):
+            data["exit_time"] = datetime.fromisoformat(data["exit_time"])
         return cls(**data)
 
 
 @dataclass
 class TransitionLog:
     """Log entry for state transition"""
+
     timestamp: datetime
     symbol: str
     from_state: str
@@ -104,20 +106,21 @@ class TransitionLog:
 
     def to_dict(self) -> Dict:
         return {
-            'timestamp': self.timestamp.isoformat(),
-            'symbol': self.symbol,
-            'from_state': self.from_state,
-            'to_state': self.to_state,
-            'reason': self.reason,
-            'owner': self.owner,
-            'score': self.score,
-            'details': self.details
+            "timestamp": self.timestamp.isoformat(),
+            "symbol": self.symbol,
+            "from_state": self.from_state,
+            "to_state": self.to_state,
+            "reason": self.reason,
+            "owner": self.owner,
+            "score": self.score,
+            "details": self.details,
         }
 
 
 @dataclass
 class PerformanceMetrics:
     """Rolling performance metrics"""
+
     total_trades: int = 0
     winners: int = 0
     losers: int = 0
@@ -156,7 +159,7 @@ class MomentumTelemetry:
 
     def __init__(self):
         self._trades: Dict[str, TradeRecord] = {}  # trade_id -> TradeRecord
-        self._active_trades: Dict[str, str] = {}   # symbol -> trade_id
+        self._active_trades: Dict[str, str] = {}  # symbol -> trade_id
         self._transition_log: List[TransitionLog] = []
         self._metrics = PerformanceMetrics()
         self._lock = threading.Lock()
@@ -168,11 +171,11 @@ class MomentumTelemetry:
         """Load persisted telemetry data"""
         if os.path.exists(TELEMETRY_PATH):
             try:
-                with open(TELEMETRY_PATH, 'r') as f:
+                with open(TELEMETRY_PATH, "r") as f:
                     data = json.load(f)
 
                 # Load trades
-                for trade_data in data.get('trades', []):
+                for trade_data in data.get("trades", []):
                     try:
                         trade = TradeRecord.from_dict(trade_data)
                         self._trades[trade.trade_id] = trade
@@ -180,7 +183,7 @@ class MomentumTelemetry:
                         logger.warning(f"Failed to load trade: {e}")
 
                 # Load active trades
-                self._active_trades = data.get('active_trades', {})
+                self._active_trades = data.get("active_trades", {})
 
                 # Recalculate metrics
                 self._recalculate_metrics()
@@ -194,20 +197,27 @@ class MomentumTelemetry:
         """Persist telemetry data"""
         try:
             data = {
-                'trades': [t.to_dict() for t in self._trades.values()],
-                'active_trades': self._active_trades,
-                'last_updated': datetime.now().isoformat()
+                "trades": [t.to_dict() for t in self._trades.values()],
+                "active_trades": self._active_trades,
+                "last_updated": datetime.now().isoformat(),
             }
 
-            with open(TELEMETRY_PATH, 'w') as f:
+            with open(TELEMETRY_PATH, "w") as f:
                 json.dump(data, f, indent=2)
 
         except Exception as e:
             logger.error(f"Failed to save telemetry: {e}")
 
-    def log_transition(self, symbol: str, from_state: str, to_state: str,
-                       reason: str, owner: str, score: int = 0,
-                       details: Dict = None):
+    def log_transition(
+        self,
+        symbol: str,
+        from_state: str,
+        to_state: str,
+        reason: str,
+        owner: str,
+        score: int = 0,
+        details: Dict = None,
+    ):
         """Log a state transition"""
         with self._lock:
             log_entry = TransitionLog(
@@ -218,7 +228,7 @@ class MomentumTelemetry:
                 reason=reason,
                 owner=owner,
                 score=score,
-                details=details or {}
+                details=details or {},
             )
             self._transition_log.append(log_entry)
 
@@ -235,8 +245,14 @@ class MomentumTelemetry:
 
             logger.debug(f"TELEMETRY: {symbol} {from_state}->{to_state} ({reason})")
 
-    def start_trade(self, symbol: str, entry_price: float, shares: int,
-                    momentum_result: Any = None, gating_result: str = "") -> str:
+    def start_trade(
+        self,
+        symbol: str,
+        entry_price: float,
+        shares: int,
+        momentum_result: Any = None,
+        gating_result: str = "",
+    ) -> str:
         """
         Start tracking a new trade.
 
@@ -262,28 +278,30 @@ class MomentumTelemetry:
                 high_price=entry_price,
                 low_price=entry_price,
                 gating_result=gating_result,
-                states_visited=['IN_POSITION']
+                states_visited=["IN_POSITION"],
             )
 
             # Extract momentum data if available
             if momentum_result:
-                trade.entry_score = getattr(momentum_result, 'score', 0)
-                trade.entry_grade = getattr(momentum_result, 'grade', '')
-                if hasattr(momentum_result.grade, 'value'):
+                trade.entry_score = getattr(momentum_result, "score", 0)
+                trade.entry_grade = getattr(momentum_result, "grade", "")
+                if hasattr(momentum_result.grade, "value"):
                     trade.entry_grade = momentum_result.grade.value
-                trade.entry_veto_reasons = [v.value for v in getattr(momentum_result, 'veto_reasons', [])]
+                trade.entry_veto_reasons = [
+                    v.value for v in getattr(momentum_result, "veto_reasons", [])
+                ]
 
-                if hasattr(momentum_result, 'price_urgency'):
+                if hasattr(momentum_result, "price_urgency"):
                     pu = momentum_result.price_urgency
-                    trade.entry_r_5s = getattr(pu, 'r_5s', 0)
-                    trade.entry_r_15s = getattr(pu, 'r_15s', 0)
-                    trade.entry_r_30s = getattr(pu, 'r_30s', 0)
-                    trade.entry_accel = getattr(pu, 'accel', 0)
-                    trade.entry_vwap_position = getattr(pu, 'vwap_position', '')
+                    trade.entry_r_5s = getattr(pu, "r_5s", 0)
+                    trade.entry_r_15s = getattr(pu, "r_15s", 0)
+                    trade.entry_r_30s = getattr(pu, "r_30s", 0)
+                    trade.entry_accel = getattr(pu, "accel", 0)
+                    trade.entry_vwap_position = getattr(pu, "vwap_position", "")
 
-                if hasattr(momentum_result, 'liquidity'):
+                if hasattr(momentum_result, "liquidity"):
                     liq = momentum_result.liquidity
-                    trade.entry_buy_pressure = getattr(liq, 'buy_pressure', 0)
+                    trade.entry_buy_pressure = getattr(liq, "buy_pressure", 0)
 
             self._trades[trade_id] = trade
             self._active_trades[symbol] = trade_id
@@ -317,11 +335,16 @@ class MomentumTelemetry:
 
             # Calculate MFE/MAE
             if trade.entry_price > 0:
-                trade.mfe = ((trade.high_price - trade.entry_price) / trade.entry_price) * 100
-                trade.mae = ((trade.entry_price - trade.low_price) / trade.entry_price) * 100
+                trade.mfe = (
+                    (trade.high_price - trade.entry_price) / trade.entry_price
+                ) * 100
+                trade.mae = (
+                    (trade.entry_price - trade.low_price) / trade.entry_price
+                ) * 100
 
-    def complete_trade(self, symbol: str, exit_price: float,
-                       exit_signal: str, exit_reason: str):
+    def complete_trade(
+        self, symbol: str, exit_price: float, exit_signal: str, exit_reason: str
+    ):
         """
         Complete a trade and calculate final metrics.
 
@@ -349,13 +372,17 @@ class MomentumTelemetry:
 
             # Calculate P&L
             if trade.entry_price > 0:
-                trade.pnl_pct = ((exit_price - trade.entry_price) / trade.entry_price) * 100
+                trade.pnl_pct = (
+                    (exit_price - trade.entry_price) / trade.entry_price
+                ) * 100
                 trade.pnl_dollars = (exit_price - trade.entry_price) * trade.shares
 
             trade.is_winner = trade.pnl_pct > 0
 
             # Calculate hold time
-            trade.hold_time_seconds = (trade.exit_time - trade.entry_time).total_seconds()
+            trade.hold_time_seconds = (
+                trade.exit_time - trade.entry_time
+            ).total_seconds()
 
             # Remove from active
             del self._active_trades[symbol]
@@ -383,7 +410,9 @@ class MomentumTelemetry:
         self._metrics.losers = self._metrics.total_trades - self._metrics.winners
 
         if self._metrics.total_trades > 0:
-            self._metrics.win_rate = (self._metrics.winners / self._metrics.total_trades) * 100
+            self._metrics.win_rate = (
+                self._metrics.winners / self._metrics.total_trades
+            ) * 100
 
         # P&L metrics
         self._metrics.total_pnl = sum(t.pnl_dollars for t in completed)
@@ -393,7 +422,9 @@ class MomentumTelemetry:
         losers = [t for t in completed if not t.is_winner]
 
         if winners:
-            self._metrics.avg_winner = sum(t.pnl_dollars for t in winners) / len(winners)
+            self._metrics.avg_winner = sum(t.pnl_dollars for t in winners) / len(
+                winners
+            )
         if losers:
             self._metrics.avg_loser = sum(t.pnl_dollars for t in losers) / len(losers)
 
@@ -408,13 +439,15 @@ class MomentumTelemetry:
         self._metrics.avg_mae = sum(t.mae for t in completed) / len(completed)
 
         # Hold time
-        self._metrics.avg_hold_time = sum(t.hold_time_seconds for t in completed) / len(completed)
+        self._metrics.avg_hold_time = sum(t.hold_time_seconds for t in completed) / len(
+            completed
+        )
 
         # By exit reason
         self._metrics.exits_by_reason = defaultdict(int)
         self._metrics.pnl_by_reason = defaultdict(float)
         for t in completed:
-            reason = t.exit_signal or 'UNKNOWN'
+            reason = t.exit_signal or "UNKNOWN"
             self._metrics.exits_by_reason[reason] += 1
             self._metrics.pnl_by_reason[reason] += t.pnl_dollars
 
@@ -482,26 +515,41 @@ class MomentumTelemetry:
             completed = [t for t in self._trades.values() if t.is_complete]
 
             if not completed:
-                return {'error': 'No completed trades'}
+                return {"error": "No completed trades"}
 
             winners = [t for t in completed if t.is_winner]
             losers = [t for t in completed if not t.is_winner]
 
             return {
-                'total_trades': len(completed),
-                'winners': {
-                    'count': len(winners),
-                    'avg_mfe': sum(t.mfe for t in winners) / len(winners) if winners else 0,
-                    'avg_mae': sum(t.mae for t in winners) / len(winners) if winners else 0,
-                    'avg_exit_vs_mfe': sum(t.pnl_pct / t.mfe * 100 for t in winners if t.mfe > 0) / len(winners) if winners else 0,
+                "total_trades": len(completed),
+                "winners": {
+                    "count": len(winners),
+                    "avg_mfe": (
+                        sum(t.mfe for t in winners) / len(winners) if winners else 0
+                    ),
+                    "avg_mae": (
+                        sum(t.mae for t in winners) / len(winners) if winners else 0
+                    ),
+                    "avg_exit_vs_mfe": (
+                        sum(t.pnl_pct / t.mfe * 100 for t in winners if t.mfe > 0)
+                        / len(winners)
+                        if winners
+                        else 0
+                    ),
                 },
-                'losers': {
-                    'count': len(losers),
-                    'avg_mfe': sum(t.mfe for t in losers) / len(losers) if losers else 0,
-                    'avg_mae': sum(t.mae for t in losers) / len(losers) if losers else 0,
-                    'mfe_before_loss': sum(1 for t in losers if t.mfe > 0.5),  # Trades that went green first
+                "losers": {
+                    "count": len(losers),
+                    "avg_mfe": (
+                        sum(t.mfe for t in losers) / len(losers) if losers else 0
+                    ),
+                    "avg_mae": (
+                        sum(t.mae for t in losers) / len(losers) if losers else 0
+                    ),
+                    "mfe_before_loss": sum(
+                        1 for t in losers if t.mfe > 0.5
+                    ),  # Trades that went green first
                 },
-                'optimal_trail_suggestion': self._suggest_optimal_trail(completed),
+                "optimal_trail_suggestion": self._suggest_optimal_trail(completed),
             }
 
     def _suggest_optimal_trail(self, trades: List[TradeRecord]) -> Dict:
@@ -512,7 +560,7 @@ class MomentumTelemetry:
         # For winners, see what % of MFE was captured
         winners = [t for t in trades if t.is_winner and t.mfe > 0]
         if not winners:
-            return {'message': 'Not enough winners to analyze'}
+            return {"message": "Not enough winners to analyze"}
 
         # Average capture rate
         capture_rates = [(t.pnl_pct / t.mfe) for t in winners if t.mfe > 0]
@@ -523,18 +571,22 @@ class MomentumTelemetry:
         losers_with_mfe = [t for t in losers if t.mfe > 0.5]
 
         return {
-            'avg_mfe_capture': round(avg_capture * 100, 1),
-            'losers_that_went_green': len(losers_with_mfe),
-            'suggestion': f"Consider trailing at {round((1 - avg_capture) * 100, 1)}% below peak" if avg_capture > 0 else "Need more data"
+            "avg_mfe_capture": round(avg_capture * 100, 1),
+            "losers_that_went_green": len(losers_with_mfe),
+            "suggestion": (
+                f"Consider trailing at {round((1 - avg_capture) * 100, 1)}% below peak"
+                if avg_capture > 0
+                else "Need more data"
+            ),
         }
 
     def get_score_analysis(self) -> Dict:
         """Analyze win rate by entry score"""
         with self._lock:
             return {
-                'wins_by_score': dict(self._metrics.wins_by_score_bucket),
-                'losses_by_score': dict(self._metrics.losses_by_score_bucket),
-                'win_rate_by_score': self._calc_win_rate_by_score()
+                "wins_by_score": dict(self._metrics.wins_by_score_bucket),
+                "losses_by_score": dict(self._metrics.losses_by_score_bucket),
+                "win_rate_by_score": self._calc_win_rate_by_score(),
             }
 
     def _calc_win_rate_by_score(self) -> Dict[str, float]:
@@ -579,6 +631,7 @@ def create_telemetry_routes(app):
     Call from main API: create_telemetry_routes(app)
     """
     from fastapi import APIRouter
+
     router = APIRouter(prefix="/api/telemetry", tags=["telemetry"])
 
     @router.get("/metrics")
@@ -625,10 +678,7 @@ if __name__ == "__main__":
     # Simulate a winning trade
     print("\n--- Simulating Winning Trade ---")
     trade_id = telemetry.start_trade(
-        symbol="WIN_TEST",
-        entry_price=10.00,
-        shares=100,
-        gating_result="APPROVED"
+        symbol="WIN_TEST", entry_price=10.00, shares=100, gating_result="APPROVED"
     )
     print(f"Started trade: {trade_id}")
 
@@ -641,10 +691,7 @@ if __name__ == "__main__":
     # Simulate a losing trade
     print("\n--- Simulating Losing Trade ---")
     trade_id = telemetry.start_trade(
-        symbol="LOSS_TEST",
-        entry_price=10.00,
-        shares=100,
-        gating_result="APPROVED"
+        symbol="LOSS_TEST", entry_price=10.00, shares=100, gating_result="APPROVED"
     )
 
     for price in [10.05, 9.90, 9.75, 9.50]:

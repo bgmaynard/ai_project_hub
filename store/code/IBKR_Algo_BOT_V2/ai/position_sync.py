@@ -17,13 +17,14 @@ SLIPPAGE COMBAT STRATEGIES:
 - Stale orders in pre-market: Convert to extended hours
 """
 
-import logging
 import asyncio
+import logging
 import threading
+from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
-from collections import defaultdict
+
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OrderTracker:
     """Track order for slippage detection"""
+
     order_id: str
     symbol: str
     side: str
@@ -52,6 +54,7 @@ class OrderTracker:
 @dataclass
 class PositionDrift:
     """Tracks drift between expected and actual position"""
+
     symbol: str
     expected_qty: float
     actual_qty: float
@@ -66,6 +69,7 @@ class PositionDrift:
 @dataclass
 class SyncState:
     """Current sync state"""
+
     last_sync: datetime = None
     positions: List[Dict] = field(default_factory=list)
     open_orders: List[Dict] = field(default_factory=list)
@@ -84,7 +88,7 @@ class PositionSynchronizer:
     """
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
         self.state = SyncState()
 
         # Sync settings
@@ -130,6 +134,7 @@ class PositionSynchronizer:
 
             # Sleep for sync interval
             import time
+
             time.sleep(self.sync_interval)
 
     def sync_now(self) -> Dict:
@@ -138,6 +143,7 @@ class PositionSynchronizer:
         Returns sync results including any slippage alerts.
         """
         from unified_broker import get_unified_broker
+
         broker = get_unified_broker()
 
         results = {
@@ -146,7 +152,7 @@ class PositionSynchronizer:
             "orders_synced": 0,
             "stale_orders": [],
             "slippage_alerts": [],
-            "actions_taken": []
+            "actions_taken": [],
         }
 
         try:
@@ -173,17 +179,21 @@ class PositionSynchronizer:
                 if tracker:
                     tracker.status = order.get("status", "unknown")
                     tracker.filled_qty = float(order.get("filled_qty", 0))
-                    tracker.filled_avg_price = float(order.get("filled_avg_price", 0) or 0)
+                    tracker.filled_avg_price = float(
+                        order.get("filled_avg_price", 0) or 0
+                    )
                     tracker.last_checked = datetime.now(self.et_tz)
 
                     # Check for stale orders
                     if self._is_order_stale(tracker):
-                        results["stale_orders"].append({
-                            "order_id": order_id,
-                            "symbol": tracker.symbol,
-                            "age_seconds": self._get_order_age(tracker),
-                            "status": tracker.status
-                        })
+                        results["stale_orders"].append(
+                            {
+                                "order_id": order_id,
+                                "symbol": tracker.symbol,
+                                "age_seconds": self._get_order_age(tracker),
+                                "status": tracker.status,
+                            }
+                        )
 
                         # Take action on stale orders
                         action = self._combat_stale_order(tracker, broker)
@@ -219,6 +229,7 @@ class PositionSynchronizer:
         # Get expected price from current quote
         try:
             from unified_market_data import get_unified_market_data
+
             market_data = get_unified_market_data()
             quote = market_data.get_quote(order.get("symbol", ""))
 
@@ -235,6 +246,7 @@ class PositionSynchronizer:
         if order.get("submitted_at"):
             try:
                 from dateutil import parser
+
                 submitted_at = parser.parse(str(order.get("submitted_at")))
                 if submitted_at.tzinfo is None:
                     submitted_at = self.et_tz.localize(submitted_at)
@@ -249,11 +261,15 @@ class PositionSynchronizer:
             side=order.get("side", ""),
             quantity=float(order.get("quantity", 0)),
             order_type=order.get("order_type", ""),
-            limit_price=float(order.get("limit_price", 0) or 0) if order.get("limit_price") else None,
+            limit_price=(
+                float(order.get("limit_price", 0) or 0)
+                if order.get("limit_price")
+                else None
+            ),
             submitted_at=submitted_at,
             last_checked=datetime.now(self.et_tz),
             status=order.get("status", "unknown"),
-            expected_price=expected_price
+            expected_price=expected_price,
         )
 
         self.state.order_trackers[order_id] = tracker
@@ -286,10 +302,16 @@ class PositionSynchronizer:
         # Calculate slippage
         if tracker.side.lower() == "buy":
             # For buys, slippage is paying more than expected
-            slippage_pct = ((tracker.filled_avg_price - tracker.expected_price) / tracker.expected_price) * 100
+            slippage_pct = (
+                (tracker.filled_avg_price - tracker.expected_price)
+                / tracker.expected_price
+            ) * 100
         else:
             # For sells, slippage is receiving less than expected
-            slippage_pct = ((tracker.expected_price - tracker.filled_avg_price) / tracker.expected_price) * 100
+            slippage_pct = (
+                (tracker.expected_price - tracker.filled_avg_price)
+                / tracker.expected_price
+            ) * 100
 
         if slippage_pct > self.slippage_threshold_pct:
             slippage_info = {
@@ -299,8 +321,12 @@ class PositionSynchronizer:
                 "expected_price": tracker.expected_price,
                 "filled_price": tracker.filled_avg_price,
                 "slippage_pct": round(slippage_pct, 2),
-                "slippage_amount": round(abs(tracker.filled_avg_price - tracker.expected_price) * tracker.filled_qty, 2),
-                "severity": "HIGH" if slippage_pct > 1.0 else "MEDIUM"
+                "slippage_amount": round(
+                    abs(tracker.filled_avg_price - tracker.expected_price)
+                    * tracker.filled_qty,
+                    2,
+                ),
+                "severity": "HIGH" if slippage_pct > 1.0 else "MEDIUM",
             }
 
             tracker.slippage_detected = True
@@ -330,7 +356,7 @@ class PositionSynchronizer:
                 result = connector.place_smart_order(
                     symbol=tracker.symbol,
                     quantity=int(tracker.quantity),
-                    side=tracker.side.upper()
+                    side=tracker.side.upper(),
                 )
 
                 action_result = {
@@ -338,11 +364,13 @@ class PositionSynchronizer:
                     "order_id": tracker.order_id,
                     "symbol": tracker.symbol,
                     "new_order_id": result.get("order_id"),
-                    "reason": f"Market order stale ({age:.0f}s) in extended hours"
+                    "reason": f"Market order stale ({age:.0f}s) in extended hours",
                 }
 
                 tracker.action_taken = "converted_extended"
-                logger.info(f"Converted stale market order to extended hours: {tracker.symbol}")
+                logger.info(
+                    f"Converted stale market order to extended hours: {tracker.symbol}"
+                )
 
             except Exception as e:
                 logger.error(f"Failed to convert stale order: {e}")
@@ -354,13 +382,16 @@ class PositionSynchronizer:
                 # USE CENTRALIZED DATA BUS FOR ALL MARKET DATA (ORDER INTEGRITY!)
                 # ============================================================
                 from market_data_bus import get_market_data_bus
+
                 data_bus = get_market_data_bus()
 
                 # Get order price from centralized bus (Schwab only)
                 base_price = data_bus.get_price_for_order(tracker.symbol, tracker.side)
 
                 if not base_price:
-                    logger.warning(f"Skipping price chase for {tracker.symbol} - no valid data from data bus")
+                    logger.warning(
+                        f"Skipping price chase for {tracker.symbol} - no valid data from data bus"
+                    )
                     return None
 
                 # Apply price chase increment
@@ -371,12 +402,16 @@ class PositionSynchronizer:
 
                 # SAFETY CHECK: Ensure new price is valid (minimum $0.50)
                 if new_price < 0.50:
-                    logger.warning(f"Skipping price chase for {tracker.symbol} - calculated price too low (${new_price:.2f})")
+                    logger.warning(
+                        f"Skipping price chase for {tracker.symbol} - calculated price too low (${new_price:.2f})"
+                    )
                     return None
 
                 # Log the price chase
                 quote = data_bus.get_quote(tracker.symbol)
-                logger.info(f"Price chase for {tracker.symbol}: ${new_price:.2f} (source: {quote.get('source', 'bus') if quote else 'bus'})")
+                logger.info(
+                    f"Price chase for {tracker.symbol}: ${new_price:.2f} (source: {quote.get('source', 'bus') if quote else 'bus'})"
+                )
 
                 # Cancel and resubmit at new price
                 connector.cancel_order(tracker.order_id)
@@ -386,14 +421,14 @@ class PositionSynchronizer:
                         symbol=tracker.symbol,
                         quantity=int(tracker.quantity),
                         side=tracker.side.upper(),
-                        limit_price=new_price
+                        limit_price=new_price,
                     )
                 else:
                     # Regular hours - just use market order for speed
                     result = connector.place_smart_order(
                         symbol=tracker.symbol,
                         quantity=int(tracker.quantity),
-                        side=tracker.side.upper()
+                        side=tracker.side.upper(),
                     )
 
                 action_result = {
@@ -401,9 +436,11 @@ class PositionSynchronizer:
                     "order_id": tracker.order_id,
                     "symbol": tracker.symbol,
                     "old_price": tracker.limit_price,
-                    "new_price": new_price if session.get("is_extended_hours") else "market",
+                    "new_price": (
+                        new_price if session.get("is_extended_hours") else "market"
+                    ),
                     "new_order_id": result.get("order_id"),
-                    "reason": f"Limit order stale ({age:.0f}s) - chasing price"
+                    "reason": f"Limit order stale ({age:.0f}s) - chasing price",
                 }
 
                 tracker.action_taken = "price_chased"
@@ -414,7 +451,9 @@ class PositionSynchronizer:
 
         return action_result
 
-    def _combat_slippage(self, tracker: OrderTracker, slippage: Dict, connector) -> Optional[Dict]:
+    def _combat_slippage(
+        self, tracker: OrderTracker, slippage: Dict, connector
+    ) -> Optional[Dict]:
         """Take action to combat slippage"""
         # If partial fill with high slippage, complete at market
         if tracker.filled_qty > 0 and tracker.filled_qty < tracker.quantity:
@@ -428,7 +467,7 @@ class PositionSynchronizer:
                     result = connector.place_smart_order(
                         symbol=tracker.symbol,
                         quantity=remaining,
-                        side=tracker.side.upper()
+                        side=tracker.side.upper(),
                     )
 
                     action_result = {
@@ -437,11 +476,13 @@ class PositionSynchronizer:
                         "symbol": tracker.symbol,
                         "remaining_qty": remaining,
                         "new_order_id": result.get("order_id"),
-                        "reason": f"High slippage ({slippage.get('slippage_pct'):.2f}%) - completing at market"
+                        "reason": f"High slippage ({slippage.get('slippage_pct'):.2f}%) - completing at market",
                     }
 
                     tracker.action_taken = "completed_at_market"
-                    logger.warning(f"Completed order at market due to slippage: {tracker.symbol}")
+                    logger.warning(
+                        f"Completed order at market due to slippage: {tracker.symbol}"
+                    )
 
                     return action_result
 
@@ -466,7 +507,9 @@ class PositionSynchronizer:
     # DRIFT DETECTION
     # ============================================================================
 
-    def register_expected_position(self, symbol: str, quantity: float, cost_basis: float):
+    def register_expected_position(
+        self, symbol: str, quantity: float, cost_basis: float
+    ):
         """
         Register an expected position from a trade.
         Call this when placing orders to track expected vs actual.
@@ -475,9 +518,11 @@ class PositionSynchronizer:
         self.state.expected_positions[symbol] = {
             "quantity": quantity,
             "cost_basis": cost_basis,
-            "registered_at": datetime.now(self.et_tz).isoformat()
+            "registered_at": datetime.now(self.et_tz).isoformat(),
         }
-        logger.debug(f"Registered expected position: {symbol} x {quantity} @ ${cost_basis:.2f}")
+        logger.debug(
+            f"Registered expected position: {symbol} x {quantity} @ ${cost_basis:.2f}"
+        )
 
     def update_expected_position(self, symbol: str, qty_change: float, price: float):
         """
@@ -503,7 +548,7 @@ class PositionSynchronizer:
         self.state.expected_positions[symbol] = {
             "quantity": new_qty,
             "cost_basis": new_cost,
-            "updated_at": datetime.now(self.et_tz).isoformat()
+            "updated_at": datetime.now(self.et_tz).isoformat(),
         }
 
         # Remove if position closed
@@ -525,14 +570,20 @@ class PositionSynchronizer:
             symbol = pos.get("symbol", "").upper()
             actual_positions[symbol] = {
                 "quantity": float(pos.get("qty", pos.get("quantity", 0))),
-                "cost_basis": float(pos.get("cost_basis", pos.get("avg_entry_price", 0)))
+                "cost_basis": float(
+                    pos.get("cost_basis", pos.get("avg_entry_price", 0))
+                ),
             }
 
         # Check expected vs actual
-        all_symbols = set(self.state.expected_positions.keys()) | set(actual_positions.keys())
+        all_symbols = set(self.state.expected_positions.keys()) | set(
+            actual_positions.keys()
+        )
 
         for symbol in all_symbols:
-            expected = self.state.expected_positions.get(symbol, {"quantity": 0, "cost_basis": 0})
+            expected = self.state.expected_positions.get(
+                symbol, {"quantity": 0, "cost_basis": 0}
+            )
             actual = actual_positions.get(symbol, {"quantity": 0, "cost_basis": 0})
 
             expected_qty = expected["quantity"]
@@ -557,17 +608,23 @@ class PositionSynchronizer:
                     actual_cost=actual["cost_basis"],
                     drift_qty=drift_qty,
                     drift_percent=drift_percent,
-                    detected_at=now
+                    detected_at=now,
                 )
                 drifts.append(drift)
                 self.state.drift_events.append(drift)
 
                 if actual_qty > expected_qty:
-                    logger.warning(f"DRIFT: {symbol} has MORE shares than expected: {actual_qty} vs {expected_qty}")
+                    logger.warning(
+                        f"DRIFT: {symbol} has MORE shares than expected: {actual_qty} vs {expected_qty}"
+                    )
                 elif actual_qty < expected_qty:
-                    logger.warning(f"DRIFT: {symbol} has FEWER shares than expected: {actual_qty} vs {expected_qty}")
+                    logger.warning(
+                        f"DRIFT: {symbol} has FEWER shares than expected: {actual_qty} vs {expected_qty}"
+                    )
                 else:
-                    logger.warning(f"DRIFT: Unexpected position in {symbol}: {actual_qty} shares")
+                    logger.warning(
+                        f"DRIFT: Unexpected position in {symbol}: {actual_qty} shares"
+                    )
 
         self.state.last_drift_check = now
         return drifts
@@ -589,17 +646,21 @@ class PositionSynchronizer:
                 self.state.expected_positions[symbol] = {
                     "quantity": actual_qty,
                     "cost_basis": actual_cost,
-                    "reconciled_at": datetime.now(self.et_tz).isoformat()
+                    "reconciled_at": datetime.now(self.et_tz).isoformat(),
                 }
                 reconciled_count += 1
 
         # Remove expected positions that don't exist in broker
         actual_symbols = {pos.get("symbol", "").upper() for pos in self.state.positions}
-        to_remove = [s for s in self.state.expected_positions if s not in actual_symbols]
+        to_remove = [
+            s for s in self.state.expected_positions if s not in actual_symbols
+        ]
         for symbol in to_remove:
             del self.state.expected_positions[symbol]
 
-        logger.info(f"Reconciled {reconciled_count} positions, removed {len(to_remove)} stale expected positions")
+        logger.info(
+            f"Reconciled {reconciled_count} positions, removed {len(to_remove)} stale expected positions"
+        )
 
         # Mark all drift events as reconciled
         for drift in self.state.drift_events:
@@ -617,7 +678,11 @@ class PositionSynchronizer:
             "actual_positions": len(self.state.positions),
             "unreconciled_drifts": len(recent_drifts),
             "total_drift_events": len(self.state.drift_events),
-            "last_drift_check": self.state.last_drift_check.isoformat() if self.state.last_drift_check else None,
+            "last_drift_check": (
+                self.state.last_drift_check.isoformat()
+                if self.state.last_drift_check
+                else None
+            ),
             "drift_details": [
                 {
                     "symbol": d.symbol,
@@ -625,10 +690,10 @@ class PositionSynchronizer:
                     "actual": d.actual_qty,
                     "drift": d.drift_qty,
                     "percent": round(d.drift_percent, 2),
-                    "detected_at": d.detected_at.isoformat()
+                    "detected_at": d.detected_at.isoformat(),
                 }
                 for d in recent_drifts
-            ]
+            ],
         }
 
     def get_sync_status(self) -> Dict:
@@ -636,7 +701,9 @@ class PositionSynchronizer:
         drift_summary = self.get_drift_summary()
 
         return {
-            "last_sync": self.state.last_sync.isoformat() if self.state.last_sync else None,
+            "last_sync": (
+                self.state.last_sync.isoformat() if self.state.last_sync else None
+            ),
             "positions_count": len(self.state.positions),
             "open_orders_count": len(self.state.open_orders),
             "tracked_orders": len(self.state.order_trackers),
@@ -647,8 +714,8 @@ class PositionSynchronizer:
                 "expected_positions": drift_summary["expected_positions"],
                 "actual_positions": drift_summary["actual_positions"],
                 "unreconciled_drifts": drift_summary["unreconciled_drifts"],
-                "last_check": drift_summary["last_drift_check"]
-            }
+                "last_check": drift_summary["last_drift_check"],
+            },
         }
 
     def get_positions(self) -> List[Dict]:

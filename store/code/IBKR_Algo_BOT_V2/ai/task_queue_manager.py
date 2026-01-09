@@ -15,14 +15,14 @@ Task Groups:
 5. POST-TRADE (R12-R15)
 """
 
-import os
 import json
 import logging
+import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ class PipelineStatus(Enum):
 @dataclass
 class TaskResult:
     """Result from a task execution"""
+
     task_id: str
     status: TaskStatus
     output_file: Optional[str] = None
@@ -63,6 +64,7 @@ class TaskResult:
 @dataclass
 class Task:
     """Task definition"""
+
     id: str
     name: str
     group: str
@@ -131,24 +133,29 @@ class TaskQueueManager:
             path = REPORTS_DIR / filename
 
         if path.exists():
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 return json.load(f)
         return None
 
     def _save_output(self, filename: str, data: Dict):
         """Save output report file"""
         path = self.reports_dir / filename
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(data, f, indent=2, default=str)
         logger.info(f"Saved report: {path}")
         return str(path)
 
-    def _check_fail_conditions(self, task: Task, result_data: Dict) -> tuple[bool, Optional[str]]:
+    def _check_fail_conditions(
+        self, task: Task, result_data: Dict
+    ) -> tuple[bool, Optional[str]]:
         """Check if any fail conditions are met"""
         for condition in task.fail_conditions:
             # Parse condition - format: "field:operator:value" or custom
             if condition == "empty_universe":
-                if not result_data.get("symbols") or len(result_data.get("symbols", [])) == 0:
+                if (
+                    not result_data.get("symbols")
+                    or len(result_data.get("symbols", [])) == 0
+                ):
                     return True, "Empty universe - no symbols meet criteria"
 
             elif condition == "no_symbols":
@@ -162,7 +169,9 @@ class TaskQueueManager:
                     return True, "Rel Vol (5m) < 300 for all symbols"
 
             elif condition == "low_win_rate":
-                if result_data.get("win_rate", 0) < result_data.get("baseline_win_rate", 0.5):
+                if result_data.get("win_rate", 0) < result_data.get(
+                    "baseline_win_rate", 0.5
+                ):
                     return True, "Win rate below baseline"
 
             elif condition == "kill_regime":
@@ -173,7 +182,10 @@ class TaskQueueManager:
 
             elif condition == "gate_failed":
                 if not result_data.get("approved", False):
-                    return True, f"Gating failed: {result_data.get('veto_reason', 'Unknown')}"
+                    return (
+                        True,
+                        f"Gating failed: {result_data.get('veto_reason', 'Unknown')}",
+                    )
 
         return False, None
 
@@ -184,7 +196,7 @@ class TaskQueueManager:
             return TaskResult(
                 task_id=task_id,
                 status=TaskStatus.FAILED,
-                error=f"Task {task_id} not found"
+                error=f"Task {task_id} not found",
             )
 
         # Check if pipeline is halted
@@ -192,7 +204,7 @@ class TaskQueueManager:
             return TaskResult(
                 task_id=task_id,
                 status=TaskStatus.BLOCKED,
-                error=f"Pipeline halted: {self.halted_reason}"
+                error=f"Pipeline halted: {self.halted_reason}",
             )
 
         # Check inputs available
@@ -201,7 +213,7 @@ class TaskQueueManager:
             return TaskResult(
                 task_id=task_id,
                 status=TaskStatus.BLOCKED,
-                error=f"Missing inputs: {missing}"
+                error=f"Missing inputs: {missing}",
             )
 
         # Load inputs
@@ -230,12 +242,15 @@ class TaskQueueManager:
                 self.halted_reason = fail_reason
 
                 # Still save the report for debugging
-                output_path = self._save_output(task.output_file, {
-                    "status": "FAILED",
-                    "reason": fail_reason,
-                    "data": result_data,
-                    "timestamp": datetime.now().isoformat()
-                })
+                output_path = self._save_output(
+                    task.output_file,
+                    {
+                        "status": "FAILED",
+                        "reason": fail_reason,
+                        "data": result_data,
+                        "timestamp": datetime.now().isoformat(),
+                    },
+                )
 
                 result = TaskResult(
                     task_id=task_id,
@@ -243,7 +258,7 @@ class TaskQueueManager:
                     output_file=output_path,
                     data=result_data,
                     error=fail_reason,
-                    duration_ms=duration_ms
+                    duration_ms=duration_ms,
                 )
             else:
                 task.status = TaskStatus.COMPLETED
@@ -253,7 +268,7 @@ class TaskQueueManager:
                     "task_id": task_id,
                     "status": "COMPLETED",
                     "timestamp": datetime.now().isoformat(),
-                    "duration_ms": duration_ms
+                    "duration_ms": duration_ms,
                 }
                 output_path = self._save_output(task.output_file, result_data)
 
@@ -262,7 +277,7 @@ class TaskQueueManager:
                     status=TaskStatus.COMPLETED,
                     output_file=output_path,
                     data=result_data,
-                    duration_ms=duration_ms
+                    duration_ms=duration_ms,
                 )
 
             task.result = result
@@ -281,7 +296,7 @@ class TaskQueueManager:
                 task_id=task_id,
                 status=TaskStatus.FAILED,
                 error=str(e),
-                duration_ms=duration_ms
+                duration_ms=duration_ms,
             )
             task.result = result
             self.results[task_id] = result
@@ -289,7 +304,9 @@ class TaskQueueManager:
         finally:
             self.current_task = None
 
-    async def run_pipeline(self, start_from: Optional[str] = None) -> Dict[str, TaskResult]:
+    async def run_pipeline(
+        self, start_from: Optional[str] = None
+    ) -> Dict[str, TaskResult]:
         """Run the full pipeline sequentially"""
         self.pipeline_status = PipelineStatus.RUNNING
         logger.info(f"Starting pipeline run: {self.run_id}")
@@ -329,7 +346,7 @@ class TaskQueueManager:
             "pipeline_status": self.pipeline_status.value,
             "halted_reason": self.halted_reason,
             "tasks": {},
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         for task_id, task in self.tasks.items():
@@ -337,7 +354,7 @@ class TaskQueueManager:
                 "status": task.status.value,
                 "output_file": task.result.output_file if task.result else None,
                 "error": task.result.error if task.result else None,
-                "duration_ms": task.result.duration_ms if task.result else 0
+                "duration_ms": task.result.duration_ms if task.result else 0,
             }
 
         self._save_output("report_PIPELINE_SUMMARY.json", summary)
@@ -350,13 +367,10 @@ class TaskQueueManager:
             "current_task": self.current_task,
             "halted_reason": self.halted_reason,
             "tasks": {
-                task_id: {
-                    "status": task.status.value,
-                    "group": task.group
-                }
+                task_id: {"status": task.status.value, "group": task.group}
                 for task_id, task in self.tasks.items()
             },
-            "reports_dir": str(self.reports_dir)
+            "reports_dir": str(self.reports_dir),
         }
 
     def can_execute_trade(self) -> tuple[bool, str]:
@@ -373,7 +387,10 @@ class TaskQueueManager:
             return False, "No gating data available"
 
         if not gating_result.data.get("approved", False):
-            return False, f"Gating rejected: {gating_result.data.get('veto_reason', 'Unknown')}"
+            return (
+                False,
+                f"Gating rejected: {gating_result.data.get('veto_reason', 'Unknown')}",
+            )
 
         return True, "Trade execution approved"
 

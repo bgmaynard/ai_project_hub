@@ -12,14 +12,15 @@ Target: Stocks under $8 with:
 These are the "BEAT" type plays - cheap stocks that spike on momentum.
 """
 
-import requests
 import logging
+import threading
 import time
+from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from dataclasses import dataclass
-from collections import defaultdict
-import threading
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PennyMover:
     """A cheap stock showing momentum"""
+
     symbol: str
     price: float
     bid: float
@@ -53,7 +55,7 @@ class PennyMover:
             "momentum_score": round(self.momentum_score, 1),
             "signal": self.signal,
             "reason": self.reason,
-            "detected_at": self.detected_at.isoformat()
+            "detected_at": self.detected_at.isoformat(),
         }
 
 
@@ -61,15 +63,44 @@ class PennyMover:
 # These often have momentum plays
 PENNY_WATCHLIST = [
     # Biotech/Pharma (FDA plays)
-    'NVAX', 'SRNE', 'OCGN', 'VXRT', 'INO', 'ATHX', 'ATOS', 'SAVA',
+    "NVAX",
+    "SRNE",
+    "OCGN",
+    "VXRT",
+    "INO",
+    "ATHX",
+    "ATOS",
+    "SAVA",
     # EV/Tech small caps
-    'NIO', 'LCID', 'RIVN', 'GOEV', 'FFIE', 'MULN', 'NKLA',
+    "NIO",
+    "LCID",
+    "RIVN",
+    "GOEV",
+    "FFIE",
+    "MULN",
+    "NKLA",
     # Meme/Retail favorites
-    'AMC', 'BB', 'BBBY', 'WISH', 'CLOV', 'SOFI', 'PLTR',
+    "AMC",
+    "BB",
+    "BBBY",
+    "WISH",
+    "CLOV",
+    "SOFI",
+    "PLTR",
     # Recent movers (update regularly)
-    'BEAT', 'EDIT', 'MAMA', 'BBGI', 'DNA', 'SOUN',
+    "BEAT",
+    "EDIT",
+    "MAMA",
+    "BBGI",
+    "DNA",
+    "SOUN",
     # General small caps
-    'PLUG', 'FCEL', 'BLNK', 'WKHS', 'RIDE', 'FSR',
+    "PLUG",
+    "FCEL",
+    "BLNK",
+    "WKHS",
+    "RIDE",
+    "FSR",
     # Add more as discovered
 ]
 
@@ -88,8 +119,8 @@ class PennyMomentumScanner:
         self.min_price = 0.10  # Above $0.10 (avoid sub-pennies)
 
         # Quality filters
-        self.max_spread_pct = 3.0   # Max 3% spread for entry
-        self.min_rel_volume = 1.5   # At least 1.5x normal volume
+        self.max_spread_pct = 3.0  # Max 3% spread for entry
+        self.min_rel_volume = 1.5  # At least 1.5x normal volume
 
         # Watchlist
         self.watchlist = PENNY_WATCHLIST.copy()
@@ -110,7 +141,9 @@ class PennyMomentumScanner:
         # Callbacks
         self.on_mover_detected = None
 
-        logger.info(f"PennyMomentumScanner initialized - watching {len(self.watchlist)} stocks")
+        logger.info(
+            f"PennyMomentumScanner initialized - watching {len(self.watchlist)} stocks"
+        )
 
     def add_symbol(self, symbol: str):
         """Add a symbol to watchlist"""
@@ -136,13 +169,15 @@ class PennyMomentumScanner:
                     continue
 
                 quote = r.json()
-                bid = float(quote.get('bid', 0))
-                ask = float(quote.get('ask', 0))
-                last = float(quote.get('last', 0))
-                volume = int(quote.get('volume', 0) or 0)
+                bid = float(quote.get("bid", 0))
+                ask = float(quote.get("ask", 0))
+                last = float(quote.get("last", 0))
+                volume = int(quote.get("volume", 0) or 0)
 
                 # Use last price, fallback to mid
-                price = last if last > 0 else (bid + ask) / 2 if bid > 0 and ask > 0 else 0
+                price = (
+                    last if last > 0 else (bid + ask) / 2 if bid > 0 and ask > 0 else 0
+                )
                 if price <= 0:
                     continue
 
@@ -162,7 +197,9 @@ class PennyMomentumScanner:
                 # Track price history
                 self.price_history[symbol].append(price)
                 if len(self.price_history[symbol]) > self.max_history:
-                    self.price_history[symbol] = self.price_history[symbol][-self.max_history:]
+                    self.price_history[symbol] = self.price_history[symbol][
+                        -self.max_history :
+                    ]
 
                 # Calculate momentum
                 prices = self.price_history[symbol]
@@ -193,7 +230,7 @@ class PennyMomentumScanner:
                 )
 
                 # Only add if signal is actionable
-                if signal in ['strong_buy', 'buy', 'watch']:
+                if signal in ["strong_buy", "buy", "watch"]:
                     mover = PennyMover(
                         symbol=symbol,
                         price=price,
@@ -206,12 +243,12 @@ class PennyMomentumScanner:
                         momentum_score=momentum_score,
                         signal=signal,
                         reason=reason,
-                        detected_at=now
+                        detected_at=now,
                     )
                     movers.append(mover)
 
                     # Trigger callback for strong signals
-                    if signal == 'strong_buy' and self.on_mover_detected:
+                    if signal == "strong_buy" and self.on_mover_detected:
                         try:
                             self.on_mover_detected(mover)
                         except Exception as e:
@@ -229,24 +266,29 @@ class PennyMomentumScanner:
 
         return movers
 
-    def _generate_signal(self, price: float, spread_pct: float,
-                         momentum: float, change_pct: float,
-                         rel_volume: float) -> tuple:
+    def _generate_signal(
+        self,
+        price: float,
+        spread_pct: float,
+        momentum: float,
+        change_pct: float,
+        rel_volume: float,
+    ) -> tuple:
         """Generate trading signal"""
 
         # Strong buy: momentum + volume + tight spread
         if momentum > 5 and rel_volume >= 2.0 and spread_pct < 1.5:
-            return 'strong_buy', f"Strong momentum ({momentum:.1f}) + high volume"
+            return "strong_buy", f"Strong momentum ({momentum:.1f}) + high volume"
 
         # Buy: positive momentum + decent spread
         if momentum > 2 and spread_pct < 2.0:
-            return 'buy', f"Positive momentum ({momentum:.1f})"
+            return "buy", f"Positive momentum ({momentum:.1f})"
 
         # Watch: some momentum or volume
         if momentum > 0 or rel_volume >= 2.0:
-            return 'watch', f"Building momentum" if momentum > 0 else "High volume"
+            return "watch", f"Building momentum" if momentum > 0 else "High volume"
 
-        return 'avoid', "No momentum"
+        return "avoid", "No momentum"
 
     def start_scanning(self, interval: int = 5):
         """Start background scanning"""
@@ -275,7 +317,7 @@ class PennyMomentumScanner:
                 movers = self.scan()
 
                 # Log significant movers
-                strong = [m for m in movers if m.signal == 'strong_buy']
+                strong = [m for m in movers if m.signal == "strong_buy"]
                 if strong:
                     logger.warning(f"PENNY MOVERS: {[m.symbol for m in strong]}")
                     for m in strong[:3]:
@@ -297,7 +339,7 @@ class PennyMomentumScanner:
 
     def get_buy_signals(self) -> List[Dict]:
         """Get stocks with buy signals"""
-        return [m.to_dict() for m in self.movers if m.signal in ['strong_buy', 'buy']]
+        return [m.to_dict() for m in self.movers if m.signal in ["strong_buy", "buy"]]
 
     def get_status(self) -> Dict:
         """Get scanner status"""
@@ -308,7 +350,9 @@ class PennyMomentumScanner:
             "max_spread": f"{self.max_spread_pct}%",
             "last_scan": self.last_scan.isoformat() if self.last_scan else None,
             "movers_found": len(self.movers),
-            "buy_signals": len([m for m in self.movers if m.signal in ['strong_buy', 'buy']])
+            "buy_signals": len(
+                [m for m in self.movers if m.signal in ["strong_buy", "buy"]]
+            ),
         }
 
 

@@ -10,11 +10,12 @@ Provides access to:
 - Model comparison and benchmarking
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List
 import logging
-import yfinance as yf
+from typing import List, Optional
+
 import pandas as pd
+import yfinance as yf
+from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,6 +33,7 @@ async def get_ai_status():
     # Check LightGBM
     try:
         from ai.ai_predictor import get_predictor
+
         predictor = get_predictor()
         status["lightgbm"]["available"] = True
         status["lightgbm"]["trained"] = predictor.model is not None
@@ -44,6 +46,7 @@ async def get_ai_status():
     # Check Chronos
     try:
         from ai.chronos_predictor import get_chronos_predictor
+
         chronos = get_chronos_predictor()
         status["chronos"]["available"] = True
         status["chronos"]["model"] = chronos.model_name
@@ -53,6 +56,7 @@ async def get_ai_status():
     # Check Ensemble
     try:
         from ai.ensemble_predictor import get_ensemble_predictor
+
         ensemble = get_ensemble_predictor()
         status["ensemble"]["available"] = True
         components = []
@@ -74,8 +78,12 @@ async def get_ai_status():
 @router.get("/api/ai/predict/chronos/{symbol}")
 async def predict_chronos(
     symbol: str,
-    horizon: int = Query(default=5, ge=1, le=20, description="Forecast horizon in days"),
-    num_samples: int = Query(default=20, ge=5, le=100, description="Number of sample paths")
+    horizon: int = Query(
+        default=5, ge=1, le=20, description="Forecast horizon in days"
+    ),
+    num_samples: int = Query(
+        default=20, ge=5, le=100, description="Number of sample paths"
+    ),
 ):
     """
     Get Chronos foundation model prediction for a symbol.
@@ -85,8 +93,11 @@ async def predict_chronos(
     """
     try:
         from ai.chronos_predictor import get_chronos_predictor
+
         predictor = get_chronos_predictor()
-        result = predictor.predict(symbol.upper(), horizon=horizon, num_samples=num_samples)
+        result = predictor.predict(
+            symbol.upper(), horizon=horizon, num_samples=num_samples
+        )
         return result
     except Exception as e:
         logger.error(f"Chronos prediction failed: {e}")
@@ -102,6 +113,7 @@ async def predict_lightgbm(symbol: str):
     """
     try:
         from ai.ai_predictor import get_predictor
+
         predictor = get_predictor()
 
         if predictor.model is None:
@@ -119,7 +131,9 @@ async def predict_lightgbm(symbol: str):
 @router.get("/api/ai/predict/ensemble/{symbol}")
 async def predict_ensemble(
     symbol: str,
-    horizon: int = Query(default=5, ge=1, le=20, description="Forecast horizon in days")
+    horizon: int = Query(
+        default=5, ge=1, le=20, description="Forecast horizon in days"
+    ),
 ):
     """
     Get ensemble prediction combining all AI models.
@@ -134,6 +148,7 @@ async def predict_ensemble(
     """
     try:
         from ai.ensemble_predictor import get_ensemble_predictor
+
         predictor = get_ensemble_predictor()
 
         # Fetch data
@@ -159,7 +174,9 @@ async def predict_ensemble(
 @router.post("/api/ai/predict/batch")
 async def predict_batch(
     symbols: List[str],
-    model: str = Query(default="ensemble", description="Model to use: ensemble, chronos, lightgbm")
+    model: str = Query(
+        default="ensemble", description="Model to use: ensemble, chronos, lightgbm"
+    ),
 ):
     """
     Get predictions for multiple symbols.
@@ -170,14 +187,17 @@ async def predict_batch(
         try:
             if model == "chronos":
                 from ai.chronos_predictor import get_chronos_predictor
+
                 predictor = get_chronos_predictor()
                 result = predictor.predict(symbol.upper())
             elif model == "lightgbm":
                 from ai.ai_predictor import get_predictor
+
                 predictor = get_predictor()
                 result = predictor.predict(symbol.upper())
             else:  # ensemble
                 from ai.ensemble_predictor import get_ensemble_predictor
+
                 predictor = get_ensemble_predictor()
                 ticker = yf.Ticker(symbol.upper())
                 df = ticker.history(period="6mo")
@@ -209,6 +229,7 @@ async def compare_models(symbol: str):
     # Chronos
     try:
         from ai.chronos_predictor import get_chronos_predictor
+
         predictor = get_chronos_predictor()
         result = predictor.predict(symbol.upper())
         comparison["models"]["chronos"] = {
@@ -223,6 +244,7 @@ async def compare_models(symbol: str):
     # LightGBM
     try:
         from ai.ai_predictor import get_predictor
+
         predictor = get_predictor()
         if predictor.model:
             result = predictor.predict(symbol.upper())
@@ -239,6 +261,7 @@ async def compare_models(symbol: str):
     # Ensemble
     try:
         from ai.ensemble_predictor import get_ensemble_predictor
+
         predictor = get_ensemble_predictor()
         ticker = yf.Ticker(symbol.upper())
         df = ticker.history(period="6mo")
@@ -291,13 +314,14 @@ async def compare_models(symbol: str):
 @router.post("/api/ai/train/lightgbm")
 async def train_lightgbm(
     symbol: str = Query(default="SPY", description="Symbol to train on"),
-    period: str = Query(default="2y", description="Training data period")
+    period: str = Query(default="2y", description="Training data period"),
 ):
     """
     Train or retrain the LightGBM model.
     """
     try:
         from ai.ai_predictor import EnhancedAIPredictor
+
         predictor = EnhancedAIPredictor()
         result = predictor.train(symbol.upper(), period=period)
         return result
@@ -310,15 +334,16 @@ async def train_lightgbm(
 async def train_lightgbm_multi(
     symbols: List[str] = Query(
         default=["SPY", "QQQ", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA"],
-        description="Symbols to train on"
+        description="Symbols to train on",
     ),
-    period: str = Query(default="2y", description="Training data period")
+    period: str = Query(default="2y", description="Training data period"),
 ):
     """
     Train LightGBM model on multiple symbols for better generalization.
     """
     try:
         from ai.ai_predictor import EnhancedAIPredictor
+
         predictor = EnhancedAIPredictor()
         result = predictor.train_multi([s.upper() for s in symbols], period=period)
         return result

@@ -2,12 +2,13 @@
 Portfolio Analytics Module
 Provides real-time P&L tracking, performance metrics, and trade analysis
 """
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import logging
-from dataclasses import dataclass, asdict
+
 import json
+import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TradeRecord:
     """Record of a completed or active trade"""
+
     symbol: str
     side: str  # BUY or SELL
     quantity: int
@@ -33,6 +35,7 @@ class TradeRecord:
 @dataclass
 class PortfolioMetrics:
     """Portfolio performance metrics"""
+
     total_value: float
     cash: float
     positions_value: float
@@ -66,7 +69,7 @@ class PortfolioAnalytics:
         """Load trade history from file"""
         if self.trades_file.exists():
             try:
-                with open(self.trades_file, 'r') as f:
+                with open(self.trades_file, "r") as f:
                     data = json.load(f)
                     self.trades = [TradeRecord(**t) for t in data]
                 logger.info(f"Loaded {len(self.trades)} trades from history")
@@ -77,7 +80,7 @@ class PortfolioAnalytics:
     def save_trades(self):
         """Save trade history to file"""
         try:
-            with open(self.trades_file, 'w') as f:
+            with open(self.trades_file, "w") as f:
                 json.dump([asdict(t) for t in self.trades], f, indent=2)
         except Exception as e:
             logger.error(f"Error saving trades: {e}")
@@ -90,7 +93,7 @@ class PortfolioAnalytics:
         price: float,
         order_id: str = None,
         ai_signal: str = None,
-        ai_confidence: float = None
+        ai_confidence: float = None,
     ) -> TradeRecord:
         """Record a new trade entry"""
         trade = TradeRecord(
@@ -102,7 +105,7 @@ class PortfolioAnalytics:
             order_id=order_id,
             ai_signal=ai_signal,
             ai_confidence=ai_confidence,
-            status="OPEN"
+            status="OPEN",
         )
         self.trades.append(trade)
         self.save_trades()
@@ -110,10 +113,7 @@ class PortfolioAnalytics:
         return trade
 
     def record_trade_exit(
-        self,
-        symbol: str,
-        price: float,
-        order_id: str = None
+        self, symbol: str, price: float, order_id: str = None
     ) -> Optional[TradeRecord]:
         """Record trade exit and calculate P&L"""
         # Find the open trade for this symbol
@@ -129,10 +129,14 @@ class PortfolioAnalytics:
                 else:  # SELL (short)
                     trade.pnl = (trade.entry_price - price) * trade.quantity
 
-                trade.pnl_percent = (trade.pnl / (trade.entry_price * trade.quantity)) * 100
+                trade.pnl_percent = (
+                    trade.pnl / (trade.entry_price * trade.quantity)
+                ) * 100
 
                 self.save_trades()
-                logger.info(f"Recorded trade exit: {symbol} @ ${price:.2f}, P&L: ${trade.pnl:.2f} ({trade.pnl_percent:.2f}%)")
+                logger.info(
+                    f"Recorded trade exit: {symbol} @ ${price:.2f}, P&L: ${trade.pnl:.2f} ({trade.pnl_percent:.2f}%)"
+                )
                 return trade
 
         logger.warning(f"No open trade found for {symbol}")
@@ -158,11 +162,17 @@ class PortfolioAnalytics:
         for trade in reversed(self.trades):
             if trade.symbol == symbol.upper() and trade.status == "OPEN":
                 if trade.side == "BUY":
-                    unrealized_pnl = (current_price - trade.entry_price) * trade.quantity
+                    unrealized_pnl = (
+                        current_price - trade.entry_price
+                    ) * trade.quantity
                 else:
-                    unrealized_pnl = (trade.entry_price - current_price) * trade.quantity
+                    unrealized_pnl = (
+                        trade.entry_price - current_price
+                    ) * trade.quantity
 
-                pnl_percent = (unrealized_pnl / (trade.entry_price * trade.quantity)) * 100
+                pnl_percent = (
+                    unrealized_pnl / (trade.entry_price * trade.quantity)
+                ) * 100
 
                 return {
                     "symbol": symbol,
@@ -172,7 +182,7 @@ class PortfolioAnalytics:
                     "side": trade.side,
                     "unrealized_pnl": unrealized_pnl,
                     "unrealized_pnl_percent": pnl_percent,
-                    "entry_time": trade.entry_time
+                    "entry_time": trade.entry_time,
                 }
 
         return {"symbol": symbol, "error": "No open position found"}
@@ -182,10 +192,7 @@ class PortfolioAnalytics:
         closed_trades = [t for t in self.trades if t.status == "CLOSED"]
 
         if not closed_trades:
-            return {
-                "total_trades": 0,
-                "message": "No completed trades to analyze"
-            }
+            return {"total_trades": 0, "message": "No completed trades to analyze"}
 
         # Basic stats
         total_trades = len(closed_trades)
@@ -204,7 +211,7 @@ class PortfolioAnalytics:
         avg_loss = gross_loss / len(losing_trades) if losing_trades else 0
 
         # Profit factor
-        profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+        profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")
 
         # Calculate drawdown
         cumulative_pnl = []
@@ -220,16 +227,21 @@ class PortfolioAnalytics:
             if drawdown > max_drawdown:
                 max_drawdown = drawdown
 
-        max_drawdown_percent = (max_drawdown / account_value) * 100 if account_value > 0 else 0
+        max_drawdown_percent = (
+            (max_drawdown / account_value) * 100 if account_value > 0 else 0
+        )
 
         # Daily P&L (last trading day)
         today = datetime.now().date()
-        today_trades = [t for t in closed_trades if t.exit_time and
-                       datetime.fromisoformat(t.exit_time).date() == today]
+        today_trades = [
+            t
+            for t in closed_trades
+            if t.exit_time and datetime.fromisoformat(t.exit_time).date() == today
+        ]
         daily_pnl = sum(t.pnl for t in today_trades)
 
         # Expectancy
-        expectancy = (win_rate/100 * avg_win) - ((1 - win_rate/100) * avg_loss)
+        expectancy = (win_rate / 100 * avg_win) - ((1 - win_rate / 100) * avg_loss)
 
         # Return metrics
         return {
@@ -242,15 +254,21 @@ class PortfolioAnalytics:
             "daily_pnl": round(daily_pnl, 2),
             "gross_profit": round(gross_profit, 2),
             "gross_loss": round(gross_loss, 2),
-            "profit_factor": round(profit_factor, 2) if profit_factor != float('inf') else "∞",
+            "profit_factor": (
+                round(profit_factor, 2) if profit_factor != float("inf") else "∞"
+            ),
             "avg_win": round(avg_win, 2),
             "avg_loss": round(avg_loss, 2),
-            "largest_win": round(max(t.pnl for t in closed_trades), 2) if closed_trades else 0,
-            "largest_loss": round(min(t.pnl for t in closed_trades), 2) if closed_trades else 0,
+            "largest_win": (
+                round(max(t.pnl for t in closed_trades), 2) if closed_trades else 0
+            ),
+            "largest_loss": (
+                round(min(t.pnl for t in closed_trades), 2) if closed_trades else 0
+            ),
             "max_drawdown": round(max_drawdown, 2),
             "max_drawdown_percent": round(max_drawdown_percent, 2),
             "expectancy": round(expectancy, 2),
-            "account_value": account_value
+            "account_value": account_value,
         }
 
     def get_trade_by_symbol(self, symbol: str) -> List[Dict]:
@@ -284,7 +302,7 @@ class PortfolioAnalytics:
         return {
             "total_ai_trades": len(ai_trades),
             "signal_performance": signal_stats,
-            "overall_ai_pnl": round(sum(t.pnl for t in ai_trades), 2)
+            "overall_ai_pnl": round(sum(t.pnl for t in ai_trades), 2),
         }
 
 

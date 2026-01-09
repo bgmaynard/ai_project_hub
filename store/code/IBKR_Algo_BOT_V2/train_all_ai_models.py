@@ -11,23 +11,23 @@ Comprehensive training script for all AI enhancement modules:
 Run this script to initialize all AI models with baseline performance data.
 """
 
-import sys
 import logging
-import numpy as np
-import pandas as pd
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 # Symbols to train on
-TRAINING_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMD', 'GOOGL', 'AMZN', 'META']
-REGIMES = ['TRENDING_UP', 'TRENDING_DOWN', 'RANGING', 'VOLATILE']
+TRAINING_SYMBOLS = ["AAPL", "MSFT", "NVDA", "TSLA", "AMD", "GOOGL", "AMZN", "META"]
+REGIMES = ["TRENDING_UP", "TRENDING_DOWN", "RANGING", "VOLATILE"]
 
 
 def download_data(symbol: str, period: str = "1y") -> pd.DataFrame:
@@ -42,7 +42,7 @@ def download_data(symbol: str, period: str = "1y") -> pd.DataFrame:
         return pd.DataFrame()
 
     # Handle multi-index columns
-    if hasattr(df.columns, 'levels'):
+    if hasattr(df.columns, "levels"):
         df.columns = df.columns.droplevel(1)
 
     return df
@@ -58,39 +58,39 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     # RSI
-    df['rsi'] = ta.momentum.rsi(df['Close'], window=14)
+    df["rsi"] = ta.momentum.rsi(df["Close"], window=14)
 
     # MACD
-    macd = ta.trend.MACD(df['Close'])
-    df['macd'] = macd.macd()
-    df['macd_signal'] = macd.macd_signal()
+    macd = ta.trend.MACD(df["Close"])
+    df["macd"] = macd.macd()
+    df["macd_signal"] = macd.macd_signal()
 
     # Bollinger Bands
-    bb = ta.volatility.BollingerBands(df['Close'])
-    df['bb_high'] = bb.bollinger_hband()
-    df['bb_low'] = bb.bollinger_lband()
-    df['bb_width'] = bb.bollinger_wband()
+    bb = ta.volatility.BollingerBands(df["Close"])
+    df["bb_high"] = bb.bollinger_hband()
+    df["bb_low"] = bb.bollinger_lband()
+    df["bb_width"] = bb.bollinger_wband()
 
     # ADX
-    adx = ta.trend.ADXIndicator(df['High'], df['Low'], df['Close'])
-    df['adx'] = adx.adx()
+    adx = ta.trend.ADXIndicator(df["High"], df["Low"], df["Close"])
+    df["adx"] = adx.adx()
 
     # ATR
-    df['atr'] = ta.volatility.average_true_range(df['High'], df['Low'], df['Close'])
+    df["atr"] = ta.volatility.average_true_range(df["High"], df["Low"], df["Close"])
 
     # Volume ratio
-    df['volume_ratio'] = df['Volume'] / df['Volume'].rolling(20).mean()
+    df["volume_ratio"] = df["Volume"] / df["Volume"].rolling(20).mean()
 
     # Trend
-    df['sma_20'] = df['Close'].rolling(20).mean()
-    df['trend'] = (df['Close'] - df['sma_20']) / df['sma_20']
+    df["sma_20"] = df["Close"].rolling(20).mean()
+    df["trend"] = (df["Close"] - df["sma_20"]) / df["sma_20"]
 
     # Volatility
-    df['volatility'] = df['Close'].pct_change().rolling(20).std()
+    df["volatility"] = df["Close"].pct_change().rolling(20).std()
 
     # Returns
-    df['return_1d'] = df['Close'].pct_change(1)
-    df['return_5d'] = df['Close'].pct_change(5)
+    df["return_1d"] = df["Close"].pct_change(1)
+    df["return_5d"] = df["Close"].pct_change(5)
 
     return df.dropna()
 
@@ -98,39 +98,45 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
 def detect_regime(df: pd.DataFrame) -> str:
     """Detect market regime from recent data"""
     if df.empty or len(df) < 20:
-        return 'RANGING'
+        return "RANGING"
 
-    adx = df['adx'].iloc[-1] if 'adx' in df.columns else 20
-    volatility = df['volatility'].iloc[-1] if 'volatility' in df.columns else 0.02
-    trend = df['trend'].iloc[-1] if 'trend' in df.columns else 0
+    adx = df["adx"].iloc[-1] if "adx" in df.columns else 20
+    volatility = df["volatility"].iloc[-1] if "volatility" in df.columns else 0.02
+    trend = df["trend"].iloc[-1] if "trend" in df.columns else 0
 
     # High volatility
     if volatility > 0.03:
-        return 'VOLATILE'
+        return "VOLATILE"
 
     # Strong trend
     if adx > 25:
         if trend > 0.02:
-            return 'TRENDING_UP'
+            return "TRENDING_UP"
         elif trend < -0.02:
-            return 'TRENDING_DOWN'
+            return "TRENDING_DOWN"
 
-    return 'RANGING'
+    return "RANGING"
 
 
 def train_bandit():
     """Train Multi-Armed Bandit with simulated historical trades"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("TRAINING MULTI-ARMED BANDIT")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
-    from ai.bandit_selector import get_bandit, ArmType
+    from ai.bandit_selector import ArmType, get_bandit
 
     bandit = get_bandit()
 
     # Simulate historical trade outcomes based on actual price movements
-    models = ['lightgbm', 'ensemble', 'heuristic', 'momentum', 'rl_agent']
-    strategies = ['momentum_breakout', 'trend_following', 'mean_reversion', 'scalping', 'warrior_small_cap']
+    models = ["lightgbm", "ensemble", "heuristic", "momentum", "rl_agent"]
+    strategies = [
+        "momentum_breakout",
+        "trend_following",
+        "mean_reversion",
+        "scalping",
+        "warrior_small_cap",
+    ]
 
     total_trades = 0
 
@@ -143,29 +149,37 @@ def train_bandit():
 
         # Simulate trades at various points
         for i in range(50, len(df) - 5, 10):  # Every 10 bars
-            regime = detect_regime(df.iloc[max(0, i-50):i])
+            regime = detect_regime(df.iloc[max(0, i - 50) : i])
 
             # Calculate actual return over next 5 bars
-            entry_price = df['Close'].iloc[i]
-            exit_price = df['Close'].iloc[i + 5]
+            entry_price = df["Close"].iloc[i]
+            exit_price = df["Close"].iloc[i + 5]
             actual_pnl = (exit_price - entry_price) / entry_price * 100
 
             # Assign credit to models based on regime performance
             # (Models that work better in certain regimes)
             model_bonuses = {
-                'TRENDING_UP': {'momentum': 0.3, 'trend_following': 0.2, 'lightgbm': 0.1},
-                'TRENDING_DOWN': {'mean_reversion': 0.2, 'heuristic': 0.15},
-                'RANGING': {'mean_reversion': 0.25, 'scalping': 0.2},
-                'VOLATILE': {'heuristic': 0.2, 'scalping': 0.15}
+                "TRENDING_UP": {
+                    "momentum": 0.3,
+                    "trend_following": 0.2,
+                    "lightgbm": 0.1,
+                },
+                "TRENDING_DOWN": {"mean_reversion": 0.2, "heuristic": 0.15},
+                "RANGING": {"mean_reversion": 0.25, "scalping": 0.2},
+                "VOLATILE": {"heuristic": 0.2, "scalping": 0.15},
             }
 
             for model in models:
                 # Add regime-appropriate bonus
                 bonus = model_bonuses.get(regime, {}).get(model, 0)
-                adjusted_pnl = actual_pnl + np.random.normal(bonus * 2, 1)  # Add some noise
+                adjusted_pnl = actual_pnl + np.random.normal(
+                    bonus * 2, 1
+                )  # Add some noise
 
                 strategy = np.random.choice(strategies)
-                bandit.record_trade_outcome(symbol, model, strategy, adjusted_pnl, regime)
+                bandit.record_trade_outcome(
+                    symbol, model, strategy, adjusted_pnl, regime
+                )
                 total_trades += 1
 
     bandit.save()
@@ -185,9 +199,9 @@ def train_bandit():
 
 def train_adaptive_weights():
     """Initialize Adaptive Weights with prediction outcomes"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("TRAINING ADAPTIVE WEIGHTS")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     from ai.adaptive_weights import get_weight_manager
 
@@ -204,24 +218,27 @@ def train_adaptive_weights():
 
         # Simulate predictions
         for i in range(50, len(df) - 5, 5):
-            regime = detect_regime(df.iloc[max(0, i-50):i])
+            regime = detect_regime(df.iloc[max(0, i - 50) : i])
 
             # Actual outcome (1 if price went up, 0 if down)
-            actual = 1 if df['Close'].iloc[i + 5] > df['Close'].iloc[i] else 0
+            actual = 1 if df["Close"].iloc[i + 5] > df["Close"].iloc[i] else 0
 
             # Simulate model predictions with realistic accuracy
             model_accuracy = {
-                'lightgbm': 0.58,
-                'ensemble': 0.55,
-                'heuristic': 0.52,
-                'momentum': 0.54,
-                'rl_agent': 0.51,
-                'sentiment': 0.50
+                "lightgbm": 0.58,
+                "ensemble": 0.55,
+                "heuristic": 0.52,
+                "momentum": 0.54,
+                "rl_agent": 0.51,
+                "sentiment": 0.50,
             }
 
             for model, base_acc in model_accuracy.items():
                 # Higher accuracy in trending markets for momentum models
-                if regime in ['TRENDING_UP', 'TRENDING_DOWN'] and model in ['momentum', 'ensemble']:
+                if regime in ["TRENDING_UP", "TRENDING_DOWN"] and model in [
+                    "momentum",
+                    "ensemble",
+                ]:
                     acc = base_acc + 0.05
                 else:
                     acc = base_acc
@@ -250,16 +267,16 @@ def train_adaptive_weights():
 
 def train_selfplay():
     """Train Self-Play Entry/Exit agents"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("TRAINING SELF-PLAY AGENTS")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     from ai.self_play_optimizer import get_selfplay_trainer
 
     trainer = get_selfplay_trainer()
 
     # Train on multiple symbols
-    symbols_to_train = ['SPY', 'AAPL', 'TSLA']
+    symbols_to_train = ["SPY", "AAPL", "TSLA"]
     episodes_per_symbol = 10
 
     all_results = []
@@ -272,12 +289,14 @@ def train_selfplay():
             continue
 
         df = add_indicators(df)
-        prices = df['Close'].values
+        prices = df["Close"].values
 
         indicators = {
-            'rsi': float(df['rsi'].iloc[-1]) if 'rsi' in df.columns else 50,
-            'macd': float(df['macd'].iloc[-1]) if 'macd' in df.columns else 0,
-            'volatility': float(df['volatility'].iloc[-1]) if 'volatility' in df.columns else 0.02
+            "rsi": float(df["rsi"].iloc[-1]) if "rsi" in df.columns else 50,
+            "macd": float(df["macd"].iloc[-1]) if "macd" in df.columns else 0,
+            "volatility": (
+                float(df["volatility"].iloc[-1]) if "volatility" in df.columns else 0.02
+            ),
         }
 
         for ep in range(episodes_per_symbol):
@@ -285,8 +304,10 @@ def train_selfplay():
             all_results.append(result)
 
             if (ep + 1) % 5 == 0:
-                logger.info(f"  Episode {ep+1}: PnL={result['total_pnl']:.2f}, "
-                          f"trades={result['trades']}, win_rate={result['win_rate']:.1%}")
+                logger.info(
+                    f"  Episode {ep+1}: PnL={result['total_pnl']:.2f}, "
+                    f"trades={result['trades']}, win_rate={result['win_rate']:.1%}"
+                )
 
     # Final stats
     stats = trainer.get_stats()
@@ -301,9 +322,9 @@ def train_selfplay():
 
 def train_rl_agent():
     """Train RL Trading Agent"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("TRAINING RL TRADING AGENT")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     from ai.rl_trading_agent import get_rl_agent, get_rl_environment
 
@@ -311,7 +332,7 @@ def train_rl_agent():
     env = get_rl_environment()
 
     # Train on SPY for stability
-    df = download_data('SPY', "1y")
+    df = download_data("SPY", "1y")
     if df.empty:
         logger.error("Could not download SPY data")
         return False
@@ -328,9 +349,11 @@ def train_rl_agent():
         results.append(metrics)
 
         if (ep + 1) % 5 == 0:
-            logger.info(f"  Episode {metrics.episode}: reward={metrics.total_reward:.2f}, "
-                      f"epsilon={metrics.epsilon:.3f}, trades={metrics.trades}, "
-                      f"win_rate={metrics.win_rate:.1%}")
+            logger.info(
+                f"  Episode {metrics.episode}: reward={metrics.total_reward:.2f}, "
+                f"epsilon={metrics.epsilon:.3f}, trades={metrics.trades}, "
+                f"win_rate={metrics.win_rate:.1%}"
+            )
 
     # Save model
     agent.save_model()
@@ -344,21 +367,21 @@ def train_rl_agent():
 
 def verify_models():
     """Verify all models are working"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("VERIFYING ALL MODELS")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     # Test Bandit
     logger.info("\n1. Testing Bandit Selector...")
     try:
-        from ai.bandit_selector import get_symbol_selector, get_model_selector
+        from ai.bandit_selector import get_model_selector, get_symbol_selector
 
         symbol_selector = get_symbol_selector()
         symbols = symbol_selector.select_symbols(n=3)
         logger.info(f"   Top 3 symbols: {symbols}")
 
         model_selector = get_model_selector()
-        model = model_selector.select_model(regime='TRENDING_UP')
+        model = model_selector.select_model(regime="TRENDING_UP")
         logger.info(f"   Best model for TRENDING_UP: {model}")
     except Exception as e:
         logger.error(f"   Bandit error: {e}")
@@ -405,28 +428,30 @@ def verify_models():
         from ai.ensemble_predictor import get_ensemble_predictor
 
         predictor = get_ensemble_predictor()
-        df = download_data('AAPL', '3mo')
+        df = download_data("AAPL", "3mo")
         if not df.empty:
             df = add_indicators(df)
-            result = predictor.predict('AAPL', df)
-            logger.info(f"   AAPL prediction: {'BULLISH' if result.prediction == 1 else 'BEARISH'}")
+            result = predictor.predict("AAPL", df)
+            logger.info(
+                f"   AAPL prediction: {'BULLISH' if result.prediction == 1 else 'BEARISH'}"
+            )
             logger.info(f"   Confidence: {result.confidence:.1%}")
     except Exception as e:
         logger.error(f"   Ensemble error: {e}")
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("VERIFICATION COMPLETE")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     return True
 
 
 def main():
     """Main training function"""
-    logger.info("="*60)
+    logger.info("=" * 60)
     logger.info("AI MODEL TRAINING SCRIPT")
     logger.info(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     # Create store directories
     Path("store/models").mkdir(parents=True, exist_ok=True)
@@ -453,6 +478,7 @@ def main():
     except Exception as e:
         logger.error(f"Self-play training failed: {e}")
         import traceback
+
         traceback.print_exc()
         success = False
 
@@ -470,13 +496,13 @@ def main():
         logger.error(f"Verification failed: {e}")
         success = False
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     if success:
         logger.info("ALL TRAINING COMPLETE!")
     else:
         logger.info("TRAINING COMPLETED WITH SOME ERRORS")
     logger.info(f"Finished: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     return success
 

@@ -6,11 +6,12 @@ Free tier includes: reference data, previous day bars, historical minute bars.
 Paid tier adds: real-time trades, snapshots, tick data.
 """
 
-import os
 import logging
+import os
 import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,9 @@ def _make_request(endpoint: str, params: dict = None) -> Optional[dict]:
             elif response.status_code == 403:
                 logger.warning("Polygon API: Feature requires paid subscription")
             else:
-                logger.error(f"Polygon API error: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Polygon API error: {response.status_code} - {response.text}"
+                )
 
     except Exception as e:
         logger.error(f"Polygon API request failed: {e}")
@@ -95,9 +98,9 @@ class PolygonMarketData:
         Get previous day's OHLCV bar.
         Available on free tier.
         """
-        data = _make_request(f"/v2/aggs/ticker/{symbol.upper()}/prev", {
-            "adjusted": "true"
-        })
+        data = _make_request(
+            f"/v2/aggs/ticker/{symbol.upper()}/prev", {"adjusted": "true"}
+        )
         if data and data.get("status") == "OK":
             results = data.get("results", [])
             if results:
@@ -111,7 +114,7 @@ class PolygonMarketData:
                     "volume": bar.get("v"),
                     "vwap": bar.get("vw"),
                     "trades": bar.get("n"),
-                    "timestamp": bar.get("t")
+                    "timestamp": bar.get("t"),
                 }
         return None
 
@@ -121,7 +124,7 @@ class PolygonMarketData:
         from_date: str,
         to_date: str,
         multiplier: int = 1,
-        limit: int = 5000
+        limit: int = 5000,
     ) -> List[Dict]:
         """
         Get historical minute bars.
@@ -139,37 +142,31 @@ class PolygonMarketData:
         """
         data = _make_request(
             f"/v2/aggs/ticker/{symbol.upper()}/range/{multiplier}/minute/{from_date}/{to_date}",
-            {
-                "adjusted": "true",
-                "sort": "asc",
-                "limit": str(limit)
-            }
+            {"adjusted": "true", "sort": "asc", "limit": str(limit)},
         )
 
         if data and data.get("status") == "OK":
             results = data.get("results", [])
             bars = []
             for bar in results:
-                bars.append({
-                    "open": bar.get("o"),
-                    "high": bar.get("h"),
-                    "low": bar.get("l"),
-                    "close": bar.get("c"),
-                    "volume": bar.get("v"),
-                    "vwap": bar.get("vw"),
-                    "trades": bar.get("n"),
-                    "timestamp": bar.get("t")
-                })
+                bars.append(
+                    {
+                        "open": bar.get("o"),
+                        "high": bar.get("h"),
+                        "low": bar.get("l"),
+                        "close": bar.get("c"),
+                        "volume": bar.get("v"),
+                        "vwap": bar.get("vw"),
+                        "trades": bar.get("n"),
+                        "timestamp": bar.get("t"),
+                    }
+                )
             return bars
 
         return []
 
     def get_daily_bars(
-        self,
-        symbol: str,
-        from_date: str,
-        to_date: str,
-        limit: int = 365
+        self, symbol: str, from_date: str, to_date: str, limit: int = 365
     ) -> List[Dict]:
         """
         Get historical daily bars.
@@ -186,28 +183,28 @@ class PolygonMarketData:
         """
         data = _make_request(
             f"/v2/aggs/ticker/{symbol.upper()}/range/1/day/{from_date}/{to_date}",
-            {
-                "adjusted": "true",
-                "sort": "asc",
-                "limit": str(limit)
-            }
+            {"adjusted": "true", "sort": "asc", "limit": str(limit)},
         )
 
         if data and data.get("status") == "OK":
             results = data.get("results", [])
             bars = []
             for bar in results:
-                bars.append({
-                    "date": datetime.fromtimestamp(bar.get("t", 0) / 1000).strftime("%Y-%m-%d"),
-                    "open": bar.get("o"),
-                    "high": bar.get("h"),
-                    "low": bar.get("l"),
-                    "close": bar.get("c"),
-                    "volume": bar.get("v"),
-                    "vwap": bar.get("vw"),
-                    "trades": bar.get("n"),
-                    "timestamp": bar.get("t")
-                })
+                bars.append(
+                    {
+                        "date": datetime.fromtimestamp(bar.get("t", 0) / 1000).strftime(
+                            "%Y-%m-%d"
+                        ),
+                        "open": bar.get("o"),
+                        "high": bar.get("h"),
+                        "low": bar.get("l"),
+                        "close": bar.get("c"),
+                        "volume": bar.get("v"),
+                        "vwap": bar.get("vw"),
+                        "trades": bar.get("n"),
+                        "timestamp": bar.get("t"),
+                    }
+                )
             return bars
 
         return []
@@ -225,16 +222,11 @@ class PolygonMarketData:
                 "size": result.get("s"),
                 "exchange": result.get("x"),
                 "timestamp": result.get("t"),
-                "conditions": result.get("c", [])
+                "conditions": result.get("c", []),
             }
         return None
 
-    def get_trades(
-        self,
-        symbol: str,
-        date: str,
-        limit: int = 100
-    ) -> List[Dict]:
+    def get_trades(self, symbol: str, date: str, limit: int = 100) -> List[Dict]:
         """
         Get historical trades for Time & Sales.
         REQUIRES PAID SUBSCRIPTION.
@@ -251,12 +243,15 @@ class PolygonMarketData:
         dt = datetime.strptime(date, "%Y-%m-%d")
         timestamp_gte = int(dt.timestamp() * 1000000000)
 
-        data = _make_request(f"/v3/trades/{symbol.upper()}", {
-            "timestamp.gte": str(timestamp_gte),
-            "limit": str(limit),
-            "sort": "timestamp",
-            "order": "desc"
-        })
+        data = _make_request(
+            f"/v3/trades/{symbol.upper()}",
+            {
+                "timestamp.gte": str(timestamp_gte),
+                "limit": str(limit),
+                "sort": "timestamp",
+                "order": "desc",
+            },
+        )
 
         if data and data.get("status") == "OK":
             results = data.get("results", [])
@@ -265,14 +260,20 @@ class PolygonMarketData:
                 ts = trade.get("sip_timestamp", 0)
                 trade_time = datetime.fromtimestamp(ts / 1000000000) if ts else None
 
-                trades.append({
-                    "price": trade.get("price"),
-                    "size": trade.get("size"),
-                    "exchange": trade.get("exchange"),
-                    "time": trade_time.strftime("%H:%M:%S.%f")[:-3] if trade_time else None,
-                    "timestamp": ts,
-                    "conditions": trade.get("conditions", [])
-                })
+                trades.append(
+                    {
+                        "price": trade.get("price"),
+                        "size": trade.get("size"),
+                        "exchange": trade.get("exchange"),
+                        "time": (
+                            trade_time.strftime("%H:%M:%S.%f")[:-3]
+                            if trade_time
+                            else None
+                        ),
+                        "timestamp": ts,
+                        "conditions": trade.get("conditions", []),
+                    }
+                )
             return trades
 
         return []
@@ -282,7 +283,9 @@ class PolygonMarketData:
         Get real-time snapshot (quote + last trade + day bar).
         REQUIRES PAID SUBSCRIPTION.
         """
-        data = _make_request(f"/v2/snapshot/locale/us/markets/stocks/tickers/{symbol.upper()}")
+        data = _make_request(
+            f"/v2/snapshot/locale/us/markets/stocks/tickers/{symbol.upper()}"
+        )
         if data and data.get("status") == "OK":
             return data.get("ticker", {})
         return None

@@ -21,12 +21,13 @@ Target: $182 (+3.7%) at previous resistance.
 R:R Ratio: 1.85:1"
 """
 
+import json
 import logging
 import os
-import json
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
+
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 # Try to import Anthropic SDK
 try:
     import anthropic
+
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
@@ -43,6 +45,7 @@ except ImportError:
 @dataclass
 class TradeReasoning:
     """Complete trade reasoning"""
+
     symbol: str
     action: str  # BUY, SELL, HOLD
     price: float
@@ -109,11 +112,11 @@ class LLMTradeReasoner:
     """
 
     def __init__(self):
-        self.et_tz = pytz.timezone('US/Eastern')
+        self.et_tz = pytz.timezone("US/Eastern")
 
         # API keys
-        self.anthropic_key = os.environ.get('ANTHROPIC_API_KEY', '')
-        self.openai_key = os.environ.get('OPENAI_API_KEY', '')
+        self.anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        self.openai_key = os.environ.get("OPENAI_API_KEY", "")
 
         # Initialize client
         self.client = None
@@ -135,13 +138,15 @@ class LLMTradeReasoner:
             os.path.dirname(__file__), "..", "store", "trade_journal.json"
         )
 
-    def generate_trade_reasoning(self,
-                                  symbol: str,
-                                  action: str,
-                                  price: float,
-                                  indicators: Dict,
-                                  history: Dict = None,
-                                  news: List[str] = None) -> TradeReasoning:
+    def generate_trade_reasoning(
+        self,
+        symbol: str,
+        action: str,
+        price: float,
+        indicators: Dict,
+        history: Dict = None,
+        news: List[str] = None,
+    ) -> TradeReasoning:
         """
         Generate comprehensive trade reasoning.
 
@@ -161,9 +166,13 @@ class LLMTradeReasoner:
 
         # Try LLM first, fall back to rules
         if self.client:
-            reasoning = self._llm_reasoning(symbol, action, price, indicators, history, news)
+            reasoning = self._llm_reasoning(
+                symbol, action, price, indicators, history, news
+            )
         else:
-            reasoning = self._rule_based_reasoning(symbol, action, price, indicators, history, news)
+            reasoning = self._rule_based_reasoning(
+                symbol, action, price, indicators, history, news
+            )
 
         # Cache and save to journal
         self.reasoning_cache[f"{symbol}_{action}"] = reasoning
@@ -171,23 +180,27 @@ class LLMTradeReasoner:
 
         return reasoning
 
-    def _llm_reasoning(self,
-                       symbol: str,
-                       action: str,
-                       price: float,
-                       indicators: Dict,
-                       history: Dict = None,
-                       news: List[str] = None) -> TradeReasoning:
+    def _llm_reasoning(
+        self,
+        symbol: str,
+        action: str,
+        price: float,
+        indicators: Dict,
+        history: Dict = None,
+        news: List[str] = None,
+    ) -> TradeReasoning:
         """Generate reasoning using Claude"""
         try:
             # Build context prompt
-            prompt = self._build_prompt(symbol, action, price, indicators, history, news)
+            prompt = self._build_prompt(
+                symbol, action, price, indicators, history, news
+            )
 
             # Call Claude
             response = self.client.messages.create(
                 model="claude-3-haiku-20240307",  # Fast and cheap
                 max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
 
             # Parse response
@@ -196,15 +209,19 @@ class LLMTradeReasoner:
 
         except Exception as e:
             logger.error(f"LLM reasoning failed: {e}")
-            return self._rule_based_reasoning(symbol, action, price, indicators, history, news)
+            return self._rule_based_reasoning(
+                symbol, action, price, indicators, history, news
+            )
 
-    def _build_prompt(self,
-                      symbol: str,
-                      action: str,
-                      price: float,
-                      indicators: Dict,
-                      history: Dict = None,
-                      news: List[str] = None) -> str:
+    def _build_prompt(
+        self,
+        symbol: str,
+        action: str,
+        price: float,
+        indicators: Dict,
+        history: Dict = None,
+        news: List[str] = None,
+    ) -> str:
         """Build prompt for LLM"""
         # Format indicators
         ind_str = "\n".join([f"- {k}: {v}" for k, v in indicators.items()])
@@ -252,27 +269,25 @@ Be specific and actionable. Use the actual indicator values in your reasoning.
 For {action}, set target {'above' if action == 'BUY' else 'below'} current price.
 Stop should limit loss to 2-3% max."""
 
-    def _parse_llm_response(self,
-                            symbol: str,
-                            action: str,
-                            price: float,
-                            text: str,
-                            indicators: Dict) -> TradeReasoning:
+    def _parse_llm_response(
+        self, symbol: str, action: str, price: float, text: str, indicators: Dict
+    ) -> TradeReasoning:
         """Parse LLM response into TradeReasoning"""
         try:
             # Extract JSON from response
             import re
-            json_match = re.search(r'\{[\s\S]*\}', text)
+
+            json_match = re.search(r"\{[\s\S]*\}", text)
             if json_match:
                 data = json.loads(json_match.group())
             else:
                 raise ValueError("No JSON found in response")
 
             # Calculate R:R
-            target = float(data.get('target_price', price * 1.03))
-            stop = float(data.get('stop_price', price * 0.97))
+            target = float(data.get("target_price", price * 1.03))
+            stop = float(data.get("stop_price", price * 0.97))
 
-            if action == 'BUY':
+            if action == "BUY":
                 reward = target - price
                 risk = price - stop
             else:
@@ -286,42 +301,46 @@ Stop should limit loss to 2-3% max."""
                 action=action,
                 price=price,
                 timestamp=datetime.now(self.et_tz).isoformat(),
-                thesis=data.get('thesis', ''),
-                technical_summary=data.get('technical_summary', ''),
-                risk_analysis=data.get('risk_analysis', ''),
+                thesis=data.get("thesis", ""),
+                technical_summary=data.get("technical_summary", ""),
+                risk_analysis=data.get("risk_analysis", ""),
                 target_price=target,
                 stop_price=stop,
                 risk_reward_ratio=round(rr_ratio, 2),
-                confidence_level=data.get('confidence_level', 'MEDIUM'),
-                warnings=data.get('warnings', []),
-                catalysts=data.get('catalysts', []),
-                full_narrative=text
+                confidence_level=data.get("confidence_level", "MEDIUM"),
+                warnings=data.get("warnings", []),
+                catalysts=data.get("catalysts", []),
+                full_narrative=text,
             )
 
         except Exception as e:
             logger.error(f"Failed to parse LLM response: {e}")
-            return self._rule_based_reasoning(symbol, action, price, indicators, None, None)
+            return self._rule_based_reasoning(
+                symbol, action, price, indicators, None, None
+            )
 
-    def _rule_based_reasoning(self,
-                              symbol: str,
-                              action: str,
-                              price: float,
-                              indicators: Dict,
-                              history: Dict = None,
-                              news: List[str] = None) -> TradeReasoning:
+    def _rule_based_reasoning(
+        self,
+        symbol: str,
+        action: str,
+        price: float,
+        indicators: Dict,
+        history: Dict = None,
+        news: List[str] = None,
+    ) -> TradeReasoning:
         """Generate reasoning using rules (no LLM)"""
         # Extract key indicators
-        rsi = indicators.get('rsi', 50)
-        macd = indicators.get('macd', 0)
-        macd_signal = indicators.get('macd_signal', 0)
-        macd_hist = indicators.get('macd_histogram', 0)
-        volume_ratio = indicators.get('volume_ratio', 1.0)
-        trend = indicators.get('trend', 0)
+        rsi = indicators.get("rsi", 50)
+        macd = indicators.get("macd", 0)
+        macd_signal = indicators.get("macd_signal", 0)
+        macd_hist = indicators.get("macd_histogram", 0)
+        volume_ratio = indicators.get("volume_ratio", 1.0)
+        trend = indicators.get("trend", 0)
 
         # Build thesis
         factors = []
 
-        if action == 'BUY':
+        if action == "BUY":
             if macd > macd_signal:
                 factors.append("MACD bullish crossover")
             if rsi < 40:
@@ -367,7 +386,7 @@ Stop should limit loss to 2-3% max."""
             confidence = "LOW"
 
         # R:R calculation
-        if action == 'BUY':
+        if action == "BUY":
             rr = (target - price) / (price - stop) if (price - stop) > 0 else 0
         else:
             rr = (price - target) / (stop - price) if (stop - price) > 0 else 0
@@ -386,7 +405,7 @@ Stop should limit loss to 2-3% max."""
             confidence_level=confidence,
             warnings=warnings,
             catalysts=factors[:3],
-            full_narrative=thesis + "\n\n" + tech_summary
+            full_narrative=thesis + "\n\n" + tech_summary,
         )
 
     def _save_to_journal(self, reasoning: TradeReasoning):
@@ -395,7 +414,7 @@ Stop should limit loss to 2-3% max."""
             # Load existing journal
             journal = []
             if os.path.exists(self.journal_path):
-                with open(self.journal_path, 'r') as f:
+                with open(self.journal_path, "r") as f:
                     journal = json.load(f)
 
             # Add new entry
@@ -408,7 +427,7 @@ Stop should limit loss to 2-3% max."""
             os.makedirs(os.path.dirname(self.journal_path), exist_ok=True)
 
             # Save
-            with open(self.journal_path, 'w') as f:
+            with open(self.journal_path, "w") as f:
                 json.dump(journal, f, indent=2)
 
         except Exception as e:
@@ -420,11 +439,11 @@ Stop should limit loss to 2-3% max."""
             if not os.path.exists(self.journal_path):
                 return []
 
-            with open(self.journal_path, 'r') as f:
+            with open(self.journal_path, "r") as f:
                 journal = json.load(f)
 
             if symbol:
-                journal = [e for e in journal if e.get('symbol') == symbol.upper()]
+                journal = [e for e in journal if e.get("symbol") == symbol.upper()]
 
             return journal[-limit:]
 
@@ -432,12 +451,14 @@ Stop should limit loss to 2-3% max."""
             logger.error(f"Failed to load journal: {e}")
             return []
 
-    def explain_exit(self,
-                     symbol: str,
-                     entry_price: float,
-                     exit_price: float,
-                     pnl: float,
-                     reason: str) -> str:
+    def explain_exit(
+        self,
+        symbol: str,
+        entry_price: float,
+        exit_price: float,
+        pnl: float,
+        reason: str,
+    ) -> str:
         """Generate explanation for why a trade was exited"""
         symbol = symbol.upper()
         pnl_pct = ((exit_price - entry_price) / entry_price) * 100

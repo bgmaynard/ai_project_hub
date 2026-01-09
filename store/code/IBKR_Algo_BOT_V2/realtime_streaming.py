@@ -15,19 +15,19 @@ Author: AI Trading Bot Team
 Version: 1.0
 """
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
+import os
 import threading
-from datetime import datetime
-from typing import Dict, Set, List, Optional, Callable, Any
-from dataclasses import dataclass, field
-from enum import Enum
 from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from alpaca.data.live import StockDataStream
-from alpaca.data.models import Quote, Trade, Bar
+from alpaca.data.models import Bar, Quote, Trade
 from config.broker_config import get_broker_config
 from dotenv import load_dotenv
 
@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 class StreamType(str, Enum):
     """Types of data streams"""
+
     QUOTES = "quotes"
     TRADES = "trades"
     BARS = "bars"
@@ -45,6 +46,7 @@ class StreamType(str, Enum):
 @dataclass
 class StreamSubscription:
     """Tracks a stream subscription"""
+
     symbol: str
     stream_type: StreamType
     subscribed_at: datetime = field(default_factory=datetime.now)
@@ -55,6 +57,7 @@ class StreamSubscription:
 @dataclass
 class StreamStats:
     """Statistics for streaming"""
+
     messages_received: int = 0
     quotes_received: int = 0
     trades_received: int = 0
@@ -114,10 +117,7 @@ class RealtimeStreamManager:
 
     def _create_stream(self) -> StockDataStream:
         """Create a new Alpaca data stream"""
-        return StockDataStream(
-            self.api_key,
-            self.secret_key
-        )
+        return StockDataStream(self.api_key, self.secret_key)
 
     async def _handle_quote(self, quote: Quote):
         """Handle incoming quote data"""
@@ -132,8 +132,12 @@ class RealtimeStreamManager:
                 "ask_size": int(quote.ask_size),
                 "mid": (float(quote.bid_price) + float(quote.ask_price)) / 2,
                 "spread": float(quote.ask_price) - float(quote.bid_price),
-                "timestamp": quote.timestamp.isoformat() if quote.timestamp else datetime.now().isoformat(),
-                "received_at": datetime.now().isoformat()
+                "timestamp": (
+                    quote.timestamp.isoformat()
+                    if quote.timestamp
+                    else datetime.now().isoformat()
+                ),
+                "received_at": datetime.now().isoformat(),
             }
 
             # Update stats
@@ -174,8 +178,12 @@ class RealtimeStreamManager:
                 "price": float(trade.price),
                 "size": int(trade.size),
                 "exchange": trade.exchange,
-                "timestamp": trade.timestamp.isoformat() if trade.timestamp else datetime.now().isoformat(),
-                "received_at": datetime.now().isoformat()
+                "timestamp": (
+                    trade.timestamp.isoformat()
+                    if trade.timestamp
+                    else datetime.now().isoformat()
+                ),
+                "received_at": datetime.now().isoformat(),
             }
 
             # Update stats
@@ -219,8 +227,12 @@ class RealtimeStreamManager:
                 "close": float(bar.close),
                 "volume": int(bar.volume),
                 "vwap": float(bar.vwap) if bar.vwap else None,
-                "timestamp": bar.timestamp.isoformat() if bar.timestamp else datetime.now().isoformat(),
-                "received_at": datetime.now().isoformat()
+                "timestamp": (
+                    bar.timestamp.isoformat()
+                    if bar.timestamp
+                    else datetime.now().isoformat()
+                ),
+                "received_at": datetime.now().isoformat(),
             }
 
             # Update stats
@@ -299,7 +311,9 @@ class RealtimeStreamManager:
         """Add a handler for bar data"""
         self._bar_handlers.append(handler)
 
-    async def subscribe(self, symbols: List[str], stream_types: List[StreamType] = None):
+    async def subscribe(
+        self, symbols: List[str], stream_types: List[StreamType] = None
+    ):
         """
         Subscribe to real-time data for symbols.
 
@@ -327,16 +341,23 @@ class RealtimeStreamManager:
                 if stream_type not in self.subscriptions[symbol]:
                     self.subscriptions[symbol].add(stream_type)
                     self.subscription_details[key] = StreamSubscription(
-                        symbol=symbol,
-                        stream_type=stream_type
+                        symbol=symbol, stream_type=stream_type
                     )
 
-                    logger.info(f"[STREAMING] Subscribed: {symbol} ({stream_type.value})")
+                    logger.info(
+                        f"[STREAMING] Subscribed: {symbol} ({stream_type.value})"
+                    )
 
         # Actually subscribe on the stream
-        quote_symbols = [s for s, types in self.subscriptions.items() if StreamType.QUOTES in types]
-        trade_symbols = [s for s, types in self.subscriptions.items() if StreamType.TRADES in types]
-        bar_symbols = [s for s, types in self.subscriptions.items() if StreamType.BARS in types]
+        quote_symbols = [
+            s for s, types in self.subscriptions.items() if StreamType.QUOTES in types
+        ]
+        trade_symbols = [
+            s for s, types in self.subscriptions.items() if StreamType.TRADES in types
+        ]
+        bar_symbols = [
+            s for s, types in self.subscriptions.items() if StreamType.BARS in types
+        ]
 
         if quote_symbols:
             self._stream.subscribe_quotes(*quote_symbols)
@@ -345,7 +366,9 @@ class RealtimeStreamManager:
         if bar_symbols:
             self._stream.subscribe_bars(*bar_symbols)
 
-    async def unsubscribe(self, symbols: List[str], stream_types: List[StreamType] = None):
+    async def unsubscribe(
+        self, symbols: List[str], stream_types: List[StreamType] = None
+    ):
         """Unsubscribe from symbols"""
         if stream_types is None:
             stream_types = list(StreamType)
@@ -364,7 +387,9 @@ class RealtimeStreamManager:
                     if key in self.subscription_details:
                         del self.subscription_details[key]
 
-                    logger.info(f"[STREAMING] Unsubscribed: {symbol} ({stream_type.value})")
+                    logger.info(
+                        f"[STREAMING] Unsubscribed: {symbol} ({stream_type.value})"
+                    )
 
         # Actually unsubscribe on the stream
         quote_unsub = [s for s in symbols if StreamType.QUOTES in stream_types]
@@ -412,7 +437,9 @@ class RealtimeStreamManager:
         self._running = True
 
         # Start stream in background thread
-        self._stream_thread = threading.Thread(target=self._run_stream_loop, daemon=True)
+        self._stream_thread = threading.Thread(
+            target=self._run_stream_loop, daemon=True
+        )
         self._stream_thread.start()
 
         logger.info("[STREAMING] Service started")
@@ -444,7 +471,9 @@ class RealtimeStreamManager:
                 for symbol, types in self.subscriptions.items()
                 if types
             },
-            "subscription_count": sum(len(types) for types in self.subscriptions.values()),
+            "subscription_count": sum(
+                len(types) for types in self.subscriptions.values()
+            ),
             "connected_clients": len(self._message_queues),
             "stats": {
                 "messages_received": self.stats.messages_received,
@@ -453,9 +482,17 @@ class RealtimeStreamManager:
                 "bars_received": self.stats.bars_received,
                 "errors": self.stats.errors,
                 "reconnect_count": self.stats.reconnect_count,
-                "connected_since": self.stats.connected_since.isoformat() if self.stats.connected_since else None,
-                "last_message": self.stats.last_message_time.isoformat() if self.stats.last_message_time else None
-            }
+                "connected_since": (
+                    self.stats.connected_since.isoformat()
+                    if self.stats.connected_since
+                    else None
+                ),
+                "last_message": (
+                    self.stats.last_message_time.isoformat()
+                    if self.stats.last_message_time
+                    else None
+                ),
+            },
         }
 
     def get_subscription_details(self) -> Dict:
@@ -466,7 +503,7 @@ class RealtimeStreamManager:
                 "type": sub.stream_type.value,
                 "subscribed_at": sub.subscribed_at.isoformat(),
                 "last_data": sub.last_data.isoformat() if sub.last_data else None,
-                "message_count": sub.message_count
+                "message_count": sub.message_count,
             }
             for key, sub in self.subscription_details.items()
         }
@@ -498,6 +535,7 @@ def get_stream_manager() -> RealtimeStreamManager:
 
 if __name__ == "__main__":
     import json
+
     logging.basicConfig(level=logging.INFO)
 
     async def test_streaming():
@@ -511,7 +549,9 @@ if __name__ == "__main__":
 
         # Test subscription
         print("\n=== Subscribing to AAPL, TSLA ===")
-        await manager.subscribe(["AAPL", "TSLA"], [StreamType.QUOTES, StreamType.TRADES])
+        await manager.subscribe(
+            ["AAPL", "TSLA"], [StreamType.QUOTES, StreamType.TRADES]
+        )
 
         print("\n=== After Subscription ===")
         print(json.dumps(manager.get_status(), indent=2, default=str))

@@ -21,8 +21,9 @@ the regime shift BEFORE the price drop catches up.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Tuple
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ChronosExitSignal:
     """Exit signal from Chronos analysis"""
+
     should_exit: bool = False
     reason: str = ""
     urgency: str = "LOW"  # LOW, MEDIUM, HIGH, CRITICAL
@@ -45,6 +47,7 @@ class ChronosExitSignal:
 @dataclass
 class PositionContext:
     """Track Chronos context while holding a position"""
+
     symbol: str
     entry_time: datetime
     entry_price: float = 0.0
@@ -99,26 +102,20 @@ class ChronosExitManager:
             "exit_on_regime_change": True,
             "favorable_regimes": ["TRENDING_UP", "RANGING"],
             "danger_regimes": ["TRENDING_DOWN", "VOLATILE"],
-
             # Confidence-based exits
             "min_confidence": 0.4,  # Exit if confidence drops below this
             "confidence_drop_threshold": 0.2,  # Exit if drops 20% from entry
-
             # Trend-based exits
             "min_trend_strength": 0.3,  # Exit if trend weakens below this
             "trend_fade_threshold": 0.3,  # Exit if drops 30% from entry
-
             # Volatility-based exits
             "max_volatility": 0.5,  # 50% annualized = danger zone
             "volatility_spike_threshold": 2.0,  # 2x avg = exit
-
             # Probability-based exits
             "min_prob_up": 0.45,  # Exit if prob drops below 45%
-
             # Timing
             "check_interval_seconds": 5,  # How often to check
             "min_hold_before_exit": 10,  # Don't exit within 10s of entry
-
             # ===== FAILED MOMENTUM DETECTION (Ross Cameron Rule) =====
             # "If it doesn't move immediately, get out"
             "use_failed_momentum_exit": True,
@@ -142,6 +139,7 @@ class ChronosExitManager:
         if self._state_machine is None:
             try:
                 from ai.momentum_state_machine import get_state_machine
+
                 self._state_machine = get_state_machine()
             except Exception as e:
                 logger.warning(f"State machine init failed: {e}")
@@ -151,11 +149,14 @@ class ChronosExitManager:
         """Initialize Chronos adapter"""
         try:
             from ai.chronos_adapter import get_chronos_adapter
+
             self._chronos_adapter = get_chronos_adapter()
             if self._chronos_adapter.available:
                 logger.info("Chronos backend available for exit management")
             else:
-                logger.warning("Chronos backend not available - using technical fallback")
+                logger.warning(
+                    "Chronos backend not available - using technical fallback"
+                )
         except Exception as e:
             logger.warning(f"Chronos init failed: {e}")
 
@@ -174,9 +175,12 @@ class ChronosExitManager:
         if self.state_machine:
             try:
                 from ai.momentum_state_machine import MomentumState
+
                 symbol_state = self.state_machine.get_state(symbol)
                 if symbol_state and symbol_state.state == MomentumState.IN_POSITION:
-                    logger.info(f"[STATE HANDOFF] {symbol}: Entry logic → Chronos Exit Manager")
+                    logger.info(
+                        f"[STATE HANDOFF] {symbol}: Entry logic → Chronos Exit Manager"
+                    )
                     state_info = self.state_machine.get_state_info(symbol)
                 elif symbol_state is not None:
                     logger.warning(
@@ -202,7 +206,7 @@ class ChronosExitManager:
             current_volatility=initial_context.get("volatility", 0.25),
             current_prob_up=initial_context.get("prob_up", 0.5),
             last_update=datetime.now(),
-            high_since_entry=entry_price
+            high_since_entry=entry_price,
         )
 
         ctx.regime_history.append(ctx.entry_regime)
@@ -214,7 +218,9 @@ class ChronosExitManager:
         # Sync position info from state machine if available
         if state_info:
             ctx.entry_price = state_info.get("entry_price", entry_price)
-            logger.debug(f"[STATE SYNC] {symbol}: Entry price synced from state machine")
+            logger.debug(
+                f"[STATE SYNC] {symbol}: Entry price synced from state machine"
+            )
 
         logger.info(
             f"[CHRONOS EXIT] Registered {symbol}: "
@@ -236,7 +242,11 @@ class ChronosExitManager:
         if symbol in self.positions:
             ctx = self.positions[symbol]
             hold_seconds = (datetime.now() - ctx.entry_time).total_seconds()
-            max_gain = (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100 if ctx.entry_price > 0 else 0
+            max_gain = (
+                (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100
+                if ctx.entry_price > 0
+                else 0
+            )
 
             del self.positions[symbol]
 
@@ -255,7 +265,7 @@ class ChronosExitManager:
             info = self.state_machine.get_state_info(symbol)
             return {
                 "state": symbol_state.state.value if symbol_state else "UNKNOWN",
-                "info": info
+                "info": info,
             }
         except Exception as e:
             logger.debug(f"State machine status failed for {symbol}: {e}")
@@ -273,7 +283,7 @@ class ChronosExitManager:
                     "trend_direction": ctx.trend_direction,
                     "volatility": ctx.current_volatility,
                     "prob_up": ctx.prob_up,
-                    "prob_down": ctx.prob_down
+                    "prob_down": ctx.prob_down,
                 }
         except Exception as e:
             logger.debug(f"Chronos context failed for {symbol}: {e}")
@@ -284,8 +294,8 @@ class ChronosExitManager:
     def _get_technical_context(self, symbol: str) -> Dict:
         """Fallback: Get context from technical indicators"""
         try:
-            import yfinance as yf
             import ta
+            import yfinance as yf
 
             ticker = yf.Ticker(symbol)
             df = ticker.history(period="5d", interval="5m")
@@ -293,9 +303,9 @@ class ChronosExitManager:
             if len(df) < 50:
                 return {"regime": "UNKNOWN", "confidence": 0.5, "trend_strength": 0.5}
 
-            close = df['Close']
-            high = df['High']
-            low = df['Low']
+            close = df["Close"]
+            high = df["High"]
+            low = df["Low"]
 
             # ADX for trend strength
             adx = ta.trend.ADXIndicator(high, low, close, window=14)
@@ -327,7 +337,7 @@ class ChronosExitManager:
                 "trend_direction": 1 if adx_pos > adx_neg else -1,
                 "volatility": volatility,
                 "prob_up": prob_up,
-                "prob_down": 1 - prob_up
+                "prob_down": 1 - prob_up,
             }
 
         except Exception as e:
@@ -337,10 +347,12 @@ class ChronosExitManager:
                 "confidence": 0.5,
                 "trend_strength": 0.5,
                 "volatility": 0.25,
-                "prob_up": 0.5
+                "prob_up": 0.5,
             }
 
-    def check_exit(self, symbol: str, current_price: float, entry_price: float) -> ChronosExitSignal:
+    def check_exit(
+        self, symbol: str, current_price: float, entry_price: float
+    ) -> ChronosExitSignal:
         """
         Check if Chronos recommends an early exit.
 
@@ -367,7 +379,9 @@ class ChronosExitManager:
 
         ctx.current_regime = new_context.get("regime", ctx.current_regime)
         ctx.current_confidence = new_context.get("confidence", ctx.current_confidence)
-        ctx.current_trend_strength = new_context.get("trend_strength", ctx.current_trend_strength)
+        ctx.current_trend_strength = new_context.get(
+            "trend_strength", ctx.current_trend_strength
+        )
         ctx.current_volatility = new_context.get("volatility", ctx.current_volatility)
         ctx.current_prob_up = new_context.get("prob_up", ctx.current_prob_up)
         ctx.last_update = datetime.now()
@@ -426,8 +440,9 @@ class ChronosExitManager:
 
         return signal
 
-    def _check_regime_shift(self, ctx: PositionContext, pnl_pct: float,
-                            signal: ChronosExitSignal) -> ChronosExitSignal:
+    def _check_regime_shift(
+        self, ctx: PositionContext, pnl_pct: float, signal: ChronosExitSignal
+    ) -> ChronosExitSignal:
         """Check for regime shift from favorable to danger"""
         if ctx.entry_regime in self.config["favorable_regimes"]:
             if ctx.current_regime in self.config["danger_regimes"]:
@@ -442,7 +457,7 @@ class ChronosExitManager:
                     signal.regime_after = ctx.current_regime
                     signal.details = {
                         "message": f"Regime changed {ctx.entry_regime} -> {ctx.current_regime}",
-                        "pnl_pct": pnl_pct
+                        "pnl_pct": pnl_pct,
                     }
                     logger.warning(
                         f"[CHRONOS EXIT] {ctx.symbol}: REGIME SHIFT "
@@ -451,8 +466,9 @@ class ChronosExitManager:
 
         return signal
 
-    def _check_confidence_drop(self, ctx: PositionContext, pnl_pct: float,
-                               signal: ChronosExitSignal) -> ChronosExitSignal:
+    def _check_confidence_drop(
+        self, ctx: PositionContext, pnl_pct: float, signal: ChronosExitSignal
+    ) -> ChronosExitSignal:
         """Check for confidence drop below threshold"""
         # Absolute threshold
         if ctx.current_confidence < self.config["min_confidence"]:
@@ -463,7 +479,7 @@ class ChronosExitManager:
                 signal.confidence = ctx.current_confidence
                 signal.details = {
                     "message": f"Confidence {ctx.current_confidence:.0%} < {self.config['min_confidence']:.0%} min",
-                    "pnl_pct": pnl_pct
+                    "pnl_pct": pnl_pct,
                 }
                 logger.warning(
                     f"[CHRONOS EXIT] {ctx.symbol}: LOW CONFIDENCE "
@@ -473,7 +489,9 @@ class ChronosExitManager:
 
         # Relative drop from entry
         if ctx.entry_confidence > 0:
-            drop = (ctx.entry_confidence - ctx.current_confidence) / ctx.entry_confidence
+            drop = (
+                ctx.entry_confidence - ctx.current_confidence
+            ) / ctx.entry_confidence
             if drop >= self.config["confidence_drop_threshold"]:
                 if pnl_pct < 0.5:  # Flat or losing
                     signal.should_exit = True
@@ -484,7 +502,7 @@ class ChronosExitManager:
                         "message": f"Confidence dropped {drop:.0%} from entry",
                         "entry_conf": ctx.entry_confidence,
                         "current_conf": ctx.current_confidence,
-                        "pnl_pct": pnl_pct
+                        "pnl_pct": pnl_pct,
                     }
                     logger.warning(
                         f"[CHRONOS EXIT] {ctx.symbol}: CONFIDENCE FADING "
@@ -493,8 +511,9 @@ class ChronosExitManager:
 
         return signal
 
-    def _check_trend_fade(self, ctx: PositionContext, pnl_pct: float,
-                          signal: ChronosExitSignal) -> ChronosExitSignal:
+    def _check_trend_fade(
+        self, ctx: PositionContext, pnl_pct: float, signal: ChronosExitSignal
+    ) -> ChronosExitSignal:
         """Check for trend strength fading"""
         # Absolute threshold
         if ctx.current_trend_strength < self.config["min_trend_strength"]:
@@ -505,7 +524,7 @@ class ChronosExitManager:
                 signal.trend_strength = ctx.current_trend_strength
                 signal.details = {
                     "message": f"Trend strength {ctx.current_trend_strength:.0%} < {self.config['min_trend_strength']:.0%} min",
-                    "pnl_pct": pnl_pct
+                    "pnl_pct": pnl_pct,
                 }
                 logger.warning(
                     f"[CHRONOS EXIT] {ctx.symbol}: WEAK TREND "
@@ -516,7 +535,7 @@ class ChronosExitManager:
         # Check for declining trend (last 3 readings)
         if len(ctx.trend_history) >= 3:
             recent = ctx.trend_history[-3:]
-            if all(recent[i] > recent[i+1] for i in range(len(recent)-1)):
+            if all(recent[i] > recent[i + 1] for i in range(len(recent) - 1)):
                 # Trend is consistently declining
                 decline = (recent[0] - recent[-1]) / recent[0] if recent[0] > 0 else 0
                 if decline >= 0.2 and pnl_pct < 1.0:  # 20% decline
@@ -527,7 +546,7 @@ class ChronosExitManager:
                     signal.details = {
                         "message": f"Trend declining: {recent[0]:.0%} -> {recent[-1]:.0%}",
                         "decline": decline,
-                        "pnl_pct": pnl_pct
+                        "pnl_pct": pnl_pct,
                     }
                     logger.warning(
                         f"[CHRONOS EXIT] {ctx.symbol}: TREND DECLINING "
@@ -536,8 +555,9 @@ class ChronosExitManager:
 
         return signal
 
-    def _check_volatility_spike(self, ctx: PositionContext, pnl_pct: float,
-                                signal: ChronosExitSignal) -> ChronosExitSignal:
+    def _check_volatility_spike(
+        self, ctx: PositionContext, pnl_pct: float, signal: ChronosExitSignal
+    ) -> ChronosExitSignal:
         """Check for dangerous volatility spike"""
         if ctx.current_volatility > self.config["max_volatility"]:
             if pnl_pct < 1.0:  # Not solidly in profit
@@ -547,7 +567,7 @@ class ChronosExitManager:
                 signal.volatility = ctx.current_volatility
                 signal.details = {
                     "message": f"Volatility {ctx.current_volatility:.0%} > {self.config['max_volatility']:.0%} max",
-                    "pnl_pct": pnl_pct
+                    "pnl_pct": pnl_pct,
                 }
                 logger.warning(
                     f"[CHRONOS EXIT] {ctx.symbol}: VOLATILITY SPIKE "
@@ -556,8 +576,9 @@ class ChronosExitManager:
 
         return signal
 
-    def _check_probability_drop(self, ctx: PositionContext, pnl_pct: float,
-                                signal: ChronosExitSignal) -> ChronosExitSignal:
+    def _check_probability_drop(
+        self, ctx: PositionContext, pnl_pct: float, signal: ChronosExitSignal
+    ) -> ChronosExitSignal:
         """Check for probability of up movement dropping"""
         if ctx.current_prob_up < self.config["min_prob_up"]:
             if pnl_pct < 0.5:  # Flat or losing
@@ -567,7 +588,7 @@ class ChronosExitManager:
                 signal.details = {
                     "message": f"Prob up {ctx.current_prob_up:.0%} < {self.config['min_prob_up']:.0%} min",
                     "prob_up": ctx.current_prob_up,
-                    "pnl_pct": pnl_pct
+                    "pnl_pct": pnl_pct,
                 }
                 logger.warning(
                     f"[CHRONOS EXIT] {ctx.symbol}: BEARISH PROBABILITY "
@@ -576,8 +597,13 @@ class ChronosExitManager:
 
         return signal
 
-    def _check_failed_momentum(self, ctx: PositionContext, current_price: float,
-                               pnl_pct: float, signal: ChronosExitSignal) -> ChronosExitSignal:
+    def _check_failed_momentum(
+        self,
+        ctx: PositionContext,
+        current_price: float,
+        pnl_pct: float,
+        signal: ChronosExitSignal,
+    ) -> ChronosExitSignal:
         """
         ROSS CAMERON RULE: If stock doesn't move immediately, get out.
 
@@ -603,7 +629,9 @@ class ChronosExitManager:
 
         if hold_seconds >= check_time:
             # Check if we've reached expected gain at any point
-            max_gain_pct = (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100
+            max_gain_pct = (
+                (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100
+            )
 
             if max_gain_pct < expected_gain:
                 # Never hit expected gain - momentum failed
@@ -618,7 +646,7 @@ class ChronosExitManager:
                         "expected_gain": expected_gain,
                         "actual_max_gain": max_gain_pct,
                         "hold_seconds": hold_seconds,
-                        "stall_count": ctx.stall_count
+                        "stall_count": ctx.stall_count,
                     }
                     logger.warning(
                         f"[ROSS CAMERON EXIT] {ctx.symbol}: FAILED MOMENTUM - "
@@ -632,7 +660,9 @@ class ChronosExitManager:
         # Check 2: Momentum stall - price not moving up
         if hold_seconds >= 15 and len(ctx.price_history) >= 5:
             recent_prices = [p[1] for p in ctx.price_history[-5:]]
-            price_change = (recent_prices[-1] - recent_prices[0]) / recent_prices[0] * 100
+            price_change = (
+                (recent_prices[-1] - recent_prices[0]) / recent_prices[0] * 100
+            )
 
             if price_change < self.config["momentum_stall_threshold"]:
                 ctx.momentum_stalled = True
@@ -649,7 +679,7 @@ class ChronosExitManager:
                             "message": f"Price stalled - only {price_change:.2f}% in last 5 checks",
                             "recent_change": price_change,
                             "pnl_pct": pnl_pct,
-                            "stall_count": ctx.stall_count
+                            "stall_count": ctx.stall_count,
                         }
                         logger.warning(
                             f"[ROSS CAMERON EXIT] {ctx.symbol}: STALLED - "
@@ -662,13 +692,21 @@ class ChronosExitManager:
 
         # Check 3: Fading from high - price dropping from the high
         if self.config["momentum_fade_exit"] and ctx.high_since_entry > ctx.entry_price:
-            fade_from_high = (ctx.high_since_entry - current_price) / ctx.high_since_entry * 100
+            fade_from_high = (
+                (ctx.high_since_entry - current_price) / ctx.high_since_entry * 100
+            )
             fade_threshold = self.config["fade_from_high_percent"]
 
             # Only exit on fade if we're flat or losing AND we had a gain
-            max_gain_pct = (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100
+            max_gain_pct = (
+                (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100
+            )
 
-            if fade_from_high >= fade_threshold and max_gain_pct > 0.3 and pnl_pct < 0.5:
+            if (
+                fade_from_high >= fade_threshold
+                and max_gain_pct > 0.3
+                and pnl_pct < 0.5
+            ):
                 signal.should_exit = True
                 signal.reason = "MOMENTUM_FADING"
                 signal.urgency = "MEDIUM"
@@ -677,7 +715,7 @@ class ChronosExitManager:
                     "high_price": ctx.high_since_entry,
                     "current_price": current_price,
                     "max_gain_was": max_gain_pct,
-                    "current_pnl": pnl_pct
+                    "current_pnl": pnl_pct,
                 }
                 logger.warning(
                     f"[ROSS CAMERON EXIT] {ctx.symbol}: FADING - "
@@ -687,13 +725,16 @@ class ChronosExitManager:
 
         return signal
 
-    def _check_regime_warnings(self, ctx: PositionContext, pnl_pct: float,
-                               signal: ChronosExitSignal) -> ChronosExitSignal:
+    def _check_regime_warnings(
+        self, ctx: PositionContext, pnl_pct: float, signal: ChronosExitSignal
+    ) -> ChronosExitSignal:
         """Check for accumulating warning signs"""
         # Count danger regimes in recent history
         if len(ctx.regime_history) >= 3:
             recent_regimes = ctx.regime_history[-3:]
-            danger_count = sum(1 for r in recent_regimes if r in self.config["danger_regimes"])
+            danger_count = sum(
+                1 for r in recent_regimes if r in self.config["danger_regimes"]
+            )
 
             # If 2+ of last 3 readings are danger regimes, exit
             if danger_count >= 2 and pnl_pct < 1.0:
@@ -703,7 +744,7 @@ class ChronosExitManager:
                 signal.details = {
                     "message": f"{danger_count}/3 recent readings in danger regime",
                     "regimes": recent_regimes,
-                    "pnl_pct": pnl_pct
+                    "pnl_pct": pnl_pct,
                 }
                 logger.warning(
                     f"[CHRONOS EXIT] {ctx.symbol}: MULTIPLE WARNINGS "
@@ -717,7 +758,11 @@ class ChronosExitManager:
         result = {}
         for symbol, ctx in self.positions.items():
             hold_seconds = (datetime.now() - ctx.entry_time).total_seconds()
-            max_gain_pct = (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100 if ctx.entry_price > 0 else 0
+            max_gain_pct = (
+                (ctx.high_since_entry - ctx.entry_price) / ctx.entry_price * 100
+                if ctx.entry_price > 0
+                else 0
+            )
 
             # Get state machine status
             sm_status = self.get_state_machine_status(symbol)
@@ -741,7 +786,7 @@ class ChronosExitManager:
                 "momentum_stalled": ctx.momentum_stalled,
                 "stall_count": ctx.stall_count,
                 # State machine integration
-                "state_machine": sm_status
+                "state_machine": sm_status,
             }
         return result
 
@@ -770,8 +815,9 @@ def get_chronos_exit_manager() -> ChronosExitManager:
 
 
 if __name__ == "__main__":
-    import sys
     import os
+    import sys
+
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     logging.basicConfig(level=logging.INFO)
@@ -782,7 +828,8 @@ if __name__ == "__main__":
 
     # First, set up state machine to IN_POSITION (simulate entry)
     print("\n1. Setting up state machine...")
-    from ai.momentum_state_machine import get_state_machine, MomentumState
+    from ai.momentum_state_machine import MomentumState, get_state_machine
+
     sm = get_state_machine()
 
     # Transition AAPL through states to IN_POSITION
@@ -792,8 +839,12 @@ if __name__ == "__main__":
     sm.enter_position("AAPL", 150.0, 10, 147.0, 154.5)  # -> IN_POSITION
 
     symbol_state = sm.get_state("AAPL")
-    print(f"   State machine state: {symbol_state.state.value if symbol_state else 'None'}")
-    assert symbol_state.state == MomentumState.IN_POSITION, f"Expected IN_POSITION, got {symbol_state.state}"
+    print(
+        f"   State machine state: {symbol_state.state.value if symbol_state else 'None'}"
+    )
+    assert (
+        symbol_state.state == MomentumState.IN_POSITION
+    ), f"Expected IN_POSITION, got {symbol_state.state}"
 
     # Now register with Chronos Exit Manager
     print("\n2. Registering position with Chronos Exit Manager...")
@@ -807,6 +858,7 @@ if __name__ == "__main__":
     # Simulate exit check
     print("\n3. Testing exit signal detection...")
     import time
+
     time.sleep(11)  # Wait past min hold time
 
     signal = manager.check_exit("AAPL", 148.5, 150.0)  # -1% loss

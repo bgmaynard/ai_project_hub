@@ -15,17 +15,19 @@ Default state: fail-safe (no policy override)
 """
 
 import json
-import os
 import logging
+import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Optional, Any
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 # File paths
-POLICY_STATE_FILE = os.path.join(os.path.dirname(__file__), "strategy_policy_state.json")
+POLICY_STATE_FILE = os.path.join(
+    os.path.dirname(__file__), "strategy_policy_state.json"
+)
 POLICY_LOG_FILE = os.path.join(os.path.dirname(__file__), "strategy_policy_log.json")
 
 
@@ -40,6 +42,7 @@ class PolicyAction(Enum):
 @dataclass
 class StrategyPolicy:
     """Policy state for a single strategy"""
+
     strategy_id: str
     enabled: bool = True
     confidence_threshold_override: Optional[float] = None  # None = use contract default
@@ -57,6 +60,7 @@ class StrategyPolicy:
 @dataclass
 class PerformanceMetrics:
     """Rolling performance metrics for a strategy"""
+
     strategy_id: str
     win_rate: float = 0.0
     profit_factor: float = 1.0
@@ -76,6 +80,7 @@ class PerformanceMetrics:
 @dataclass
 class PolicyLogEntry:
     """Audit log entry for policy changes"""
+
     timestamp: str
     strategy_id: str
     action: str
@@ -89,6 +94,7 @@ class PolicyLogEntry:
 @dataclass
 class PolicyEvaluationResult:
     """Result of policy evaluation"""
+
     strategy_id: str
     enabled: bool
     confidence_override: Optional[float]
@@ -107,7 +113,9 @@ class StrategyPolicyEngine:
     def __init__(self):
         self.policies: Dict[str, StrategyPolicy] = {}
         self.performance: Dict[str, PerformanceMetrics] = {}
-        self.veto_counts: Dict[str, Dict[str, int]] = {}  # strategy -> {veto_reason: count}
+        self.veto_counts: Dict[str, Dict[str, int]] = (
+            {}
+        )  # strategy -> {veto_reason: count}
         self.policy_log: List[PolicyLogEntry] = []
 
         # Policy thresholds (configurable)
@@ -116,24 +124,19 @@ class StrategyPolicyEngine:
             "disable_after_consecutive_losses": 5,
             "disable_below_win_rate": 0.25,
             "disable_below_profit_factor": 0.5,
-
             # Confidence adjustments
             "increase_confidence_after_losses": 3,  # Increase threshold after N losses
             "confidence_increase_step": 0.05,
-
             # Position size adjustments
             "reduce_size_after_losses": 2,
             "size_reduction_step": 0.25,
             "increase_size_after_wins": 5,  # Consecutive wins to increase
             "size_increase_step": 0.25,
-
             # Regime-based adjustments
             "reduce_size_in_volatile": 0.5,  # Multiplier in VOLATILE regime
             "disable_in_trending_down": True,  # Disable LONG strategies
-
             # Veto pattern detection
             "veto_pattern_threshold": 10,  # Disable after N same-reason vetoes
-
             # Recovery
             "auto_enable_after_hours": 24,  # Re-enable after N hours
         }
@@ -144,7 +147,7 @@ class StrategyPolicyEngine:
         """Load persisted policy state"""
         try:
             if os.path.exists(POLICY_STATE_FILE):
-                with open(POLICY_STATE_FILE, 'r') as f:
+                with open(POLICY_STATE_FILE, "r") as f:
                     data = json.load(f)
                     for sid, pdata in data.get("policies", {}).items():
                         self.policies[sid] = StrategyPolicy(**pdata)
@@ -159,9 +162,9 @@ class StrategyPolicyEngine:
             data = {
                 "policies": {sid: asdict(p) for sid, p in self.policies.items()},
                 "veto_counts": self.veto_counts,
-                "last_updated": datetime.utcnow().isoformat()
+                "last_updated": datetime.utcnow().isoformat(),
             }
-            with open(POLICY_STATE_FILE, 'w') as f:
+            with open(POLICY_STATE_FILE, "w") as f:
                 json.dump(data, f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to save policy state: {e}")
@@ -174,7 +177,7 @@ class StrategyPolicyEngine:
         try:
             log_data = []
             if os.path.exists(POLICY_LOG_FILE):
-                with open(POLICY_LOG_FILE, 'r') as f:
+                with open(POLICY_LOG_FILE, "r") as f:
                     log_data = json.load(f)
 
             log_data.append(asdict(entry))
@@ -183,12 +186,14 @@ class StrategyPolicyEngine:
             if len(log_data) > 1000:
                 log_data = log_data[-1000:]
 
-            with open(POLICY_LOG_FILE, 'w') as f:
+            with open(POLICY_LOG_FILE, "w") as f:
                 json.dump(log_data, f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to log policy change: {e}")
 
-        logger.info(f"Policy change: {entry.strategy_id} - {entry.action} - {entry.reason}")
+        logger.info(
+            f"Policy change: {entry.strategy_id} - {entry.action} - {entry.reason}"
+        )
 
     def get_policy(self, strategy_id: str) -> StrategyPolicy:
         """Get policy for a strategy (creates default if not exists)"""
@@ -202,7 +207,7 @@ class StrategyPolicyEngine:
             "policies": {sid: asdict(p) for sid, p in self.policies.items()},
             "config": self.config,
             "veto_counts": self.veto_counts,
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.utcnow().isoformat(),
         }
 
     def update_performance(self, strategy_id: str, metrics: PerformanceMetrics):
@@ -249,7 +254,7 @@ class StrategyPolicyEngine:
         self,
         strategy_id: str,
         chronos_context: Optional[Dict] = None,
-        force_reevaluate: bool = False
+        force_reevaluate: bool = False,
     ) -> PolicyEvaluationResult:
         """
         Evaluate and potentially adjust policy for a strategy.
@@ -272,7 +277,10 @@ class StrategyPolicyEngine:
         if metrics and metrics.total_trades >= 5:  # Need minimum trades
 
             # Check consecutive losses
-            if metrics.consecutive_losses >= self.config["disable_after_consecutive_losses"]:
+            if (
+                metrics.consecutive_losses
+                >= self.config["disable_after_consecutive_losses"]
+            ):
                 if new_enabled:
                     new_enabled = False
                     actions_taken.append(PolicyAction.DISABLE.value)
@@ -286,39 +294,48 @@ class StrategyPolicyEngine:
                     reasons.append(f"Low win rate: {metrics.win_rate:.1%}")
 
             # Increase confidence after losses
-            if metrics.consecutive_losses >= self.config["increase_confidence_after_losses"]:
+            if (
+                metrics.consecutive_losses
+                >= self.config["increase_confidence_after_losses"]
+            ):
                 current_conf = new_confidence or 0.6  # Default
                 new_conf = min(
                     current_conf + self.config["confidence_increase_step"],
-                    policy.MAX_CONFIDENCE
+                    policy.MAX_CONFIDENCE,
                 )
                 if new_conf != new_confidence:
                     new_confidence = new_conf
                     actions_taken.append(PolicyAction.ADJUST_CONFIDENCE.value)
-                    reasons.append(f"Increased confidence after {metrics.consecutive_losses} losses")
+                    reasons.append(
+                        f"Increased confidence after {metrics.consecutive_losses} losses"
+                    )
 
             # Reduce position size after losses
             if metrics.consecutive_losses >= self.config["reduce_size_after_losses"]:
                 new_mult = max(
                     new_position_mult - self.config["size_reduction_step"],
-                    policy.MIN_POSITION_MULT
+                    policy.MIN_POSITION_MULT,
                 )
                 if new_mult != new_position_mult:
                     new_position_mult = new_mult
                     actions_taken.append(PolicyAction.ADJUST_POSITION_SIZE.value)
-                    reasons.append(f"Reduced size after {metrics.consecutive_losses} losses")
+                    reasons.append(
+                        f"Reduced size after {metrics.consecutive_losses} losses"
+                    )
 
             # Increase size after consecutive wins
             consecutive_wins = len([t for t in metrics.last_5_trades if t == "W"])
             if consecutive_wins >= self.config["increase_size_after_wins"]:
                 new_mult = min(
                     new_position_mult + self.config["size_increase_step"],
-                    policy.MAX_POSITION_MULT
+                    policy.MAX_POSITION_MULT,
                 )
                 if new_mult != new_position_mult:
                     new_position_mult = new_mult
                     actions_taken.append(PolicyAction.ADJUST_POSITION_SIZE.value)
-                    reasons.append(f"Increased size after {consecutive_wins} consecutive wins")
+                    reasons.append(
+                        f"Increased size after {consecutive_wins} consecutive wins"
+                    )
 
         # === Regime-based evaluation ===
         if chronos_context:
@@ -360,20 +377,22 @@ class StrategyPolicyEngine:
             self._save_state()
 
             # Log the change
-            self._log_policy_change(PolicyLogEntry(
-                timestamp=datetime.utcnow().isoformat(),
-                strategy_id=strategy_id,
-                action=", ".join(actions_taken),
-                old_value=old_policy,
-                new_value=asdict(policy),
-                reason="; ".join(reasons),
-                trigger_source="evaluate",
-                context={
-                    "chronos": chronos_context,
-                    "metrics": asdict(metrics) if metrics else None,
-                    "vetos": vetos
-                }
-            ))
+            self._log_policy_change(
+                PolicyLogEntry(
+                    timestamp=datetime.utcnow().isoformat(),
+                    strategy_id=strategy_id,
+                    action=", ".join(actions_taken),
+                    old_value=old_policy,
+                    new_value=asdict(policy),
+                    reason="; ".join(reasons),
+                    trigger_source="evaluate",
+                    context={
+                        "chronos": chronos_context,
+                        "metrics": asdict(metrics) if metrics else None,
+                        "vetos": vetos,
+                    },
+                )
+            )
 
         return PolicyEvaluationResult(
             strategy_id=strategy_id,
@@ -381,7 +400,7 @@ class StrategyPolicyEngine:
             confidence_override=new_confidence,
             position_multiplier=new_position_mult,
             actions_taken=actions_taken,
-            reasons=reasons
+            reasons=reasons,
         )
 
     def enable_strategy(self, strategy_id: str, reason: str = "manual"):
@@ -394,15 +413,17 @@ class StrategyPolicyEngine:
         policy.last_updated = datetime.utcnow().isoformat()
 
         self._save_state()
-        self._log_policy_change(PolicyLogEntry(
-            timestamp=datetime.utcnow().isoformat(),
-            strategy_id=strategy_id,
-            action=PolicyAction.ENABLE.value,
-            old_value=old_enabled,
-            new_value=True,
-            reason=reason,
-            trigger_source="manual"
-        ))
+        self._log_policy_change(
+            PolicyLogEntry(
+                timestamp=datetime.utcnow().isoformat(),
+                strategy_id=strategy_id,
+                action=PolicyAction.ENABLE.value,
+                old_value=old_enabled,
+                new_value=True,
+                reason=reason,
+                trigger_source="manual",
+            )
+        )
 
     def disable_strategy(self, strategy_id: str, reason: str = "manual"):
         """Manually disable a strategy"""
@@ -414,46 +435,60 @@ class StrategyPolicyEngine:
         policy.last_updated = datetime.utcnow().isoformat()
 
         self._save_state()
-        self._log_policy_change(PolicyLogEntry(
-            timestamp=datetime.utcnow().isoformat(),
-            strategy_id=strategy_id,
-            action=PolicyAction.DISABLE.value,
-            old_value=old_enabled,
-            new_value=False,
-            reason=reason,
-            trigger_source="manual"
-        ))
+        self._log_policy_change(
+            PolicyLogEntry(
+                timestamp=datetime.utcnow().isoformat(),
+                strategy_id=strategy_id,
+                action=PolicyAction.DISABLE.value,
+                old_value=old_enabled,
+                new_value=False,
+                reason=reason,
+                trigger_source="manual",
+            )
+        )
 
     def reset_strategy(self, strategy_id: str, reason: str = "manual reset"):
         """Reset a strategy to default policy"""
-        old_policy = asdict(self.get_policy(strategy_id)) if strategy_id in self.policies else None
+        old_policy = (
+            asdict(self.get_policy(strategy_id))
+            if strategy_id in self.policies
+            else None
+        )
 
-        self.policies[strategy_id] = StrategyPolicy(strategy_id=strategy_id, reason=reason)
+        self.policies[strategy_id] = StrategyPolicy(
+            strategy_id=strategy_id, reason=reason
+        )
 
         # Clear veto counts
         if strategy_id in self.veto_counts:
             del self.veto_counts[strategy_id]
 
         self._save_state()
-        self._log_policy_change(PolicyLogEntry(
-            timestamp=datetime.utcnow().isoformat(),
-            strategy_id=strategy_id,
-            action=PolicyAction.RESET_TO_DEFAULT.value,
-            old_value=old_policy,
-            new_value=asdict(self.policies[strategy_id]),
-            reason=reason,
-            trigger_source="manual"
-        ))
+        self._log_policy_change(
+            PolicyLogEntry(
+                timestamp=datetime.utcnow().isoformat(),
+                strategy_id=strategy_id,
+                action=PolicyAction.RESET_TO_DEFAULT.value,
+                old_value=old_policy,
+                new_value=asdict(self.policies[strategy_id]),
+                reason=reason,
+                trigger_source="manual",
+            )
+        )
 
-    def get_audit_log(self, strategy_id: Optional[str] = None, limit: int = 100) -> List[Dict]:
+    def get_audit_log(
+        self, strategy_id: Optional[str] = None, limit: int = 100
+    ) -> List[Dict]:
         """Get policy audit log"""
         try:
             if os.path.exists(POLICY_LOG_FILE):
-                with open(POLICY_LOG_FILE, 'r') as f:
+                with open(POLICY_LOG_FILE, "r") as f:
                     log_data = json.load(f)
 
                 if strategy_id:
-                    log_data = [e for e in log_data if e.get("strategy_id") == strategy_id]
+                    log_data = [
+                        e for e in log_data if e.get("strategy_id") == strategy_id
+                    ]
 
                 return log_data[-limit:]
         except Exception as e:
@@ -469,15 +504,17 @@ class StrategyPolicyEngine:
             if key in self.config:
                 self.config[key] = value
 
-        self._log_policy_change(PolicyLogEntry(
-            timestamp=datetime.utcnow().isoformat(),
-            strategy_id="__CONFIG__",
-            action="CONFIG_UPDATE",
-            old_value=old_config,
-            new_value=self.config,
-            reason="Manual config update",
-            trigger_source="manual"
-        ))
+        self._log_policy_change(
+            PolicyLogEntry(
+                timestamp=datetime.utcnow().isoformat(),
+                strategy_id="__CONFIG__",
+                action="CONFIG_UPDATE",
+                old_value=old_config,
+                new_value=self.config,
+                reason="Manual config update",
+                trigger_source="manual",
+            )
+        )
 
         return self.config
 

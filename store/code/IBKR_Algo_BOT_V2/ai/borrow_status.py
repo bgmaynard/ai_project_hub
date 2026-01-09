@@ -15,9 +15,10 @@ Usage:
 """
 
 import logging
-from typing import Dict, Optional
-from datetime import datetime, timedelta
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Dict, Optional
+
 import yfinance as yf
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BorrowInfo:
     """Borrow status information"""
+
     symbol: str
     status: str  # ETB, HTB, UNKNOWN
     short_percent: float  # Short interest as % of float
@@ -39,16 +41,16 @@ class BorrowInfo:
 
     def to_dict(self) -> Dict:
         return {
-            'symbol': self.symbol,
-            'status': self.status,
-            'short_percent': round(self.short_percent, 2),
-            'short_ratio': round(self.short_ratio, 2),
-            'float_shares': round(self.float_shares, 2),
-            'short_shares': round(self.short_shares, 2),
-            'borrow_fee': round(self.borrow_fee, 2),
-            'confidence': round(self.confidence, 2),
-            'source': self.source,
-            'timestamp': self.timestamp
+            "symbol": self.symbol,
+            "status": self.status,
+            "short_percent": round(self.short_percent, 2),
+            "short_ratio": round(self.short_ratio, 2),
+            "float_shares": round(self.float_shares, 2),
+            "short_shares": round(self.short_shares, 2),
+            "borrow_fee": round(self.borrow_fee, 2),
+            "confidence": round(self.confidence, 2),
+            "source": self.source,
+            "timestamp": self.timestamp,
         }
 
 
@@ -71,8 +73,8 @@ class BorrowStatusTracker:
         # Thresholds for classification
         self.etb_short_percent = 10.0  # Below = ETB
         self.htb_short_percent = 20.0  # Above = HTB
-        self.etb_days_to_cover = 3.0   # Below = ETB
-        self.htb_days_to_cover = 5.0   # Above = HTB
+        self.etb_days_to_cover = 3.0  # Below = ETB
+        self.htb_days_to_cover = 5.0  # Above = HTB
 
         # Cache
         self._cache: Dict[str, BorrowInfo] = {}
@@ -91,9 +93,15 @@ class BorrowStatusTracker:
         if short_pct <= 0:
             return "UNKNOWN"
 
-        if short_pct >= self.htb_short_percent or days_to_cover >= self.htb_days_to_cover:
+        if (
+            short_pct >= self.htb_short_percent
+            or days_to_cover >= self.htb_days_to_cover
+        ):
             return "HTB"
-        elif short_pct <= self.etb_short_percent and days_to_cover <= self.etb_days_to_cover:
+        elif (
+            short_pct <= self.etb_short_percent
+            and days_to_cover <= self.etb_days_to_cover
+        ):
             return "ETB"
         else:
             return "CAUTION"
@@ -129,10 +137,10 @@ class BorrowStatusTracker:
             info = ticker.info
 
             # Get short interest data
-            shares_short = info.get('sharesShort', 0) or 0
-            float_shares = info.get('floatShares', 0) or 0
-            short_ratio = info.get('shortRatio', 0) or 0  # Days to cover
-            shares_outstanding = info.get('sharesOutstanding', 0) or 0
+            shares_short = info.get("sharesShort", 0) or 0
+            float_shares = info.get("floatShares", 0) or 0
+            short_ratio = info.get("shortRatio", 0) or 0  # Days to cover
+            shares_outstanding = info.get("sharesOutstanding", 0) or 0
 
             # Calculate short percent
             if float_shares > 0:
@@ -156,7 +164,7 @@ class BorrowStatusTracker:
                 borrow_fee=borrow_fee,
                 confidence=0.8 if shares_short > 0 else 0.3,
                 source="yfinance",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().isoformat(),
             )
 
             # Cache result
@@ -175,7 +183,7 @@ class BorrowStatusTracker:
                 borrow_fee=0,
                 confidence=0,
                 source="error",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().isoformat(),
             )
 
     async def get_batch_status(self, symbols: list) -> Dict[str, BorrowInfo]:

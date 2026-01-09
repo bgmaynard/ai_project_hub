@@ -18,9 +18,10 @@ Usage:
 
 import asyncio
 import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -29,15 +30,16 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MomentumScore:
     """Momentum score for a single stock"""
+
     symbol: str
     total_score: float  # 0-100
 
     # Component scores
-    spike_score: float      # 0-25
-    volume_score: float     # 0-25
-    hod_score: float        # 0-20
-    vwap_score: float       # 0-15
-    rotation_score: float   # 0-15
+    spike_score: float  # 0-25
+    volume_score: float  # 0-25
+    hod_score: float  # 0-20
+    vwap_score: float  # 0-15
+    rotation_score: float  # 0-15
 
     # Raw values
     change_percent: float
@@ -72,29 +74,25 @@ class MomentumScorer:
         # Scoring thresholds (calibrated for penny/momentum stocks)
         self.thresholds = {
             # Spike strength thresholds
-            "spike_excellent": 10.0,   # +10% = max points
-            "spike_good": 5.0,         # +5%
-            "spike_ok": 2.0,           # +2%
-
+            "spike_excellent": 10.0,  # +10% = max points
+            "spike_good": 5.0,  # +5%
+            "spike_ok": 2.0,  # +2%
             # Volume surge thresholds
-            "volume_excellent": 5.0,   # 5x avg = max points
-            "volume_good": 3.0,        # 3x avg
-            "volume_ok": 1.5,          # 1.5x avg
-
+            "volume_excellent": 5.0,  # 5x avg = max points
+            "volume_good": 3.0,  # 3x avg
+            "volume_ok": 1.5,  # 1.5x avg
             # HOD proximity thresholds
-            "hod_excellent": 1.0,      # Within 1% of HOD
-            "hod_good": 3.0,           # Within 3%
-            "hod_ok": 5.0,             # Within 5%
-
+            "hod_excellent": 1.0,  # Within 1% of HOD
+            "hod_good": 3.0,  # Within 3%
+            "hod_ok": 5.0,  # Within 5%
             # VWAP thresholds
-            "vwap_excellent": 3.0,     # 3%+ above VWAP
-            "vwap_good": 1.0,          # 1%+ above
-            "vwap_ok": 0.0,            # At VWAP
-
+            "vwap_excellent": 3.0,  # 3%+ above VWAP
+            "vwap_good": 1.0,  # 1%+ above
+            "vwap_ok": 0.0,  # At VWAP
             # Float rotation thresholds
             "rotation_excellent": 1.0,  # 100% float traded
-            "rotation_good": 0.5,       # 50% float
-            "rotation_ok": 0.25,        # 25% float
+            "rotation_good": 0.5,  # 50% float
+            "rotation_ok": 0.25,  # 25% float
         }
 
         logger.info("MomentumScorer initialized")
@@ -196,7 +194,9 @@ class MomentumScorer:
         else:
             return "F"
 
-    async def score_symbol(self, symbol: str, quote_data: Dict = None) -> Optional[MomentumScore]:
+    async def score_symbol(
+        self, symbol: str, quote_data: Dict = None
+    ) -> Optional[MomentumScore]:
         """Calculate momentum score for a single symbol"""
         try:
             # Get quote data if not provided
@@ -266,7 +266,7 @@ class MomentumScorer:
                 price=price,
                 volume=volume,
                 float_shares=float_shares,
-                momentum_grade=self._get_grade(total)
+                momentum_grade=self._get_grade(total),
             )
 
         except Exception as e:
@@ -352,12 +352,16 @@ if __name__ == "__main__":
         rankings = await scorer.rank_watchlist()
 
         print("\n=== MOMENTUM RANKINGS ===\n")
-        print(f"{'Rank':<5} {'Symbol':<8} {'Score':<7} {'Grade':<6} {'Chg%':<8} {'RVol':<6} {'HOD%':<7} {'VWAP%':<7}")
+        print(
+            f"{'Rank':<5} {'Symbol':<8} {'Score':<7} {'Grade':<6} {'Chg%':<8} {'RVol':<6} {'HOD%':<7} {'VWAP%':<7}"
+        )
         print("-" * 65)
 
         for score in rankings[:20]:
-            print(f"{score.rank:<5} {score.symbol:<8} {score.total_score:<7} {score.momentum_grade:<6} "
-                  f"{score.change_percent:>+6.1f}% {score.rel_volume:<6.1f} {score.percent_from_hod:<7.1f} {score.vwap_extension:>+6.1f}%")
+            print(
+                f"{score.rank:<5} {score.symbol:<8} {score.total_score:<7} {score.momentum_grade:<6} "
+                f"{score.change_percent:>+6.1f}% {score.rel_volume:<6.1f} {score.percent_from_hod:<7.1f} {score.vwap_extension:>+6.1f}%"
+            )
 
         print(f"\nGrade Summary: {scorer.get_grade_summary()}")
 

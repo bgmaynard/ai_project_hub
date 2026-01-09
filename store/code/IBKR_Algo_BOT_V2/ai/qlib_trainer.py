@@ -10,15 +10,16 @@ Usage:
 The trained model predicts future returns (1-5 day) based on Alpha158 features.
 """
 
-import numpy as np
-import pandas as pd
-import yfinance as yf
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+import json
 import logging
 import os
 import pickle
-import json
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +30,7 @@ METADATA_PATH = os.path.join(MODEL_DIR, "qlib_model_meta.json")
 
 
 def collect_training_data(
-    symbols: List[str],
-    period: str = "2y",
-    forward_days: int = 5
+    symbols: List[str], period: str = "2y", forward_days: int = 5
 ) -> Tuple[pd.DataFrame, pd.Series]:
     """
     Collect training data for multiple symbols.
@@ -71,36 +70,40 @@ def collect_training_data(
             df = df.reset_index()
 
             # Standardize column names - lowercase and replace spaces
-            df.columns = [str(c).lower().replace(' ', '_') for c in df.columns]
+            df.columns = [str(c).lower().replace(" ", "_") for c in df.columns]
 
             # Rename common variations
             rename_map = {
-                'datetime': 'date',
-                'adj_close': 'close',
-                'stock_splits': 'splits',
+                "datetime": "date",
+                "adj_close": "close",
+                "stock_splits": "splits",
             }
             df = df.rename(columns=rename_map)
 
             # Ensure we have required columns
-            required = ['open', 'high', 'low', 'close', 'volume']
+            required = ["open", "high", "low", "close", "volume"]
             missing = [c for c in required if c not in df.columns]
             if missing:
                 print(f"missing columns: {missing}")
                 continue
 
             # Keep only needed columns and set date as index
-            df = df[['date', 'open', 'high', 'low', 'close', 'volume']].copy()
-            df['date'] = pd.to_datetime(df['date']).dt.tz_localize(None)  # Remove timezone
-            df = df.set_index('date')
+            df = df[["date", "open", "high", "low", "close", "volume"]].copy()
+            df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(
+                None
+            )  # Remove timezone
+            df = df.set_index("date")
 
             # Alpha158Calculator expects capitalized columns
-            df = df.rename(columns={
-                'open': 'Open',
-                'high': 'High',
-                'low': 'Low',
-                'close': 'Close',
-                'volume': 'Volume'
-            })
+            df = df.rename(
+                columns={
+                    "open": "Open",
+                    "high": "High",
+                    "low": "Low",
+                    "close": "Close",
+                    "volume": "Volume",
+                }
+            )
 
             # Compute features
             features = calculator.compute_features(df)
@@ -111,17 +114,19 @@ def collect_training_data(
 
             # Compute forward returns (label)
             # Use forward_days return as the prediction target
-            features['forward_return'] = df['Close'].shift(-forward_days) / df['Close'] - 1
+            features["forward_return"] = (
+                df["Close"].shift(-forward_days) / df["Close"] - 1
+            )
 
             # Drop rows without labels
-            features = features.dropna(subset=['forward_return'])
+            features = features.dropna(subset=["forward_return"])
 
             if len(features) < 50:
                 print("too few samples")
                 continue
 
             # Add symbol column
-            features['symbol'] = symbol
+            features["symbol"] = symbol
 
             all_features.append(features)
             print(f"{len(features)} samples")
@@ -138,10 +143,12 @@ def collect_training_data(
     print(f"\nTotal samples: {len(combined)}")
 
     # Extract labels
-    labels = combined['forward_return']
+    labels = combined["forward_return"]
 
     # Remove non-feature columns
-    feature_cols = [c for c in combined.columns if c not in ['forward_return', 'symbol', 'date']]
+    feature_cols = [
+        c for c in combined.columns if c not in ["forward_return", "symbol", "date"]
+    ]
     features_df = combined[feature_cols]
 
     # Fill NaN with 0 (some features may be undefined for early bars)
@@ -154,9 +161,7 @@ def collect_training_data(
 
 
 def train_model(
-    features: pd.DataFrame,
-    labels: pd.Series,
-    test_size: float = 0.2
+    features: pd.DataFrame, labels: pd.Series, test_size: float = 0.2
 ) -> Tuple[object, Dict]:
     """
     Train LightGBM model on Alpha158 features.
@@ -170,8 +175,9 @@ def train_model(
         (trained_model, metrics_dict)
     """
     import lightgbm as lgb
+    from sklearn.metrics import (mean_absolute_error, mean_squared_error,
+                                 r2_score)
     from sklearn.model_selection import train_test_split
-    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
     print("\nTraining LightGBM model...")
 
@@ -189,17 +195,17 @@ def train_model(
 
     # Model parameters
     params = {
-        'objective': 'regression',
-        'metric': 'mse',
-        'boosting_type': 'gbdt',
-        'num_leaves': 31,
-        'learning_rate': 0.05,
-        'feature_fraction': 0.8,
-        'bagging_fraction': 0.8,
-        'bagging_freq': 5,
-        'verbose': -1,
-        'n_jobs': -1,
-        'seed': 42
+        "objective": "regression",
+        "metric": "mse",
+        "boosting_type": "gbdt",
+        "num_leaves": 31,
+        "learning_rate": 0.05,
+        "feature_fraction": 0.8,
+        "bagging_fraction": 0.8,
+        "bagging_freq": 5,
+        "verbose": -1,
+        "n_jobs": -1,
+        "seed": 42,
     }
 
     # Train with early stopping
@@ -210,27 +216,27 @@ def train_model(
         valid_sets=[test_data],
         callbacks=[
             lgb.early_stopping(stopping_rounds=50),
-            lgb.log_evaluation(period=100)
-        ]
+            lgb.log_evaluation(period=100),
+        ],
     )
 
     # Evaluate
     y_pred = model.predict(X_test)
 
     metrics = {
-        'mse': float(mean_squared_error(y_test, y_pred)),
-        'rmse': float(np.sqrt(mean_squared_error(y_test, y_pred))),
-        'mae': float(mean_absolute_error(y_test, y_pred)),
-        'r2': float(r2_score(y_test, y_pred)),
-        'train_samples': len(X_train),
-        'test_samples': len(X_test),
-        'best_iteration': model.best_iteration,
-        'num_features': len(features.columns)
+        "mse": float(mean_squared_error(y_test, y_pred)),
+        "rmse": float(np.sqrt(mean_squared_error(y_test, y_pred))),
+        "mae": float(mean_absolute_error(y_test, y_pred)),
+        "r2": float(r2_score(y_test, y_pred)),
+        "train_samples": len(X_train),
+        "test_samples": len(X_test),
+        "best_iteration": model.best_iteration,
+        "num_features": len(features.columns),
     }
 
     # Calculate directional accuracy (predicting up vs down)
     correct_direction = ((y_pred > 0) == (y_test > 0)).mean()
-    metrics['directional_accuracy'] = float(correct_direction)
+    metrics["directional_accuracy"] = float(correct_direction)
 
     print(f"\n  RMSE: {metrics['rmse']:.4f}")
     print(f"  MAE: {metrics['mae']:.4f}")
@@ -238,12 +244,14 @@ def train_model(
     print(f"  Directional Accuracy: {metrics['directional_accuracy']:.1%}")
 
     # Feature importance
-    importance = pd.DataFrame({
-        'feature': features.columns,
-        'importance': model.feature_importance(importance_type='gain')
-    }).sort_values('importance', ascending=False)
+    importance = pd.DataFrame(
+        {
+            "feature": features.columns,
+            "importance": model.feature_importance(importance_type="gain"),
+        }
+    ).sort_values("importance", ascending=False)
 
-    metrics['top_features'] = importance.head(20).to_dict('records')
+    metrics["top_features"] = importance.head(20).to_dict("records")
 
     print("\n  Top 10 Features:")
     for _, row in importance.head(10).iterrows():
@@ -255,18 +263,18 @@ def train_model(
 def save_model(model, metrics: Dict, feature_names: List[str]):
     """Save trained model and metadata"""
     # Save model
-    with open(MODEL_PATH, 'wb') as f:
+    with open(MODEL_PATH, "wb") as f:
         pickle.dump(model, f)
 
     # Save metadata
     metadata = {
-        'trained_at': datetime.now().isoformat(),
-        'metrics': metrics,
-        'feature_names': feature_names,
-        'model_path': MODEL_PATH
+        "trained_at": datetime.now().isoformat(),
+        "metrics": metrics,
+        "feature_names": feature_names,
+        "model_path": MODEL_PATH,
     }
 
-    with open(METADATA_PATH, 'w') as f:
+    with open(METADATA_PATH, "w") as f:
         json.dump(metadata, f, indent=2)
 
     print(f"\nModel saved to {MODEL_PATH}")
@@ -279,10 +287,10 @@ def load_model() -> Tuple[Optional[object], Optional[Dict]]:
         return None, None
 
     try:
-        with open(MODEL_PATH, 'rb') as f:
+        with open(MODEL_PATH, "rb") as f:
             model = pickle.load(f)
 
-        with open(METADATA_PATH, 'r') as f:
+        with open(METADATA_PATH, "r") as f:
             metadata = json.load(f)
 
         return model, metadata
@@ -296,7 +304,7 @@ def train_qlib_model(
     symbols: List[str] = None,
     period: str = "2y",
     forward_days: int = 5,
-    save: bool = True
+    save: bool = True,
 ) -> Tuple[object, Dict]:
     """
     Main training function.
@@ -314,15 +322,40 @@ def train_qlib_model(
         # Default training universe - mix of market caps and sectors
         symbols = [
             # Large cap tech
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA',
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "AMZN",
+            "NVDA",
+            "META",
+            "TSLA",
             # Large cap other
-            'JPM', 'JNJ', 'V', 'UNH', 'HD', 'PG', 'MA',
+            "JPM",
+            "JNJ",
+            "V",
+            "UNH",
+            "HD",
+            "PG",
+            "MA",
             # Mid cap
-            'PANW', 'CRWD', 'DDOG', 'NET', 'SNOW', 'ZS',
+            "PANW",
+            "CRWD",
+            "DDOG",
+            "NET",
+            "SNOW",
+            "ZS",
             # Small cap / momentum
-            'SOUN', 'IONQ', 'RGTI', 'QUBT', 'RKLB',
+            "SOUN",
+            "IONQ",
+            "RGTI",
+            "QUBT",
+            "RKLB",
             # ETFs
-            'SPY', 'QQQ', 'IWM', 'XLK', 'XLF'
+            "SPY",
+            "QQQ",
+            "IWM",
+            "XLK",
+            "XLF",
         ]
 
     print("=" * 60)
@@ -364,7 +397,7 @@ def evaluate_on_recent(model, symbols: List[str] = None, days: int = 30) -> Dict
         from qlib_predictor import Alpha158Calculator
 
     if symbols is None:
-        symbols = ['AAPL', 'TSLA', 'NVDA', 'SOUN', 'SPY']
+        symbols = ["AAPL", "TSLA", "NVDA", "SOUN", "SPY"]
 
     calculator = Alpha158Calculator()
     predictions = []
@@ -382,8 +415,8 @@ def evaluate_on_recent(model, symbols: List[str] = None, days: int = 30) -> Dict
 
             df = df.reset_index()
             df.columns = [c.lower() for c in df.columns]
-            if 'date' in df.columns:
-                df = df.set_index('date')
+            if "date" in df.columns:
+                df = df.set_index("date")
 
             features = calculator.compute_features(df)
 
@@ -394,38 +427,40 @@ def evaluate_on_recent(model, symbols: List[str] = None, days: int = 30) -> Dict
             recent = features.tail(days + 5)
 
             # Compute actual returns
-            recent['actual_return'] = df['close'].shift(-5) / df['close'] - 1
-            recent = recent.dropna(subset=['actual_return'])
+            recent["actual_return"] = df["close"].shift(-5) / df["close"] - 1
+            recent = recent.dropna(subset=["actual_return"])
 
             if len(recent) < 5:
                 continue
 
             # Predict
-            feature_cols = [c for c in recent.columns if c not in ['actual_return', 'symbol']]
+            feature_cols = [
+                c for c in recent.columns if c not in ["actual_return", "symbol"]
+            ]
             X = recent[feature_cols].fillna(0).replace([np.inf, -np.inf], 0)
             preds = model.predict(X)
 
             predictions.extend(preds)
-            actuals.extend(recent['actual_return'].values)
+            actuals.extend(recent["actual_return"].values)
 
         except Exception as e:
             logger.warning(f"Error evaluating {symbol}: {e}")
             continue
 
     if not predictions:
-        return {'error': 'No predictions generated'}
+        return {"error": "No predictions generated"}
 
     predictions = np.array(predictions)
     actuals = np.array(actuals)
 
     # Calculate metrics
-    from sklearn.metrics import mean_squared_error, mean_absolute_error
+    from sklearn.metrics import mean_absolute_error, mean_squared_error
 
     results = {
-        'rmse': float(np.sqrt(mean_squared_error(actuals, predictions))),
-        'mae': float(mean_absolute_error(actuals, predictions)),
-        'directional_accuracy': float(((predictions > 0) == (actuals > 0)).mean()),
-        'samples': len(predictions)
+        "rmse": float(np.sqrt(mean_squared_error(actuals, predictions))),
+        "mae": float(mean_absolute_error(actuals, predictions)),
+        "directional_accuracy": float(((predictions > 0) == (actuals > 0)).mean()),
+        "samples": len(predictions),
     }
 
     print(f"  RMSE: {results['rmse']:.4f}")

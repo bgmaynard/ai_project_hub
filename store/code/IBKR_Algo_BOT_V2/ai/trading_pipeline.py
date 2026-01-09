@@ -13,11 +13,11 @@ Author: Claude Code
 
 import asyncio
 import logging
-from datetime import datetime
-from typing import List, Dict, Optional, Callable
-from dataclasses import dataclass, asdict
 import threading
 import time
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ _pipeline_instance = None
 @dataclass
 class PipelineConfig:
     """Configuration for the trading pipeline"""
+
     # Auto-add to watchlist settings
     auto_add_to_watchlist: bool = True
     min_scanner_score: float = 60.0  # Min confidence to add to watchlist
@@ -98,16 +99,12 @@ class TradingPipeline:
 
     def run_scanner(self) -> Dict:
         """Run Warrior Scanner and add qualifying stocks to watchlist"""
-        results = {
-            "scanned": 0,
-            "qualified": 0,
-            "added_to_watchlist": 0,
-            "setups": []
-        }
+        results = {"scanned": 0, "qualified": 0, "added_to_watchlist": 0, "setups": []}
 
         try:
             # Import scanner
             from ai.warrior_scanner import WarriorScanner
+
             scanner = WarriorScanner()
 
             # Run scan
@@ -120,13 +117,16 @@ class TradingPipeline:
 
             # Filter by minimum score
             qualified = [
-                c for c in candidates
+                c
+                for c in candidates
                 if c.confidence_score >= self.config.min_scanner_score
             ]
             results["qualified"] = len(qualified)
 
             if not qualified:
-                logger.info(f"[PIPELINE] No stocks above {self.config.min_scanner_score} score threshold")
+                logger.info(
+                    f"[PIPELINE] No stocks above {self.config.min_scanner_score} score threshold"
+                )
                 return results
 
             # Add to watchlist if enabled
@@ -149,7 +149,9 @@ class TradingPipeline:
             self.stats["stocks_added_to_watchlist"] += results["added_to_watchlist"]
             self.stats["last_scanner_run"] = datetime.now().isoformat()
 
-            logger.info(f"[PIPELINE] Scanner: {results['scanned']} scanned, {results['qualified']} qualified, {results['added_to_watchlist']} added")
+            logger.info(
+                f"[PIPELINE] Scanner: {results['scanned']} scanned, {results['qualified']} qualified, {results['added_to_watchlist']} added"
+            )
 
         except Exception as e:
             logger.error(f"[PIPELINE] Scanner error: {e}")
@@ -162,6 +164,7 @@ class TradingPipeline:
         added = 0
         try:
             from watchlist_manager import get_watchlist_manager
+
             mgr = get_watchlist_manager()
 
             if not mgr:
@@ -178,12 +181,14 @@ class TradingPipeline:
 
             # Respect max size
             available_slots = self.config.max_watchlist_size - len(current_symbols)
-            symbols_to_add = new_symbols[:max(0, available_slots)]
+            symbols_to_add = new_symbols[: max(0, available_slots)]
 
             if symbols_to_add and watchlist_id:
                 mgr.add_symbols(watchlist_id, symbols_to_add)
                 added = len(symbols_to_add)
-                logger.info(f"[PIPELINE] Added {added} symbols to watchlist: {symbols_to_add}")
+                logger.info(
+                    f"[PIPELINE] Added {added} symbols to watchlist: {symbols_to_add}"
+                )
 
                 # Trigger AI analysis for new symbols
                 if self.config.auto_analyze_on_add:
@@ -200,18 +205,16 @@ class TradingPipeline:
 
     def analyze_watchlist(self) -> Dict:
         """Analyze all watchlist symbols with AI Trader"""
-        results = {
-            "analyzed": 0,
-            "opportunities_found": 0,
-            "symbols": []
-        }
+        results = {"analyzed": 0, "opportunities_found": 0, "symbols": []}
 
         try:
             from ai.ai_watchlist_trader import get_ai_watchlist_trader
+
             trader = get_ai_watchlist_trader()
 
             # Get watchlist symbols
             from watchlist_manager import get_watchlist_manager
+
             mgr = get_watchlist_manager()
             watchlist = mgr.get_default_watchlist() if mgr else {}
             symbols = watchlist.get("symbols", [])
@@ -229,7 +232,7 @@ class TradingPipeline:
                         "score": analysis.overall_score,
                         "signal": analysis.ai_signal,
                         "confidence": analysis.ai_confidence,
-                        "has_opportunity": analysis.trade_recommendation is not None
+                        "has_opportunity": analysis.trade_recommendation is not None,
                     }
                     results["symbols"].append(symbol_result)
 
@@ -249,7 +252,9 @@ class TradingPipeline:
             self.stats["opportunities_found"] += results["opportunities_found"]
             self.stats["last_analysis_run"] = datetime.now().isoformat()
 
-            logger.info(f"[PIPELINE] Analysis: {results['analyzed']} analyzed, {results['opportunities_found']} opportunities")
+            logger.info(
+                f"[PIPELINE] Analysis: {results['analyzed']} analyzed, {results['opportunities_found']} opportunities"
+            )
 
         except Exception as e:
             logger.error(f"[PIPELINE] Analysis error: {e}")
@@ -261,12 +266,15 @@ class TradingPipeline:
         """Analyze specific symbols (called when added to watchlist)"""
         try:
             from ai.ai_watchlist_trader import get_ai_watchlist_trader
+
             trader = get_ai_watchlist_trader()
 
             for symbol in symbols:
                 try:
                     analysis = trader.on_symbol_added(symbol)
-                    logger.info(f"[PIPELINE] Analyzed {symbol}: score={analysis.overall_score:.2f}, signal={analysis.ai_signal}")
+                    logger.info(
+                        f"[PIPELINE] Analyzed {symbol}: score={analysis.overall_score:.2f}, signal={analysis.ai_signal}"
+                    )
                 except Exception as e:
                     logger.warning(f"[PIPELINE] Analysis error for {symbol}: {e}")
 
@@ -279,11 +287,7 @@ class TradingPipeline:
 
     def process_execution_queue(self) -> Dict:
         """Process the trade opportunity queue"""
-        results = {
-            "processed": 0,
-            "executed": 0,
-            "trades": []
-        }
+        results = {"processed": 0, "executed": 0, "trades": []}
 
         if not self.config.auto_execute:
             logger.debug("[PIPELINE] Auto-execute disabled, skipping queue processing")
@@ -291,6 +295,7 @@ class TradingPipeline:
 
         try:
             from ai.ai_watchlist_trader import get_ai_watchlist_trader
+
             trader = get_ai_watchlist_trader()
 
             # Enable temporarily if in auto mode
@@ -341,8 +346,12 @@ class TradingPipeline:
 
         # Start background threads
         self._scanner_thread = threading.Thread(target=self._scanner_loop, daemon=True)
-        self._analysis_thread = threading.Thread(target=self._analysis_loop, daemon=True)
-        self._execution_thread = threading.Thread(target=self._execution_loop, daemon=True)
+        self._analysis_thread = threading.Thread(
+            target=self._analysis_loop, daemon=True
+        )
+        self._execution_thread = threading.Thread(
+            target=self._execution_loop, daemon=True
+        )
 
         self._scanner_thread.start()
         self._analysis_thread.start()
@@ -393,10 +402,18 @@ class TradingPipeline:
             "config": asdict(self.config),
             "stats": self.stats,
             "threads": {
-                "scanner": self._scanner_thread.is_alive() if self._scanner_thread else False,
-                "analysis": self._analysis_thread.is_alive() if self._analysis_thread else False,
-                "execution": self._execution_thread.is_alive() if self._execution_thread else False,
-            }
+                "scanner": (
+                    self._scanner_thread.is_alive() if self._scanner_thread else False
+                ),
+                "analysis": (
+                    self._analysis_thread.is_alive() if self._analysis_thread else False
+                ),
+                "execution": (
+                    self._execution_thread.is_alive()
+                    if self._execution_thread
+                    else False
+                ),
+            },
         }
 
 

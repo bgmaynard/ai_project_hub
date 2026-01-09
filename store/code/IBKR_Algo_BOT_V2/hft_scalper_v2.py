@@ -9,25 +9,26 @@ Enhanced scalper with:
 5. Dynamic position sizing based on volatility
 """
 
+import logging
 import os
 import time
-import logging
-import requests
-from datetime import datetime, timedelta
 from collections import defaultdict, deque
+from datetime import datetime, timedelta
 from typing import Dict, List, Set
+
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s.%(msecs)03d | %(message)s',
-    datefmt='%H:%M:%S'
+    format="%(asctime)s.%(msecs)03d | %(message)s",
+    datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
-API_BASE = 'http://localhost:9100/api/alpaca'
+API_BASE = "http://localhost:9100/api/alpaca"
 
 # =============================================================================
 # CONFIGURATION
@@ -35,65 +36,51 @@ API_BASE = 'http://localhost:9100/api/alpaca'
 
 CONFIG = {
     # Price range (Warrior Trading)
-    'MIN_PRICE': 2.00,
-    'MAX_PRICE': 20.00,
-    'BASE_POSITION_SIZE': 500,  # Base $ per trade
-
+    "MIN_PRICE": 2.00,
+    "MAX_PRICE": 20.00,
+    "BASE_POSITION_SIZE": 500,  # Base $ per trade
     # Momentum thresholds
-    'MOMENTUM_THRESHOLD': 0.15,
-    'ACCELERATION_THRESHOLD': 0.05,
-    'REVERSAL_THRESHOLD': -0.08,
-
+    "MOMENTUM_THRESHOLD": 0.15,
+    "ACCELERATION_THRESHOLD": 0.05,
+    "REVERSAL_THRESHOLD": -0.08,
     # Volume
-    'VOLUME_BUY_RATIO': 1.5,
-
+    "VOLUME_BUY_RATIO": 1.5,
     # MACD
-    'MACD_FAST': 12,
-    'MACD_SLOW': 26,
-    'MACD_SIGNAL': 9,
-
+    "MACD_FAST": 12,
+    "MACD_SLOW": 26,
+    "MACD_SIGNAL": 9,
     # Patterns
-    'TAIL_RATIO': 0.6,
-    'CONSECUTIVE_TAILS': 2,
-
+    "TAIL_RATIO": 0.6,
+    "CONSECUTIVE_TAILS": 2,
     # S/R
-    'SR_HOLD_TICKS': 3,
-    'PEAK_TOLERANCE': 0.005,
-    'MIN_TOUCHES': 2,
-
+    "SR_HOLD_TICKS": 3,
+    "PEAK_TOLERANCE": 0.005,
+    "MIN_TOUCHES": 2,
     # ============== NEW V2 SETTINGS ==============
-
     # Volatility classification
-    'HIGH_VOLATILITY_THRESHOLD': 0.03,  # 3% std dev = high volatility
-    'LOW_VOLATILITY_THRESHOLD': 0.015,  # 1.5% std dev = low volatility
-
+    "HIGH_VOLATILITY_THRESHOLD": 0.03,  # 3% std dev = high volatility
+    "LOW_VOLATILITY_THRESHOLD": 0.015,  # 1.5% std dev = low volatility
     # Dynamic risk based on volatility
-    'STOP_LOSS_HIGH_VOL': 0.008,   # 0.8% stop for high volatility
-    'STOP_LOSS_LOW_VOL': 0.015,    # 1.5% stop for low volatility
-    'TAKE_PROFIT_HIGH_VOL': 0.008,  # 0.8% profit for high vol (quick scalp)
-    'TAKE_PROFIT_LOW_VOL': 0.02,    # 2% profit for low vol
-
+    "STOP_LOSS_HIGH_VOL": 0.008,  # 0.8% stop for high volatility
+    "STOP_LOSS_LOW_VOL": 0.015,  # 1.5% stop for low volatility
+    "TAKE_PROFIT_HIGH_VOL": 0.008,  # 0.8% profit for high vol (quick scalp)
+    "TAKE_PROFIT_LOW_VOL": 0.02,  # 2% profit for low vol
     # Trailing stop
-    'TRAILING_STOP_ACTIVATE': 0.005,  # Activate trailing at 0.5% profit
-    'TRAILING_STOP_DISTANCE': 0.004,  # Trail 0.4% behind high
-
+    "TRAILING_STOP_ACTIVATE": 0.005,  # Activate trailing at 0.5% profit
+    "TRAILING_STOP_DISTANCE": 0.004,  # Trail 0.4% behind high
     # Loss cooldown
-    'LOSS_COOLDOWN_SECONDS': 300,  # 5 min cooldown after stop loss
-    'MAX_LOSSES_PER_SYMBOL': 2,    # Max 2 stop losses per symbol per day
-
+    "LOSS_COOLDOWN_SECONDS": 300,  # 5 min cooldown after stop loss
+    "MAX_LOSSES_PER_SYMBOL": 2,  # Max 2 stop losses per symbol per day
     # Entry requirements
-    'MIN_SIGNALS_HIGH_VOL': 3,  # Need 3+ signals for high vol stocks
-    'MIN_SIGNALS_LOW_VOL': 2,   # Need 2 signals for stable stocks
-
+    "MIN_SIGNALS_HIGH_VOL": 3,  # Need 3+ signals for high vol stocks
+    "MIN_SIGNALS_LOW_VOL": 2,  # Need 2 signals for stable stocks
     # Position sizing
-    'REDUCE_SIZE_HIGH_VOL': 0.5,  # Use 50% size on high vol stocks
-
+    "REDUCE_SIZE_HIGH_VOL": 0.5,  # Use 50% size on high vol stocks
     # Max positions
-    'MAX_POSITIONS': 3,
-
+    "MAX_POSITIONS": 3,
     # Polling
-    'POLL_INTERVAL': 0.5,
-    'TICK_BUFFER_SIZE': 30,  # More ticks for volatility calc
+    "POLL_INTERVAL": 0.5,
+    "TICK_BUFFER_SIZE": 30,  # More ticks for volatility calc
 }
 
 
@@ -105,14 +92,18 @@ class HFTScalperV2:
         self.running = False
 
         # Price/momentum tracking
-        self.ticks: Dict[str, deque] = defaultdict(lambda: deque(maxlen=CONFIG['TICK_BUFFER_SIZE']))
+        self.ticks: Dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=CONFIG["TICK_BUFFER_SIZE"])
+        )
         self.last_price: Dict[str, float] = {}
         self.momentum: Dict[str, float] = defaultdict(float)
         self.acceleration: Dict[str, float] = defaultdict(float)
 
         # Volatility tracking
         self.volatility: Dict[str, float] = defaultdict(lambda: 0.02)  # Default 2%
-        self.volatility_class: Dict[str, str] = defaultdict(lambda: 'MEDIUM')  # HIGH/MEDIUM/LOW
+        self.volatility_class: Dict[str, str] = defaultdict(
+            lambda: "MEDIUM"
+        )  # HIGH/MEDIUM/LOW
 
         # Volume
         self.buy_volume: Dict[str, deque] = defaultdict(lambda: deque(maxlen=10))
@@ -146,7 +137,9 @@ class HFTScalperV2:
         self.last_sr_scan: Dict[str, datetime] = {}
 
         # Position tracking with trailing stop
-        self.positions: Dict[str, dict] = {}  # {symbol: {entry, qty, high_water, trailing_stop, stop_loss, take_profit}}
+        self.positions: Dict[str, dict] = (
+            {}
+        )  # {symbol: {entry, qty, high_water, trailing_stop, stop_loss, take_profit}}
         self.pending_orders: Set[str] = set()
 
         # Loss tracking
@@ -173,29 +166,33 @@ class HFTScalperV2:
 
     def get_bars(self, symbol: str, limit: int = 30) -> list:
         try:
-            r = requests.get(f"{API_BASE}/bars/{symbol}?limit={limit}&timeframe=1Min", timeout=2)
+            r = requests.get(
+                f"{API_BASE}/bars/{symbol}?limit={limit}&timeframe=1Min", timeout=2
+            )
             if r.status_code == 200:
-                return r.json().get('bars', [])
+                return r.json().get("bars", [])
         except:
             pass
         return []
 
-    def place_order(self, symbol: str, qty: int, side: str, limit_price: float = None) -> dict:
+    def place_order(
+        self, symbol: str, qty: int, side: str, limit_price: float = None
+    ) -> dict:
         try:
             order_data = {
-                'symbol': symbol,
-                'quantity': qty,
-                'action': side,
-                'order_type': 'limit' if limit_price else 'market',
-                'time_in_force': 'day',
-                'extended_hours': True,
+                "symbol": symbol,
+                "quantity": qty,
+                "action": side,
+                "order_type": "limit" if limit_price else "market",
+                "time_in_force": "day",
+                "extended_hours": True,
             }
             if limit_price:
-                order_data['limit_price'] = limit_price
+                order_data["limit_price"] = limit_price
             r = requests.post(f"{API_BASE}/place-order", json=order_data, timeout=2)
             return r.json()
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return {"success": False, "error": str(e)}
 
     def calculate_volatility(self, symbol: str):
         """Calculate volatility from recent ticks."""
@@ -203,24 +200,27 @@ class HFTScalperV2:
         if len(ticks) < 10:
             return
 
-        prices = [t['price'] for t in ticks]
-        returns = [(prices[i] - prices[i-1]) / prices[i-1] for i in range(1, len(prices))]
+        prices = [t["price"] for t in ticks]
+        returns = [
+            (prices[i] - prices[i - 1]) / prices[i - 1] for i in range(1, len(prices))
+        ]
 
         if returns:
             import statistics
+
             vol = statistics.stdev(returns) if len(returns) > 1 else 0.02
             self.volatility[symbol] = vol
 
             # Classify
-            if vol > CONFIG['HIGH_VOLATILITY_THRESHOLD']:
-                self.volatility_class[symbol] = 'HIGH'
-            elif vol < CONFIG['LOW_VOLATILITY_THRESHOLD']:
-                self.volatility_class[symbol] = 'LOW'
+            if vol > CONFIG["HIGH_VOLATILITY_THRESHOLD"]:
+                self.volatility_class[symbol] = "HIGH"
+            elif vol < CONFIG["LOW_VOLATILITY_THRESHOLD"]:
+                self.volatility_class[symbol] = "LOW"
             else:
-                self.volatility_class[symbol] = 'MEDIUM'
+                self.volatility_class[symbol] = "MEDIUM"
 
     def calculate_macd(self, prices: List[float]) -> tuple:
-        if len(prices) < CONFIG['MACD_SLOW']:
+        if len(prices) < CONFIG["MACD_SLOW"]:
             return 0, 0, 0
 
         def ema(data, period):
@@ -230,10 +230,10 @@ class HFTScalperV2:
                 result.append(alpha * price + (1 - alpha) * result[-1])
             return result
 
-        fast_ema = ema(prices, CONFIG['MACD_FAST'])
-        slow_ema = ema(prices, CONFIG['MACD_SLOW'])
+        fast_ema = ema(prices, CONFIG["MACD_FAST"])
+        slow_ema = ema(prices, CONFIG["MACD_SLOW"])
         macd_line = [f - s for f, s in zip(fast_ema, slow_ema)]
-        signal_line = ema(macd_line, CONFIG['MACD_SIGNAL'])
+        signal_line = ema(macd_line, CONFIG["MACD_SIGNAL"])
         return macd_line[-1], signal_line[-1], macd_line[-1] - signal_line[-1]
 
     def update_macd(self, symbol: str):
@@ -243,13 +243,15 @@ class HFTScalperV2:
             return
 
         bars = self.get_bars(symbol, 30)
-        if len(bars) >= CONFIG['MACD_SLOW']:
-            prices = [float(b.get('c', b.get('close', 0))) for b in bars]
+        if len(bars) >= CONFIG["MACD_SLOW"]:
+            prices = [float(b.get("c", b.get("close", 0))) for b in bars]
             if all(p > 0 for p in prices):
                 macd, signal, histogram = self.calculate_macd(prices)
                 prev_hist = self.macd_histogram[symbol]
                 self.macd_histogram[symbol] = histogram
-                self.macd_bullish[symbol] = (prev_hist < 0 and histogram > 0) or (histogram > 0 and histogram > prev_hist)
+                self.macd_bullish[symbol] = (prev_hist < 0 and histogram > 0) or (
+                    histogram > 0 and histogram > prev_hist
+                )
                 self.last_macd_update[symbol] = now
 
     def update_candle_patterns(self, symbol: str):
@@ -267,10 +269,10 @@ class HFTScalperV2:
         topping = 0
 
         for i, bar in enumerate(bars[-5:]):
-            o = float(bar.get('o', bar.get('open', 0)))
-            h = float(bar.get('h', bar.get('high', 0)))
-            l = float(bar.get('l', bar.get('low', 0)))
-            c = float(bar.get('c', bar.get('close', 0)))
+            o = float(bar.get("o", bar.get("open", 0)))
+            h = float(bar.get("h", bar.get("high", 0)))
+            l = float(bar.get("l", bar.get("low", 0)))
+            c = float(bar.get("c", bar.get("close", 0)))
 
             if o == 0 or h == 0:
                 continue
@@ -290,32 +292,32 @@ class HFTScalperV2:
             lower_ratio = lower_tail / total_range
             upper_ratio = upper_tail / total_range
 
-            if lower_ratio > CONFIG['TAIL_RATIO']:
+            if lower_ratio > CONFIG["TAIL_RATIO"]:
                 bottoming += 1
-            if upper_ratio > CONFIG['TAIL_RATIO']:
+            if upper_ratio > CONFIG["TAIL_RATIO"]:
                 topping += 1
 
             if body / total_range < 0.3 and lower_ratio > 0.6:
-                patterns.append('HAMMER')
+                patterns.append("HAMMER")
 
         # Bullish engulfing
         if len(bars) >= 2:
             prev = bars[-2]
             curr = bars[-1]
-            prev_o = float(prev.get('o', prev.get('open', 0)))
-            prev_c = float(prev.get('c', prev.get('close', 0)))
-            curr_o = float(curr.get('o', curr.get('open', 0)))
-            curr_c = float(curr.get('c', curr.get('close', 0)))
+            prev_o = float(prev.get("o", prev.get("open", 0)))
+            prev_c = float(prev.get("c", prev.get("close", 0)))
+            curr_o = float(curr.get("o", curr.get("open", 0)))
+            curr_c = float(curr.get("c", curr.get("close", 0)))
 
             if prev_c < prev_o and curr_c > curr_o:
                 if curr_o < prev_c and curr_c > prev_o:
-                    patterns.append('BULLISH_ENGULF')
+                    patterns.append("BULLISH_ENGULF")
 
         # Candle over candle
         if len(bars) >= 3:
-            closes = [float(b.get('c', b.get('close', 0))) for b in bars[-3:]]
+            closes = [float(b.get("c", b.get("close", 0))) for b in bars[-3:]]
             if closes[2] > closes[1] > closes[0]:
-                patterns.append('CANDLE_OVER_CANDLE')
+                patterns.append("CANDLE_OVER_CANDLE")
 
         self.bottoming_tails[symbol] = bottoming
         self.topping_tails[symbol] = topping
@@ -330,7 +332,9 @@ class HFTScalperV2:
         self.vwap_cumulative_pv[symbol] += price * volume
 
         if self.vwap_cumulative_vol[symbol] > 0:
-            new_vwap = self.vwap_cumulative_pv[symbol] / self.vwap_cumulative_vol[symbol]
+            new_vwap = (
+                self.vwap_cumulative_pv[symbol] / self.vwap_cumulative_vol[symbol]
+            )
             self.vwap[symbol] = new_vwap
 
             was_above = self.above_vwap[symbol]
@@ -362,11 +366,15 @@ class HFTScalperV2:
                 self.sr_level_broken[symbol] = nearest_level
                 self.ticks_above_sr[symbol] = 1
 
-            if self.ticks_above_sr[symbol] >= CONFIG['SR_HOLD_TICKS']:
+            if self.ticks_above_sr[symbol] >= CONFIG["SR_HOLD_TICKS"]:
                 if not self.sr_breakout[symbol]:
                     self.sr_breakout[symbol] = True
-                    level_type = "WHOLE" if nearest_level == int(nearest_level) else "HALF"
-                    logger.info(f"S/R BREAKOUT: {symbol} broke ${nearest_level:.2f} ({level_type})")
+                    level_type = (
+                        "WHOLE" if nearest_level == int(nearest_level) else "HALF"
+                    )
+                    logger.info(
+                        f"S/R BREAKOUT: {symbol} broke ${nearest_level:.2f} ({level_type})"
+                    )
         else:
             self.sr_breakout[symbol] = False
             self.ticks_above_sr[symbol] = 0
@@ -375,49 +383,49 @@ class HFTScalperV2:
         strength = 0
         signals = []
 
-        if self.momentum.get(symbol, 0) > CONFIG['MOMENTUM_THRESHOLD']:
+        if self.momentum.get(symbol, 0) > CONFIG["MOMENTUM_THRESHOLD"]:
             strength += 1
-            signals.append('MOM')
+            signals.append("MOM")
 
-        if self.acceleration.get(symbol, 0) > CONFIG['ACCELERATION_THRESHOLD']:
+        if self.acceleration.get(symbol, 0) > CONFIG["ACCELERATION_THRESHOLD"]:
             strength += 1
-            signals.append('ACC')
+            signals.append("ACC")
 
-        if self.volume_ratio.get(symbol, 1) > CONFIG['VOLUME_BUY_RATIO']:
+        if self.volume_ratio.get(symbol, 1) > CONFIG["VOLUME_BUY_RATIO"]:
             strength += 1
-            signals.append('VOL')
+            signals.append("VOL")
 
         if self.macd_bullish.get(symbol, False):
             strength += 1
-            signals.append('MACD')
+            signals.append("MACD")
 
-        if self.bottoming_tails.get(symbol, 0) >= CONFIG['CONSECUTIVE_TAILS']:
+        if self.bottoming_tails.get(symbol, 0) >= CONFIG["CONSECUTIVE_TAILS"]:
             strength += 1
-            signals.append('TAILS')
+            signals.append("TAILS")
 
-        if self.topping_tails.get(symbol, 0) >= CONFIG['CONSECUTIVE_TAILS']:
+        if self.topping_tails.get(symbol, 0) >= CONFIG["CONSECUTIVE_TAILS"]:
             strength -= 1
-            signals.append('TOP_TAILS')
+            signals.append("TOP_TAILS")
 
         if self.vwap_cross_up.get(symbol, False):
             strength += 1
-            signals.append('VWAP')
+            signals.append("VWAP")
 
         if self.sr_breakout.get(symbol, False):
             strength += 1
-            signals.append('SR')
+            signals.append("SR")
 
         if self.hard_resistance_break.get(symbol, False):
             strength += 2
-            signals.append('HARD_R')
+            signals.append("HARD_R")
 
         patterns = self.pattern_signals.get(symbol, [])
-        if 'HAMMER' in patterns or 'BULLISH_ENGULF' in patterns:
+        if "HAMMER" in patterns or "BULLISH_ENGULF" in patterns:
             strength += 1
-            signals.append('PATTERN')
-        if 'CANDLE_OVER_CANDLE' in patterns:
+            signals.append("PATTERN")
+        if "CANDLE_OVER_CANDLE" in patterns:
             strength += 1
-            signals.append('COC')
+            signals.append("COC")
 
         return strength, signals
 
@@ -430,27 +438,25 @@ class HFTScalperV2:
             return False, f"COOLDOWN ({remaining}s remaining)"
 
         # Check daily losses
-        if self.daily_losses[symbol] >= CONFIG['MAX_LOSSES_PER_SYMBOL']:
+        if self.daily_losses[symbol] >= CONFIG["MAX_LOSSES_PER_SYMBOL"]:
             return False, f"MAX LOSSES ({self.daily_losses[symbol]} today)"
 
         return True, "OK"
 
     def process_tick(self, symbol: str, quote: dict):
-        price = float(quote.get('last', quote.get('ask', quote.get('bid', 0))))
-        volume = float(quote.get('volume', quote.get('last_volume', 0)))
+        price = float(quote.get("last", quote.get("ask", quote.get("bid", 0))))
+        volume = float(quote.get("volume", quote.get("last_volume", 0)))
 
         if price <= 0:
             return
 
-        if price < CONFIG['MIN_PRICE'] or price > CONFIG['MAX_PRICE']:
+        if price < CONFIG["MIN_PRICE"] or price > CONFIG["MAX_PRICE"]:
             return
 
         # Store tick
-        self.ticks[symbol].append({
-            'price': price,
-            'volume': volume,
-            'time': datetime.now()
-        })
+        self.ticks[symbol].append(
+            {"price": price, "volume": volume, "time": datetime.now()}
+        )
 
         # Update volatility
         self.calculate_volatility(symbol)
@@ -470,8 +476,8 @@ class HFTScalperV2:
         # Momentum
         ticks = list(self.ticks[symbol])
         if len(ticks) >= 3:
-            vel1 = (ticks[-1]['price'] - ticks[-2]['price']) / ticks[-2]['price'] * 100
-            vel2 = (ticks[-2]['price'] - ticks[-3]['price']) / ticks[-3]['price'] * 100
+            vel1 = (ticks[-1]["price"] - ticks[-2]["price"]) / ticks[-2]["price"] * 100
+            vel2 = (ticks[-2]["price"] - ticks[-3]["price"]) / ticks[-3]["price"] * 100
             self.momentum[symbol] = vel1
             self.acceleration[symbol] = vel1 - vel2
 
@@ -482,7 +488,7 @@ class HFTScalperV2:
         self.update_candle_patterns(symbol)
 
     def check_entry(self, symbol: str):
-        if symbol in self.positions or len(self.positions) >= CONFIG['MAX_POSITIONS']:
+        if symbol in self.positions or len(self.positions) >= CONFIG["MAX_POSITIONS"]:
             return
 
         # Check if we can trade
@@ -498,13 +504,17 @@ class HFTScalperV2:
         vol_class = self.volatility_class[symbol]
 
         # Require more signals for high volatility
-        min_signals = CONFIG['MIN_SIGNALS_HIGH_VOL'] if vol_class == 'HIGH' else CONFIG['MIN_SIGNALS_LOW_VOL']
+        min_signals = (
+            CONFIG["MIN_SIGNALS_HIGH_VOL"]
+            if vol_class == "HIGH"
+            else CONFIG["MIN_SIGNALS_LOW_VOL"]
+        )
 
         if strength >= min_signals:
             # Adjust position size based on volatility
-            base_size = CONFIG['BASE_POSITION_SIZE']
-            if vol_class == 'HIGH':
-                position_size = base_size * CONFIG['REDUCE_SIZE_HIGH_VOL']
+            base_size = CONFIG["BASE_POSITION_SIZE"]
+            if vol_class == "HIGH":
+                position_size = base_size * CONFIG["REDUCE_SIZE_HIGH_VOL"]
             else:
                 position_size = base_size
 
@@ -512,28 +522,32 @@ class HFTScalperV2:
             limit_price = round(price * 1.001, 2)
 
             # Set stops based on volatility
-            if vol_class == 'HIGH':
-                stop_loss = price * (1 - CONFIG['STOP_LOSS_HIGH_VOL'])
-                take_profit = price * (1 + CONFIG['TAKE_PROFIT_HIGH_VOL'])
+            if vol_class == "HIGH":
+                stop_loss = price * (1 - CONFIG["STOP_LOSS_HIGH_VOL"])
+                take_profit = price * (1 + CONFIG["TAKE_PROFIT_HIGH_VOL"])
             else:
-                stop_loss = price * (1 - CONFIG['STOP_LOSS_LOW_VOL'])
-                take_profit = price * (1 + CONFIG['TAKE_PROFIT_LOW_VOL'])
+                stop_loss = price * (1 - CONFIG["STOP_LOSS_LOW_VOL"])
+                take_profit = price * (1 + CONFIG["TAKE_PROFIT_LOW_VOL"])
 
-            logger.info(f">>> ENTRY: {symbol} @ ${price:.2f} | Vol={vol_class} | Str={strength} | {signals}")
-            logger.info(f"    Stop=${stop_loss:.2f} | Target=${take_profit:.2f} | Qty={qty}")
+            logger.info(
+                f">>> ENTRY: {symbol} @ ${price:.2f} | Vol={vol_class} | Str={strength} | {signals}"
+            )
+            logger.info(
+                f"    Stop=${stop_loss:.2f} | Target=${take_profit:.2f} | Qty={qty}"
+            )
 
-            result = self.place_order(symbol, qty, 'buy', limit_price)
-            if result.get('success'):
+            result = self.place_order(symbol, qty, "buy", limit_price)
+            if result.get("success"):
                 self.positions[symbol] = {
-                    'entry': price,
-                    'qty': qty,
-                    'high_water': price,
-                    'trailing_stop': None,
-                    'stop_loss': stop_loss,
-                    'take_profit': take_profit,
-                    'vol_class': vol_class,
-                    'signals': signals,
-                    'time': datetime.now()
+                    "entry": price,
+                    "qty": qty,
+                    "high_water": price,
+                    "trailing_stop": None,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                    "vol_class": vol_class,
+                    "signals": signals,
+                    "time": datetime.now(),
                 }
                 self.trades_executed += 1
                 logger.info(f">>> BOUGHT {symbol}: {qty} @ ${limit_price:.2f}")
@@ -545,56 +559,64 @@ class HFTScalperV2:
             return
 
         pos = self.positions[symbol]
-        price = self.last_price.get(symbol, pos['entry'])
-        entry = pos['entry']
+        price = self.last_price.get(symbol, pos["entry"])
+        entry = pos["entry"]
         pnl_pct = (price - entry) / entry
 
         should_exit = False
         reason = ""
 
         # Update high water mark
-        if price > pos['high_water']:
-            pos['high_water'] = price
+        if price > pos["high_water"]:
+            pos["high_water"] = price
 
             # Activate trailing stop once we hit threshold
-            if pnl_pct >= CONFIG['TRAILING_STOP_ACTIVATE']:
-                trailing_stop = price * (1 - CONFIG['TRAILING_STOP_DISTANCE'])
-                if pos['trailing_stop'] is None or trailing_stop > pos['trailing_stop']:
-                    pos['trailing_stop'] = trailing_stop
-                    logger.info(f"    TRAILING STOP: {symbol} set to ${trailing_stop:.2f}")
+            if pnl_pct >= CONFIG["TRAILING_STOP_ACTIVATE"]:
+                trailing_stop = price * (1 - CONFIG["TRAILING_STOP_DISTANCE"])
+                if pos["trailing_stop"] is None or trailing_stop > pos["trailing_stop"]:
+                    pos["trailing_stop"] = trailing_stop
+                    logger.info(
+                        f"    TRAILING STOP: {symbol} set to ${trailing_stop:.2f}"
+                    )
 
         # Check trailing stop
-        if pos['trailing_stop'] and price <= pos['trailing_stop']:
+        if pos["trailing_stop"] and price <= pos["trailing_stop"]:
             should_exit = True
             reason = f"TRAIL STOP (+{pnl_pct*100:.2f}%)"
 
         # Check take profit
-        elif price >= pos['take_profit']:
+        elif price >= pos["take_profit"]:
             should_exit = True
             reason = f"TAKE PROFIT (+{pnl_pct*100:.2f}%)"
 
         # Check hard stop loss
-        elif price <= pos['stop_loss']:
+        elif price <= pos["stop_loss"]:
             should_exit = True
             reason = f"STOP LOSS ({pnl_pct*100:.2f}%)"
             # Set cooldown
-            self.loss_cooldown[symbol] = datetime.now() + timedelta(seconds=CONFIG['LOSS_COOLDOWN_SECONDS'])
+            self.loss_cooldown[symbol] = datetime.now() + timedelta(
+                seconds=CONFIG["LOSS_COOLDOWN_SECONDS"]
+            )
             self.daily_losses[symbol] += 1
-            logger.info(f"    COOLDOWN: {symbol} blocked for {CONFIG['LOSS_COOLDOWN_SECONDS']}s")
+            logger.info(
+                f"    COOLDOWN: {symbol} blocked for {CONFIG['LOSS_COOLDOWN_SECONDS']}s"
+            )
 
         # Momentum reversal (but only if we're in profit)
-        elif pnl_pct > 0 and self.momentum.get(symbol, 0) < CONFIG['REVERSAL_THRESHOLD']:
+        elif (
+            pnl_pct > 0 and self.momentum.get(symbol, 0) < CONFIG["REVERSAL_THRESHOLD"]
+        ):
             should_exit = True
             reason = f"REVERSAL (+{pnl_pct*100:.2f}%)"
 
         if should_exit:
-            qty = pos['qty']
+            qty = pos["qty"]
             limit_price = round(price * 0.999, 2)
 
             logger.info(f"<<< EXIT: {symbol} | {reason}")
 
-            result = self.place_order(symbol, qty, 'sell', limit_price)
-            if result.get('success'):
+            result = self.place_order(symbol, qty, "sell", limit_price)
+            if result.get("success"):
                 pnl_dollars = (price - entry) * qty
                 del self.positions[symbol]
                 self.total_pnl += pnl_dollars
@@ -604,7 +626,9 @@ class HFTScalperV2:
                 else:
                     self.losses += 1
 
-                logger.info(f"<<< SOLD {symbol}: {qty} @ ${limit_price:.2f} | P/L: ${pnl_dollars:.2f}")
+                logger.info(
+                    f"<<< SOLD {symbol}: {qty} @ ${limit_price:.2f} | P/L: ${pnl_dollars:.2f}"
+                )
 
     def run(self):
         logger.info("=" * 60)
@@ -637,15 +661,21 @@ class HFTScalperV2:
                 if cycle % 20 == 0:
                     pos_list = []
                     for sym, pos in self.positions.items():
-                        pnl = (self.last_price.get(sym, pos['entry']) - pos['entry']) / pos['entry'] * 100
+                        pnl = (
+                            (self.last_price.get(sym, pos["entry"]) - pos["entry"])
+                            / pos["entry"]
+                            * 100
+                        )
                         pos_list.append(f"{sym}({pnl:+.1f}%)")
 
-                    pos_str = ', '.join(pos_list) or 'FLAT'
+                    pos_str = ", ".join(pos_list) or "FLAT"
                     win_rate = (self.wins / max(1, self.wins + self.losses)) * 100
 
-                    logger.info(f"[{cycle}] {pos_str} | W/L: {self.wins}/{self.losses} ({win_rate:.0f}%) | P/L: ${self.total_pnl:.2f}")
+                    logger.info(
+                        f"[{cycle}] {pos_str} | W/L: {self.wins}/{self.losses} ({win_rate:.0f}%) | P/L: ${self.total_pnl:.2f}"
+                    )
 
-                time.sleep(CONFIG['POLL_INTERVAL'])
+                time.sleep(CONFIG["POLL_INTERVAL"])
 
         except KeyboardInterrupt:
             logger.info("\nShutting down...")
@@ -654,16 +684,18 @@ class HFTScalperV2:
         logger.info(f"Session Summary:")
         logger.info(f"  Trades: {self.trades_executed}")
         logger.info(f"  Wins: {self.wins} | Losses: {self.losses}")
-        logger.info(f"  Win Rate: {(self.wins / max(1, self.wins + self.losses)) * 100:.1f}%")
+        logger.info(
+            f"  Win Rate: {(self.wins / max(1, self.wins + self.losses)) * 100:.1f}%"
+        )
         logger.info(f"  Total P/L: ${self.total_pnl:.2f}")
         logger.info("=" * 60)
 
 
 def get_hot_symbols():
-    return ['AG', 'HL', 'KGC', 'EDIT', 'MAMA', 'USGO']  # Removed VOR for now
+    return ["AG", "HL", "KGC", "EDIT", "MAMA", "USGO"]  # Removed VOR for now
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Don't include VOR initially - it's too volatile
     symbols = get_hot_symbols()
     scalper = HFTScalperV2(symbols)

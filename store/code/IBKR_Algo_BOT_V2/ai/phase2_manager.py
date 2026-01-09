@@ -16,12 +16,12 @@ Workflow:
 """
 
 import asyncio
+import json
 import logging
+import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set
-from dataclasses import dataclass, asdict, field
-import json
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Phase2Candidate:
     """Candidate for Phase 2 continuation trade"""
+
     symbol: str
     phase1_exit_price: float
     phase1_exit_time: datetime
@@ -44,9 +45,13 @@ class Phase2Candidate:
 
     def to_dict(self) -> Dict:
         d = asdict(self)
-        d['phase1_exit_time'] = self.phase1_exit_time.isoformat() if self.phase1_exit_time else None
-        d['last_check_time'] = self.last_check_time.isoformat() if self.last_check_time else None
-        d['expiry_time'] = self.expiry_time.isoformat() if self.expiry_time else None
+        d["phase1_exit_time"] = (
+            self.phase1_exit_time.isoformat() if self.phase1_exit_time else None
+        )
+        d["last_check_time"] = (
+            self.last_check_time.isoformat() if self.last_check_time else None
+        )
+        d["expiry_time"] = self.expiry_time.isoformat() if self.expiry_time else None
         return d
 
 
@@ -80,17 +85,17 @@ class Phase2Manager:
             "require_volume": True,  # Require volume pickup
             "min_volume_ratio": 1.5,  # Volume vs average
             "use_scalper_for_execution": True,
-            "paper_mode": True
+            "paper_mode": True,
         }
 
         self._load_config()
 
     def _load_config(self):
         """Load config from file"""
-        config_path = os.path.join(os.path.dirname(__file__), 'phase2_config.json')
+        config_path = os.path.join(os.path.dirname(__file__), "phase2_config.json")
         if os.path.exists(config_path):
             try:
-                with open(config_path, 'r') as f:
+                with open(config_path, "r") as f:
                     loaded = json.load(f)
                     self.config.update(loaded)
                     logger.info("Phase 2 config loaded")
@@ -99,14 +104,16 @@ class Phase2Manager:
 
     def _save_config(self):
         """Save config to file"""
-        config_path = os.path.join(os.path.dirname(__file__), 'phase2_config.json')
+        config_path = os.path.join(os.path.dirname(__file__), "phase2_config.json")
         try:
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 json.dump(self.config, f, indent=2)
         except Exception as e:
             logger.error(f"Error saving Phase 2 config: {e}")
 
-    def register_phase1_exit(self, symbol: str, exit_price: float, pnl_pct: float) -> Dict:
+    def register_phase1_exit(
+        self, symbol: str, exit_price: float, pnl_pct: float
+    ) -> Dict:
         """
         Register a Phase 1 exit for Phase 2 monitoring.
 
@@ -117,7 +124,10 @@ class Phase2Manager:
 
         # Only track profitable Phase 1 exits
         if pnl_pct < self.config["min_phase1_pnl_pct"]:
-            return {"action": "SKIP", "reason": f"Phase 1 P&L {pnl_pct:.1f}% below threshold"}
+            return {
+                "action": "SKIP",
+                "reason": f"Phase 1 P&L {pnl_pct:.1f}% below threshold",
+            }
 
         # Check if already tracking
         if symbol in self.candidates:
@@ -132,14 +142,16 @@ class Phase2Manager:
             phase1_exit_time=now,
             phase1_pnl_pct=pnl_pct,
             current_price=exit_price,
-            expiry_time=expiry
+            expiry_time=expiry,
         )
 
         self.candidates[symbol] = candidate
 
         # Also register with two_phase_strategy
         try:
-            from .two_phase_strategy import get_two_phase_strategy, TradePhase, TwoPhasePosition
+            from .two_phase_strategy import (TradePhase, TwoPhasePosition,
+                                             get_two_phase_strategy)
+
             strategy = get_two_phase_strategy()
 
             if symbol not in strategy.positions:
@@ -147,19 +159,21 @@ class Phase2Manager:
                     symbol=symbol,
                     phase=TradePhase.PHASE2_WATCHING,
                     entry_price=exit_price,  # Use as reference
-                    high_since_entry=exit_price
+                    high_since_entry=exit_price,
                 )
         except Exception as e:
             logger.warning(f"Could not register with two_phase_strategy: {e}")
 
-        logger.info(f"[PHASE2] Registered {symbol} for Phase 2 watching (Phase 1: +{pnl_pct:.1f}%)")
+        logger.info(
+            f"[PHASE2] Registered {symbol} for Phase 2 watching (Phase 1: +{pnl_pct:.1f}%)"
+        )
 
         return {
             "action": "WATCHING",
             "symbol": symbol,
             "exit_price": exit_price,
             "pnl_pct": pnl_pct,
-            "expiry": expiry.isoformat()
+            "expiry": expiry.isoformat(),
         }
 
     async def check_conditions(self, symbol: str) -> Dict:
@@ -185,12 +199,13 @@ class Phase2Manager:
         # Get current price
         try:
             import yfinance as yf
+
             ticker = yf.Ticker(symbol)
-            current_price = ticker.fast_info.get('lastPrice', 0)
+            current_price = ticker.fast_info.get("lastPrice", 0)
             if not current_price:
-                hist = ticker.history(period='1d', interval='1m')
+                hist = ticker.history(period="1d", interval="1m")
                 if not hist.empty:
-                    current_price = hist['Close'].iloc[-1]
+                    current_price = hist["Close"].iloc[-1]
 
             if current_price:
                 candidate.current_price = current_price
@@ -199,7 +214,9 @@ class Phase2Manager:
             current_price = candidate.phase1_exit_price
 
         # Check pullback
-        pullback_pct = ((candidate.phase1_exit_price - current_price) / candidate.phase1_exit_price) * 100
+        pullback_pct = (
+            (candidate.phase1_exit_price - current_price) / candidate.phase1_exit_price
+        ) * 100
 
         if pullback_pct > self.config["max_pullback_pct"]:
             candidate.status = "rejected"
@@ -208,13 +225,16 @@ class Phase2Manager:
         if pullback_pct >= self.config["min_pullback_pct"]:
             conditions_met.append(f"Pullback {pullback_pct:.1f}%")
         else:
-            conditions_failed.append(f"Waiting for pullback (currently {pullback_pct:.1f}%)")
+            conditions_failed.append(
+                f"Waiting for pullback (currently {pullback_pct:.1f}%)"
+            )
 
         # Check MACD
         macd_ready = False
         if self.config["require_macd"]:
             try:
                 from .macd_analyzer import get_macd_analyzer
+
                 analyzer = get_macd_analyzer()
                 should_enter, reason, details = analyzer.check_phase2_entry(symbol)
 
@@ -234,18 +254,25 @@ class Phase2Manager:
         if self.config["require_volume"]:
             try:
                 import yfinance as yf
+
                 ticker = yf.Ticker(symbol)
-                hist = ticker.history(period='5d', interval='1d')
+                hist = ticker.history(period="5d", interval="1d")
                 if not hist.empty:
-                    avg_volume = hist['Volume'].iloc[:-1].mean()  # Average of previous days
-                    current_volume = hist['Volume'].iloc[-1]
-                    volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
+                    avg_volume = (
+                        hist["Volume"].iloc[:-1].mean()
+                    )  # Average of previous days
+                    current_volume = hist["Volume"].iloc[-1]
+                    volume_ratio = (
+                        current_volume / avg_volume if avg_volume > 0 else 1.0
+                    )
 
                     if volume_ratio >= self.config["min_volume_ratio"]:
                         volume_ready = True
                         conditions_met.append(f"Volume {volume_ratio:.1f}x")
                     else:
-                        conditions_failed.append(f"Volume {volume_ratio:.1f}x (need {self.config['min_volume_ratio']}x)")
+                        conditions_failed.append(
+                            f"Volume {volume_ratio:.1f}x (need {self.config['min_volume_ratio']}x)"
+                        )
             except Exception as e:
                 logger.debug(f"Volume check failed for {symbol}: {e}")
                 conditions_failed.append("Volume: unavailable")
@@ -280,7 +307,7 @@ class Phase2Manager:
             "conditions_failed": conditions_failed,
             "macd_ready": macd_ready,
             "volume_ready": volume_ready,
-            "check_count": candidate.check_count
+            "check_count": candidate.check_count,
         }
 
     async def execute_phase2_entry(self, symbol: str) -> Dict:
@@ -298,6 +325,7 @@ class Phase2Manager:
         try:
             if self.config["use_scalper_for_execution"]:
                 from .hft_scalper import get_hft_scalper
+
                 scalper = get_hft_scalper()
 
                 # Add to priority queue for immediate execution
@@ -315,7 +343,7 @@ class Phase2Manager:
                     "phase1_exit_price": candidate.phase1_exit_price,
                     "phase1_pnl_pct": candidate.phase1_pnl_pct,
                     "conditions_met": candidate.conditions_met,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
 
                 self.executed_trades.append(trade_record)
@@ -323,18 +351,20 @@ class Phase2Manager:
                 return {
                     "success": True,
                     "action": "SCALPER_QUEUE",
-                    "trade": trade_record
+                    "trade": trade_record,
                 }
             else:
                 # Log-only mode
-                logger.info(f"[PHASE2 ENTRY SIGNAL] {symbol} @ ${candidate.current_price:.2f}")
+                logger.info(
+                    f"[PHASE2 ENTRY SIGNAL] {symbol} @ ${candidate.current_price:.2f}"
+                )
                 candidate.status = "executed"
 
                 return {
                     "success": True,
                     "action": "SIGNAL_ONLY",
                     "symbol": symbol,
-                    "price": candidate.current_price
+                    "price": candidate.current_price,
                 }
 
         except Exception as e:
@@ -395,8 +425,14 @@ class Phase2Manager:
             "paper_mode": self.config["paper_mode"],
             "candidates_count": len(self.candidates),
             "candidates": [c.to_dict() for c in self.candidates.values()],
-            "executed_today": len([t for t in self.executed_trades
-                                   if datetime.fromisoformat(t["timestamp"]).date() == datetime.now().date()])
+            "executed_today": len(
+                [
+                    t
+                    for t in self.executed_trades
+                    if datetime.fromisoformat(t["timestamp"]).date()
+                    == datetime.now().date()
+                ]
+            ),
         }
 
     def get_config(self) -> Dict:
@@ -433,6 +469,7 @@ def register_phase1_exit(symbol: str, exit_price: float, pnl_pct: float) -> Dict
 
 if __name__ == "__main__":
     import asyncio
+
     logging.basicConfig(level=logging.INFO)
 
     async def test():

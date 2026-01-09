@@ -22,42 +22,50 @@ Observability Export:
 Activation is EXPLICIT - never default.
 """
 
-import logging
-import json
 import csv
+import json
+import logging
 import os
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta, time
-from typing import Dict, List, Optional, Any, Set
-import pytz
-from enum import Enum
-from collections import defaultdict
 import threading
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, time, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Set
+
+import pytz
 
 logger = logging.getLogger(__name__)
 
 # File paths
-ACTIVATION_STATE_FILE = os.path.join(os.path.dirname(__file__), "safe_activation_state.json")
-OBSERVABILITY_EXPORT_FILE = os.path.join(os.path.dirname(__file__), "observability_export.json")
+ACTIVATION_STATE_FILE = os.path.join(
+    os.path.dirname(__file__), "safe_activation_state.json"
+)
+OBSERVABILITY_EXPORT_FILE = os.path.join(
+    os.path.dirname(__file__), "observability_export.json"
+)
 
 
 class ActivationMode(Enum):
     """Trading activation modes"""
-    DISABLED = "DISABLED"           # No trading at all
-    SAFE = "SAFE"                   # Reduced risk mode
-    NORMAL = "NORMAL"               # Full trading (not implemented here)
+
+    DISABLED = "DISABLED"  # No trading at all
+    SAFE = "SAFE"  # Reduced risk mode
+    NORMAL = "NORMAL"  # Full trading (not implemented here)
 
 
 class GovernorHealthState(Enum):
     """Governor system health states for dashboard display"""
-    OFFLINE = "OFFLINE"             # System not running or critical failure
-    STANDBY = "STANDBY"             # Healthy but waiting (market closed)
-    CONNECTED = "CONNECTED"         # All services connected, not yet active
-    ACTIVE = "ACTIVE"               # Fully operational and trading enabled
+
+    OFFLINE = "OFFLINE"  # System not running or critical failure
+    STANDBY = "STANDBY"  # Healthy but waiting (market closed)
+    CONNECTED = "CONNECTED"  # All services connected, not yet active
+    ACTIVE = "ACTIVE"  # Fully operational and trading enabled
 
 
 class KillSwitchReason(Enum):
     """Reasons for kill-switch activation"""
+
     VETO_SPIKE = "VETO_SPIKE"
     FORCED_EXITS = "FORCED_EXITS"
     DATA_ANOMALY = "DATA_ANOMALY"
@@ -69,6 +77,7 @@ class KillSwitchReason(Enum):
 @dataclass
 class KillSwitchEvent:
     """Kill-switch trigger event"""
+
     timestamp: str
     reason: str
     details: str
@@ -78,6 +87,7 @@ class KillSwitchEvent:
 @dataclass
 class StrategyEvent:
     """Strategy enable/disable event"""
+
     timestamp: str
     strategy_id: str
     action: str  # ENABLE, DISABLE, SUPPRESS
@@ -88,51 +98,53 @@ class StrategyEvent:
 @dataclass
 class SafeActivationConfig:
     """Configuration for safe activation mode"""
+
     enabled: bool = False
     mode: ActivationMode = ActivationMode.DISABLED
 
     # Position sizing
     position_size_multiplier: float = 0.25  # 25% of normal size
-    max_position_size_usd: float = 500      # Max $500 per trade
+    max_position_size_usd: float = 500  # Max $500 per trade
 
     # Strategy limits
-    max_concurrent_strategies: int = 1      # One at a time
-    active_strategy: str = ""               # Currently active strategy
+    max_concurrent_strategies: int = 1  # One at a time
+    active_strategy: str = ""  # Currently active strategy
 
     # Symbol whitelist (empty = all allowed)
     symbol_whitelist: List[str] = field(default_factory=list)
 
     # Kill-switch thresholds
-    veto_spike_threshold: int = 20          # Vetoes in 5 min window
+    veto_spike_threshold: int = 20  # Vetoes in 5 min window
     veto_spike_window_seconds: int = 300
-    max_forced_exits: int = 5               # In 30 min window
+    max_forced_exits: int = 5  # In 30 min window
     forced_exit_window_seconds: int = 1800
-    max_daily_loss_usd: float = 100         # Max $100 daily loss
-    data_stale_seconds: int = 30            # Market data staleness
+    max_daily_loss_usd: float = 100  # Max $100 daily loss
+    data_stale_seconds: int = 30  # Market data staleness
 
     # Recovery
     kill_switch_cooldown_seconds: int = 1800  # 30 min cooldown
 
     def to_dict(self) -> Dict:
         return {
-            'enabled': self.enabled,
-            'mode': self.mode.value,
-            'position_size_multiplier': self.position_size_multiplier,
-            'max_position_size_usd': self.max_position_size_usd,
-            'max_concurrent_strategies': self.max_concurrent_strategies,
-            'active_strategy': self.active_strategy,
-            'symbol_whitelist': self.symbol_whitelist,
-            'veto_spike_threshold': self.veto_spike_threshold,
-            'max_forced_exits': self.max_forced_exits,
-            'max_daily_loss_usd': self.max_daily_loss_usd,
-            'data_stale_seconds': self.data_stale_seconds,
-            'kill_switch_cooldown_seconds': self.kill_switch_cooldown_seconds,
+            "enabled": self.enabled,
+            "mode": self.mode.value,
+            "position_size_multiplier": self.position_size_multiplier,
+            "max_position_size_usd": self.max_position_size_usd,
+            "max_concurrent_strategies": self.max_concurrent_strategies,
+            "active_strategy": self.active_strategy,
+            "symbol_whitelist": self.symbol_whitelist,
+            "veto_spike_threshold": self.veto_spike_threshold,
+            "max_forced_exits": self.max_forced_exits,
+            "max_daily_loss_usd": self.max_daily_loss_usd,
+            "data_stale_seconds": self.data_stale_seconds,
+            "kill_switch_cooldown_seconds": self.kill_switch_cooldown_seconds,
         }
 
 
 @dataclass
 class RuntimeMetrics:
     """Runtime metrics for observability"""
+
     # Vetoes
     veto_count_total: int = 0
     veto_by_reason: Dict[str, int] = field(default_factory=dict)
@@ -155,7 +167,9 @@ class RuntimeMetrics:
 
     # Strategies
     strategy_events: List[Dict] = field(default_factory=list)
-    strategy_state: Dict[str, str] = field(default_factory=dict)  # id -> ENABLED/DISABLED
+    strategy_state: Dict[str, str] = field(
+        default_factory=dict
+    )  # id -> ENABLED/DISABLED
 
     # P&L
     daily_pnl: float = 0
@@ -194,24 +208,28 @@ class SafeActivationMode:
         """Load persisted state"""
         try:
             if os.path.exists(ACTIVATION_STATE_FILE):
-                with open(ACTIVATION_STATE_FILE, 'r') as f:
+                with open(ACTIVATION_STATE_FILE, "r") as f:
                     data = json.load(f)
 
                 # Restore config
-                cfg = data.get('config', {})
-                self.config.enabled = cfg.get('enabled', False)
-                self.config.mode = ActivationMode(cfg.get('mode', 'DISABLED'))
-                self.config.position_size_multiplier = cfg.get('position_size_multiplier', 0.25)
-                self.config.symbol_whitelist = cfg.get('symbol_whitelist', [])
-                self.config.active_strategy = cfg.get('active_strategy', '')
+                cfg = data.get("config", {})
+                self.config.enabled = cfg.get("enabled", False)
+                self.config.mode = ActivationMode(cfg.get("mode", "DISABLED"))
+                self.config.position_size_multiplier = cfg.get(
+                    "position_size_multiplier", 0.25
+                )
+                self.config.symbol_whitelist = cfg.get("symbol_whitelist", [])
+                self.config.active_strategy = cfg.get("active_strategy", "")
 
                 # Restore metrics
-                metrics = data.get('metrics', {})
-                self.metrics.daily_pnl = metrics.get('daily_pnl', 0)
-                self.metrics.trade_count = metrics.get('trade_count', 0)
-                self.metrics.veto_count_total = metrics.get('veto_count_total', 0)
+                metrics = data.get("metrics", {})
+                self.metrics.daily_pnl = metrics.get("daily_pnl", 0)
+                self.metrics.trade_count = metrics.get("trade_count", 0)
+                self.metrics.veto_count_total = metrics.get("veto_count_total", 0)
 
-                logger.info(f"Loaded safe activation state: mode={self.config.mode.value}")
+                logger.info(
+                    f"Loaded safe activation state: mode={self.config.mode.value}"
+                )
         except Exception as e:
             logger.error(f"Failed to load safe activation state: {e}")
 
@@ -219,28 +237,33 @@ class SafeActivationMode:
         """Persist state"""
         try:
             data = {
-                'config': self.config.to_dict(),
-                'metrics': {
-                    'daily_pnl': self.metrics.daily_pnl,
-                    'trade_count': self.metrics.trade_count,
-                    'veto_count_total': self.metrics.veto_count_total,
-                    'exit_count_total': self.metrics.exit_count_total,
+                "config": self.config.to_dict(),
+                "metrics": {
+                    "daily_pnl": self.metrics.daily_pnl,
+                    "trade_count": self.metrics.trade_count,
+                    "veto_count_total": self.metrics.veto_count_total,
+                    "exit_count_total": self.metrics.exit_count_total,
                 },
-                'kill_switch_active': self._kill_switch_active,
-                'kill_switch_reason': self._kill_switch_reason.value if self._kill_switch_reason else None,
-                'last_updated': datetime.now().isoformat()
+                "kill_switch_active": self._kill_switch_active,
+                "kill_switch_reason": (
+                    self._kill_switch_reason.value if self._kill_switch_reason else None
+                ),
+                "last_updated": datetime.now().isoformat(),
             }
 
-            with open(ACTIVATION_STATE_FILE, 'w') as f:
+            with open(ACTIVATION_STATE_FILE, "w") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save safe activation state: {e}")
 
     # ==================== Activation Control ====================
 
-    def activate(self, mode: ActivationMode = ActivationMode.SAFE,
-                 position_multiplier: float = 0.25,
-                 symbol_whitelist: List[str] = None) -> Dict:
+    def activate(
+        self,
+        mode: ActivationMode = ActivationMode.SAFE,
+        position_multiplier: float = 0.25,
+        symbol_whitelist: List[str] = None,
+    ) -> Dict:
         """
         Explicitly activate safe trading mode.
 
@@ -254,13 +277,15 @@ class SafeActivationMode:
         with self._lock:
             if self._kill_switch_active:
                 return {
-                    'success': False,
-                    'error': f'Kill-switch active: {self._kill_switch_reason.value}'
+                    "success": False,
+                    "error": f"Kill-switch active: {self._kill_switch_reason.value}",
                 }
 
             self.config.enabled = True
             self.config.mode = mode
-            self.config.position_size_multiplier = max(0.1, min(0.5, position_multiplier))
+            self.config.position_size_multiplier = max(
+                0.1, min(0.5, position_multiplier)
+            )
 
             if symbol_whitelist:
                 self.config.symbol_whitelist = [s.upper() for s in symbol_whitelist]
@@ -274,10 +299,10 @@ class SafeActivationMode:
             )
 
             return {
-                'success': True,
-                'mode': mode.value,
-                'position_multiplier': position_multiplier,
-                'symbol_whitelist': self.config.symbol_whitelist
+                "success": True,
+                "mode": mode.value,
+                "position_multiplier": position_multiplier,
+                "symbol_whitelist": self.config.symbol_whitelist,
             }
 
     def deactivate(self, reason: str = "manual") -> Dict:
@@ -290,14 +315,16 @@ class SafeActivationMode:
 
             logger.warning(f"SAFE DEACTIVATION: {reason}")
 
-            return {'success': True, 'reason': reason}
+            return {"success": True, "reason": reason}
 
     def is_active(self) -> bool:
         """Check if trading is active"""
-        return (self.config.enabled and
-                self.config.mode != ActivationMode.DISABLED and
-                not self._kill_switch_active and
-                self.is_trading_window())
+        return (
+            self.config.enabled
+            and self.config.mode != ActivationMode.DISABLED
+            and not self._kill_switch_active
+            and self.is_trading_window()
+        )
 
     def is_trading_window(self) -> bool:
         """
@@ -309,7 +336,7 @@ class SafeActivationMode:
         Outside hours: No trading
         """
         try:
-            et_tz = pytz.timezone('US/Eastern')
+            et_tz = pytz.timezone("US/Eastern")
             now_et = datetime.now(et_tz).time()
 
             # TRADING WINDOW: 7:00 AM - 9:30 AM ET (pre-market only)
@@ -329,13 +356,15 @@ class SafeActivationMode:
     def get_trading_window_status(self) -> dict:
         """Get current trading window status for UI display"""
         try:
-            et_tz = pytz.timezone('US/Eastern')
+            et_tz = pytz.timezone("US/Eastern")
             now_et = datetime.now(et_tz)
             now_time = now_et.time()
 
             if time(4, 0) <= now_time < time(7, 0):
                 window = "VALIDATION"
-                window_detail = "Validation mode (4:00 AM - 7:00 AM ET) - monitoring only"
+                window_detail = (
+                    "Validation mode (4:00 AM - 7:00 AM ET) - monitoring only"
+                )
             elif time(7, 0) <= now_time < time(9, 30):
                 window = "TRADING"
                 window_detail = "Trading window (7:00 AM - 9:30 AM ET)"
@@ -347,18 +376,14 @@ class SafeActivationMode:
                 window_detail = "Outside trading hours"
 
             return {
-                'current_et_time': now_et.strftime('%I:%M %p ET'),
-                'window': window,
-                'window_detail': window_detail,
-                'trading_allowed': self.is_trading_window(),
-                'is_active': self.is_active()
+                "current_et_time": now_et.strftime("%I:%M %p ET"),
+                "window": window,
+                "window_detail": window_detail,
+                "trading_allowed": self.is_trading_window(),
+                "is_active": self.is_active(),
             }
         except Exception as e:
-            return {
-                'error': str(e),
-                'trading_allowed': False,
-                'is_active': False
-            }
+            return {"error": str(e), "trading_allowed": False, "is_active": False}
 
     def get_ai_posture(self) -> dict:
         """
@@ -375,9 +400,9 @@ class SafeActivationMode:
         elif self._kill_switch_active:
             posture = "KILLED"
             posture_detail = f"Kill switch active: {self._kill_switch_reason.value if self._kill_switch_reason else 'unknown'}"
-        elif not window_status.get('trading_allowed', False):
+        elif not window_status.get("trading_allowed", False):
             posture = "OUTSIDE_HOURS"
-            posture_detail = window_status.get('window_detail', 'Outside trading hours')
+            posture_detail = window_status.get("window_detail", "Outside trading hours")
         elif self.config.mode == ActivationMode.SAFE:
             posture = "LIVE_PAPER"
             posture_detail = "Paper trading active (SAFE mode)"
@@ -389,12 +414,12 @@ class SafeActivationMode:
             posture_detail = "System ready, awaiting activation"
 
         return {
-            'posture': posture,
-            'posture_detail': posture_detail,
-            'mode': self.config.mode.value,
-            'trading_window': window_status,
-            'can_trade': self.is_active(),
-            'kill_switch_active': self._kill_switch_active
+            "posture": posture,
+            "posture_detail": posture_detail,
+            "mode": self.config.mode.value,
+            "trading_window": window_status,
+            "can_trade": self.is_active(),
+            "kill_switch_active": self._kill_switch_active,
         }
 
     # ==================== Trade Gating ====================
@@ -414,23 +439,35 @@ class SafeActivationMode:
                 return False, f"Kill-switch: {self._kill_switch_reason.value}", 0
 
             # Check whitelist
-            if self.config.symbol_whitelist and symbol not in self.config.symbol_whitelist:
+            if (
+                self.config.symbol_whitelist
+                and symbol not in self.config.symbol_whitelist
+            ):
                 return False, f"Symbol {symbol} not in whitelist", 0
 
             # Check strategy limits
-            if self.config.active_strategy and self.config.active_strategy != strategy_id:
-                return False, f"Strategy {self.config.active_strategy} already active", 0
+            if (
+                self.config.active_strategy
+                and self.config.active_strategy != strategy_id
+            ):
+                return (
+                    False,
+                    f"Strategy {self.config.active_strategy} already active",
+                    0,
+                )
 
             # Check daily loss limit
             if self.metrics.daily_pnl <= -self.config.max_daily_loss_usd:
-                self._trigger_kill_switch(KillSwitchReason.MAX_DAILY_LOSS,
-                                         f"Daily loss ${abs(self.metrics.daily_pnl):.2f}")
+                self._trigger_kill_switch(
+                    KillSwitchReason.MAX_DAILY_LOSS,
+                    f"Daily loss ${abs(self.metrics.daily_pnl):.2f}",
+                )
                 return False, "Daily loss limit reached", 0
 
             # Adjust position size
             adjusted_size = min(
                 size_usd * self.config.position_size_multiplier,
-                self.config.max_position_size_usd
+                self.config.max_position_size_usd,
             )
 
             # Mark strategy as active
@@ -460,11 +497,11 @@ class SafeActivationMode:
             reason=reason.value,
             details=details,
             metrics_snapshot={
-                'daily_pnl': self.metrics.daily_pnl,
-                'veto_count': self.metrics.veto_count_total,
-                'exit_count': self.metrics.exit_count_total,
-                'trade_count': self.metrics.trade_count,
-            }
+                "daily_pnl": self.metrics.daily_pnl,
+                "veto_count": self.metrics.veto_count_total,
+                "exit_count": self.metrics.exit_count_total,
+                "trade_count": self.metrics.trade_count,
+            },
         )
         self._kill_switch_events.append(event)
 
@@ -479,28 +516,30 @@ class SafeActivationMode:
         # Check veto spike
         veto_window = now - timedelta(seconds=self.config.veto_spike_window_seconds)
         recent_vetoes = sum(
-            1 for ts in self.metrics.veto_timestamps
+            1
+            for ts in self.metrics.veto_timestamps
             if datetime.fromisoformat(ts) > veto_window
         )
 
         if recent_vetoes >= self.config.veto_spike_threshold:
             self._trigger_kill_switch(
                 KillSwitchReason.VETO_SPIKE,
-                f"{recent_vetoes} vetoes in {self.config.veto_spike_window_seconds}s"
+                f"{recent_vetoes} vetoes in {self.config.veto_spike_window_seconds}s",
             )
             return
 
         # Check forced exits
         exit_window = now - timedelta(seconds=self.config.forced_exit_window_seconds)
         recent_forced = sum(
-            1 for ts in self.metrics.forced_exit_timestamps
+            1
+            for ts in self.metrics.forced_exit_timestamps
             if datetime.fromisoformat(ts) > exit_window
         )
 
         if recent_forced >= self.config.max_forced_exits:
             self._trigger_kill_switch(
                 KillSwitchReason.FORCED_EXITS,
-                f"{recent_forced} forced exits in {self.config.forced_exit_window_seconds}s"
+                f"{recent_forced} forced exits in {self.config.forced_exit_window_seconds}s",
             )
             return
 
@@ -510,14 +549,14 @@ class SafeActivationMode:
             if (now - last_update).total_seconds() > self.config.data_stale_seconds:
                 self._trigger_kill_switch(
                     KillSwitchReason.DATA_ANOMALY,
-                    f"No data for {(now - last_update).total_seconds():.0f}s"
+                    f"No data for {(now - last_update).total_seconds():.0f}s",
                 )
 
     def reset_kill_switch(self, force: bool = False) -> Dict:
         """Reset kill-switch (manual or after cooldown)"""
         with self._lock:
             if not self._kill_switch_active:
-                return {'success': True, 'message': 'Kill-switch not active'}
+                return {"success": True, "message": "Kill-switch not active"}
 
             if not force:
                 # Check cooldown
@@ -526,8 +565,8 @@ class SafeActivationMode:
                     if elapsed < self.config.kill_switch_cooldown_seconds:
                         remaining = self.config.kill_switch_cooldown_seconds - elapsed
                         return {
-                            'success': False,
-                            'error': f'Cooldown active: {remaining:.0f}s remaining'
+                            "success": False,
+                            "error": f"Cooldown active: {remaining:.0f}s remaining",
                         }
 
             self._kill_switch_active = False
@@ -536,7 +575,7 @@ class SafeActivationMode:
             self._save_state()
 
             logger.warning("Kill-switch RESET")
-            return {'success': True, 'message': 'Kill-switch reset'}
+            return {"success": True, "message": "Kill-switch reset"}
 
     # ==================== Metrics Recording ====================
 
@@ -544,7 +583,9 @@ class SafeActivationMode:
         """Record a veto event"""
         with self._lock:
             self.metrics.veto_count_total += 1
-            self.metrics.veto_by_reason[reason] = self.metrics.veto_by_reason.get(reason, 0) + 1
+            self.metrics.veto_by_reason[reason] = (
+                self.metrics.veto_by_reason.get(reason, 0) + 1
+            )
             self.metrics.veto_timestamps.append(datetime.now().isoformat())
 
             # Keep last 100 timestamps
@@ -557,7 +598,9 @@ class SafeActivationMode:
         """Record an exit event"""
         with self._lock:
             self.metrics.exit_count_total += 1
-            self.metrics.exit_by_reason[reason] = self.metrics.exit_by_reason.get(reason, 0) + 1
+            self.metrics.exit_by_reason[reason] = (
+                self.metrics.exit_by_reason.get(reason, 0) + 1
+            )
             self.metrics.daily_pnl += pnl
 
             if is_forced:
@@ -565,7 +608,9 @@ class SafeActivationMode:
                 self.metrics.forced_exit_timestamps.append(datetime.now().isoformat())
 
                 if len(self.metrics.forced_exit_timestamps) > 50:
-                    self.metrics.forced_exit_timestamps = self.metrics.forced_exit_timestamps[-50:]
+                    self.metrics.forced_exit_timestamps = (
+                        self.metrics.forced_exit_timestamps[-50:]
+                    )
 
             self.check_kill_switch_conditions()
             self._save_state()
@@ -581,8 +626,9 @@ class SafeActivationMode:
 
     def record_momentum_state(self, state: str):
         """Record momentum state observation"""
-        self.metrics.momentum_state_counts[state] = \
+        self.metrics.momentum_state_counts[state] = (
             self.metrics.momentum_state_counts.get(state, 0) + 1
+        )
 
     def record_regime_change(self, new_regime: str):
         """Record regime change"""
@@ -593,8 +639,9 @@ class SafeActivationMode:
             prev_start = datetime.fromisoformat(self.metrics.regime_start_time)
             duration = (now - prev_start).total_seconds()
             prev_regime = self.metrics.current_regime
-            self.metrics.regime_time_seconds[prev_regime] = \
+            self.metrics.regime_time_seconds[prev_regime] = (
                 self.metrics.regime_time_seconds.get(prev_regime, 0) + duration
+            )
 
         self.metrics.current_regime = new_regime
         self.metrics.regime_start_time = now.isoformat()
@@ -602,10 +649,10 @@ class SafeActivationMode:
     def record_strategy_event(self, strategy_id: str, action: str, reason: str):
         """Record strategy enable/disable event"""
         event = {
-            'timestamp': datetime.now().isoformat(),
-            'strategy_id': strategy_id,
-            'action': action,
-            'reason': reason
+            "timestamp": datetime.now().isoformat(),
+            "strategy_id": strategy_id,
+            "action": action,
+            "reason": reason,
         }
         self.metrics.strategy_events.append(event)
         self.metrics.strategy_state[strategy_id] = action
@@ -631,43 +678,47 @@ class SafeActivationMode:
             JSON dict or CSV string
         """
         export_data = {
-            'export_time': datetime.now().isoformat(),
-            'config': self.config.to_dict(),
-            'status': {
-                'is_active': self.is_active(),
-                'kill_switch_active': self._kill_switch_active,
-                'kill_switch_reason': self._kill_switch_reason.value if self._kill_switch_reason else None,
+            "export_time": datetime.now().isoformat(),
+            "config": self.config.to_dict(),
+            "status": {
+                "is_active": self.is_active(),
+                "kill_switch_active": self._kill_switch_active,
+                "kill_switch_reason": (
+                    self._kill_switch_reason.value if self._kill_switch_reason else None
+                ),
             },
-            'metrics': {
-                'vetoes': {
-                    'total': self.metrics.veto_count_total,
-                    'by_reason': self.metrics.veto_by_reason,
+            "metrics": {
+                "vetoes": {
+                    "total": self.metrics.veto_count_total,
+                    "by_reason": self.metrics.veto_by_reason,
                 },
-                'exits': {
-                    'total': self.metrics.exit_count_total,
-                    'by_reason': self.metrics.exit_by_reason,
-                    'forced_count': self.metrics.forced_exit_count,
+                "exits": {
+                    "total": self.metrics.exit_count_total,
+                    "by_reason": self.metrics.exit_by_reason,
+                    "forced_count": self.metrics.forced_exit_count,
                 },
-                'momentum_states': self.metrics.momentum_state_counts,
-                'momentum_transitions': self.metrics.momentum_transitions,
-                'regimes': {
-                    'current': self.metrics.current_regime,
-                    'time_by_regime': self.metrics.regime_time_seconds,
+                "momentum_states": self.metrics.momentum_state_counts,
+                "momentum_transitions": self.metrics.momentum_transitions,
+                "regimes": {
+                    "current": self.metrics.current_regime,
+                    "time_by_regime": self.metrics.regime_time_seconds,
                 },
-                'pnl': {
-                    'daily': round(self.metrics.daily_pnl, 2),
-                    'trade_count': self.metrics.trade_count,
-                    'win_count': self.metrics.win_count,
-                    'win_rate': round(self.metrics.win_count / max(self.metrics.trade_count, 1), 3),
+                "pnl": {
+                    "daily": round(self.metrics.daily_pnl, 2),
+                    "trade_count": self.metrics.trade_count,
+                    "win_count": self.metrics.win_count,
+                    "win_rate": round(
+                        self.metrics.win_count / max(self.metrics.trade_count, 1), 3
+                    ),
                 },
             },
-            'strategy_timeline': self.metrics.strategy_events[-50:],
-            'kill_switch_history': [asdict(e) for e in self._kill_switch_events[-20:]],
+            "strategy_timeline": self.metrics.strategy_events[-50:],
+            "kill_switch_history": [asdict(e) for e in self._kill_switch_events[-20:]],
         }
 
         if format == "json":
             # Save to file
-            with open(OBSERVABILITY_EXPORT_FILE, 'w') as f:
+            with open(OBSERVABILITY_EXPORT_FILE, "w") as f:
                 json.dump(export_data, f, indent=2)
             return export_data
 
@@ -703,17 +754,21 @@ class SafeActivationMode:
             csv_lines.append("\n=== STRATEGY TIMELINE ===")
             csv_lines.append("timestamp,strategy,action,reason")
             for event in self.metrics.strategy_events[-50:]:
-                csv_lines.append(f"{event['timestamp']},{event['strategy_id']},"
-                               f"{event['action']},{event['reason']}")
+                csv_lines.append(
+                    f"{event['timestamp']},{event['strategy_id']},"
+                    f"{event['action']},{event['reason']}"
+                )
 
             csv_content = "\n".join(csv_lines)
-            csv_file = OBSERVABILITY_EXPORT_FILE.replace('.json', '.csv')
-            with open(csv_file, 'w') as f:
+            csv_file = OBSERVABILITY_EXPORT_FILE.replace(".json", ".csv")
+            with open(csv_file, "w") as f:
                 f.write(csv_content)
 
             return csv_content
 
-    def get_governor_health_state(self, market_open: bool = None, services_healthy: bool = True) -> GovernorHealthState:
+    def get_governor_health_state(
+        self, market_open: bool = None, services_healthy: bool = True
+    ) -> GovernorHealthState:
         """
         Determine current Governor health state for dashboard display.
 
@@ -727,6 +782,7 @@ class SafeActivationMode:
         # Auto-detect market hours if not provided
         if market_open is None:
             from datetime import datetime
+
             now = datetime.now()
             # Market hours: 9:30 AM - 4:00 PM ET (simplified check)
             hour = now.hour
@@ -757,20 +813,22 @@ class SafeActivationMode:
         """Get current status summary"""
         health_state = self.get_governor_health_state()
         return {
-            'activated': self.config.enabled,
-            'mode': self.config.mode.value,
-            'health_state': health_state.value,
-            'trading_allowed': self.is_active(),
-            'kill_switch_active': self._kill_switch_active,
-            'kill_switch_reason': self._kill_switch_reason.value if self._kill_switch_reason else None,
-            'position_multiplier': self.config.position_size_multiplier,
-            'active_strategy': self.config.active_strategy,
-            'symbol_whitelist': self.config.symbol_whitelist,
-            'daily_pnl': round(self.metrics.daily_pnl, 2),
-            'trade_count': self.metrics.trade_count,
-            'veto_count': self.metrics.veto_count_total,
-            'forced_exit_count': self.metrics.forced_exit_count,
-            'current_regime': self.metrics.current_regime,
+            "activated": self.config.enabled,
+            "mode": self.config.mode.value,
+            "health_state": health_state.value,
+            "trading_allowed": self.is_active(),
+            "kill_switch_active": self._kill_switch_active,
+            "kill_switch_reason": (
+                self._kill_switch_reason.value if self._kill_switch_reason else None
+            ),
+            "position_multiplier": self.config.position_size_multiplier,
+            "active_strategy": self.config.active_strategy,
+            "symbol_whitelist": self.config.symbol_whitelist,
+            "daily_pnl": round(self.metrics.daily_pnl, 2),
+            "trade_count": self.metrics.trade_count,
+            "veto_count": self.metrics.veto_count_total,
+            "forced_exit_count": self.metrics.forced_exit_count,
+            "current_regime": self.metrics.current_regime,
         }
 
     def reset_daily_metrics(self):
@@ -807,8 +865,10 @@ def get_safe_activation() -> SafeActivationMode:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO,
-                       format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    )
 
     print("=" * 60)
     print("SAFE ACTIVATION MODE TEST")
@@ -823,15 +883,15 @@ if __name__ == "__main__":
     result = safe.activate(
         mode=ActivationMode.SAFE,
         position_multiplier=0.25,
-        symbol_whitelist=['TSLA', 'NVDA', 'AAPL']
+        symbol_whitelist=["TSLA", "NVDA", "AAPL"],
     )
     print(f"   Result: {result}")
 
     print("\n3. Testing trade approval...")
-    allowed, reason, size = safe.can_trade('TSLA', 'scalper', 1000)
+    allowed, reason, size = safe.can_trade("TSLA", "scalper", 1000)
     print(f"   TSLA: allowed={allowed}, size=${size:.2f}, reason={reason}")
 
-    allowed, reason, size = safe.can_trade('GME', 'scalper', 1000)
+    allowed, reason, size = safe.can_trade("GME", "scalper", 1000)
     print(f"   GME: allowed={allowed}, reason={reason}")
 
     print("\n4. Recording metrics...")

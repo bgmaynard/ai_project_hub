@@ -16,9 +16,10 @@ doesn't support the move.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from enum import Enum
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class MTFSignal(Enum):
 @dataclass
 class TimeframeAnalysis:
     """Analysis for a single timeframe"""
+
     timeframe: str  # "1m" or "5m"
     trend: TimeframeTrend = TimeframeTrend.NEUTRAL
 
@@ -110,6 +112,7 @@ class TimeframeAnalysis:
 @dataclass
 class MTFConfirmation:
     """Multi-timeframe confirmation result"""
+
     symbol: str
     timestamp: str = ""
 
@@ -143,20 +146,28 @@ class MTFConfirmation:
                 "trend": self.trend_aligned,
                 "macd": self.macd_aligned,
                 "ema": self.ema_aligned,
-                "vwap": self.vwap_aligned
+                "vwap": self.vwap_aligned,
             },
-            "tf_1m": {
-                "trend": self.tf_1m.trend.value if self.tf_1m else "UNKNOWN",
-                "score": self.tf_1m.bullish_score if self.tf_1m else 0,
-                "macd_bullish": self.tf_1m.macd_bullish if self.tf_1m else False,
-                "above_vwap": self.tf_1m.above_vwap if self.tf_1m else False
-            } if self.tf_1m else None,
-            "tf_5m": {
-                "trend": self.tf_5m.trend.value if self.tf_5m else "UNKNOWN",
-                "score": self.tf_5m.bullish_score if self.tf_5m else 0,
-                "macd_bullish": self.tf_5m.macd_bullish if self.tf_5m else False,
-                "above_vwap": self.tf_5m.above_vwap if self.tf_5m else False
-            } if self.tf_5m else None
+            "tf_1m": (
+                {
+                    "trend": self.tf_1m.trend.value if self.tf_1m else "UNKNOWN",
+                    "score": self.tf_1m.bullish_score if self.tf_1m else 0,
+                    "macd_bullish": self.tf_1m.macd_bullish if self.tf_1m else False,
+                    "above_vwap": self.tf_1m.above_vwap if self.tf_1m else False,
+                }
+                if self.tf_1m
+                else None
+            ),
+            "tf_5m": (
+                {
+                    "trend": self.tf_5m.trend.value if self.tf_5m else "UNKNOWN",
+                    "score": self.tf_5m.bullish_score if self.tf_5m else 0,
+                    "macd_bullish": self.tf_5m.macd_bullish if self.tf_5m else False,
+                    "above_vwap": self.tf_5m.above_vwap if self.tf_5m else False,
+                }
+                if self.tf_5m
+                else None
+            ),
         }
 
 
@@ -178,8 +189,9 @@ class MTFConfirmationEngine:
         self.require_both_above_vwap = True
         self.require_macd_alignment = True
 
-    def analyze(self, symbol: str, candles_1m: List[Dict] = None,
-                candles_5m: List[Dict] = None) -> MTFConfirmation:
+    def analyze(
+        self, symbol: str, candles_1m: List[Dict] = None, candles_5m: List[Dict] = None
+    ) -> MTFConfirmation:
         """
         Analyze multi-timeframe confirmation for a symbol.
 
@@ -191,10 +203,7 @@ class MTFConfirmationEngine:
         Returns:
             MTFConfirmation with signal and recommendation
         """
-        result = MTFConfirmation(
-            symbol=symbol,
-            timestamp=datetime.now().isoformat()
-        )
+        result = MTFConfirmation(symbol=symbol, timestamp=datetime.now().isoformat())
 
         try:
             # Fetch candle data if not provided
@@ -215,7 +224,9 @@ class MTFConfirmationEngine:
             result.tf_5m = self._analyze_timeframe(candles_5m, "5m")
 
             # Check alignment
-            result.trend_aligned = self._check_trend_alignment(result.tf_1m, result.tf_5m)
+            result.trend_aligned = self._check_trend_alignment(
+                result.tf_1m, result.tf_5m
+            )
             result.macd_aligned = result.tf_1m.macd_bullish == result.tf_5m.macd_bullish
             result.ema_aligned = result.tf_1m.ema_bullish == result.tf_5m.ema_bullish
             result.vwap_aligned = result.tf_1m.above_vwap == result.tf_5m.above_vwap
@@ -238,6 +249,7 @@ class MTFConfirmationEngine:
         try:
             # Try Polygon first (better data)
             from polygon_data import get_polygon_client
+
             client = get_polygon_client()
 
             if timeframe == "1m":
@@ -248,6 +260,7 @@ class MTFConfirmationEngine:
                 days = 2
 
             from datetime import datetime, timedelta
+
             end = datetime.now()
             start = end - timedelta(days=days)
 
@@ -256,7 +269,7 @@ class MTFConfirmationEngine:
                 multiplier=multiplier,
                 timespan=span,
                 from_date=start.strftime("%Y-%m-%d"),
-                to_date=end.strftime("%Y-%m-%d")
+                to_date=end.strftime("%Y-%m-%d"),
             )
 
             if bars:
@@ -267,7 +280,7 @@ class MTFConfirmationEngine:
                         "low": b.get("l", b.get("low", 0)),
                         "close": b.get("c", b.get("close", 0)),
                         "volume": b.get("v", b.get("volume", 0)),
-                        "timestamp": b.get("t", b.get("timestamp", 0))
+                        "timestamp": b.get("t", b.get("timestamp", 0)),
                     }
                     for b in bars
                 ]
@@ -277,6 +290,7 @@ class MTFConfirmationEngine:
         # Fallback to Schwab
         try:
             from schwab_market_data import get_schwab_market_data
+
             schwab = get_schwab_market_data()
 
             period = "1d" if timeframe == "1m" else "5d"
@@ -287,7 +301,7 @@ class MTFConfirmationEngine:
                 period_type="day",
                 period=int(period[0]),
                 frequency_type="minute",
-                frequency=int(freq)
+                frequency=int(freq),
             )
 
             if data and "candles" in data:
@@ -297,7 +311,9 @@ class MTFConfirmationEngine:
 
         return []
 
-    def _analyze_timeframe(self, candles: List[Dict], timeframe: str) -> TimeframeAnalysis:
+    def _analyze_timeframe(
+        self, candles: List[Dict], timeframe: str
+    ) -> TimeframeAnalysis:
         """Analyze a single timeframe"""
         analysis = TimeframeAnalysis(timeframe=timeframe)
 
@@ -345,7 +361,9 @@ class MTFConfirmationEngine:
         analysis.vwap = self._calculate_vwap(candles)
         analysis.above_vwap = current_price > analysis.vwap
         if analysis.vwap > 0:
-            analysis.vwap_distance_pct = ((current_price - analysis.vwap) / analysis.vwap) * 100
+            analysis.vwap_distance_pct = (
+                (current_price - analysis.vwap) / analysis.vwap
+            ) * 100
 
         # Volume
         if len(volumes) >= 20:
@@ -371,17 +389,21 @@ class MTFConfirmationEngine:
         analysis.last_candle_bullish = candle_close > candle_open
         candle_range = candle_high - candle_low
         if candle_range > 0:
-            analysis.candle_body_pct = abs(candle_close - candle_open) / candle_range * 100
+            analysis.candle_body_pct = (
+                abs(candle_close - candle_open) / candle_range * 100
+            )
 
         # Determine trend
-        bullish_count = sum([
-            analysis.higher_high,
-            analysis.higher_low,
-            analysis.macd_bullish,
-            analysis.ema_bullish,
-            analysis.above_vwap,
-            analysis.rsi_bullish
-        ])
+        bullish_count = sum(
+            [
+                analysis.higher_high,
+                analysis.higher_low,
+                analysis.macd_bullish,
+                analysis.ema_bullish,
+                analysis.above_vwap,
+                analysis.rsi_bullish,
+            ]
+        )
 
         if bullish_count >= 5:
             analysis.trend = TimeframeTrend.STRONG_BULLISH
@@ -424,7 +446,7 @@ class MTFConfirmationEngine:
         # For signal line, we need MACD history
         macd_history = []
         for i in range(26, len(prices)):
-            subset = prices[:i+1]
+            subset = prices[: i + 1]
             e12 = self._calculate_ema(subset, 12)
             e26 = self._calculate_ema(subset, 26)
             macd_history.append(e12 - e26)
@@ -471,7 +493,9 @@ class MTFConfirmationEngine:
 
         return rsi
 
-    def _check_trend_alignment(self, tf1: TimeframeAnalysis, tf2: TimeframeAnalysis) -> bool:
+    def _check_trend_alignment(
+        self, tf1: TimeframeAnalysis, tf2: TimeframeAnalysis
+    ) -> bool:
         """Check if both timeframes have aligned trends"""
         bullish_trends = [TimeframeTrend.BULLISH, TimeframeTrend.STRONG_BULLISH]
         bearish_trends = [TimeframeTrend.BEARISH, TimeframeTrend.STRONG_BEARISH]
@@ -493,12 +517,14 @@ class MTFConfirmationEngine:
             return result
 
         # Calculate alignment score
-        alignment_score = sum([
-            result.trend_aligned * 30,
-            result.macd_aligned * 25,
-            result.ema_aligned * 20,
-            result.vwap_aligned * 25
-        ])
+        alignment_score = sum(
+            [
+                result.trend_aligned * 30,
+                result.macd_aligned * 25,
+                result.ema_aligned * 20,
+                result.vwap_aligned * 25,
+            ]
+        )
 
         # Add individual timeframe scores
         tf_score = (tf1.bullish_score + tf2.bullish_score) * 5  # Max 100
@@ -516,7 +542,9 @@ class MTFConfirmationEngine:
                     if result.vwap_aligned and tf1.above_vwap:
                         result.signal = MTFSignal.CONFIRMED_LONG
                         result.recommendation = "ENTER"
-                        result.reasons.append("Both timeframes bullish with MACD and VWAP confirmation")
+                        result.reasons.append(
+                            "Both timeframes bullish with MACD and VWAP confirmation"
+                        )
                     else:
                         result.signal = MTFSignal.WEAK_LONG
                         result.recommendation = "WAIT"

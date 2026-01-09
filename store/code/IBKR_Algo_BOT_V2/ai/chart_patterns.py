@@ -14,17 +14,19 @@ Supported Patterns:
 """
 
 import logging
-import numpy as np
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
 from enum import Enum
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
 class PatternType(Enum):
     """Types of chart patterns"""
+
     SUPPORT = "support"
     RESISTANCE = "resistance"
     DOUBLE_TOP = "double_top"
@@ -43,6 +45,7 @@ class PatternType(Enum):
 
 class PatternStrength(Enum):
     """Strength of detected pattern"""
+
     STRONG = "strong"
     MODERATE = "moderate"
     WEAK = "weak"
@@ -51,6 +54,7 @@ class PatternStrength(Enum):
 @dataclass
 class ChartPattern:
     """Detected chart pattern"""
+
     pattern_type: PatternType
     strength: PatternStrength
     start_index: int
@@ -71,13 +75,14 @@ class ChartPattern:
             "target_price": round(self.target_price, 2) if self.target_price else None,
             "stop_loss": round(self.stop_loss, 2) if self.stop_loss else None,
             "confidence": round(self.confidence, 2),
-            "description": self.description
+            "description": self.description,
         }
 
 
 @dataclass
 class SupportResistance:
     """Support or resistance level"""
+
     level: float
     strength: int  # Number of touches
     is_support: bool
@@ -88,7 +93,7 @@ class SupportResistance:
             "level": round(self.level, 2),
             "strength": self.strength,
             "type": "support" if self.is_support else "resistance",
-            "last_tested": self.last_tested
+            "last_tested": self.last_tested,
         }
 
 
@@ -100,7 +105,7 @@ class ChartPatternRecognizer:
 
     def __init__(self):
         self.min_pattern_bars = 5  # Minimum bars for pattern
-        self.sr_tolerance = 0.02   # 2% tolerance for S/R levels
+        self.sr_tolerance = 0.02  # 2% tolerance for S/R levels
 
     def analyze(self, candles: List[Dict]) -> Dict:
         """
@@ -118,14 +123,14 @@ class ChartPatternRecognizer:
                 "support_levels": [],
                 "resistance_levels": [],
                 "trend": "neutral",
-                "message": "Insufficient data for pattern analysis"
+                "message": "Insufficient data for pattern analysis",
             }
 
         # Extract price arrays
-        highs = np.array([c.get('high', c.get('h', 0)) for c in candles])
-        lows = np.array([c.get('low', c.get('l', 0)) for c in candles])
-        closes = np.array([c.get('close', c.get('c', 0)) for c in candles])
-        volumes = np.array([c.get('volume', c.get('v', 0)) for c in candles])
+        highs = np.array([c.get("high", c.get("h", 0)) for c in candles])
+        lows = np.array([c.get("low", c.get("l", 0)) for c in candles])
+        closes = np.array([c.get("close", c.get("c", 0)) for c in candles])
+        volumes = np.array([c.get("volume", c.get("v", 0)) for c in candles])
 
         # Find peaks and troughs
         peaks = self._find_peaks(highs)
@@ -163,15 +168,16 @@ class ChartPatternRecognizer:
             "resistance_levels": [r.to_dict() for r in resistance_levels],
             "trend": trend,
             "current_price": float(closes[-1]) if len(closes) > 0 else 0,
-            "analyzed_bars": len(candles)
+            "analyzed_bars": len(candles),
         }
 
     def _find_peaks(self, highs: np.ndarray, order: int = 3) -> List[int]:
         """Find local maxima (peaks) in price data"""
         peaks = []
         for i in range(order, len(highs) - order):
-            if all(highs[i] >= highs[i-j] for j in range(1, order+1)) and \
-               all(highs[i] >= highs[i+j] for j in range(1, order+1)):
+            if all(highs[i] >= highs[i - j] for j in range(1, order + 1)) and all(
+                highs[i] >= highs[i + j] for j in range(1, order + 1)
+            ):
                 peaks.append(i)
         return peaks
 
@@ -179,12 +185,15 @@ class ChartPatternRecognizer:
         """Find local minima (troughs) in price data"""
         troughs = []
         for i in range(order, len(lows) - order):
-            if all(lows[i] <= lows[i-j] for j in range(1, order+1)) and \
-               all(lows[i] <= lows[i+j] for j in range(1, order+1)):
+            if all(lows[i] <= lows[i - j] for j in range(1, order + 1)) and all(
+                lows[i] <= lows[i + j] for j in range(1, order + 1)
+            ):
                 troughs.append(i)
         return troughs
 
-    def _find_support_levels(self, lows: np.ndarray, closes: np.ndarray) -> List[SupportResistance]:
+    def _find_support_levels(
+        self, lows: np.ndarray, closes: np.ndarray
+    ) -> List[SupportResistance]:
         """Find support levels from price data"""
         if len(lows) < 5:
             return []
@@ -216,18 +225,22 @@ class ChartPatternRecognizer:
                         break
 
                 if is_unique:
-                    levels.append(SupportResistance(
-                        level=float(level),
-                        strength=int(touches),
-                        is_support=True,
-                        last_tested=last_test
-                    ))
+                    levels.append(
+                        SupportResistance(
+                            level=float(level),
+                            strength=int(touches),
+                            is_support=True,
+                            last_tested=last_test,
+                        )
+                    )
 
         # Sort by strength
         levels.sort(key=lambda x: x.strength, reverse=True)
         return levels[:5]  # Return top 5 levels
 
-    def _find_resistance_levels(self, highs: np.ndarray, closes: np.ndarray) -> List[SupportResistance]:
+    def _find_resistance_levels(
+        self, highs: np.ndarray, closes: np.ndarray
+    ) -> List[SupportResistance]:
         """Find resistance levels from price data"""
         if len(highs) < 5:
             return []
@@ -257,22 +270,20 @@ class ChartPatternRecognizer:
                         break
 
                 if is_unique:
-                    levels.append(SupportResistance(
-                        level=float(level),
-                        strength=int(touches),
-                        is_support=False,
-                        last_tested=last_test
-                    ))
+                    levels.append(
+                        SupportResistance(
+                            level=float(level),
+                            strength=int(touches),
+                            is_support=False,
+                            last_tested=last_test,
+                        )
+                    )
 
         levels.sort(key=lambda x: x.strength, reverse=True)
         return levels[:5]
 
     def _detect_double_patterns(
-        self,
-        highs: np.ndarray,
-        lows: np.ndarray,
-        peaks: List[int],
-        troughs: List[int]
+        self, highs: np.ndarray, lows: np.ndarray, peaks: List[int], troughs: List[int]
     ) -> List[ChartPattern]:
         """Detect double top and double bottom patterns"""
         patterns = []
@@ -296,17 +307,25 @@ class ChartPatternRecognizer:
                             neckline = min(lows[t] for t in between_troughs)
                             height = avg_peak - neckline
 
-                            patterns.append(ChartPattern(
-                                pattern_type=PatternType.DOUBLE_TOP,
-                                strength=PatternStrength.MODERATE if price_diff < tolerance/2 else PatternStrength.WEAK,
-                                start_index=peak1,
-                                end_index=peak2,
-                                price_level=float(avg_peak),
-                                target_price=float(neckline - height),  # Measure move
-                                stop_loss=float(avg_peak * 1.02),
-                                confidence=1.0 - price_diff,
-                                description=f"Double top at {avg_peak:.2f}, neckline at {neckline:.2f}"
-                            ))
+                            patterns.append(
+                                ChartPattern(
+                                    pattern_type=PatternType.DOUBLE_TOP,
+                                    strength=(
+                                        PatternStrength.MODERATE
+                                        if price_diff < tolerance / 2
+                                        else PatternStrength.WEAK
+                                    ),
+                                    start_index=peak1,
+                                    end_index=peak2,
+                                    price_level=float(avg_peak),
+                                    target_price=float(
+                                        neckline - height
+                                    ),  # Measure move
+                                    stop_loss=float(avg_peak * 1.02),
+                                    confidence=1.0 - price_diff,
+                                    description=f"Double top at {avg_peak:.2f}, neckline at {neckline:.2f}",
+                                )
+                            )
 
         # Double Bottom: Two troughs at similar levels
         if len(troughs) >= 2:
@@ -324,26 +343,28 @@ class ChartPatternRecognizer:
                             neckline = max(highs[p] for p in between_peaks)
                             height = neckline - avg_trough
 
-                            patterns.append(ChartPattern(
-                                pattern_type=PatternType.DOUBLE_BOTTOM,
-                                strength=PatternStrength.MODERATE if price_diff < tolerance/2 else PatternStrength.WEAK,
-                                start_index=trough1,
-                                end_index=trough2,
-                                price_level=float(avg_trough),
-                                target_price=float(neckline + height),
-                                stop_loss=float(avg_trough * 0.98),
-                                confidence=1.0 - price_diff,
-                                description=f"Double bottom at {avg_trough:.2f}, neckline at {neckline:.2f}"
-                            ))
+                            patterns.append(
+                                ChartPattern(
+                                    pattern_type=PatternType.DOUBLE_BOTTOM,
+                                    strength=(
+                                        PatternStrength.MODERATE
+                                        if price_diff < tolerance / 2
+                                        else PatternStrength.WEAK
+                                    ),
+                                    start_index=trough1,
+                                    end_index=trough2,
+                                    price_level=float(avg_trough),
+                                    target_price=float(neckline + height),
+                                    stop_loss=float(avg_trough * 0.98),
+                                    confidence=1.0 - price_diff,
+                                    description=f"Double bottom at {avg_trough:.2f}, neckline at {neckline:.2f}",
+                                )
+                            )
 
         return patterns
 
     def _detect_triangles(
-        self,
-        highs: np.ndarray,
-        lows: np.ndarray,
-        peaks: List[int],
-        troughs: List[int]
+        self, highs: np.ndarray, lows: np.ndarray, peaks: List[int], troughs: List[int]
     ) -> List[ChartPattern]:
         """Detect triangle patterns (ascending, descending, symmetrical)"""
         patterns = []
@@ -360,8 +381,12 @@ class ChartPatternRecognizer:
             peak_values = [highs[p] for p in recent_peaks]
             trough_values = [lows[t] for t in recent_troughs]
 
-            peak_slope = (peak_values[-1] - peak_values[0]) / max(1, recent_peaks[-1] - recent_peaks[0])
-            trough_slope = (trough_values[-1] - trough_values[0]) / max(1, recent_troughs[-1] - recent_troughs[0])
+            peak_slope = (peak_values[-1] - peak_values[0]) / max(
+                1, recent_peaks[-1] - recent_peaks[0]
+            )
+            trough_slope = (trough_values[-1] - trough_values[0]) / max(
+                1, recent_troughs[-1] - recent_troughs[0]
+            )
 
             start_idx = min(recent_peaks[0], recent_troughs[0])
             end_idx = max(recent_peaks[-1], recent_troughs[-1])
@@ -369,45 +394,51 @@ class ChartPatternRecognizer:
             # Ascending Triangle: flat top, rising bottom
             if abs(peak_slope) < 0.001 and trough_slope > 0.001:
                 resistance = np.mean(peak_values)
-                patterns.append(ChartPattern(
-                    pattern_type=PatternType.ASCENDING_TRIANGLE,
-                    strength=PatternStrength.MODERATE,
-                    start_index=start_idx,
-                    end_index=end_idx,
-                    price_level=float(resistance),
-                    target_price=float(resistance * 1.05),  # 5% breakout target
-                    stop_loss=float(trough_values[-1] * 0.98),
-                    confidence=0.7,
-                    description=f"Ascending triangle, resistance at {resistance:.2f}"
-                ))
+                patterns.append(
+                    ChartPattern(
+                        pattern_type=PatternType.ASCENDING_TRIANGLE,
+                        strength=PatternStrength.MODERATE,
+                        start_index=start_idx,
+                        end_index=end_idx,
+                        price_level=float(resistance),
+                        target_price=float(resistance * 1.05),  # 5% breakout target
+                        stop_loss=float(trough_values[-1] * 0.98),
+                        confidence=0.7,
+                        description=f"Ascending triangle, resistance at {resistance:.2f}",
+                    )
+                )
 
             # Descending Triangle: falling top, flat bottom
             elif peak_slope < -0.001 and abs(trough_slope) < 0.001:
                 support = np.mean(trough_values)
-                patterns.append(ChartPattern(
-                    pattern_type=PatternType.DESCENDING_TRIANGLE,
-                    strength=PatternStrength.MODERATE,
-                    start_index=start_idx,
-                    end_index=end_idx,
-                    price_level=float(support),
-                    target_price=float(support * 0.95),  # 5% breakdown target
-                    stop_loss=float(peak_values[-1] * 1.02),
-                    confidence=0.7,
-                    description=f"Descending triangle, support at {support:.2f}"
-                ))
+                patterns.append(
+                    ChartPattern(
+                        pattern_type=PatternType.DESCENDING_TRIANGLE,
+                        strength=PatternStrength.MODERATE,
+                        start_index=start_idx,
+                        end_index=end_idx,
+                        price_level=float(support),
+                        target_price=float(support * 0.95),  # 5% breakdown target
+                        stop_loss=float(peak_values[-1] * 1.02),
+                        confidence=0.7,
+                        description=f"Descending triangle, support at {support:.2f}",
+                    )
+                )
 
             # Symmetrical Triangle: converging lines
             elif peak_slope < -0.001 and trough_slope > 0.001:
                 mid_price = (peak_values[-1] + trough_values[-1]) / 2
-                patterns.append(ChartPattern(
-                    pattern_type=PatternType.SYMMETRICAL_TRIANGLE,
-                    strength=PatternStrength.WEAK,
-                    start_index=start_idx,
-                    end_index=end_idx,
-                    price_level=float(mid_price),
-                    confidence=0.5,
-                    description="Symmetrical triangle - watch for breakout direction"
-                ))
+                patterns.append(
+                    ChartPattern(
+                        pattern_type=PatternType.SYMMETRICAL_TRIANGLE,
+                        strength=PatternStrength.WEAK,
+                        start_index=start_idx,
+                        end_index=end_idx,
+                        price_level=float(mid_price),
+                        confidence=0.5,
+                        description="Symmetrical triangle - watch for breakout direction",
+                    )
+                )
 
         return patterns
 
@@ -416,7 +447,7 @@ class ChartPatternRecognizer:
         highs: np.ndarray,
         lows: np.ndarray,
         closes: np.ndarray,
-        volumes: np.ndarray
+        volumes: np.ndarray,
     ) -> List[ChartPattern]:
         """Detect bull and bear flag patterns"""
         patterns = []
@@ -443,33 +474,39 @@ class ChartPatternRecognizer:
         if pole_change > 0.05 and flag_avg_range < 0.05:  # 5%+ up, <5% consolidation
             if flag_avg_volume < pole_avg_volume * 0.7:  # Volume drying up
                 pole_height = recent_closes[4] - recent_closes[0]
-                patterns.append(ChartPattern(
-                    pattern_type=PatternType.BULL_FLAG,
-                    strength=PatternStrength.MODERATE,
-                    start_index=len(closes) - 15,
-                    end_index=len(closes) - 1,
-                    price_level=float(recent_closes[-1]),
-                    target_price=float(recent_closes[-1] + pole_height),  # Measured move
-                    stop_loss=float(np.min(recent_lows[5:])),
-                    confidence=0.65,
-                    description=f"Bull flag forming, target {recent_closes[-1] + pole_height:.2f}"
-                ))
+                patterns.append(
+                    ChartPattern(
+                        pattern_type=PatternType.BULL_FLAG,
+                        strength=PatternStrength.MODERATE,
+                        start_index=len(closes) - 15,
+                        end_index=len(closes) - 1,
+                        price_level=float(recent_closes[-1]),
+                        target_price=float(
+                            recent_closes[-1] + pole_height
+                        ),  # Measured move
+                        stop_loss=float(np.min(recent_lows[5:])),
+                        confidence=0.65,
+                        description=f"Bull flag forming, target {recent_closes[-1] + pole_height:.2f}",
+                    )
+                )
 
         # Bear Flag: strong down move followed by tight consolidation
         elif pole_change < -0.05 and flag_avg_range < 0.05:
             if flag_avg_volume < pole_avg_volume * 0.7:
                 pole_height = recent_closes[0] - recent_closes[4]
-                patterns.append(ChartPattern(
-                    pattern_type=PatternType.BEAR_FLAG,
-                    strength=PatternStrength.MODERATE,
-                    start_index=len(closes) - 15,
-                    end_index=len(closes) - 1,
-                    price_level=float(recent_closes[-1]),
-                    target_price=float(recent_closes[-1] - pole_height),
-                    stop_loss=float(np.max(recent_highs[5:])),
-                    confidence=0.65,
-                    description=f"Bear flag forming, target {recent_closes[-1] - pole_height:.2f}"
-                ))
+                patterns.append(
+                    ChartPattern(
+                        pattern_type=PatternType.BEAR_FLAG,
+                        strength=PatternStrength.MODERATE,
+                        start_index=len(closes) - 15,
+                        end_index=len(closes) - 1,
+                        price_level=float(recent_closes[-1]),
+                        target_price=float(recent_closes[-1] - pole_height),
+                        stop_loss=float(np.max(recent_highs[5:])),
+                        confidence=0.65,
+                        description=f"Bear flag forming, target {recent_closes[-1] - pole_height:.2f}",
+                    )
+                )
 
         return patterns
 
@@ -477,7 +514,7 @@ class ChartPatternRecognizer:
         self,
         closes: np.ndarray,
         support_levels: List[SupportResistance],
-        resistance_levels: List[SupportResistance]
+        resistance_levels: List[SupportResistance],
     ) -> List[ChartPattern]:
         """Detect breakouts through support/resistance"""
         patterns = []
@@ -493,34 +530,46 @@ class ChartPatternRecognizer:
             if prev_price < level.level and current_price > level.level:
                 breakout_pct = (current_price - level.level) / level.level
                 if breakout_pct > 0.005:  # Confirmed breakout > 0.5%
-                    patterns.append(ChartPattern(
-                        pattern_type=PatternType.BREAKOUT_UP,
-                        strength=PatternStrength.STRONG if breakout_pct > 0.02 else PatternStrength.MODERATE,
-                        start_index=len(closes) - 3,
-                        end_index=len(closes) - 1,
-                        price_level=float(level.level),
-                        target_price=float(level.level * 1.05),
-                        stop_loss=float(level.level * 0.98),
-                        confidence=min(0.9, 0.6 + (level.strength * 0.1)),
-                        description=f"Breakout above {level.level:.2f} resistance (tested {level.strength}x)"
-                    ))
+                    patterns.append(
+                        ChartPattern(
+                            pattern_type=PatternType.BREAKOUT_UP,
+                            strength=(
+                                PatternStrength.STRONG
+                                if breakout_pct > 0.02
+                                else PatternStrength.MODERATE
+                            ),
+                            start_index=len(closes) - 3,
+                            end_index=len(closes) - 1,
+                            price_level=float(level.level),
+                            target_price=float(level.level * 1.05),
+                            stop_loss=float(level.level * 0.98),
+                            confidence=min(0.9, 0.6 + (level.strength * 0.1)),
+                            description=f"Breakout above {level.level:.2f} resistance (tested {level.strength}x)",
+                        )
+                    )
 
         # Check for breakdown below support
         for level in support_levels:
             if prev_price > level.level and current_price < level.level:
                 breakdown_pct = (level.level - current_price) / level.level
                 if breakdown_pct > 0.005:
-                    patterns.append(ChartPattern(
-                        pattern_type=PatternType.BREAKOUT_DOWN,
-                        strength=PatternStrength.STRONG if breakdown_pct > 0.02 else PatternStrength.MODERATE,
-                        start_index=len(closes) - 3,
-                        end_index=len(closes) - 1,
-                        price_level=float(level.level),
-                        target_price=float(level.level * 0.95),
-                        stop_loss=float(level.level * 1.02),
-                        confidence=min(0.9, 0.6 + (level.strength * 0.1)),
-                        description=f"Breakdown below {level.level:.2f} support (tested {level.strength}x)"
-                    ))
+                    patterns.append(
+                        ChartPattern(
+                            pattern_type=PatternType.BREAKOUT_DOWN,
+                            strength=(
+                                PatternStrength.STRONG
+                                if breakdown_pct > 0.02
+                                else PatternStrength.MODERATE
+                            ),
+                            start_index=len(closes) - 3,
+                            end_index=len(closes) - 1,
+                            price_level=float(level.level),
+                            target_price=float(level.level * 0.95),
+                            stop_loss=float(level.level * 1.02),
+                            confidence=min(0.9, 0.6 + (level.strength * 0.1)),
+                            description=f"Breakdown below {level.level:.2f} support (tested {level.strength}x)",
+                        )
+                    )
 
         return patterns
 

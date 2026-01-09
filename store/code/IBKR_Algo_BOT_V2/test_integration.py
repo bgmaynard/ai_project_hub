@@ -12,13 +12,13 @@ Tests:
 Run with: python test_integration.py
 """
 
-import unittest
-import sys
 import logging
+import sys
+import unittest
 from datetime import datetime
 from typing import Dict, List
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -28,8 +28,10 @@ class TestMLRiskIntegration(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         try:
-            from ai.warrior_transformer_detector import get_transformer_detector
-            from ai.warrior_rl_agent import get_rl_agent, TradingState
+            from ai.warrior_rl_agent import TradingState, get_rl_agent
+            from ai.warrior_transformer_detector import \
+                get_transformer_detector
+
             self.get_detector = get_transformer_detector
             self.get_agent = get_rl_agent
             self.TradingState = TradingState
@@ -51,8 +53,13 @@ class TestMLRiskIntegration(unittest.TestCase):
 
         # Create bullish candles
         candles = [
-            {'open': 100 + i*0.2, 'high': 101 + i*0.2,
-             'low': 99 + i*0.2, 'close': 100.5 + i*0.2, 'volume': 1000000}
+            {
+                "open": 100 + i * 0.2,
+                "high": 101 + i * 0.2,
+                "low": 99 + i * 0.2,
+                "close": 100.5 + i * 0.2,
+                "volume": 1000000,
+            }
             for i in range(50)
         ]
 
@@ -64,7 +71,7 @@ class TestMLRiskIntegration(unittest.TestCase):
             risk_amount = 50.0  # $50 max risk
 
             if pattern.stop_loss and pattern.price_target:
-                entry = candles[-1]['close']
+                entry = candles[-1]["close"]
                 stop_distance = abs(entry - pattern.stop_loss)
                 reward_distance = abs(pattern.price_target - entry)
 
@@ -76,7 +83,9 @@ class TestMLRiskIntegration(unittest.TestCase):
                     shares = self.calculate_position_size(risk_amount, stop_distance)
 
                     logger.info(f"[OK] Pattern→Risk workflow:")
-                    logger.info(f"     Pattern: {pattern.pattern_type}, confidence: {pattern.confidence:.1%}")
+                    logger.info(
+                        f"     Pattern: {pattern.pattern_type}, confidence: {pattern.confidence:.1%}"
+                    )
                     logger.info(f"     R:R ratio: {rr_ratio:.1f}:1")
                     logger.info(f"     Position: {shares} shares")
 
@@ -84,7 +93,9 @@ class TestMLRiskIntegration(unittest.TestCase):
                     self.assertGreater(shares, 0)
                     return
 
-        logger.info("[OK] No high-confidence pattern with valid R:R - correctly skipped")
+        logger.info(
+            "[OK] No high-confidence pattern with valid R:R - correctly skipped"
+        )
 
     def test_02_rl_agent_position_management(self):
         """Test: RL agent action → Position sizing adjustment"""
@@ -107,7 +118,7 @@ class TestMLRiskIntegration(unittest.TestCase):
             time_in_position=0,
             current_drawdown=0.0,
             sharpe_ratio=1.5,
-            win_rate=0.6
+            win_rate=0.6,
         )
 
         # Get RL recommendation
@@ -118,7 +129,9 @@ class TestMLRiskIntegration(unittest.TestCase):
         self.assertGreaterEqual(action.confidence, 0.0)
         self.assertLessEqual(action.confidence, 1.0)
 
-        logger.info(f"[OK] RL Agent recommendation: {action.action_type} (confidence: {action.confidence:.1%})")
+        logger.info(
+            f"[OK] RL Agent recommendation: {action.action_type} (confidence: {action.confidence:.1%})"
+        )
 
 
 class TestSentimentRiskIntegration(unittest.TestCase):
@@ -134,9 +147,9 @@ class TestSentimentRiskIntegration(unittest.TestCase):
 
         # Mock sentiment scores
         sentiments = {
-            'AAPL': 0.8,   # Very bullish
-            'TSLA': 0.2,   # Slightly bullish
-            'AMC': -0.5    # Bearish
+            "AAPL": 0.8,  # Very bullish
+            "TSLA": 0.2,  # Slightly bullish
+            "AMC": -0.5,  # Bearish
         }
 
         base_risk = 50.0
@@ -176,7 +189,9 @@ class TestSentimentRiskIntegration(unittest.TestCase):
         should_trade = sentiment_score > -0.3 or pattern_confidence > 0.9
 
         self.assertFalse(should_trade)
-        logger.info(f"[OK] Trade correctly rejected: sentiment={sentiment_score:.1f}, pattern={pattern_confidence:.1%}")
+        logger.info(
+            f"[OK] Trade correctly rejected: sentiment={sentiment_score:.1f}, pattern={pattern_confidence:.1%}"
+        )
 
 
 class TestSlippageExecutionIntegration(unittest.TestCase):
@@ -185,10 +200,9 @@ class TestSlippageExecutionIntegration(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         try:
-            from ai.warrior_slippage_monitor import (
-                WarriorSlippageMonitor,
-                SlippageLevel
-            )
+            from ai.warrior_slippage_monitor import (SlippageLevel,
+                                                     WarriorSlippageMonitor)
+
             self.SlippageMonitor = WarriorSlippageMonitor
             self.SlippageLevel = SlippageLevel
             self.available = True
@@ -204,11 +218,11 @@ class TestSlippageExecutionIntegration(unittest.TestCase):
 
         # Simulate 5 order executions
         executions = [
-            ("AAPL", "buy", 150.00, 150.05, 100),   # Acceptable
-            ("AAPL", "buy", 150.00, 150.08, 100),   # Acceptable
-            ("AAPL", "buy", 150.00, 150.20, 100),   # Warning
-            ("AAPL", "buy", 150.00, 150.15, 100),   # Warning
-            ("AAPL", "buy", 150.00, 150.45, 100),   # CRITICAL
+            ("AAPL", "buy", 150.00, 150.05, 100),  # Acceptable
+            ("AAPL", "buy", 150.00, 150.08, 100),  # Acceptable
+            ("AAPL", "buy", 150.00, 150.20, 100),  # Warning
+            ("AAPL", "buy", 150.00, 150.15, 100),  # Warning
+            ("AAPL", "buy", 150.00, 150.45, 100),  # CRITICAL
         ]
 
         critical_count = 0
@@ -222,15 +236,17 @@ class TestSlippageExecutionIntegration(unittest.TestCase):
         # Check statistics
         stats = monitor.get_stats("AAPL")
 
-        self.assertEqual(stats['total'], 5)
-        self.assertEqual(stats['critical_count'], 1)
+        self.assertEqual(stats["total"], 5)
+        self.assertEqual(stats["critical_count"], 1)
 
         # Decision: If >=20% executions are critical, pause trading this symbol
         critical_pct = critical_count / len(executions)
         should_pause = critical_pct >= 0.2
 
         self.assertTrue(should_pause)
-        logger.info(f"[OK] Slippage monitoring: {critical_pct:.0%} critical → pausing AAPL")
+        logger.info(
+            f"[OK] Slippage monitoring: {critical_pct:.0%} critical → pausing AAPL"
+        )
 
     def test_02_adaptive_order_sizing(self):
         """Test: High slippage → Reduce order size"""
@@ -245,11 +261,13 @@ class TestSlippageExecutionIntegration(unittest.TestCase):
         stats = monitor.get_stats("TSLA")
 
         # Adaptive logic: Reduce order size if avg slippage > 0.2%
-        if stats['avg_slippage'] > 0.002:
+        if stats["avg_slippage"] > 0.002:
             original_shares = 500
             reduced_shares = int(original_shares * 0.5)  # Cut in half
 
-            logger.info(f"[OK] High slippage detected: reducing order size {original_shares} → {reduced_shares}")
+            logger.info(
+                f"[OK] High slippage detected: reducing order size {original_shares} → {reduced_shares}"
+            )
             self.assertEqual(reduced_shares, 250)
 
 
@@ -259,10 +277,9 @@ class TestReversalExitIntegration(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         try:
-            from ai.warrior_reversal_detector import (
-                WarriorReversalDetector,
-                ReversalSeverity
-            )
+            from ai.warrior_reversal_detector import (ReversalSeverity,
+                                                      WarriorReversalDetector)
+
             self.ReversalDetector = WarriorReversalDetector
             self.ReversalSeverity = ReversalSeverity
             self.available = True
@@ -282,7 +299,7 @@ class TestReversalExitIntegration(unittest.TestCase):
             current_price=101.0,
             entry_price=100.0,
             recent_prices=[100, 103, 105, 101],
-            direction='long'
+            direction="long",
         )
 
         if reversal and reversal.severity == self.ReversalSeverity.CRITICAL:
@@ -305,14 +322,16 @@ class TestReversalExitIntegration(unittest.TestCase):
             current_price=100.5,
             entry_price=100.0,
             recent_prices=[100, 102, 103, 100.5],
-            direction='long'
+            direction="long",
         )
 
         if reversal and reversal.severity == self.ReversalSeverity.HIGH:
             original_stop = 99.0
             tightened_stop = 100.2  # Move to just below current
 
-            logger.info(f"[OK] HIGH reversal → tighten stop {original_stop} → {tightened_stop}")
+            logger.info(
+                f"[OK] HIGH reversal → tighten stop {original_stop} → {tightened_stop}"
+            )
             self.assertGreater(tightened_stop, original_stop)
 
 
@@ -327,11 +346,11 @@ class TestCompleteTradeWorkflow(unittest.TestCase):
 
         # Step 1: Scanner finds candidate
         candidate = {
-            'symbol': 'WORKFLOW_TEST',
-            'price': 50.0,
-            'gap': 5.0,
-            'rvol': 3.0,
-            'float': 30.0
+            "symbol": "WORKFLOW_TEST",
+            "price": 50.0,
+            "gap": 5.0,
+            "rvol": 3.0,
+            "float": 30.0,
         }
         workflow_steps.append("SCAN")
         logger.info("[Step 1] Scanner found: WORKFLOW_TEST")
@@ -369,7 +388,15 @@ class TestCompleteTradeWorkflow(unittest.TestCase):
             logger.info("[Step 7] Trade exited")
 
         # Verify complete workflow
-        expected_steps = ["SCAN", "PATTERN", "RISK", "SENTIMENT", "EXECUTE", "MONITOR", "EXIT"]
+        expected_steps = [
+            "SCAN",
+            "PATTERN",
+            "RISK",
+            "SENTIMENT",
+            "EXECUTE",
+            "MONITOR",
+            "EXIT",
+        ]
         self.assertEqual(workflow_steps, expected_steps)
         logger.info("[OK] Complete workflow executed successfully")
 

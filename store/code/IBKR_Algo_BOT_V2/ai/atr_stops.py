@@ -15,11 +15,12 @@ Usage:
 """
 
 import logging
-from typing import Dict, Optional, Tuple
-from datetime import datetime
 from dataclasses import dataclass
-import yfinance as yf
+from datetime import datetime
+from typing import Dict, Optional, Tuple
+
 import pandas as pd
+import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DynamicStops:
     """Dynamic stop loss and target levels"""
+
     symbol: str
     entry_price: float
 
@@ -59,23 +61,23 @@ class DynamicStops:
 
     def to_dict(self) -> Dict:
         return {
-            'symbol': self.symbol,
-            'entry_price': round(self.entry_price, 2),
-            'atr': round(self.atr, 3),
-            'atr_percent': round(self.atr_percent, 2),
-            'stop_price': round(self.stop_price, 2),
-            'stop_distance': round(self.stop_distance, 3),
-            'stop_percent': round(self.stop_percent, 2),
-            'target_price': round(self.target_price, 2),
-            'target_distance': round(self.target_distance, 3),
-            'target_percent': round(self.target_percent, 2),
-            'risk_reward_ratio': round(self.risk_reward_ratio, 2),
-            'trailing_atr_multiplier': self.trailing_atr_multiplier,
-            'trailing_stop_distance': round(self.trailing_stop_distance, 3),
-            'atr_period': self.atr_period,
-            'atr_multiplier': self.atr_multiplier,
-            'volatility_regime': self.volatility_regime,
-            'timestamp': self.timestamp
+            "symbol": self.symbol,
+            "entry_price": round(self.entry_price, 2),
+            "atr": round(self.atr, 3),
+            "atr_percent": round(self.atr_percent, 2),
+            "stop_price": round(self.stop_price, 2),
+            "stop_distance": round(self.stop_distance, 3),
+            "stop_percent": round(self.stop_percent, 2),
+            "target_price": round(self.target_price, 2),
+            "target_distance": round(self.target_distance, 3),
+            "target_percent": round(self.target_percent, 2),
+            "risk_reward_ratio": round(self.risk_reward_ratio, 2),
+            "trailing_atr_multiplier": self.trailing_atr_multiplier,
+            "trailing_stop_distance": round(self.trailing_stop_distance, 3),
+            "atr_period": self.atr_period,
+            "atr_multiplier": self.atr_multiplier,
+            "volatility_regime": self.volatility_regime,
+            "timestamp": self.timestamp,
         }
 
 
@@ -108,7 +110,9 @@ class ATRStopCalculator:
         self._atr_cache: Dict[str, Tuple[float, datetime]] = {}
         self._cache_ttl = 300  # 5 minutes
 
-    def calculate_atr(self, symbol: str, period: str = "5d", interval: str = "5m") -> Optional[float]:
+    def calculate_atr(
+        self, symbol: str, period: str = "5d", interval: str = "5m"
+    ) -> Optional[float]:
         """
         Calculate ATR for a symbol.
 
@@ -135,14 +139,16 @@ class ATRStopCalculator:
                 return None
 
             # Calculate True Range
-            df['prev_close'] = df['Close'].shift(1)
-            df['tr1'] = df['High'] - df['Low']
-            df['tr2'] = abs(df['High'] - df['prev_close'])
-            df['tr3'] = abs(df['Low'] - df['prev_close'])
-            df['true_range'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
+            df["prev_close"] = df["Close"].shift(1)
+            df["tr1"] = df["High"] - df["Low"]
+            df["tr2"] = abs(df["High"] - df["prev_close"])
+            df["tr3"] = abs(df["Low"] - df["prev_close"])
+            df["true_range"] = df[["tr1", "tr2", "tr3"]].max(axis=1)
 
             # Calculate ATR (EMA of True Range)
-            atr = df['true_range'].ewm(span=self.atr_period, adjust=False).mean().iloc[-1]
+            atr = (
+                df["true_range"].ewm(span=self.atr_period, adjust=False).mean().iloc[-1]
+            )
 
             # Cache result
             self._atr_cache[symbol] = (atr, datetime.now())
@@ -190,10 +196,7 @@ class ATRStopCalculator:
             return (2.5, 3.0, 2.0)
 
     def calculate_stops(
-        self,
-        symbol: str,
-        entry_price: float,
-        atr: float = None
+        self, symbol: str, entry_price: float, atr: float = None
     ) -> Optional[DynamicStops]:
         """
         Calculate dynamic stop and target levels.
@@ -267,7 +270,7 @@ class ATRStopCalculator:
             atr_period=self.atr_period,
             atr_multiplier=stop_mult,
             volatility_regime=volatility_regime,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
     def get_trailing_stop(
@@ -276,7 +279,7 @@ class ATRStopCalculator:
         current_price: float,
         high_price: float,
         atr: float,
-        trail_multiplier: float = None
+        trail_multiplier: float = None,
     ) -> float:
         """
         Calculate current trailing stop level.
@@ -334,13 +337,13 @@ async def get_dynamic_stops(symbol: str, entry_price: float) -> Dict:
     else:
         # Fallback
         return {
-            'symbol': symbol,
-            'entry_price': entry_price,
-            'stop_price': entry_price * 0.97,  # 3% stop
-            'stop_percent': 3.0,
-            'target_price': entry_price * 1.03,  # 3% target
-            'target_percent': 3.0,
-            'error': 'ATR calculation failed, using 3% fallback'
+            "symbol": symbol,
+            "entry_price": entry_price,
+            "stop_price": entry_price * 0.97,  # 3% stop
+            "stop_percent": 3.0,
+            "target_price": entry_price * 1.03,  # 3% target
+            "target_percent": 3.0,
+            "error": "ATR calculation failed, using 3% fallback",
         }
 
 
@@ -349,10 +352,10 @@ if __name__ == "__main__":
 
     async def test():
         test_symbols = [
-            ("AAPL", 180.50),   # Low volatility blue chip
-            ("TSLA", 250.00),   # High volatility
-            ("SPY", 450.00),    # Very low volatility ETF
-            ("SOUN", 5.25),     # Penny stock, high vol
+            ("AAPL", 180.50),  # Low volatility blue chip
+            ("TSLA", 250.00),  # High volatility
+            ("SPY", 450.00),  # Very low volatility ETF
+            ("SOUN", 5.25),  # Penny stock, high vol
         ]
 
         print("\nDynamic ATR Stop Calculator Test")
@@ -361,10 +364,16 @@ if __name__ == "__main__":
         for symbol, price in test_symbols:
             stops = await get_dynamic_stops(symbol, price)
             print(f"\n{symbol} @ ${price:.2f}")
-            print(f"  ATR: ${stops.get('atr', 0):.3f} ({stops.get('atr_percent', 0):.1f}%)")
+            print(
+                f"  ATR: ${stops.get('atr', 0):.3f} ({stops.get('atr_percent', 0):.1f}%)"
+            )
             print(f"  Volatility: {stops.get('volatility_regime', 'N/A')}")
-            print(f"  Stop: ${stops.get('stop_price', 0):.2f} (-{stops.get('stop_percent', 0):.1f}%)")
-            print(f"  Target: ${stops.get('target_price', 0):.2f} (+{stops.get('target_percent', 0):.1f}%)")
+            print(
+                f"  Stop: ${stops.get('stop_price', 0):.2f} (-{stops.get('stop_percent', 0):.1f}%)"
+            )
+            print(
+                f"  Target: ${stops.get('target_price', 0):.2f} (+{stops.get('target_percent', 0):.1f}%)"
+            )
             print(f"  R:R Ratio: {stops.get('risk_reward_ratio', 0):.2f}")
             print(f"  Trail Distance: ${stops.get('trailing_stop_distance', 0):.3f}")
 

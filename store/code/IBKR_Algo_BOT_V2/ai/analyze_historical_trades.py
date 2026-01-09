@@ -5,39 +5,43 @@ Loads actual scalper trades and correlates with technical signals
 to see if the signal strategy would have improved results.
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
-import httpx
-from datetime import datetime, timedelta
 from collections import defaultdict
-from typing import List, Dict
-import pandas as pd
-import numpy as np
+from datetime import datetime, timedelta
+from typing import Dict, List
 
-from ai.technical_signals import TechnicalSignalAnalyzer, SignalState
+import httpx
+import numpy as np
+import pandas as pd
+from ai.technical_signals import SignalState, TechnicalSignalAnalyzer
 
 API_BASE = "http://localhost:9100"
+
 
 def load_trades() -> List[Dict]:
     """Load historical trades from scalper_trades.json"""
     trades_path = os.path.join(os.path.dirname(__file__), "scalper_trades.json")
 
-    with open(trades_path, 'r') as f:
+    with open(trades_path, "r") as f:
         data = json.load(f)
 
     return data.get("trades", [])
 
 
-def fetch_ohlc_for_trade(client: httpx.Client, symbol: str, trade_time: str) -> List[Dict]:
+def fetch_ohlc_for_trade(
+    client: httpx.Client, symbol: str, trade_time: str
+) -> List[Dict]:
     """Fetch OHLC data around the trade time"""
     try:
         # Get 5 days of 5m data around the trade
         resp = client.get(
             f"{API_BASE}/api/charts/ohlc/{symbol}",
-            params={"timeframe": "5m", "days": 5}
+            params={"timeframe": "5m", "days": 5},
         )
 
         if resp.status_code != 200:
@@ -62,7 +66,9 @@ def fetch_ohlc_for_trade(client: httpx.Client, symbol: str, trade_time: str) -> 
         return []
 
 
-def analyze_trade_with_signals(trade: Dict, ohlc: List[Dict], analyzer: TechnicalSignalAnalyzer) -> Dict:
+def analyze_trade_with_signals(
+    trade: Dict, ohlc: List[Dict], analyzer: TechnicalSignalAnalyzer
+) -> Dict:
     """Analyze a single trade with technical signals"""
 
     if not ohlc or len(ohlc) < 50:
@@ -78,13 +84,13 @@ def analyze_trade_with_signals(trade: Dict, ohlc: List[Dict], analyzer: Technica
 
     # Find bars before entry time
     df = pd.DataFrame(ohlc)
-    df = df[df['time'] <= entry_unix].tail(200)
+    df = df[df["time"] <= entry_unix].tail(200)
 
     if len(df) < 50:
         return None
 
     # Get signal state at entry
-    window = df.to_dict('records')
+    window = df.to_dict("records")
     signal = analyzer.analyze(trade["symbol"], window, "5m")
 
     if not signal:
@@ -113,18 +119,17 @@ def analyze_trade_with_signals(trade: Dict, ohlc: List[Dict], analyzer: Technica
         "vwap_crossover": signal.vwap_crossover,
         "candle_momentum": signal.candle_momentum,
         # Would signal have approved this trade?
-        "signal_approved": signal.confluence_score >= 70 and (
-            signal.ema_bullish and signal.macd_bullish
-        )
+        "signal_approved": signal.confluence_score >= 70
+        and (signal.ema_bullish and signal.macd_bullish),
     }
 
 
 def run_analysis():
     """Main analysis function"""
 
-    print("="*70)
+    print("=" * 70)
     print("HISTORICAL TRADES vs TECHNICAL SIGNALS ANALYSIS")
-    print("="*70)
+    print("=" * 70)
 
     # Load trades
     trades = load_trades()
@@ -154,7 +159,9 @@ def run_analysis():
 
         # Cache OHLC data per symbol
         if symbol not in ohlc_cache:
-            ohlc_cache[symbol] = fetch_ohlc_for_trade(client, symbol, trade.get("entry_time"))
+            ohlc_cache[symbol] = fetch_ohlc_for_trade(
+                client, symbol, trade.get("entry_time")
+            )
 
         ohlc = ohlc_cache.get(symbol, [])
         if not ohlc:
@@ -177,11 +184,11 @@ def run_analysis():
 
     # Overall stats
     total_trades = len(df)
-    winners = df[df['is_winner'] == True]
-    losers = df[df['is_winner'] == False]
+    winners = df[df["is_winner"] == True]
+    losers = df[df["is_winner"] == False]
 
     overall_win_rate = len(winners) / total_trades * 100 if total_trades > 0 else 0
-    overall_pnl = df['pnl'].sum()
+    overall_pnl = df["pnl"].sum()
 
     print(f"\n[OVERALL PERFORMANCE]")
     print(f"   Total Trades: {total_trades}")
@@ -191,21 +198,21 @@ def run_analysis():
     print(f"   Total P&L: ${overall_pnl:.2f}")
 
     # Signal-approved trades
-    approved = df[df['signal_approved'] == True]
-    rejected = df[df['signal_approved'] == False]
+    approved = df[df["signal_approved"] == True]
+    rejected = df[df["signal_approved"] == False]
 
     if len(approved) > 0:
-        approved_winners = approved[approved['is_winner'] == True]
+        approved_winners = approved[approved["is_winner"] == True]
         approved_win_rate = len(approved_winners) / len(approved) * 100
-        approved_pnl = approved['pnl'].sum()
+        approved_pnl = approved["pnl"].sum()
     else:
         approved_win_rate = 0
         approved_pnl = 0
 
     if len(rejected) > 0:
-        rejected_winners = rejected[rejected['is_winner'] == True]
+        rejected_winners = rejected[rejected["is_winner"] == True]
         rejected_win_rate = len(rejected_winners) / len(rejected) * 100
-        rejected_pnl = rejected['pnl'].sum()
+        rejected_pnl = rejected["pnl"].sum()
     else:
         rejected_win_rate = 0
         rejected_pnl = 0
@@ -226,19 +233,21 @@ def run_analysis():
     # Confluence bucket analysis
     print(f"\n[CONFLUENCE SCORE ANALYSIS]")
     buckets = {
-        "0-40%": df[df['confluence_score'] < 40],
-        "40-60%": df[(df['confluence_score'] >= 40) & (df['confluence_score'] < 60)],
-        "60-80%": df[(df['confluence_score'] >= 60) & (df['confluence_score'] < 80)],
-        "80-100%": df[df['confluence_score'] >= 80]
+        "0-40%": df[df["confluence_score"] < 40],
+        "40-60%": df[(df["confluence_score"] >= 40) & (df["confluence_score"] < 60)],
+        "60-80%": df[(df["confluence_score"] >= 60) & (df["confluence_score"] < 80)],
+        "80-100%": df[df["confluence_score"] >= 80],
     }
 
     for bucket_name, bucket_df in buckets.items():
         if len(bucket_df) == 0:
             continue
-        bucket_winners = bucket_df[bucket_df['is_winner'] == True]
+        bucket_winners = bucket_df[bucket_df["is_winner"] == True]
         bucket_wr = len(bucket_winners) / len(bucket_df) * 100
-        bucket_pnl = bucket_df['pnl'].sum()
-        print(f"   {bucket_name}: {len(bucket_df)} trades, {bucket_wr:.1f}% win rate, ${bucket_pnl:.2f} P&L")
+        bucket_pnl = bucket_df["pnl"].sum()
+        print(
+            f"   {bucket_name}: {len(bucket_df)} trades, {bucket_wr:.1f}% win rate, ${bucket_pnl:.2f} P&L"
+        )
 
     # Signal combination analysis
     print(f"\n[SIGNAL COMBINATIONS]")
@@ -246,48 +255,54 @@ def run_analysis():
     # Group by signal combinations
     def get_combo(row):
         signals = []
-        if row['ema_bullish']:
+        if row["ema_bullish"]:
             signals.append("EMA")
-        if row['macd_bullish']:
+        if row["macd_bullish"]:
             signals.append("MACD")
-        if row['price_above_vwap']:
+        if row["price_above_vwap"]:
             signals.append("VWAP")
-        if row['candle_momentum'] == "BUILDING":
+        if row["candle_momentum"] == "BUILDING":
             signals.append("MOM")
         return "+".join(sorted(signals)) if signals else "NONE"
 
-    df['combo'] = df.apply(get_combo, axis=1)
+    df["combo"] = df.apply(get_combo, axis=1)
 
     combo_stats = []
-    for combo, group in df.groupby('combo'):
+    for combo, group in df.groupby("combo"):
         if len(group) < 3:
             continue
-        combo_winners = group[group['is_winner'] == True]
-        combo_stats.append({
-            'combo': combo,
-            'count': len(group),
-            'win_rate': len(combo_winners) / len(group) * 100,
-            'pnl': group['pnl'].sum()
-        })
+        combo_winners = group[group["is_winner"] == True]
+        combo_stats.append(
+            {
+                "combo": combo,
+                "count": len(group),
+                "win_rate": len(combo_winners) / len(group) * 100,
+                "pnl": group["pnl"].sum(),
+            }
+        )
 
-    combo_stats.sort(key=lambda x: x['win_rate'], reverse=True)
+    combo_stats.sort(key=lambda x: x["win_rate"], reverse=True)
 
     for stat in combo_stats[:7]:
-        print(f"   {stat['combo']}: {stat['count']} trades, {stat['win_rate']:.1f}% win rate, ${stat['pnl']:.2f}")
+        print(
+            f"   {stat['combo']}: {stat['count']} trades, {stat['win_rate']:.1f}% win rate, ${stat['pnl']:.2f}"
+        )
 
     # Correlation analysis
     print(f"\n[CORRELATION WITH WINS]")
 
-    corr_df = pd.DataFrame({
-        'win': df['is_winner'].astype(int),
-        'confluence': df['confluence_score'],
-        'ema_bullish': df['ema_bullish'].astype(int),
-        'macd_bullish': df['macd_bullish'].astype(int),
-        'above_vwap': df['price_above_vwap'].astype(int),
-        'momentum_building': (df['candle_momentum'] == 'BUILDING').astype(int)
-    })
+    corr_df = pd.DataFrame(
+        {
+            "win": df["is_winner"].astype(int),
+            "confluence": df["confluence_score"],
+            "ema_bullish": df["ema_bullish"].astype(int),
+            "macd_bullish": df["macd_bullish"].astype(int),
+            "above_vwap": df["price_above_vwap"].astype(int),
+            "momentum_building": (df["candle_momentum"] == "BUILDING").astype(int),
+        }
+    )
 
-    correlations = corr_df.corr()['win'].drop('win')
+    correlations = corr_df.corr()["win"].drop("win")
 
     for signal, corr in correlations.sort_values(ascending=False).items():
         if abs(corr) > 0.05:
@@ -301,24 +316,26 @@ def run_analysis():
         "overall": {
             "trades": total_trades,
             "win_rate": round(overall_win_rate, 1),
-            "pnl": round(overall_pnl, 2)
+            "pnl": round(overall_pnl, 2),
         },
         "signal_approved": {
             "trades": len(approved),
             "win_rate": round(approved_win_rate, 1),
-            "pnl": round(approved_pnl, 2)
+            "pnl": round(approved_pnl, 2),
         },
         "signal_rejected": {
             "trades": len(rejected),
             "win_rate": round(rejected_win_rate, 1),
-            "pnl": round(rejected_pnl, 2)
+            "pnl": round(rejected_pnl, 2),
         },
         "improvement": round(improvement, 1),
-        "trades": analyzed[-50:]  # Last 50 for reference
+        "trades": analyzed[-50:],  # Last 50 for reference
     }
 
-    output_path = os.path.join(os.path.dirname(__file__), "historical_signal_analysis.json")
-    with open(output_path, 'w') as f:
+    output_path = os.path.join(
+        os.path.dirname(__file__), "historical_signal_analysis.json"
+    )
+    with open(output_path, "w") as f:
         json.dump(output, f, indent=2, default=str)
 
     print(f"\n[OK] Results saved to {output_path}")

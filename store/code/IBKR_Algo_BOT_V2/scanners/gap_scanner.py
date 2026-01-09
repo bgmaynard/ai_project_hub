@@ -19,9 +19,10 @@ Conditions:
 """
 
 import logging
-from datetime import datetime, time
-from typing import List, Dict, Optional, Set
 from dataclasses import dataclass
+from datetime import datetime, time
+from typing import Dict, List, Optional, Set
+
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ from scanners import ScannerResult, ScannerType, get_scanner_config
 @dataclass
 class GapCandidate:
     """Internal representation of a gap candidate"""
+
     symbol: str
     prior_close: float
     premarket_price: float
@@ -54,7 +56,7 @@ class GapScanner:
         self._candidates: Dict[str, GapCandidate] = {}
         self._last_scan: Optional[datetime] = None
         self._schwab_healthy = False
-        self._et_tz = pytz.timezone('US/Eastern')
+        self._et_tz = pytz.timezone("US/Eastern")
 
     def is_active_window(self) -> bool:
         """Check if scanner should be active (04:00 - 16:00 ET)"""
@@ -64,7 +66,9 @@ class GapScanner:
     def _check_schwab_health(self) -> bool:
         """Verify Schwab feed is healthy - fail closed"""
         try:
-            from schwab_market_data import is_schwab_available, get_token_status
+            from schwab_market_data import (get_token_status,
+                                            is_schwab_available)
+
             if not is_schwab_available():
                 logger.warning("[GapScanner] Schwab not available - returning empty")
                 return False
@@ -81,28 +85,25 @@ class GapScanner:
         """Get prior day close from Schwab daily bars"""
         try:
             from schwab_market_data import get_schwab_market_data
+
             schwab = get_schwab_market_data()
             if not schwab:
                 return None
 
             # Get daily price history
             history = schwab.get_price_history(
-                symbol,
-                period_type="day",
-                period=2,
-                frequency_type="daily",
-                frequency=1
+                symbol, period_type="day", period=2, frequency_type="daily", frequency=1
             )
 
-            if not history or 'candles' not in history:
+            if not history or "candles" not in history:
                 return None
 
-            candles = history['candles']
+            candles = history["candles"]
             if len(candles) < 1:
                 return None
 
             # Prior close is the last complete daily candle
-            return float(candles[-1].get('close', 0))
+            return float(candles[-1].get("close", 0))
 
         except Exception as e:
             logger.debug(f"[GapScanner] Error getting prior close for {symbol}: {e}")
@@ -112,6 +113,7 @@ class GapScanner:
         """Get current premarket quote from Schwab"""
         try:
             from schwab_market_data import get_schwab_market_data
+
             schwab = get_schwab_market_data()
             if not schwab:
                 return None
@@ -124,7 +126,7 @@ class GapScanner:
                 "last": quote.get("last", 0) or quote.get("bid", 0),
                 "bid": quote.get("bid", 0),
                 "ask": quote.get("ask", 0),
-                "volume": quote.get("volume", 0)
+                "volume": quote.get("volume", 0),
             }
 
         except Exception as e:
@@ -190,7 +192,7 @@ class GapScanner:
             gap_pct=gap_pct,
             bid=bid,
             ask=ask,
-            spread_pct=spread_pct
+            spread_pct=spread_pct,
         )
 
         # Return result
@@ -199,7 +201,7 @@ class GapScanner:
             scanner=ScannerType.GAPPER,
             price=premarket_price,
             gap_pct=round(gap_pct * 100, 2),  # As percentage
-            premarket_volume=premarket_volume
+            premarket_volume=premarket_volume,
         )
 
     def scan_symbols(self, symbols: List[str]) -> List[ScannerResult]:
@@ -229,7 +231,9 @@ class GapScanner:
                 continue
 
         self._last_scan = datetime.now()
-        logger.info(f"[GapScanner] Scanned {len(symbols)} symbols, found {len(results)} gappers")
+        logger.info(
+            f"[GapScanner] Scanned {len(symbols)} symbols, found {len(results)} gappers"
+        )
 
         return results
 
@@ -241,7 +245,7 @@ class GapScanner:
                 scanner=ScannerType.GAPPER,
                 price=c.premarket_price,
                 gap_pct=round(c.gap_pct * 100, 2),
-                premarket_volume=c.premarket_volume
+                premarket_volume=c.premarket_volume,
             )
             for c in self._candidates.values()
         ]
@@ -257,7 +261,7 @@ class GapScanner:
             "active": self.is_active_window(),
             "candidates": len(self._candidates),
             "last_scan": self._last_scan.isoformat() if self._last_scan else None,
-            "schwab_healthy": self._check_schwab_health()
+            "schwab_healthy": self._check_schwab_health(),
         }
 
 

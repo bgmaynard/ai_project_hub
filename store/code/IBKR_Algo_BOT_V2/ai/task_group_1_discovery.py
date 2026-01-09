@@ -13,21 +13,17 @@ Tasks:
 - R4 (DISCOVERY_HOD_BEHAVIOR): HOD behavior tracking
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
-import asyncio
+from typing import Any, Dict, List, Optional
 
-from .task_queue_manager import Task, get_task_queue_manager
-from .signal_snapshot import (
-    SignalSnapshot,
-    HODStatus,
-    DataQualityFlag,
-    ModelSource,
-    create_snapshot_from_worklist_item
-)
 from .connection_manager import get_connection_manager
-from .momentum_watchlist import get_momentum_watchlist, MomentumWatchlist
+from .momentum_watchlist import MomentumWatchlist, get_momentum_watchlist
+from .signal_snapshot import (DataQualityFlag, HODStatus, ModelSource,
+                              SignalSnapshot,
+                              create_snapshot_from_worklist_item)
+from .task_queue_manager import Task, get_task_queue_manager
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +31,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
 
 async def _fetch_quote(symbol: str) -> Optional[Dict]:
     """Fetch quote using connection manager"""
@@ -66,7 +63,9 @@ async def _fetch_market_movers(direction: str = "up") -> Optional[List]:
     return None
 
 
-def _build_snapshot(symbol: str, raw_data: Dict, float_data: Optional[Dict] = None) -> SignalSnapshot:
+def _build_snapshot(
+    symbol: str, raw_data: Dict, float_data: Optional[Dict] = None
+) -> SignalSnapshot:
     """
     Build SignalSnapshot from raw quote/worklist data.
     This is the SINGLE conversion point - ensures consistency.
@@ -77,6 +76,7 @@ def _build_snapshot(symbol: str, raw_data: Dict, float_data: Optional[Dict] = No
 # =============================================================================
 # TASK 0 - DATA QUALITY PRE-FLIGHT (R0)
 # =============================================================================
+
 
 async def task_data_quality_check(inputs: Dict) -> Dict:
     """
@@ -100,7 +100,7 @@ async def task_data_quality_check(inputs: Dict) -> Dict:
         "data_freshness": {},
         "issues": [],
         "critical_failures": [],
-        "overall_quality": "GOOD"
+        "overall_quality": "GOOD",
     }
 
     # Check API connectivity
@@ -131,10 +131,14 @@ async def task_data_quality_check(inputs: Dict) -> Dict:
     quality_report["data_freshness"] = conn_status["data_freshness"]
 
     if conn.is_data_stale:
-        quality_report["critical_failures"].append(f"Data is STALE: {conn.data_freshness.stale_reason}")
+        quality_report["critical_failures"].append(
+            f"Data is STALE: {conn.data_freshness.stale_reason}"
+        )
 
     if conn.circuit_open:
-        quality_report["critical_failures"].append("Circuit breaker is OPEN - API unavailable")
+        quality_report["critical_failures"].append(
+            "Circuit breaker is OPEN - API unavailable"
+        )
 
     # Set overall quality
     if quality_report["critical_failures"]:
@@ -148,6 +152,7 @@ async def task_data_quality_check(inputs: Dict) -> Dict:
 # =============================================================================
 # TASK 1.1 - DISCOVERY_GAPPERS (R1) - FULL RECOMPUTE MODEL
 # =============================================================================
+
 
 async def task_discovery_gappers(inputs: Dict) -> Dict:
     """
@@ -184,9 +189,9 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
                 "task_id": "DISCOVERY_GAPPERS",
                 "symbols": [],
                 "symbol_count": 0,
-                "data_quality_flags": [DataQualityFlag.PRICE_STALE.value]
+                "data_quality_flags": [DataQualityFlag.PRICE_STALE.value],
             },
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     # ==========================================================================
@@ -202,9 +207,12 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
             if symbol and symbol not in raw_candidates:
                 raw_candidates[symbol] = {
                     "source": "gappers",
-                    "change_pct": m.get("change_pct") or m.get("changePct") or m.get("change_percent") or 0,
+                    "change_pct": m.get("change_pct")
+                    or m.get("changePct")
+                    or m.get("change_percent")
+                    or 0,
                     "price": m.get("price") or m.get("lastPrice") or 0,
-                    "volume": m.get("volume") or 0
+                    "volume": m.get("volume") or 0,
                 }
         logger.info(f"R1: Found {len(gappers)} top gappers")
 
@@ -216,9 +224,12 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
             if symbol and symbol not in raw_candidates:
                 raw_candidates[symbol] = {
                     "source": "gainers",
-                    "change_pct": m.get("change_pct") or m.get("changePct") or m.get("change_percent") or 0,
+                    "change_pct": m.get("change_pct")
+                    or m.get("changePct")
+                    or m.get("change_percent")
+                    or 0,
                     "price": m.get("price") or m.get("lastPrice") or 0,
-                    "volume": m.get("volume") or 0
+                    "volume": m.get("volume") or 0,
                 }
         logger.info(f"R1: Found {len(gainers)} top gainers")
 
@@ -237,7 +248,10 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
         if symbol and symbol not in raw_candidates:
             raw_candidates[symbol] = {
                 "source": "worklist_reeval",  # Mark as re-evaluation candidate
-                "change_pct": w.get("change_pct") or w.get("changePct") or w.get("change_percent") or 0,
+                "change_pct": w.get("change_pct")
+                or w.get("changePct")
+                or w.get("change_percent")
+                or 0,
                 "price": w.get("price") or 0,
                 "volume": w.get("volume") or 0,
                 "float": w.get("float"),
@@ -245,10 +259,12 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
                 "bid": w.get("bid"),
                 "ask": w.get("ask"),
                 "percent_from_hod": w.get("percent_from_hod"),
-                "rel_vol": w.get("rel_vol")
+                "rel_vol": w.get("rel_vol"),
             }
 
-    logger.info(f"R1: Gathered {len(raw_candidates)} total candidates (gappers + gainers + worklist)")
+    logger.info(
+        f"R1: Gathered {len(raw_candidates)} total candidates (gappers + gainers + worklist)"
+    )
 
     # ==========================================================================
     # STEP 2: Fetch CURRENT metrics for EVERY candidate
@@ -259,7 +275,7 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
         "float_missing_count": 0,
         "avg_volume_missing_count": 0,
         "hod_inconsistent_count": 0,
-        "rel_vol_absurd_count": 0
+        "rel_vol_absurd_count": 0,
     }
 
     for symbol, raw in raw_candidates.items():
@@ -275,9 +291,21 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
 
         # Extract current metrics
         price = quote.get("lastPrice") or quote.get("price") or raw.get("price") or 0
-        high_price = quote.get("highPrice") or quote.get("dayHigh") or quote.get("high") or raw.get("high") or price
-        volume = quote.get("totalVolume") or quote.get("volume") or raw.get("volume") or 0
-        avg_volume = quote.get("averageVolume") or quote.get("avgVolume") or quote.get("averageVolume10Day")
+        high_price = (
+            quote.get("highPrice")
+            or quote.get("dayHigh")
+            or quote.get("high")
+            or raw.get("high")
+            or price
+        )
+        volume = (
+            quote.get("totalVolume") or quote.get("volume") or raw.get("volume") or 0
+        )
+        avg_volume = (
+            quote.get("averageVolume")
+            or quote.get("avgVolume")
+            or quote.get("averageVolume10Day")
+        )
 
         # Gap percent (use change_pct from raw if quote doesn't have it)
         gap_pct = abs(raw.get("change_pct") or 0)
@@ -295,7 +323,9 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
         # Float shares
         float_shares = None
         if float_data:
-            float_shares = float_data.get("floatShares") or float_data.get("float_shares")
+            float_shares = float_data.get("floatShares") or float_data.get(
+                "float_shares"
+            )
         if float_shares is None:
             data_quality_summary["float_missing_count"] += 1
 
@@ -325,11 +355,13 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
             "at_hod": at_hod,
             "near_hod": near_hod,
             "pct_gain": gap_pct,  # Use gap as intraday gain proxy
-            "source": raw.get("source", "unknown")
+            "source": raw.get("source", "unknown"),
         }
         enriched_candidates.append(candidate)
 
-    logger.info(f"R1: Enriched {len(enriched_candidates)} candidates with current metrics")
+    logger.info(
+        f"R1: Enriched {len(enriched_candidates)} candidates with current metrics"
+    )
 
     # ==========================================================================
     # STEP 3: FULL RECOMPUTE via MomentumWatchlist
@@ -339,7 +371,7 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
     # FULL RECOMPUTE - all candidates re-ranked with current metrics
     active_symbols, rank_snapshot = watchlist.full_recompute(
         candidates=enriched_candidates,
-        force_fresh=True  # Discard prior state - fresh ranking every cycle
+        force_fresh=True,  # Discard prior state - fresh ranking every cycle
     )
 
     logger.info(
@@ -359,15 +391,18 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
 
         # Add SignalSnapshot-required fields
         symbol_dict["hod_status"] = (
-            "AT_HOD" if ranked.at_hod else
-            "NEAR_HOD" if ranked.near_hod else
-            "PULLBACK" if ranked.pct_from_hod < -5 else
-            "PULLBACK"
+            "AT_HOD"
+            if ranked.at_hod
+            else (
+                "NEAR_HOD"
+                if ranked.near_hod
+                else "PULLBACK" if ranked.pct_from_hod < -5 else "PULLBACK"
+            )
         )
         symbol_dict["priority"] = (
-            "HIGH" if ranked.dominance_score >= 60 else
-            "NORMAL" if ranked.dominance_score >= 40 else
-            "LOW"
+            "HIGH"
+            if ranked.dominance_score >= 60
+            else "NORMAL" if ranked.dominance_score >= 40 else "LOW"
         )
 
         symbols_output.append(symbol_dict)
@@ -381,13 +416,14 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
         "data_quality_summary": data_quality_summary,
         "rank_snapshot": rank_snapshot,  # EMBEDDED for transparency
         "watchlist_status": watchlist.get_status(),
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
 # =============================================================================
 # TASK 1.2 - DISCOVERY_FLOAT_FILTER (R2)
 # =============================================================================
+
 
 async def task_discovery_float_filter(inputs: Dict) -> Dict:
     """
@@ -427,15 +463,20 @@ async def task_discovery_float_filter(inputs: Dict) -> Dict:
 
         # Filter by float (handle None - treat unknown float as potentially tradeable)
         if snapshot.float_shares is not None and snapshot.float_shares > max_float:
-            rejected.append({
-                "symbol": snapshot.symbol,
-                "float_shares": snapshot.float_shares,
-                "reason": f"Float {snapshot.float_shares:,} > {max_float:,}"
-            })
+            rejected.append(
+                {
+                    "symbol": snapshot.symbol,
+                    "float_shares": snapshot.float_shares,
+                    "reason": f"Float {snapshot.float_shares:,} > {max_float:,}",
+                }
+            )
             continue
 
         # Classify priority (unknown float = HIGH priority since likely small)
-        if snapshot.float_shares is None or snapshot.float_shares <= high_priority_threshold:
+        if (
+            snapshot.float_shares is None
+            or snapshot.float_shares <= high_priority_threshold
+        ):
             snapshot.priority = "HIGH"
         else:
             snapshot.priority = "NORMAL"
@@ -443,10 +484,12 @@ async def task_discovery_float_filter(inputs: Dict) -> Dict:
         qualified.append(snapshot.to_dict())
 
     # Sort: HIGH priority first, then by gap_pct
-    qualified.sort(key=lambda x: (
-        0 if x.get("priority") == "HIGH" else 1,
-        -(x.get("gap_pct") or 0)
-    ))
+    qualified.sort(
+        key=lambda x: (
+            0 if x.get("priority") == "HIGH" else 1,
+            -(x.get("gap_pct") or 0),
+        )
+    )
 
     # Combine qualified + degraded for downstream
     all_candidates = qualified + degraded
@@ -461,16 +504,17 @@ async def task_discovery_float_filter(inputs: Dict) -> Dict:
         "high_priority_count": sum(1 for s in qualified if s.get("priority") == "HIGH"),
         "filter_criteria": {
             "max_float": max_float,
-            "high_priority_threshold": high_priority_threshold
+            "high_priority_threshold": high_priority_threshold,
         },
         "rejected_symbols": rejected,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
 # =============================================================================
 # TASK 1.3 - DISCOVERY_REL_VOLUME (R3)
 # =============================================================================
+
 
 async def task_discovery_rel_volume(inputs: Dict) -> Dict:
     """
@@ -490,10 +534,7 @@ async def task_discovery_rel_volume(inputs: Dict) -> Dict:
     symbols = r2_data.get("symbols", [])
 
     enriched = []
-    data_quality_issues = {
-        "avg_volume_missing": 0,
-        "rel_vol_absurd": 0
-    }
+    data_quality_issues = {"avg_volume_missing": 0, "rel_vol_absurd": 0}
 
     for s in symbols:
         # Reconstruct SignalSnapshot
@@ -504,10 +545,16 @@ async def task_discovery_rel_volume(inputs: Dict) -> Dict:
         quote = await _fetch_quote(symbol)
         if quote:
             # Update volume fields
-            snapshot.volume_today = quote.get("totalVolume") or quote.get("volume") or snapshot.volume_today
+            snapshot.volume_today = (
+                quote.get("totalVolume") or quote.get("volume") or snapshot.volume_today
+            )
 
             # Get avg volume - NO FALLBACK TO 1
-            avg_vol = quote.get("averageVolume") or quote.get("avgVolume") or quote.get("averageVolume10Day")
+            avg_vol = (
+                quote.get("averageVolume")
+                or quote.get("avgVolume")
+                or quote.get("averageVolume10Day")
+            )
             if avg_vol and avg_vol > 0:
                 snapshot.avg_daily_volume_30d = avg_vol
                 snapshot.compute_rel_volumes()
@@ -535,15 +582,18 @@ async def task_discovery_rel_volume(inputs: Dict) -> Dict:
         "task_id": "DISCOVERY_REL_VOLUME",
         "symbols": enriched,
         "symbol_count": len(enriched),
-        "high_rel_vol_count": sum(1 for s in enriched if (s.get("rel_vol_daily") or 0) >= 3.0),
+        "high_rel_vol_count": sum(
+            1 for s in enriched if (s.get("rel_vol_daily") or 0) >= 3.0
+        ),
         "data_quality_issues": data_quality_issues,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
 # =============================================================================
 # TASK 1.4 - DISCOVERY_HOD_BEHAVIOR (R4)
 # =============================================================================
+
 
 async def task_discovery_hod_behavior(inputs: Dict) -> Dict:
     """
@@ -571,7 +621,7 @@ async def task_discovery_hod_behavior(inputs: Dict) -> Dict:
         "NEAR_HOD": 0,
         "PULLBACK": 0,
         "FAIL": 0,
-        "UNKNOWN": 0
+        "UNKNOWN": 0,
     }
 
     for s in symbols:
@@ -583,8 +633,15 @@ async def task_discovery_hod_behavior(inputs: Dict) -> Dict:
         quote = await _fetch_quote(symbol)
         if quote:
             # Update price and HOD
-            snapshot.price = quote.get("lastPrice") or quote.get("price") or snapshot.price
-            snapshot.hod_price = quote.get("highPrice") or quote.get("dayHigh") or quote.get("high") or snapshot.hod_price
+            snapshot.price = (
+                quote.get("lastPrice") or quote.get("price") or snapshot.price
+            )
+            snapshot.hod_price = (
+                quote.get("highPrice")
+                or quote.get("dayHigh")
+                or quote.get("high")
+                or snapshot.hod_price
+            )
 
             # Recompute HOD status with fresh data
             snapshot.compute_hod_status()
@@ -597,10 +654,12 @@ async def task_discovery_hod_behavior(inputs: Dict) -> Dict:
 
     # Sort: AT_HOD first, then NEAR_HOD, then by gap_pct
     status_order = {"AT_HOD": 0, "NEAR_HOD": 1, "PULLBACK": 2, "FAIL": 3, "UNKNOWN": 4}
-    enriched.sort(key=lambda x: (
-        status_order.get(x.get("hod_status", "UNKNOWN"), 4),
-        -(x.get("gap_pct") or 0)
-    ))
+    enriched.sort(
+        key=lambda x: (
+            status_order.get(x.get("hod_status", "UNKNOWN"), 4),
+            -(x.get("gap_pct") or 0),
+        )
+    )
 
     return {
         "task_id": "DISCOVERY_HOD_BEHAVIOR",
@@ -609,7 +668,7 @@ async def task_discovery_hod_behavior(inputs: Dict) -> Dict:
         "hod_status_summary": hod_status_counts,
         "at_hod_count": hod_status_counts.get("AT_HOD", 0),
         "near_hod_count": hod_status_counts.get("NEAR_HOD", 0),
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -617,70 +676,81 @@ async def task_discovery_hod_behavior(inputs: Dict) -> Dict:
 # REGISTER TASKS
 # =============================================================================
 
+
 def register_discovery_tasks():
     """Register all Task Group 1 tasks with the manager"""
     manager = get_task_queue_manager()
 
     # Task 0 - Data Quality (optional pre-flight)
-    manager.register_task(Task(
-        id="DATA_QUALITY_CHECK",
-        name="Data Quality Pre-Flight",
-        group="PRE_FLIGHT",
-        inputs=[],
-        process=task_data_quality_check,
-        output_file="report_R0_data_quality.json",
-        fail_conditions=["critical_failures"],
-        next_task="DISCOVERY_GAPPERS"
-    ))
+    manager.register_task(
+        Task(
+            id="DATA_QUALITY_CHECK",
+            name="Data Quality Pre-Flight",
+            group="PRE_FLIGHT",
+            inputs=[],
+            process=task_data_quality_check,
+            output_file="report_R0_data_quality.json",
+            fail_conditions=["critical_failures"],
+            next_task="DISCOVERY_GAPPERS",
+        )
+    )
 
     # Task 1.1 - Top Gappers
-    manager.register_task(Task(
-        id="DISCOVERY_GAPPERS",
-        name="Generate Daily Top Gappers",
-        group="MARKET_DISCOVERY",
-        inputs=[],  # Uses live data
-        process=task_discovery_gappers,
-        output_file="report_R1_daily_top_gappers.json",
-        fail_conditions=["no_symbols"],
-        next_task="DISCOVERY_FLOAT_FILTER"
-    ))
+    manager.register_task(
+        Task(
+            id="DISCOVERY_GAPPERS",
+            name="Generate Daily Top Gappers",
+            group="MARKET_DISCOVERY",
+            inputs=[],  # Uses live data
+            process=task_discovery_gappers,
+            output_file="report_R1_daily_top_gappers.json",
+            fail_conditions=["no_symbols"],
+            next_task="DISCOVERY_FLOAT_FILTER",
+        )
+    )
 
     # Task 1.2 - Float Filter
-    manager.register_task(Task(
-        id="DISCOVERY_FLOAT_FILTER",
-        name="Low Float Qualification",
-        group="MARKET_DISCOVERY",
-        inputs=["report_R1_daily_top_gappers.json"],
-        process=task_discovery_float_filter,
-        output_file="report_R2_low_float_universe.json",
-        fail_conditions=["empty_universe"],
-        next_task="DISCOVERY_REL_VOLUME"
-    ))
+    manager.register_task(
+        Task(
+            id="DISCOVERY_FLOAT_FILTER",
+            name="Low Float Qualification",
+            group="MARKET_DISCOVERY",
+            inputs=["report_R1_daily_top_gappers.json"],
+            process=task_discovery_float_filter,
+            output_file="report_R2_low_float_universe.json",
+            fail_conditions=["empty_universe"],
+            next_task="DISCOVERY_REL_VOLUME",
+        )
+    )
 
     # Task 1.3 - Relative Volume
     # NOTE: "low_rel_vol" fail condition disabled for DRY-RUN testing
     # Re-enable for production when real volume data is available
-    manager.register_task(Task(
-        id="DISCOVERY_REL_VOLUME",
-        name="Relative Volume Acceleration",
-        group="MARKET_DISCOVERY",
-        inputs=["report_R2_low_float_universe.json"],
-        process=task_discovery_rel_volume,
-        output_file="report_R3_rel_volume.json",
-        fail_conditions=[],  # Disabled: ["low_rel_vol"]
-        next_task="DISCOVERY_HOD_BEHAVIOR"
-    ))
+    manager.register_task(
+        Task(
+            id="DISCOVERY_REL_VOLUME",
+            name="Relative Volume Acceleration",
+            group="MARKET_DISCOVERY",
+            inputs=["report_R2_low_float_universe.json"],
+            process=task_discovery_rel_volume,
+            output_file="report_R3_rel_volume.json",
+            fail_conditions=[],  # Disabled: ["low_rel_vol"]
+            next_task="DISCOVERY_HOD_BEHAVIOR",
+        )
+    )
 
     # Task 1.4 - HOD Behavior
-    manager.register_task(Task(
-        id="DISCOVERY_HOD_BEHAVIOR",
-        name="HOD Behavior Tracking",
-        group="MARKET_DISCOVERY",
-        inputs=["report_R3_rel_volume.json"],
-        process=task_discovery_hod_behavior,
-        output_file="report_R4_hod_behavior.json",
-        fail_conditions=[],
-        next_task="QLIB_HOD_PROBABILITY"
-    ))
+    manager.register_task(
+        Task(
+            id="DISCOVERY_HOD_BEHAVIOR",
+            name="HOD Behavior Tracking",
+            group="MARKET_DISCOVERY",
+            inputs=["report_R3_rel_volume.json"],
+            process=task_discovery_hod_behavior,
+            output_file="report_R4_hod_behavior.json",
+            fail_conditions=[],
+            next_task="QLIB_HOD_PROBABILITY",
+        )
+    )
 
     logger.info("Task Group 1 (Market Discovery) registered: 5 tasks (R0-R4)")

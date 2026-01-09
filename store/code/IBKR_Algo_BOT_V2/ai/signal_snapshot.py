@@ -17,40 +17,43 @@ Usage:
         print(f"Cannot trade: {snapshot.data_quality}")
 """
 
-from dataclasses import dataclass, field, asdict
+import json
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, Dict, List, Any
-import json
+from typing import Any, Dict, List, Optional
 
 
 class HODStatus(Enum):
     """High of Day status - strict enum, no silent failures"""
-    AT_HOD = "AT_HOD"           # Within 0.5% of HOD
-    NEAR_HOD = "NEAR_HOD"       # Within 2% of HOD
-    PULLBACK = "PULLBACK"       # 2-5% from HOD
-    FAIL = "FAIL"               # >5% from HOD or broke down
-    UNKNOWN = "UNKNOWN"         # Data unavailable
+
+    AT_HOD = "AT_HOD"  # Within 0.5% of HOD
+    NEAR_HOD = "NEAR_HOD"  # Within 2% of HOD
+    PULLBACK = "PULLBACK"  # 2-5% from HOD
+    FAIL = "FAIL"  # >5% from HOD or broke down
+    UNKNOWN = "UNKNOWN"  # Data unavailable
 
 
 class DataQualityFlag(Enum):
     """Data quality issues that must be tracked"""
+
     FLOAT_MISSING = "FLOAT_MISSING"
     FLOAT_ZERO = "FLOAT_ZERO"
     AVG_VOLUME_MISSING = "AVG_VOLUME_MISSING"
     AVG_VOLUME_ZERO = "AVG_VOLUME_ZERO"
-    HOD_INCONSISTENT = "HOD_INCONSISTENT"      # hod_price < current price
-    REL_VOL_ABSURD = "REL_VOL_ABSURD"          # rel_vol > 5000
-    PRICE_STALE = "PRICE_STALE"                # timestamp too old
-    SPREAD_WIDE = "SPREAD_WIDE"                # spread > 3%
-    DATA_INCOMPLETE = "DATA_INCOMPLETE"         # critical fields missing
+    HOD_INCONSISTENT = "HOD_INCONSISTENT"  # hod_price < current price
+    REL_VOL_ABSURD = "REL_VOL_ABSURD"  # rel_vol > 5000
+    PRICE_STALE = "PRICE_STALE"  # timestamp too old
+    SPREAD_WIDE = "SPREAD_WIDE"  # spread > 3%
+    DATA_INCOMPLETE = "DATA_INCOMPLETE"  # critical fields missing
 
 
 class ModelSource(Enum):
     """Source of model predictions"""
-    REAL = "REAL"               # Trained model with validation
-    SIMULATED = "SIMULATED"     # Placeholder/mock values
-    UNAVAILABLE = "UNAVAILABLE" # Model not loaded
+
+    REAL = "REAL"  # Trained model with validation
+    SIMULATED = "SIMULATED"  # Placeholder/mock values
+    UNAVAILABLE = "UNAVAILABLE"  # Model not loaded
 
 
 @dataclass
@@ -59,6 +62,7 @@ class DataQuality:
     Tracks all data quality issues for a snapshot.
     Gate MUST check this before approving trades.
     """
+
     flags: List[DataQualityFlag] = field(default_factory=list)
     float_missing: bool = False
     avg_volume_missing: bool = False
@@ -98,7 +102,7 @@ class DataQuality:
             "spread_wide": self.spread_wide,
             "stale_seconds": self.stale_seconds,
             "is_clean": self.is_clean,
-            "has_critical_issues": self.has_critical_issues
+            "has_critical_issues": self.has_critical_issues,
         }
 
 
@@ -109,6 +113,7 @@ class SignalSnapshot:
 
     NO SILENT DEFAULTS - if data is missing, it's None and flagged.
     """
+
     # Identity
     symbol: str
     timestamp_utc: datetime
@@ -121,7 +126,7 @@ class SignalSnapshot:
     # Volume Data
     volume_today: Optional[int] = None
     avg_daily_volume_30d: Optional[int] = None  # None if unknown, NOT 1
-    rel_vol_daily: Optional[float] = None       # None if can't compute
+    rel_vol_daily: Optional[float] = None  # None if can't compute
 
     # 5-minute volume
     vol_5m: Optional[int] = None
@@ -129,7 +134,7 @@ class SignalSnapshot:
     rel_vol_5m: Optional[float] = None
 
     # Float/Short Data
-    float_shares: Optional[int] = None          # None if unknown, NOT 0
+    float_shares: Optional[int] = None  # None if unknown, NOT 0
     short_interest_shares: Optional[int] = None
     short_interest_pct: Optional[float] = None
 
@@ -233,7 +238,9 @@ class SignalSnapshot:
             self.hod_status = HODStatus.UNKNOWN
             return
 
-        self.pct_from_hod = round(((self.price - self.hod_price) / self.hod_price) * 100, 2)
+        self.pct_from_hod = round(
+            ((self.price - self.hod_price) / self.hod_price) * 100, 2
+        )
 
         # Classify HOD status
         abs_pct = abs(self.pct_from_hod)
@@ -256,7 +263,9 @@ class SignalSnapshot:
         """Serialize to dict for JSON reports"""
         return {
             "symbol": self.symbol,
-            "timestamp_utc": self.timestamp_utc.isoformat() if self.timestamp_utc else None,
+            "timestamp_utc": (
+                self.timestamp_utc.isoformat() if self.timestamp_utc else None
+            ),
             "price": self.price,
             "prev_close": self.prev_close,
             "gap_pct": self.gap_pct,
@@ -282,14 +291,16 @@ class SignalSnapshot:
             "qlib_score": self.qlib_score,
             "qlib_source": self.qlib_source.value if self.qlib_source else None,
             "chronos_score": self.chronos_score,
-            "chronos_source": self.chronos_source.value if self.chronos_source else None,
+            "chronos_source": (
+                self.chronos_source.value if self.chronos_source else None
+            ),
             "entry_score": self.entry_score,
             "priority": self.priority,
-            "is_tradeable": self.is_tradeable
+            "is_tradeable": self.is_tradeable,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SignalSnapshot':
+    def from_dict(cls, data: Dict[str, Any]) -> "SignalSnapshot":
         """Deserialize from dict"""
         # Parse timestamp
         ts = data.get("timestamp_utc")
@@ -341,7 +352,8 @@ class SignalSnapshot:
             pct_from_hod=data.get("pct_from_hod"),
             hod_status=hod_status,
             hod_breaks=data.get("hod_breaks") or 0,  # Required int - defaults to 0
-            failed_breaks=data.get("failed_breaks") or 0,  # Required int - defaults to 0
+            failed_breaks=data.get("failed_breaks")
+            or 0,  # Required int - defaults to 0
             bid=data.get("bid"),
             ask=data.get("ask"),
             spread=data.get("spread"),
@@ -351,13 +363,15 @@ class SignalSnapshot:
             chronos_score=data.get("chronos_score"),
             chronos_source=chronos_source,
             entry_score=data.get("entry_score"),
-            priority=data.get("priority") or "NORMAL"
+            priority=data.get("priority") or "NORMAL",
         )
 
         return snapshot
 
     @classmethod
-    def from_quote(cls, symbol: str, quote: Dict, float_data: Optional[Dict] = None) -> 'SignalSnapshot':
+    def from_quote(
+        cls, symbol: str, quote: Dict, float_data: Optional[Dict] = None
+    ) -> "SignalSnapshot":
         """
         Create snapshot from Schwab quote data.
         This is the PRIMARY factory method.
@@ -366,7 +380,11 @@ class SignalSnapshot:
 
         # Extract price
         price = quote.get("lastPrice") or quote.get("price") or 0
-        prev_close = quote.get("closePrice") or quote.get("previousClose") or quote.get("prev_close")
+        prev_close = (
+            quote.get("closePrice")
+            or quote.get("previousClose")
+            or quote.get("prev_close")
+        )
 
         # Compute gap if we have prev_close
         gap_pct = None
@@ -375,7 +393,11 @@ class SignalSnapshot:
 
         # Volume
         volume_today = quote.get("totalVolume") or quote.get("volume")
-        avg_volume = quote.get("averageVolume") or quote.get("avgVolume") or quote.get("averageVolume10Day")
+        avg_volume = (
+            quote.get("averageVolume")
+            or quote.get("avgVolume")
+            or quote.get("averageVolume10Day")
+        )
 
         # Important: Don't use 1 as fallback - use None
         if avg_volume == 0 or avg_volume == 1:
@@ -412,7 +434,7 @@ class SignalSnapshot:
             short_interest_shares=short_interest,
             hod_price=hod_price,
             bid=bid,
-            ask=ask
+            ask=ask,
         )
 
         # Compute derived fields
@@ -435,7 +457,9 @@ def create_snapshot_from_worklist_item(item: Dict) -> SignalSnapshot:
     prev_close = None  # Worklist doesn't provide this directly
 
     # Compute gap from change_percent
-    gap_pct = item.get("change_percent") or item.get("change_pct") or item.get("changePct")
+    gap_pct = (
+        item.get("change_percent") or item.get("change_pct") or item.get("changePct")
+    )
 
     # Volume
     volume_today = item.get("volume")
@@ -486,7 +510,7 @@ def create_snapshot_from_worklist_item(item: Dict) -> SignalSnapshot:
         pct_from_hod=pct_from_hod,
         hod_status=hod_status,
         bid=bid,
-        ask=ask
+        ask=ask,
     )
 
     # Compute spread

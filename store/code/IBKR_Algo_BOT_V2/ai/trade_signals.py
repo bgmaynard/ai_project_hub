@@ -7,6 +7,7 @@ Captures secondary technical indicators for trade correlation analysis.
 import logging
 from datetime import datetime
 from typing import Dict, Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -52,20 +53,16 @@ async def get_secondary_triggers(symbol: str, quote: Dict, signal: Dict) -> Dict
         "time_of_day": get_time_of_day(),
         "day_of_week": get_day_of_week(),
         "entry_timestamp": datetime.now().isoformat(),
-
         # From quote
         "spread_at_entry": 0.0,
         "day_change_at_entry": quote.get("change_percent", 0),
         "volume_at_entry": quote.get("volume", 0),
-
         # From signal
         "momentum_strength": signal.get("momentum", 0),
         "volume_spike_percent": signal.get("volume_surge", 0),
-
         # Position in range
         "distance_from_hod": 0.0,
         "distance_from_lod": 0.0,
-
         # To be populated
         "float_shares": 0.0,
         "float_rotation": 0.0,
@@ -99,8 +96,7 @@ async def get_secondary_triggers(symbol: str, quote: Dict, signal: Dict) -> Dict
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"http://localhost:9100/api/stock/float/{symbol}",
-                timeout=2.0
+                f"http://localhost:9100/api/stock/float/{symbol}", timeout=2.0
             )
             if response.status_code == 200:
                 float_data = response.json()
@@ -118,8 +114,7 @@ async def get_secondary_triggers(symbol: str, quote: Dict, signal: Dict) -> Dict
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                "http://localhost:9100/api/price/SPY",
-                timeout=2.0
+                "http://localhost:9100/api/price/SPY", timeout=2.0
             )
             if response.status_code == 200:
                 spy_data = response.json()
@@ -137,8 +132,7 @@ async def get_secondary_triggers(symbol: str, quote: Dict, signal: Dict) -> Dict
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"http://localhost:9100/api/stock/news-check/{symbol}",
-                timeout=2.0
+                f"http://localhost:9100/api/stock/news-check/{symbol}", timeout=2.0
             )
             if response.status_code == 200:
                 news_data = response.json()
@@ -165,7 +159,7 @@ def analyze_trigger_correlations(trades: list) -> Dict:
         "total_trades": len(trades),
         "wins": len(wins),
         "losses": len(losses),
-        "correlations": {}
+        "correlations": {},
     }
 
     # Analyze time of day
@@ -195,18 +189,28 @@ def analyze_trigger_correlations(trades: list) -> Dict:
         avg_win_momentum = 0
 
     if losses:
-        avg_loss_momentum = sum(t.get("momentum_strength", 0) for t in losses) / len(losses)
+        avg_loss_momentum = sum(t.get("momentum_strength", 0) for t in losses) / len(
+            losses
+        )
     else:
         avg_loss_momentum = 0
 
     analysis["correlations"]["momentum"] = {
         "avg_winning_momentum": round(avg_win_momentum, 2),
         "avg_losing_momentum": round(avg_loss_momentum, 2),
-        "insight": "Higher momentum = better" if avg_win_momentum > avg_loss_momentum else "Lower momentum = better"
+        "insight": (
+            "Higher momentum = better"
+            if avg_win_momentum > avg_loss_momentum
+            else "Lower momentum = better"
+        ),
     }
 
     # Analyze SPY direction
-    spy_stats = {"up": {"wins": 0, "losses": 0}, "down": {"wins": 0, "losses": 0}, "flat": {"wins": 0, "losses": 0}}
+    spy_stats = {
+        "up": {"wins": 0, "losses": 0},
+        "down": {"wins": 0, "losses": 0},
+        "flat": {"wins": 0, "losses": 0},
+    }
     for t in trades:
         spy = t.get("spy_direction", "unknown")
         if spy in spy_stats:
@@ -235,7 +239,11 @@ def analyze_trigger_correlations(trades: list) -> Dict:
     analysis["correlations"]["spread"] = {
         "avg_winning_spread": round(avg_win_spread, 3),
         "avg_losing_spread": round(avg_loss_spread, 3),
-        "insight": "Tighter spreads = better" if avg_win_spread < avg_loss_spread else "Spread less important"
+        "insight": (
+            "Tighter spreads = better"
+            if avg_win_spread < avg_loss_spread
+            else "Spread less important"
+        ),
     }
 
     return analysis
@@ -246,7 +254,15 @@ if __name__ == "__main__":
     import asyncio
 
     async def test():
-        quote = {"price": 5.0, "bid": 4.98, "ask": 5.02, "volume": 100000, "high": 5.50, "low": 4.50, "change_percent": 10.0}
+        quote = {
+            "price": 5.0,
+            "bid": 4.98,
+            "ask": 5.02,
+            "volume": 100000,
+            "high": 5.50,
+            "low": 4.50,
+            "change_percent": 10.0,
+        }
         signal = {"momentum": 8.5, "volume_surge": 3.0}
 
         triggers = await get_secondary_triggers("TEST", quote, signal)

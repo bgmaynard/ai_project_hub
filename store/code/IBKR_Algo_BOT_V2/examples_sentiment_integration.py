@@ -11,21 +11,22 @@ Examples:
 """
 
 import asyncio
-from typing import List, Dict, Optional
 from datetime import datetime
+from typing import Dict, List, Optional
 
 # Import sentiment analyzer
-from ai.warrior_sentiment_analyzer import get_sentiment_analyzer, AggregatedSentiment
-
+from ai.warrior_sentiment_analyzer import (AggregatedSentiment,
+                                           get_sentiment_analyzer)
 
 # ═══════════════════════════════════════════════════════════════════════
 #                     EXAMPLE 1: SENTIMENT-FILTERED SCANNER
 # ═══════════════════════════════════════════════════════════════════════
 
+
 async def gap_and_go_with_sentiment(
     min_gap_percent: float = 5.0,
     min_sentiment_score: float = 0.3,
-    min_signals: int = 10
+    min_signals: int = 10,
 ) -> List[Dict]:
     """
     Enhanced Gap & Go scanner with sentiment filter
@@ -61,20 +62,26 @@ async def gap_and_go_with_sentiment(
         sentiment = await analyzer.analyze_symbol(symbol, hours=12)
 
         # Filter criteria
-        if (sentiment.overall_score >= min_sentiment_score and
-            sentiment.signals_count >= min_signals):
+        if (
+            sentiment.overall_score >= min_sentiment_score
+            and sentiment.signals_count >= min_signals
+        ):
 
-            results.append({
-                "symbol": symbol,
-                "gap_percent": stock["gap_percent"],
-                "price": stock["price"],
-                "sentiment_score": sentiment.overall_score,
-                "sentiment_confidence": sentiment.overall_confidence,
-                "signals": sentiment.signals_count,
-                "trending": sentiment.trending,
-                "momentum": sentiment.momentum,
-                "quality": "HIGH" if sentiment.overall_confidence > 0.7 else "MEDIUM"
-            })
+            results.append(
+                {
+                    "symbol": symbol,
+                    "gap_percent": stock["gap_percent"],
+                    "price": stock["price"],
+                    "sentiment_score": sentiment.overall_score,
+                    "sentiment_confidence": sentiment.overall_confidence,
+                    "signals": sentiment.signals_count,
+                    "trending": sentiment.trending,
+                    "momentum": sentiment.momentum,
+                    "quality": (
+                        "HIGH" if sentiment.overall_confidence > 0.7 else "MEDIUM"
+                    ),
+                }
+            )
 
     # Sort by sentiment score (most bullish first)
     results.sort(key=lambda x: x["sentiment_score"], reverse=True)
@@ -86,10 +93,11 @@ async def gap_and_go_with_sentiment(
 #                     EXAMPLE 2: TRADE VALIDATION
 # ═══════════════════════════════════════════════════════════════════════
 
+
 async def validate_trade_with_sentiment(
     symbol: str,
     direction: str,  # 'long' or 'short'
-    pattern: str  # e.g., 'bull_flag', 'breakout'
+    pattern: str,  # e.g., 'bull_flag', 'breakout'
 ) -> Dict:
     """
     Validate a potential trade with sentiment analysis
@@ -113,7 +121,7 @@ async def validate_trade_with_sentiment(
     MIN_CONFIDENCE = 0.6
 
     # Validation logic
-    if direction == 'long':
+    if direction == "long":
         sentiment_aligned = sentiment.overall_score > 0
         strong_alignment = sentiment.overall_score > STRONG_BULLISH
 
@@ -122,7 +130,9 @@ async def validate_trade_with_sentiment(
             reason = f"Bullish pattern + strong positive sentiment ({sentiment.overall_score:+.2f})"
         elif sentiment_aligned:
             recommendation = "BUY"
-            reason = f"Bullish pattern + positive sentiment ({sentiment.overall_score:+.2f})"
+            reason = (
+                f"Bullish pattern + positive sentiment ({sentiment.overall_score:+.2f})"
+            )
         elif sentiment.overall_score < STRONG_BEARISH:
             recommendation = "AVOID"
             reason = f"Bullish pattern but strong negative sentiment ({sentiment.overall_score:+.2f})"
@@ -139,7 +149,9 @@ async def validate_trade_with_sentiment(
             reason = f"Bearish pattern + strong negative sentiment ({sentiment.overall_score:+.2f})"
         elif sentiment_aligned:
             recommendation = "SELL"
-            reason = f"Bearish pattern + negative sentiment ({sentiment.overall_score:+.2f})"
+            reason = (
+                f"Bearish pattern + negative sentiment ({sentiment.overall_score:+.2f})"
+            )
         elif sentiment.overall_score > STRONG_BULLISH:
             recommendation = "AVOID"
             reason = f"Bearish pattern but strong positive sentiment ({sentiment.overall_score:+.2f})"
@@ -156,7 +168,7 @@ async def validate_trade_with_sentiment(
         "sentiment_score": sentiment.overall_score,
         "sentiment_confidence": sentiment.overall_confidence,
         "signals": sentiment.signals_count,
-        "trending": sentiment.trending
+        "trending": sentiment.trending,
     }
 
 
@@ -164,10 +176,9 @@ async def validate_trade_with_sentiment(
 #                     EXAMPLE 3: DYNAMIC POSITION SIZING
 # ═══════════════════════════════════════════════════════════════════════
 
+
 async def calculate_position_size_with_sentiment(
-    symbol: str,
-    account_size: float,
-    base_risk_percent: float = 3.0
+    symbol: str, account_size: float, base_risk_percent: float = 3.0
 ) -> Dict:
     """
     Calculate position size adjusted for sentiment confidence
@@ -213,7 +224,7 @@ async def calculate_position_size_with_sentiment(
         "multiplier": multiplier,
         "adjusted_risk_percent": adjusted_risk_percent,
         "risk_amount": risk_amount,
-        "recommendation": f"Risk {adjusted_risk_percent:.1f}% (${risk_amount:,.2f}) based on {confidence_level} sentiment confidence"
+        "recommendation": f"Risk {adjusted_risk_percent:.1f}% (${risk_amount:,.2f}) based on {confidence_level} sentiment confidence",
     }
 
 
@@ -221,11 +232,12 @@ async def calculate_position_size_with_sentiment(
 #                     EXAMPLE 4: EXIT TIMING WITH MOMENTUM
 # ═══════════════════════════════════════════════════════════════════════
 
+
 async def check_exit_signal(
     symbol: str,
     entry_price: float,
     current_price: float,
-    position_direction: str  # 'long' or 'short'
+    position_direction: str,  # 'long' or 'short'
 ) -> Dict:
     """
     Check if sentiment momentum suggests taking profits or holding
@@ -246,7 +258,7 @@ async def check_exit_signal(
     sentiment = await analyzer.analyze_symbol(symbol, hours=24)
 
     # Calculate P&L
-    if position_direction == 'long':
+    if position_direction == "long":
         pnl_percent = ((current_price - entry_price) / entry_price) * 100
     else:
         pnl_percent = ((entry_price - current_price) / entry_price) * 100
@@ -256,7 +268,7 @@ async def check_exit_signal(
     STRONG_NEGATIVE_MOMENTUM = -0.2
 
     # Exit logic
-    if position_direction == 'long':
+    if position_direction == "long":
         if sentiment.momentum < STRONG_NEGATIVE_MOMENTUM:
             recommendation = "EXIT NOW"
             reason = "Sentiment turning negative - take profits"
@@ -292,7 +304,7 @@ async def check_exit_signal(
         "sentiment_momentum": sentiment.momentum,
         "sentiment_score": sentiment.overall_score,
         "recommendation": recommendation,
-        "reason": reason
+        "reason": reason,
     }
 
 
@@ -300,10 +312,9 @@ async def check_exit_signal(
 #                     EXAMPLE 5: FIND TRENDING STOCKS
 # ═══════════════════════════════════════════════════════════════════════
 
+
 async def find_trending_stocks_premarket(
-    watchlist: List[str],
-    min_momentum: float = 0.1,
-    top_n: int = 5
+    watchlist: List[str], min_momentum: float = 0.1, top_n: int = 5
 ) -> List[Dict]:
     """
     Find stocks with strong positive sentiment momentum
@@ -325,14 +336,16 @@ async def find_trending_stocks_premarket(
         sentiment = await analyzer.analyze_symbol(symbol, hours=12)
 
         if sentiment.trending and sentiment.momentum >= min_momentum:
-            trending.append({
-                "symbol": symbol,
-                "sentiment_score": sentiment.overall_score,
-                "momentum": sentiment.momentum,
-                "signals": sentiment.signals_count,
-                "confidence": sentiment.overall_confidence,
-                "reason": f"Trending with {sentiment.signals_count} signals and +{sentiment.momentum:.2f} momentum"
-            })
+            trending.append(
+                {
+                    "symbol": symbol,
+                    "sentiment_score": sentiment.overall_score,
+                    "momentum": sentiment.momentum,
+                    "signals": sentiment.signals_count,
+                    "confidence": sentiment.overall_confidence,
+                    "reason": f"Trending with {sentiment.signals_count} signals and +{sentiment.momentum:.2f} momentum",
+                }
+            )
 
     # Sort by momentum (fastest rising sentiment)
     trending.sort(key=lambda x: x["momentum"], reverse=True)
@@ -344,9 +357,8 @@ async def find_trending_stocks_premarket(
 #                     EXAMPLE 6: BATCH ANALYSIS
 # ═══════════════════════════════════════════════════════════════════════
 
-async def analyze_portfolio_sentiment(
-    positions: List[Dict]
-) -> Dict:
+
+async def analyze_portfolio_sentiment(positions: List[Dict]) -> Dict:
     """
     Analyze sentiment for entire portfolio
 
@@ -384,28 +396,33 @@ async def analyze_portfolio_sentiment(
             else:
                 total_bearish += 1
 
-        results.append({
-            "symbol": symbol,
-            "direction": direction,
-            "sentiment": sentiment.overall_score,
-            "aligned": aligned,
-            "strength": alignment_strength,
-            "momentum": sentiment.momentum,
-            "status": "GOOD" if aligned else "WATCH"
-        })
+        results.append(
+            {
+                "symbol": symbol,
+                "direction": direction,
+                "sentiment": sentiment.overall_score,
+                "aligned": aligned,
+                "strength": alignment_strength,
+                "momentum": sentiment.momentum,
+                "status": "GOOD" if aligned else "WATCH",
+            }
+        )
 
     return {
         "total_positions": len(positions),
         "aligned_positions": total_bullish + total_bearish,
-        "alignment_rate": (total_bullish + total_bearish) / len(positions) if positions else 0,
+        "alignment_rate": (
+            (total_bullish + total_bearish) / len(positions) if positions else 0
+        ),
         "positions": results,
-        "summary": f"{total_bullish + total_bearish}/{len(positions)} positions sentiment-aligned"
+        "summary": f"{total_bullish + total_bearish}/{len(positions)} positions sentiment-aligned",
     }
 
 
 # ═══════════════════════════════════════════════════════════════════════
 #                     MAIN DEMO
 # ═══════════════════════════════════════════════════════════════════════
+
 
 async def main():
     """Run all examples"""
@@ -417,11 +434,15 @@ async def main():
     # Example 1: Scanner with sentiment
     print("\n1. GAP & GO SCANNER WITH SENTIMENT FILTER")
     print("-" * 60)
-    results = await gap_and_go_with_sentiment(min_gap_percent=5.0, min_sentiment_score=0.3)
+    results = await gap_and_go_with_sentiment(
+        min_gap_percent=5.0, min_sentiment_score=0.3
+    )
     for stock in results:
-        print(f"{stock['symbol']:6s} | Gap: {stock['gap_percent']:5.1f}% | "
-              f"Sentiment: {stock['sentiment_score']:+.2f} ({stock['quality']}) | "
-              f"Signals: {stock['signals']}")
+        print(
+            f"{stock['symbol']:6s} | Gap: {stock['gap_percent']:5.1f}% | "
+            f"Sentiment: {stock['sentiment_score']:+.2f} ({stock['quality']}) | "
+            f"Signals: {stock['signals']}"
+        )
 
     # Example 2: Trade validation
     print("\n2. TRADE VALIDATION WITH SENTIMENT")
@@ -439,13 +460,17 @@ async def main():
     sizing = await calculate_position_size_with_sentiment("TSLA", account_size=50000)
     print(f"Symbol: {sizing['symbol']}")
     print(f"Account: ${sizing['account_size']:,.2f}")
-    print(f"Sentiment Confidence: {sizing['sentiment_confidence']:.1%} ({sizing['confidence_level']})")
+    print(
+        f"Sentiment Confidence: {sizing['sentiment_confidence']:.1%} ({sizing['confidence_level']})"
+    )
     print(f"Recommendation: {sizing['recommendation']}")
 
     # Example 4: Exit timing
     print("\n4. EXIT TIMING WITH MOMENTUM")
     print("-" * 60)
-    exit_check = await check_exit_signal("NVDA", entry_price=480.0, current_price=495.8, position_direction="long")
+    exit_check = await check_exit_signal(
+        "NVDA", entry_price=480.0, current_price=495.8, position_direction="long"
+    )
     print(f"Symbol: {exit_check['symbol']}")
     print(f"P&L: {exit_check['pnl_percent']:+.1f}%")
     print(f"Sentiment Momentum: {exit_check['sentiment_momentum']:+.2f}")
@@ -456,10 +481,14 @@ async def main():
     print("\n5. FIND TRENDING STOCKS PRE-MARKET")
     print("-" * 60)
     watchlist = ["AAPL", "TSLA", "NVDA", "AMD", "SPY"]
-    trending = await find_trending_stocks_premarket(watchlist, min_momentum=0.1, top_n=3)
+    trending = await find_trending_stocks_premarket(
+        watchlist, min_momentum=0.1, top_n=3
+    )
     for i, stock in enumerate(trending, 1):
-        print(f"{i}. {stock['symbol']:6s} | Score: {stock['sentiment_score']:+.2f} | "
-              f"Momentum: +{stock['momentum']:.2f} | Signals: {stock['signals']}")
+        print(
+            f"{i}. {stock['symbol']:6s} | Score: {stock['sentiment_score']:+.2f} | "
+            f"Momentum: +{stock['momentum']:.2f} | Signals: {stock['signals']}"
+        )
 
     # Example 6: Portfolio analysis
     print("\n6. PORTFOLIO SENTIMENT ANALYSIS")
@@ -467,17 +496,19 @@ async def main():
     portfolio = [
         {"symbol": "AAPL", "direction": "long"},
         {"symbol": "TSLA", "direction": "long"},
-        {"symbol": "SPY", "direction": "short"}
+        {"symbol": "SPY", "direction": "short"},
     ]
     analysis = await analyze_portfolio_sentiment(portfolio)
     print(f"Total Positions: {analysis['total_positions']}")
     print(f"Alignment Rate: {analysis['alignment_rate']:.1%}")
     print(f"Summary: {analysis['summary']}")
     print("\nPosition Details:")
-    for pos in analysis['positions']:
-        print(f"  {pos['symbol']:6s} {pos['direction']:5s} | "
-              f"Sentiment: {pos['sentiment']:+.2f} | "
-              f"Status: {pos['status']}")
+    for pos in analysis["positions"]:
+        print(
+            f"  {pos['symbol']:6s} {pos['direction']:5s} | "
+            f"Sentiment: {pos['sentiment']:+.2f} | "
+            f"Status: {pos['status']}"
+        )
 
     print("\n" + "=" * 60)
     print("All examples completed!")

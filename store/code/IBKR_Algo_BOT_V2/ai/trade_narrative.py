@@ -6,19 +6,20 @@ Improves transparency, debugging, and trader trust.
 Part of the Next-Gen AI Logic Blueprint.
 """
 
-import logging
-from datetime import datetime
-from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
-from enum import Enum
 import json
+import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class SignalType(str, Enum):
     """Types of signals that can trigger trades"""
+
     BREAKOUT = "breakout"
     MOMENTUM = "momentum"
     MEAN_REVERSION = "mean_reversion"
@@ -34,26 +35,28 @@ class SignalType(str, Enum):
 
 class ConfidenceLevel(str, Enum):
     """Human-readable confidence levels"""
-    VERY_HIGH = "very_high"    # 90%+
-    HIGH = "high"              # 75-90%
-    MODERATE = "moderate"      # 50-75%
-    LOW = "low"                # 25-50%
-    VERY_LOW = "very_low"      # <25%
+
+    VERY_HIGH = "very_high"  # 90%+
+    HIGH = "high"  # 75-90%
+    MODERATE = "moderate"  # 50-75%
+    LOW = "low"  # 25-50%
+    VERY_LOW = "very_low"  # <25%
 
 
 @dataclass
 class TradeNarrative:
     """Complete narrative for a trade decision"""
+
     symbol: str
-    action: str                     # BUY, SELL, HOLD
+    action: str  # BUY, SELL, HOLD
     signal_type: SignalType
-    confidence: float               # 0-1
+    confidence: float  # 0-1
     confidence_level: ConfidenceLevel
-    narrative: str                  # Plain-English explanation
-    supporting_factors: List[str]   # Reasons FOR the trade
-    opposing_factors: List[str]     # Reasons AGAINST (risks)
-    regime: str                     # Market regime
-    session: str                    # Market session
+    narrative: str  # Plain-English explanation
+    supporting_factors: List[str]  # Reasons FOR the trade
+    opposing_factors: List[str]  # Reasons AGAINST (risks)
+    regime: str  # Market regime
+    session: str  # Market session
     price: float
     target_price: Optional[float]
     stop_price: Optional[float]
@@ -118,37 +121,56 @@ class TradeNarrativeGenerator:
             return SignalType.AI_PREDICTION
         return SignalType.UNKNOWN
 
-    def _build_narrative(self, symbol: str, action: str, factors: Dict,
-                        signal_type: SignalType) -> str:
+    def _build_narrative(
+        self, symbol: str, action: str, factors: Dict, signal_type: SignalType
+    ) -> str:
         """Build plain-English narrative from factors"""
         parts = []
 
         # Opening statement
         confidence = factors.get("confidence", 0)
-        conf_word = "strong" if confidence >= 0.75 else "moderate" if confidence >= 0.5 else "weak"
+        conf_word = (
+            "strong"
+            if confidence >= 0.75
+            else "moderate" if confidence >= 0.5 else "weak"
+        )
 
         if action == "BUY":
-            parts.append(f"Initiating LONG position in {symbol} based on {conf_word} {signal_type.value} signal.")
+            parts.append(
+                f"Initiating LONG position in {symbol} based on {conf_word} {signal_type.value} signal."
+            )
         elif action == "SELL":
             if factors.get("is_exit", False):
-                parts.append(f"Closing position in {symbol} due to {signal_type.value}.")
+                parts.append(
+                    f"Closing position in {symbol} due to {signal_type.value}."
+                )
             else:
-                parts.append(f"Initiating SHORT position in {symbol} based on {conf_word} {signal_type.value} signal.")
+                parts.append(
+                    f"Initiating SHORT position in {symbol} based on {conf_word} {signal_type.value} signal."
+                )
         else:
             parts.append(f"HOLD on {symbol} - no actionable signal detected.")
 
         # Technical factors
         if factors.get("above_vwap"):
-            parts.append("Price is trading above VWAP, indicating bullish intraday strength.")
+            parts.append(
+                "Price is trading above VWAP, indicating bullish intraday strength."
+            )
         elif factors.get("below_vwap"):
-            parts.append("Price is trading below VWAP, indicating bearish intraday pressure.")
+            parts.append(
+                "Price is trading below VWAP, indicating bearish intraday pressure."
+            )
 
         if factors.get("rsi"):
             rsi = factors["rsi"]
             if rsi >= 70:
-                parts.append(f"RSI at {rsi:.0f} signals overbought conditions (caution on longs).")
+                parts.append(
+                    f"RSI at {rsi:.0f} signals overbought conditions (caution on longs)."
+                )
             elif rsi <= 30:
-                parts.append(f"RSI at {rsi:.0f} signals oversold conditions (potential bounce).")
+                parts.append(
+                    f"RSI at {rsi:.0f} signals oversold conditions (potential bounce)."
+                )
             else:
                 parts.append(f"RSI at {rsi:.0f} is in neutral territory.")
 
@@ -156,10 +178,14 @@ class TradeNarrativeGenerator:
             parts.append("Volume surge detected, confirming the move.")
 
         if factors.get("breakout"):
-            parts.append(f"Breakout above key resistance at ${factors.get('breakout_level', 0):.2f}.")
+            parts.append(
+                f"Breakout above key resistance at ${factors.get('breakout_level', 0):.2f}."
+            )
 
         if factors.get("breakdown"):
-            parts.append(f"Breakdown below key support at ${factors.get('breakdown_level', 0):.2f}.")
+            parts.append(
+                f"Breakdown below key support at ${factors.get('breakdown_level', 0):.2f}."
+            )
 
         # Sentiment/News
         if factors.get("news_headline"):
@@ -167,7 +193,9 @@ class TradeNarrativeGenerator:
 
         if factors.get("sentiment_score"):
             sent = factors["sentiment_score"]
-            sent_word = "bullish" if sent > 0.3 else "bearish" if sent < -0.3 else "neutral"
+            sent_word = (
+                "bullish" if sent > 0.3 else "bearish" if sent < -0.3 else "neutral"
+            )
             parts.append(f"Sentiment analysis shows {sent_word} bias ({sent:+.2f}).")
 
         # Regime context
@@ -178,7 +206,9 @@ class TradeNarrativeGenerator:
         if factors.get("is_trailing_stop"):
             drop_pct = factors.get("drop_from_high", 0)
             high = factors.get("high_watermark", 0)
-            parts.append(f"Trailing stop triggered after {drop_pct:.1f}% drop from high of ${high:.2f}.")
+            parts.append(
+                f"Trailing stop triggered after {drop_pct:.1f}% drop from high of ${high:.2f}."
+            )
 
         if factors.get("is_take_profit"):
             gain = factors.get("gain_percent", 0)
@@ -186,7 +216,9 @@ class TradeNarrativeGenerator:
 
         if factors.get("is_stop_loss"):
             loss = factors.get("loss_percent", 0)
-            parts.append(f"Stop loss triggered at -{abs(loss):.1f}% loss to protect capital.")
+            parts.append(
+                f"Stop loss triggered at -{abs(loss):.1f}% loss to protect capital."
+            )
 
         if factors.get("is_reversal"):
             signals = factors.get("reversal_signals", [])
@@ -211,7 +243,9 @@ class TradeNarrativeGenerator:
         if factors.get("breakout"):
             supporting.append("Technical breakout")
         if factors.get("ai_confidence", 0) >= 0.7:
-            supporting.append(f"High AI confidence ({factors['ai_confidence']*100:.0f}%)")
+            supporting.append(
+                f"High AI confidence ({factors['ai_confidence']*100:.0f}%)"
+            )
         if factors.get("regime") in ["trending_up"] and factors.get("action") == "BUY":
             supporting.append("Favorable market regime")
         if factors.get("profit_locked"):
@@ -246,9 +280,15 @@ class TradeNarrativeGenerator:
 
         return opposing
 
-    def generate(self, symbol: str, action: str, price: float,
-                factors: Dict, regime: str = "unknown",
-                session: str = "unknown") -> TradeNarrative:
+    def generate(
+        self,
+        symbol: str,
+        action: str,
+        price: float,
+        factors: Dict,
+        regime: str = "unknown",
+        session: str = "unknown",
+    ) -> TradeNarrative:
         """
         Generate a complete trade narrative.
 
@@ -301,7 +341,7 @@ class TradeNarrativeGenerator:
             target_price=target,
             stop_price=stop,
             risk_reward=round(risk_reward, 2) if risk_reward else None,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
         # Store and log
@@ -315,18 +355,21 @@ class TradeNarrativeGenerator:
 
         # Trim history
         if len(self.narratives) > self.max_history:
-            self.narratives = self.narratives[-self.max_history:]
+            self.narratives = self.narratives[-self.max_history :]
 
         # Log to file
         try:
-            log_file = self.log_path / f"narratives_{datetime.now().strftime('%Y%m%d')}.jsonl"
+            log_file = (
+                self.log_path / f"narratives_{datetime.now().strftime('%Y%m%d')}.jsonl"
+            )
             with open(log_file, "a") as f:
                 f.write(narrative.to_json() + "\n")
         except Exception as e:
             logger.warning(f"Could not write narrative to file: {e}")
 
-    def get_recent_narratives(self, symbol: str = None,
-                             limit: int = 10) -> List[TradeNarrative]:
+    def get_recent_narratives(
+        self, symbol: str = None, limit: int = 10
+    ) -> List[TradeNarrative]:
         """Get recent narratives, optionally filtered by symbol"""
         if symbol:
             filtered = [n for n in self.narratives if n.symbol == symbol]
@@ -335,9 +378,15 @@ class TradeNarrativeGenerator:
 
         return filtered[-limit:]
 
-    def generate_exit_narrative(self, symbol: str, entry_price: float,
-                               exit_price: float, quantity: int,
-                               exit_reason: str, factors: Dict) -> TradeNarrative:
+    def generate_exit_narrative(
+        self,
+        symbol: str,
+        entry_price: float,
+        exit_price: float,
+        quantity: int,
+        exit_reason: str,
+        factors: Dict,
+    ) -> TradeNarrative:
         """
         Generate narrative specifically for exits.
 
@@ -350,17 +399,21 @@ class TradeNarrativeGenerator:
             factors: Additional factors
         """
         pnl = (exit_price - entry_price) * quantity
-        pnl_pct = ((exit_price - entry_price) / entry_price) * 100 if entry_price > 0 else 0
+        pnl_pct = (
+            ((exit_price - entry_price) / entry_price) * 100 if entry_price > 0 else 0
+        )
 
         # Enrich factors for exit
-        factors.update({
-            "is_exit": True,
-            "entry_price": entry_price,
-            "exit_price": exit_price,
-            "pnl": pnl,
-            "pnl_percent": pnl_pct,
-            "exit_reason": exit_reason
-        })
+        factors.update(
+            {
+                "is_exit": True,
+                "entry_price": entry_price,
+                "exit_price": exit_price,
+                "pnl": pnl,
+                "pnl_percent": pnl_pct,
+                "exit_reason": exit_reason,
+            }
+        )
 
         if "trailing_stop" in exit_reason.lower():
             factors["is_trailing_stop"] = True
@@ -377,7 +430,7 @@ class TradeNarrativeGenerator:
             price=exit_price,
             factors=factors,
             regime=factors.get("regime", "unknown"),
-            session=factors.get("session", "unknown")
+            session=factors.get("session", "unknown"),
         )
 
 

@@ -17,22 +17,25 @@ Version: 2.0
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional
-from collections import deque
-import numpy as np
+
+import json
 import math
 import time
-import json
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
 
+import numpy as np
 
 # ═══════════════════════════════════════════════════════════════════════
 #                     DATA STRUCTURES
 # ═══════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class MarketData:
     """Real-time market data snapshot"""
+
     timestamp: float
     bid: float
     ask: float
@@ -63,6 +66,7 @@ class MarketData:
 @dataclass
 class Features:
     """Engineered features for prediction"""
+
     imbalance: float  # Order book imbalance [-1, 1]
     momentum: float  # Vol-normalized momentum
     drift: float  # Slow EWMA drift
@@ -73,20 +77,23 @@ class Features:
 
     def to_array(self) -> np.ndarray:
         """Convert to feature vector"""
-        return np.array([
-            self.imbalance,
-            self.momentum,
-            self.drift,
-            self.vwap_distance,
-            self.spread,
-            self.barrier,
-            self.sentiment
-        ])
+        return np.array(
+            [
+                self.imbalance,
+                self.momentum,
+                self.drift,
+                self.vwap_distance,
+                self.spread,
+                self.barrier,
+                self.sentiment,
+            ]
+        )
 
 
 @dataclass
 class Prediction:
     """Model prediction output"""
+
     timestamp: float
     p_up: float  # Raw model probability
     p_calibrated: float  # After calibration
@@ -99,6 +106,7 @@ class Prediction:
 @dataclass
 class TradeLabel:
     """Realized outcome after horizon τ"""
+
     timestamp: float
     entry_price: float
     exit_price: float
@@ -109,6 +117,7 @@ class TradeLabel:
 # ═══════════════════════════════════════════════════════════════════════
 #                     EWMA ESTIMATORS (LLN-STYLE)
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class EWMA:
     """Exponentially Weighted Moving Average estimator"""
@@ -161,12 +170,11 @@ class RunningStats:
 #                     FEATURE ENGINEERING
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class FeatureEngineer:
     """Compute all features from market data"""
 
-    def __init__(self,
-                 volatility_alpha: float = 0.1,
-                 drift_alpha: float = 0.05):
+    def __init__(self, volatility_alpha: float = 0.1, drift_alpha: float = 0.05):
         # EWMA estimators
         self.volatility_ewma = EWMA(alpha=volatility_alpha)
         self.drift_ewma = EWMA(alpha=drift_alpha)
@@ -175,9 +183,7 @@ class FeatureEngineer:
         self.last_mid = None
         self.last_timestamp = None
 
-    def compute_features(self,
-                        data: MarketData,
-                        sentiment: float = 0.0) -> Features:
+    def compute_features(self, data: MarketData, sentiment: float = 0.0) -> Features:
         """Compute all features from market snapshot"""
 
         # 1. Order Book Imbalance
@@ -208,7 +214,7 @@ class FeatureEngineer:
             vwap_distance=vwap_dist,
             spread=spread,
             barrier=barrier,
-            sentiment=sentiment
+            sentiment=sentiment,
         )
 
     def _compute_imbalance(self, data: MarketData) -> float:
@@ -271,13 +277,13 @@ class FeatureEngineer:
 #                     ONLINE LOGISTIC REGRESSION
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class OnlineLogisticRegression:
     """Online logistic regression with SGD"""
 
-    def __init__(self,
-                 n_features: int = 7,
-                 learning_rate: float = 0.01,
-                 l2_lambda: float = 0.001):
+    def __init__(
+        self, n_features: int = 7, learning_rate: float = 0.01, l2_lambda: float = 0.001
+    ):
         self.learning_rate = learning_rate
         self.l2_lambda = l2_lambda
 
@@ -317,6 +323,7 @@ class OnlineLogisticRegression:
 # ═══════════════════════════════════════════════════════════════════════
 #                     CALIBRATION & RELIABILITY
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class Calibrator:
     """Probability calibration with binning"""
@@ -395,6 +402,7 @@ class Calibrator:
 #                     SIMILARITY-BASED BOOSTING
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class SimilarityBooster:
     """k-NN style similarity matching for probability boost"""
 
@@ -426,7 +434,7 @@ class SimilarityBooster:
 
         # Get top-k neighbors
         similarities.sort(reverse=True, key=lambda x: x[0])
-        top_k = similarities[:self.k]
+        top_k = similarities[: self.k]
 
         # Win rate in top-k
         win_rate = sum(outcome for _, outcome in top_k) / self.k
@@ -452,6 +460,7 @@ class SimilarityBooster:
 # ═══════════════════════════════════════════════════════════════════════
 #                     FILL PROBABILITY & SLIPPAGE
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class SlippageTracker:
     """Track realized slippage statistics"""
@@ -486,6 +495,7 @@ class SlippageTracker:
 #                     MAIN ALPHAFUSION ENGINE
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class AlphaFusionEngine:
     """
     Complete AlphaFusion trading algorithm
@@ -498,22 +508,22 @@ class AlphaFusionEngine:
     - Slippage tracking
     """
 
-    def __init__(self,
-                 horizon_seconds: float = 2.0,
-                 learning_rate: float = 0.01,
-                 l2_lambda: float = 0.001,
-                 n_bins: int = 10,
-                 k_neighbors: int = 20,
-                 boost_coeff: float = 0.4):
+    def __init__(
+        self,
+        horizon_seconds: float = 2.0,
+        learning_rate: float = 0.01,
+        l2_lambda: float = 0.001,
+        n_bins: int = 10,
+        k_neighbors: int = 20,
+        boost_coeff: float = 0.4,
+    ):
 
         self.horizon_seconds = horizon_seconds
 
         # Components
         self.feature_engineer = FeatureEngineer()
         self.model = OnlineLogisticRegression(
-            n_features=7,
-            learning_rate=learning_rate,
-            l2_lambda=l2_lambda
+            n_features=7, learning_rate=learning_rate, l2_lambda=l2_lambda
         )
         self.calibrator = Calibrator(n_bins=n_bins)
         self.similarity = SimilarityBooster(k=k_neighbors, boost_coeff=boost_coeff)
@@ -522,9 +532,7 @@ class AlphaFusionEngine:
         # Pending predictions waiting for labels
         self.pending: deque = deque(maxlen=1000)
 
-    def predict(self,
-                data: MarketData,
-                sentiment: float = 0.0) -> Prediction:
+    def predict(self, data: MarketData, sentiment: float = 0.0) -> Prediction:
         """
         Generate prediction for current market state
 
@@ -558,7 +566,7 @@ class AlphaFusionEngine:
             p_final=p_final,
             reliability=reliability,
             similarity_boost=sim_multiplier,
-            features=features
+            features=features,
         )
 
         # Store for later labeling
@@ -593,11 +601,13 @@ class AlphaFusionEngine:
         # Update similarity
         self.similarity.add(prediction.features, label.label)
 
-    def record_execution(self,
-                        order_type: str,
-                        intended_price: float,
-                        filled_price: Optional[float],
-                        side: str):
+    def record_execution(
+        self,
+        order_type: str,
+        intended_price: float,
+        filled_price: Optional[float],
+        side: str,
+    ):
         """Record execution for slippage tracking"""
         if order_type == "MARKET" and filled_price is not None:
             self.slippage_tracker.add_market_slippage(
@@ -615,7 +625,7 @@ class AlphaFusionEngine:
             "reliability": self.calibrator.get_reliability(),
             "expected_slippage": self.slippage_tracker.get_expected_slippage(),
             "limit_fill_rate": self.slippage_tracker.get_limit_fill_rate(),
-            "pending_predictions": len(self.pending)
+            "pending_predictions": len(self.pending),
         }
 
     def save_state(self, filepath: str):
@@ -625,19 +635,21 @@ class AlphaFusionEngine:
             "model_updates": self.model.n_updates,
             "volatility_ewma": self.feature_engineer.volatility_ewma.value,
             "drift_ewma": self.feature_engineer.drift_ewma.value,
-            "calibrator_bins": [[list(pair) for pair in bin_data]
-                               for bin_data in self.calibrator.bins],
-            "similarity_history": [(sig.tolist(), outcome)
-                                  for sig, outcome in self.similarity.history],
-            "timestamp": time.time()
+            "calibrator_bins": [
+                [list(pair) for pair in bin_data] for bin_data in self.calibrator.bins
+            ],
+            "similarity_history": [
+                (sig.tolist(), outcome) for sig, outcome in self.similarity.history
+            ],
+            "timestamp": time.time(),
         }
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(state, f, indent=2)
 
     def load_state(self, filepath: str):
         """Load engine state from disk"""
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             state = json.load(f)
 
         self.model.beta = np.array(state["model_beta"])
@@ -660,6 +672,7 @@ class AlphaFusionEngine:
 #                     HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def market_data_from_ibkr(ticker) -> MarketData:
     """Convert ib_insync Ticker to MarketData"""
     return MarketData(
@@ -670,9 +683,13 @@ def market_data_from_ibkr(ticker) -> MarketData:
         bid_size=float(ticker.bidSize) if ticker.bidSize == ticker.bidSize else 0.0,
         ask_size=float(ticker.askSize) if ticker.askSize == ticker.askSize else 0.0,
         volume=int(ticker.volume) if ticker.volume == ticker.volume else 0,
-        vwap=float(ticker.vwap) if hasattr(ticker, 'vwap') and ticker.vwap == ticker.vwap else None,
+        vwap=(
+            float(ticker.vwap)
+            if hasattr(ticker, "vwap") and ticker.vwap == ticker.vwap
+            else None
+        ),
         high=float(ticker.high) if ticker.high == ticker.high else None,
-        low=float(ticker.low) if ticker.low == ticker.low else None
+        low=float(ticker.low) if ticker.low == ticker.low else None,
     )
 
 
@@ -682,11 +699,7 @@ if __name__ == "__main__":
     print("=" * 60)
 
     # Create engine
-    engine = AlphaFusionEngine(
-        horizon_seconds=2.0,
-        learning_rate=0.01,
-        k_neighbors=20
-    )
+    engine = AlphaFusionEngine(horizon_seconds=2.0, learning_rate=0.01, k_neighbors=20)
 
     # Simulate market data
     data = MarketData(
@@ -697,7 +710,7 @@ if __name__ == "__main__":
         bid_size=500,
         ask_size=300,
         volume=10000,
-        vwap=100.45
+        vwap=100.45,
     )
 
     # Get prediction
@@ -720,7 +733,7 @@ if __name__ == "__main__":
         entry_price=100.51,
         exit_price=100.53,
         label=1,  # Price went up
-        horizon_seconds=2.0
+        horizon_seconds=2.0,
     )
 
     engine.update(label)

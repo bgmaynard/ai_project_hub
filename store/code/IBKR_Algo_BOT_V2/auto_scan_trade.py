@@ -13,17 +13,19 @@ Run: python auto_scan_trade.py
 
 For pre-market: Run at 4:00 AM ET
 """
-import requests
-import time
+
 import json
-from datetime import datetime
-from typing import List, Dict
 import logging
+import time
+from datetime import datetime
+from typing import Dict, List
+
+import requests
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%H:%M:%S'
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
 )
 log = logging.getLogger(__name__)
 
@@ -43,35 +45,40 @@ def get_yahoo_movers() -> List[Dict]:
     """Get movers from Yahoo Finance"""
     try:
         from yahooquery import Screener
+
         s = Screener()
 
         all_movers = []
 
         # Get gainers
-        data = s.get_screeners(['day_gainers'], count=30)
-        for q in data.get('day_gainers', {}).get('quotes', []):
-            all_movers.append({
-                'symbol': q.get('symbol'),
-                'price': q.get('regularMarketPrice', 0),
-                'change_pct': q.get('regularMarketChangePercent', 0),
-                'volume': q.get('regularMarketVolume', 0),
-                'source': 'yahoo'
-            })
+        data = s.get_screeners(["day_gainers"], count=30)
+        for q in data.get("day_gainers", {}).get("quotes", []):
+            all_movers.append(
+                {
+                    "symbol": q.get("symbol"),
+                    "price": q.get("regularMarketPrice", 0),
+                    "change_pct": q.get("regularMarketChangePercent", 0),
+                    "volume": q.get("regularMarketVolume", 0),
+                    "source": "yahoo",
+                }
+            )
 
         # Get most active (might have momentum)
-        data = s.get_screeners(['most_actives'], count=30)
-        for q in data.get('most_actives', {}).get('quotes', []):
-            sym = q.get('symbol')
-            if sym not in [m['symbol'] for m in all_movers]:
-                change = q.get('regularMarketChangePercent', 0)
+        data = s.get_screeners(["most_actives"], count=30)
+        for q in data.get("most_actives", {}).get("quotes", []):
+            sym = q.get("symbol")
+            if sym not in [m["symbol"] for m in all_movers]:
+                change = q.get("regularMarketChangePercent", 0)
                 if change > 0:  # Only gainers
-                    all_movers.append({
-                        'symbol': sym,
-                        'price': q.get('regularMarketPrice', 0),
-                        'change_pct': change,
-                        'volume': q.get('regularMarketVolume', 0),
-                        'source': 'yahoo'
-                    })
+                    all_movers.append(
+                        {
+                            "symbol": sym,
+                            "price": q.get("regularMarketPrice", 0),
+                            "change_pct": change,
+                            "volume": q.get("regularMarketVolume", 0),
+                            "source": "yahoo",
+                        }
+                    )
 
         return all_movers
     except Exception as e:
@@ -85,7 +92,7 @@ def get_schwab_movers() -> List[Dict]:
         r = requests.get(f"{API_BASE}/api/market/movers?direction=all", timeout=10)
         if r.status_code == 200:
             data = r.json()
-            return data.get('gainers', [])
+            return data.get("gainers", [])
     except Exception as e:
         log.warning(f"Schwab movers not available: {e}")
     return []
@@ -96,19 +103,19 @@ def filter_scalp_candidates(movers: List[Dict]) -> List[Dict]:
     candidates = []
 
     for m in movers:
-        price = m.get('price', 0)
-        change = m.get('change_pct', 0)
-        volume = m.get('volume', 0)
+        price = m.get("price", 0)
+        change = m.get("change_pct", 0)
+        volume = m.get("volume", 0)
 
         # Scalping criteria
         if 1.0 <= price <= 20.0:  # Price range
             if change >= 5.0:  # Min 5% gap
                 if volume >= 500000:  # Min volume
-                    m['score'] = int(change * 2 + (volume / 1000000))
+                    m["score"] = int(change * 2 + (volume / 1000000))
                     candidates.append(m)
 
     # Sort by score
-    return sorted(candidates, key=lambda x: x.get('score', 0), reverse=True)
+    return sorted(candidates, key=lambda x: x.get("score", 0), reverse=True)
 
 
 def get_default_watchlist_id() -> str:
@@ -117,13 +124,13 @@ def get_default_watchlist_id() -> str:
         r = requests.get(f"{API_BASE}/api/watchlists", timeout=5)
         if r.status_code == 200:
             data = r.json()
-            watchlists = data.get('watchlists', [])
+            watchlists = data.get("watchlists", [])
             for wl in watchlists:
-                if wl.get('is_default'):
-                    return wl.get('id')
+                if wl.get("is_default"):
+                    return wl.get("id")
             # Return first if no default
             if watchlists:
-                return watchlists[0].get('id')
+                return watchlists[0].get("id")
     except:
         pass
     return "default"
@@ -136,7 +143,7 @@ def add_symbols_to_watchlist(symbols: List[str]) -> bool:
         r = requests.post(
             f"{API_BASE}/api/watchlists/{wl_id}/symbols",
             json={"symbols": symbols},
-            timeout=10
+            timeout=10,
         )
         return r.status_code == 200
     except Exception as e:
@@ -149,8 +156,7 @@ def add_to_scalper_watchlist(symbols: List[str]) -> bool:
     try:
         for sym in symbols:
             r = requests.post(
-                f"{API_BASE}/api/scanner/scalper/watchlist/add/{sym}",
-                timeout=5
+                f"{API_BASE}/api/scanner/scalper/watchlist/add/{sym}", timeout=5
             )
             if r.status_code == 200:
                 log.info(f"  Added to scalper: {sym}")
@@ -165,9 +171,7 @@ def add_to_dashboard_worklist(symbols: List[str]) -> bool:
     try:
         for sym in symbols:
             r = requests.post(
-                f"{API_BASE}/api/worklist/add",
-                json={"symbol": sym},
-                timeout=5
+                f"{API_BASE}/api/worklist/add", json={"symbol": sym}, timeout=5
             )
             if r.status_code == 200:
                 log.info(f"  Added to dashboard: {sym}")
@@ -186,9 +190,11 @@ def clear_watchlist() -> bool:
         r = requests.get(f"{API_BASE}/api/scanner/scalper/config", timeout=5)
         if r.status_code == 200:
             data = r.json()
-            current = data.get('config', {}).get('watchlist', [])
+            current = data.get("config", {}).get("watchlist", [])
             for sym in current:
-                requests.delete(f"{API_BASE}/api/scanner/scalper/watchlist/{sym}", timeout=5)
+                requests.delete(
+                    f"{API_BASE}/api/scanner/scalper/watchlist/{sym}", timeout=5
+                )
         return True
     except:
         return False
@@ -205,7 +211,9 @@ def start_scalper(paper_mode: bool = True) -> bool:
 
         # Enable trading
         mode = "true" if paper_mode else "false"
-        r = requests.post(f"{API_BASE}/api/scanner/scalper/enable?paper_mode={mode}", timeout=5)
+        r = requests.post(
+            f"{API_BASE}/api/scanner/scalper/enable?paper_mode={mode}", timeout=5
+        )
         return r.status_code == 200
     except Exception as e:
         log.error(f"Error starting scalper: {e}")
@@ -258,9 +266,9 @@ def run_scan_and_trade(max_symbols: int = 5, paper_mode: bool = True):
     if yahoo:
         log.info(f"Yahoo: {len(yahoo)} movers")
         # Add unique symbols
-        existing = [m['symbol'] for m in all_movers]
+        existing = [m["symbol"] for m in all_movers]
         for m in yahoo:
-            if m['symbol'] not in existing:
+            if m["symbol"] not in existing:
                 all_movers.append(m)
 
     if not all_movers:
@@ -272,7 +280,9 @@ def run_scan_and_trade(max_symbols: int = 5, paper_mode: bool = True):
     candidates = filter_scalp_candidates(all_movers)
 
     if not candidates:
-        log.warning("No stocks meet scalping criteria (Price $1-$20, Gap 5%+, Vol 500K+)")
+        log.warning(
+            "No stocks meet scalping criteria (Price $1-$20, Gap 5%+, Vol 500K+)"
+        )
         return False
 
     log.info(f"Found {len(candidates)} scalp candidates")
@@ -285,7 +295,9 @@ def run_scan_and_trade(max_symbols: int = 5, paper_mode: bool = True):
     print("-" * 60)
 
     for c in candidates[:max_symbols]:
-        print(f"{c['symbol']:<8} ${c['price']:>7.2f} {c['change_pct']:>+7.1f}% {c['volume']:>12,} {c['score']:>6}")
+        print(
+            f"{c['symbol']:<8} ${c['price']:>7.2f} {c['change_pct']:>+7.1f}% {c['volume']:>12,} {c['score']:>6}"
+        )
 
     print()
 
@@ -293,7 +305,7 @@ def run_scan_and_trade(max_symbols: int = 5, paper_mode: bool = True):
     log.info("Updating watchlists...")
     clear_watchlist()
 
-    symbols_to_add = [c['symbol'] for c in candidates[:max_symbols]]
+    symbols_to_add = [c["symbol"] for c in candidates[:max_symbols]]
 
     # Add to BOTH watchlists so user sees them
     log.info("Adding to scalper watchlist (for trading)...")
@@ -361,10 +373,10 @@ def continuous_scan(interval_minutes: int = 5, paper_mode: bool = True):
             time.sleep(60)  # Wait 1 min on error
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) > 1 and sys.argv[1] == '--continuous':
+    if len(sys.argv) > 1 and sys.argv[1] == "--continuous":
         # Continuous mode: scan every 5 minutes
         continuous_scan(interval_minutes=5, paper_mode=True)
     else:

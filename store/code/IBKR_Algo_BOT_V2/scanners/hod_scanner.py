@@ -22,9 +22,10 @@ Conditions:
 """
 
 import logging
-from datetime import datetime, time
-from typing import List, Dict, Optional
 from dataclasses import dataclass
+from datetime import datetime, time
+from typing import Dict, List, Optional
+
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ from scanners import ScannerResult, ScannerType, get_scanner_config
 @dataclass
 class HODCandidate:
     """Internal representation of an HOD candidate"""
+
     symbol: str
     last_price: float
     day_high: float
@@ -58,7 +60,7 @@ class HODScanner:
         self._candidates: Dict[str, HODCandidate] = {}
         self._last_scan: Optional[datetime] = None
         self._avg_volumes: Dict[str, int] = {}  # Cache for avg volumes
-        self._et_tz = pytz.timezone('US/Eastern')
+        self._et_tz = pytz.timezone("US/Eastern")
 
     def is_active_window(self) -> bool:
         """Check if scanner should be active (04:00 - 16:00 ET)"""
@@ -68,7 +70,9 @@ class HODScanner:
     def _check_schwab_health(self) -> bool:
         """Verify Schwab feed is healthy - fail closed"""
         try:
-            from schwab_market_data import is_schwab_available, get_token_status
+            from schwab_market_data import (get_token_status,
+                                            is_schwab_available)
+
             if not is_schwab_available():
                 return False
             status = get_token_status()
@@ -81,6 +85,7 @@ class HODScanner:
         """Get current quote from Schwab"""
         try:
             from schwab_market_data import get_schwab_market_data
+
             schwab = get_schwab_market_data()
             if not schwab:
                 return None
@@ -94,7 +99,7 @@ class HODScanner:
                 "bid": quote.get("bid", 0),
                 "ask": quote.get("ask", 0),
                 "high": quote.get("high", 0),
-                "volume": quote.get("volume", 0)
+                "volume": quote.get("volume", 0),
             }
 
         except Exception as e:
@@ -108,6 +113,7 @@ class HODScanner:
 
         try:
             from schwab_market_data import get_schwab_market_data
+
             schwab = get_schwab_market_data()
             if not schwab:
                 return 0
@@ -117,17 +123,17 @@ class HODScanner:
                 period_type="month",
                 period=1,
                 frequency_type="daily",
-                frequency=1
+                frequency=1,
             )
 
-            if not history or 'candles' not in history:
+            if not history or "candles" not in history:
                 return 0
 
-            candles = history['candles']
+            candles = history["candles"]
             if len(candles) < 5:
                 return 0
 
-            volumes = [c.get('volume', 0) for c in candles[:-1]]
+            volumes = [c.get("volume", 0) for c in candles[:-1]]
             avg_vol = int(sum(volumes) / len(volumes)) if volumes else 0
 
             self._avg_volumes[symbol] = avg_vol
@@ -223,7 +229,7 @@ class HODScanner:
             bid=bid,
             ask=ask,
             spread_pct=spread_pct,
-            at_hod=(last_price >= day_high)
+            at_hod=(last_price >= day_high),
         )
 
         # Return result
@@ -233,7 +239,7 @@ class HODScanner:
             price=last_price,
             day_high=day_high,
             rel_vol=round(rel_vol, 2),
-            volume=volume
+            volume=volume,
         )
 
     def scan_symbols(self, symbols: List[str]) -> List[ScannerResult]:
@@ -263,7 +269,9 @@ class HODScanner:
                 continue
 
         self._last_scan = datetime.now()
-        logger.info(f"[HODScanner] Scanned {len(symbols)} symbols, found {len(results)} at HOD")
+        logger.info(
+            f"[HODScanner] Scanned {len(symbols)} symbols, found {len(results)} at HOD"
+        )
 
         return results
 
@@ -276,7 +284,7 @@ class HODScanner:
                 price=c.last_price,
                 day_high=c.day_high,
                 rel_vol=round(c.rel_vol, 2),
-                volume=c.volume
+                volume=c.volume,
             )
             for c in self._candidates.values()
         ]
@@ -297,7 +305,7 @@ class HODScanner:
             "candidates": len(self._candidates),
             "volume_cache_size": len(self._avg_volumes),
             "last_scan": self._last_scan.isoformat() if self._last_scan else None,
-            "schwab_healthy": self._check_schwab_health()
+            "schwab_healthy": self._check_schwab_health(),
         }
 
 

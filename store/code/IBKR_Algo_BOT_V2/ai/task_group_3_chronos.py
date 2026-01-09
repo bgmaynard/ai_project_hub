@@ -12,10 +12,11 @@ EXECUTION CONTRACT:
 - No trade execution without gating approval
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-import asyncio
+
 import httpx
 
 from .task_queue_manager import Task, get_task_queue_manager
@@ -50,9 +51,9 @@ SCHEMA_R8 = {
         "medium_persistence_count": 0,
         "low_persistence_count": 0,
         "avg_persistence_score": 0.0,
-        "fake_breakout_risk_count": 0
+        "fake_breakout_risk_count": 0,
     },
-    "timestamp": ""
+    "timestamp": "",
 }
 
 SCHEMA_R8_SYMBOL = {
@@ -65,7 +66,7 @@ SCHEMA_R8_SYMBOL = {
     "trend_consistency": 0,  # Number of higher highs
     "pullback_count": 0,
     "recovery_rate": 0.0,
-    "chronos_confidence": 0.0
+    "chronos_confidence": 0.0,
 }
 
 SCHEMA_R9 = {
@@ -77,9 +78,9 @@ SCHEMA_R9 = {
         "normal_pullback_count": 0,
         "deep_pullback_count": 0,
         "avg_pullback_depth": 0.0,
-        "avg_recovery_speed": 0.0
+        "avg_recovery_speed": 0.0,
     },
-    "timestamp": ""
+    "timestamp": "",
 }
 
 SCHEMA_R9_SYMBOL = {
@@ -90,13 +91,14 @@ SCHEMA_R9_SYMBOL = {
     "vwap_position": "",  # ABOVE / AT / BELOW
     "vwap_slope": 0.0,
     "entry_quality": "",  # EXCELLENT / GOOD / FAIR / POOR
-    "entry_score": 0.0
+    "entry_score": 0.0,
 }
 
 
 # =============================================================================
 # TASK 3.1 - CHRONOS_PERSISTENCE
 # =============================================================================
+
 
 async def task_chronos_persistence(inputs: Dict) -> Dict:
     """
@@ -224,9 +226,11 @@ async def task_chronos_persistence(inputs: Dict) -> Dict:
             "gap_pct": s.get("gap_pct") or 0,
             "rel_vol_5m": s.get("rel_vol_5m") or 0,
             "price": s.get("price") or 0,
-            "float_shares": s.get("float_shares"),  # Keep None for proper data quality tracking
+            "float_shares": s.get(
+                "float_shares"
+            ),  # Keep None for proper data quality tracking
             "hod_status": s.get("hod_status") or "UNKNOWN",
-            "priority": s.get("priority") or "NORMAL"
+            "priority": s.get("priority") or "NORMAL",
         }
         symbols_out.append(symbol_out)
 
@@ -237,7 +241,9 @@ async def task_chronos_persistence(inputs: Dict) -> Dict:
 
     # Build report (fixed schema)
     # Check if we got real Chronos data or simulated
-    chronos_available = chronos_data is not None and chronos_data.get("status") == "success"
+    chronos_available = (
+        chronos_data is not None and chronos_data.get("status") == "success"
+    )
     model_source = "REAL" if chronos_available else "SIMULATED"
 
     report = {
@@ -250,9 +256,9 @@ async def task_chronos_persistence(inputs: Dict) -> Dict:
             "medium_persistence_count": persistence_medium,
             "low_persistence_count": persistence_low,
             "avg_persistence_score": round(avg_persistence, 3),
-            "fake_breakout_risk_count": fake_breakout_risk
+            "fake_breakout_risk_count": fake_breakout_risk,
         },
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
     return report
@@ -261,6 +267,7 @@ async def task_chronos_persistence(inputs: Dict) -> Dict:
 # =============================================================================
 # TASK 3.2 - CHRONOS_PULLBACK_DEPTH
 # =============================================================================
+
 
 async def task_chronos_pullback_depth(inputs: Dict) -> Dict:
     """
@@ -294,10 +301,16 @@ async def task_chronos_pullback_depth(inputs: Dict) -> Dict:
         quote = await _fetch_api(f"/api/price/{symbol}")
 
         if quote:
-            current_price = quote.get("lastPrice", 0) or quote.get("price", 0) or s.get("price", 0)
+            current_price = (
+                quote.get("lastPrice", 0) or quote.get("price", 0) or s.get("price", 0)
+            )
             vwap = quote.get("vwap", 0) or current_price
-            high_price = quote.get("highPrice", 0) or quote.get("dayHigh", 0) or current_price
-            low_price = quote.get("lowPrice", 0) or quote.get("dayLow", 0) or current_price
+            high_price = (
+                quote.get("highPrice", 0) or quote.get("dayHigh", 0) or current_price
+            )
+            low_price = (
+                quote.get("lowPrice", 0) or quote.get("dayLow", 0) or current_price
+            )
         else:
             current_price = s.get("price", 0)
             vwap = current_price
@@ -324,7 +337,11 @@ async def task_chronos_pullback_depth(inputs: Dict) -> Dict:
             vwap_diff = 0.0
 
         # VWAP slope (simplified - would need historical VWAP in production)
-        vwap_slope = 0.5 if vwap_position == "ABOVE" else (-0.5 if vwap_position == "BELOW" else 0.0)
+        vwap_slope = (
+            0.5
+            if vwap_position == "ABOVE"
+            else (-0.5 if vwap_position == "BELOW" else 0.0)
+        )
 
         # Categorize pullback
         if pullback_depth <= 1.0:
@@ -403,7 +420,7 @@ async def task_chronos_pullback_depth(inputs: Dict) -> Dict:
             "gap_pct": s.get("gap_pct", 0),
             "rel_vol_5m": s.get("rel_vol_5m", 0),
             "float_shares": s.get("float_shares", 0),
-            "priority": s.get("priority", "NORMAL")
+            "priority": s.get("priority", "NORMAL"),
         }
         symbols_out.append(symbol_out)
 
@@ -425,9 +442,9 @@ async def task_chronos_pullback_depth(inputs: Dict) -> Dict:
             "normal_pullback_count": normal_count,
             "deep_pullback_count": deep_count,
             "avg_pullback_depth": round(avg_depth, 2),
-            "avg_recovery_speed": round(avg_recovery, 3)
+            "avg_recovery_speed": round(avg_recovery, 3),
         },
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
     return report
@@ -437,32 +454,37 @@ async def task_chronos_pullback_depth(inputs: Dict) -> Dict:
 # REGISTER TASKS
 # =============================================================================
 
+
 def register_chronos_tasks():
     """Register all Task Group 3 tasks with the manager"""
     manager = get_task_queue_manager()
 
     # Task 3.1 - Momentum Persistence
-    manager.register_task(Task(
-        id="CHRONOS_PERSISTENCE",
-        name="Momentum Persistence Analysis",
-        group="CHRONOS_CONTEXT",
-        inputs=["report_R7_feature_importance.json"],
-        process=task_chronos_persistence,
-        output_file="report_R8_momentum_persistence.json",
-        fail_conditions=[],
-        next_task="CHRONOS_PULLBACK_DEPTH"
-    ))
+    manager.register_task(
+        Task(
+            id="CHRONOS_PERSISTENCE",
+            name="Momentum Persistence Analysis",
+            group="CHRONOS_CONTEXT",
+            inputs=["report_R7_feature_importance.json"],
+            process=task_chronos_persistence,
+            output_file="report_R8_momentum_persistence.json",
+            fail_conditions=[],
+            next_task="CHRONOS_PULLBACK_DEPTH",
+        )
+    )
 
     # Task 3.2 - Pullback Depth
-    manager.register_task(Task(
-        id="CHRONOS_PULLBACK_DEPTH",
-        name="Micro Pullback Depth",
-        group="CHRONOS_CONTEXT",
-        inputs=["report_R8_momentum_persistence.json"],
-        process=task_chronos_pullback_depth,
-        output_file="report_R9_pullback_depth.json",
-        fail_conditions=[],
-        next_task="GATING_SIGNAL_EVAL"
-    ))
+    manager.register_task(
+        Task(
+            id="CHRONOS_PULLBACK_DEPTH",
+            name="Micro Pullback Depth",
+            group="CHRONOS_CONTEXT",
+            inputs=["report_R8_momentum_persistence.json"],
+            process=task_chronos_pullback_depth,
+            output_file="report_R9_pullback_depth.json",
+            fail_conditions=[],
+            next_task="GATING_SIGNAL_EVAL",
+        )
+    )
 
     logger.info("Task Group 3 (Chronos Context) registered: 2 tasks")

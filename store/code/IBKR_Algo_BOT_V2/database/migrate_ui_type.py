@@ -3,8 +3,8 @@ Database Migration: Add ui_type column to user_layouts table
 This migration adds UI type isolation support to the layouts table
 """
 
-import sqlite3
 import os
+import sqlite3
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "warrior_trading.db"
@@ -27,24 +27,28 @@ def migrate():
         cursor.execute("PRAGMA table_info(user_layouts)")
         columns = [row[1] for row in cursor.fetchall()]
 
-        if 'ui_type' in columns:
+        if "ui_type" in columns:
             print("[OK] ui_type column already exists - no migration needed")
             return
 
         print("Adding ui_type column to user_layouts table...")
 
         # Add the ui_type column with default value 'monitor'
-        cursor.execute("""
+        cursor.execute(
+            """
             ALTER TABLE user_layouts
             ADD COLUMN ui_type TEXT DEFAULT 'monitor'
-        """)
+        """
+        )
 
         # Update all existing layouts to have ui_type = 'monitor'
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE user_layouts
             SET ui_type = 'monitor'
             WHERE ui_type IS NULL
-        """)
+        """
+        )
 
         conn.commit()
         print("[OK] Migration completed successfully!")

@@ -13,19 +13,18 @@ Place the exit orders immediately so Alpaca executes them instantly.
 
 import os
 import time
-from datetime import datetime
 from collections import defaultdict
-from dotenv import load_dotenv
+from datetime import datetime
 
-from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import (
-    MarketOrderRequest, LimitOrderRequest, StopOrderRequest,
-    TakeProfitRequest, StopLossRequest
-)
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderClass
 from alpaca.data import StockHistoricalDataClient
-from alpaca.data.requests import StockLatestQuoteRequest, StockBarsRequest
+from alpaca.data.requests import StockBarsRequest, StockLatestQuoteRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.trading.client import TradingClient
+from alpaca.trading.enums import OrderClass, OrderSide, TimeInForce
+from alpaca.trading.requests import (LimitOrderRequest, MarketOrderRequest,
+                                     StopLossRequest, StopOrderRequest,
+                                     TakeProfitRequest)
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -64,7 +63,7 @@ class VelocityPredictor:
 
         # Keep only recent history
         if len(self.price_times[symbol]) > self.history_size:
-            self.price_times[symbol] = self.price_times[symbol][-self.history_size:]
+            self.price_times[symbol] = self.price_times[symbol][-self.history_size :]
 
     def get_velocity(self, symbol):
         """
@@ -163,13 +162,13 @@ class VelocityPredictor:
         velocity = abs(self.get_velocity(symbol))
 
         if velocity < 0.0001:  # < 0.01% per second
-            return 'SLOW'
+            return "SLOW"
         elif velocity < 0.0005:  # < 0.05% per second
-            return 'NORMAL'
+            return "NORMAL"
         elif velocity < 0.002:  # < 0.2% per second
-            return 'FAST'
+            return "FAST"
         else:
-            return 'EXTREME'
+            return "EXTREME"
 
 
 # Configuration - 2:1 PROFIT/LOSS RATIO
@@ -177,36 +176,29 @@ class VelocityPredictor:
 CONFIG = {
     # Risk management - exits placed IMMEDIATELY on entry
     # 2:1 ratio maintained at all price levels
-
     # For stocks > $1.00: Use percentage-based stops
-    'STOP_LOSS_PCT': 0.015,      # 1.5% stop loss (max risk)
-    'TAKE_PROFIT_PCT': 0.03,     # 3% take profit (2x the risk)
-    'TRAILING_STOP_PCT': 0.01,   # 1% trailing (locks in gains)
-
+    "STOP_LOSS_PCT": 0.015,  # 1.5% stop loss (max risk)
+    "TAKE_PROFIT_PCT": 0.03,  # 3% take profit (2x the risk)
+    "TRAILING_STOP_PCT": 0.01,  # 1% trailing (locks in gains)
     # For low-priced stocks ($0.20-$1.00): Use absolute minimums
     # These override percentages when they result in larger stops
-    'MIN_STOP_CENTS': 0.02,      # Minimum 2 cent stop loss
-    'MIN_PROFIT_CENTS': 0.04,    # Minimum 4 cent take profit (2:1 ratio)
-    'MIN_TRAIL_CENTS': 0.015,    # Minimum 1.5 cent trail
-
+    "MIN_STOP_CENTS": 0.02,  # Minimum 2 cent stop loss
+    "MIN_PROFIT_CENTS": 0.04,  # Minimum 4 cent take profit (2:1 ratio)
+    "MIN_TRAIL_CENTS": 0.015,  # Minimum 1.5 cent trail
     # Price tier thresholds
-    'LOW_PRICE_THRESHOLD': 1.00,  # Below this, use cent-based stops
-    'PENNY_THRESHOLD': 0.50,      # Below this, widen stops further
-
+    "LOW_PRICE_THRESHOLD": 1.00,  # Below this, use cent-based stops
+    "PENNY_THRESHOLD": 0.50,  # Below this, widen stops further
     # Entry requirements - relaxed for volatile penny stocks
-    'MIN_MOMENTUM': 0.002,       # 0.2% minimum momentum (higher for pennies)
-    'MIN_ACCELERATION': 0.001,   # 0.1% acceleration
-    'MIN_VOLUME_RATIO': 1.5,     # Volume > 150% of average (need liquidity)
-
+    "MIN_MOMENTUM": 0.002,  # 0.2% minimum momentum (higher for pennies)
+    "MIN_ACCELERATION": 0.001,  # 0.1% acceleration
+    "MIN_VOLUME_RATIO": 1.5,  # Volume > 150% of average (need liquidity)
     # Position sizing
-    'POSITION_SIZE': 500,        # $500 per position
-    'MAX_POSITIONS': 4,          # Max concurrent positions
-
+    "POSITION_SIZE": 500,  # $500 per position
+    "MAX_POSITIONS": 4,  # Max concurrent positions
     # Polling (still needed for entries, but exits are instant)
-    'POLL_INTERVAL': 0.25,       # 250ms polling for entries
-
+    "POLL_INTERVAL": 0.25,  # 250ms polling for entries
     # Symbols - momentum small caps
-    'SYMBOLS': ['AG', 'HL', 'KGC', 'EDIT', 'GOLD', 'SLV'],
+    "SYMBOLS": ["AG", "HL", "KGC", "EDIT", "GOLD", "SLV"],
 }
 
 
@@ -214,15 +206,15 @@ class FastHFTScalper:
     """HFT Scalper with bracket orders for instant exits"""
 
     def __init__(self):
-        api_key = os.getenv('ALPACA_API_KEY')
-        secret_key = os.getenv('ALPACA_SECRET_KEY')
+        api_key = os.getenv("ALPACA_API_KEY")
+        secret_key = os.getenv("ALPACA_SECRET_KEY")
 
         # Direct Alpaca clients - no middleware
         self.trading = TradingClient(api_key, secret_key, paper=True)
         self.data = StockHistoricalDataClient(api_key, secret_key)
 
         # State tracking
-        self.positions = {}       # symbol -> {entry_price, qty, order_ids}
+        self.positions = {}  # symbol -> {entry_price, qty, order_ids}
         self.price_history = defaultdict(list)
         self.blocked_symbols = {}  # symbol -> unblock_time
 
@@ -231,10 +223,10 @@ class FastHFTScalper:
 
         # Stats
         self.stats = {
-            'entries': 0,
-            'exits_profit': 0,
-            'exits_stop': 0,
-            'total_pnl': 0.0,
+            "entries": 0,
+            "exits_profit": 0,
+            "exits_stop": 0,
+            "total_pnl": 0.0,
         }
 
         self.log("HFT Scalper V3 - Bracket Orders (2:1 Ratio)")
@@ -243,7 +235,7 @@ class FastHFTScalper:
         self.log(f"Ratio: {CONFIG['TAKE_PROFIT_PCT']/CONFIG['STOP_LOSS_PCT']:.1f}:1")
 
     def log(self, msg):
-        ts = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         print(f"{ts} | {msg}")
 
     def get_quote(self, symbol):
@@ -253,9 +245,9 @@ class FastHFTScalper:
             quotes = self.data.get_stock_latest_quote(req)
             q = quotes[symbol]
             return {
-                'bid': float(q.bid_price),
-                'ask': float(q.ask_price),
-                'last': float(q.ask_price),  # Use ask for conservative pricing
+                "bid": float(q.bid_price),
+                "ask": float(q.ask_price),
+                "last": float(q.ask_price),  # Use ask for conservative pricing
             }
         except Exception as e:
             return None
@@ -284,10 +276,10 @@ class FastHFTScalper:
         trend = (prices[-1] - prices[-5]) / prices[-5]
 
         return {
-            'momentum': momentum,
-            'acceleration': acceleration,
-            'trend': trend,
-            'price': prices[-1],
+            "momentum": momentum,
+            "acceleration": acceleration,
+            "trend": trend,
+            "price": prices[-1],
         }
 
     def place_bracket_order(self, symbol, qty, entry_price):
@@ -303,28 +295,34 @@ class FastHFTScalper:
             # Get velocity metrics for this symbol
             velocity = self.velocity.get_velocity(symbol)
             speed_class = self.velocity.get_speed_class(symbol)
-            slippage_offset = self.velocity.get_slippage_offset(symbol, entry_price, is_buy=True)
+            slippage_offset = self.velocity.get_slippage_offset(
+                symbol, entry_price, is_buy=True
+            )
 
             # Predict where price will be when order fills (~150ms)
             # For low-priced stocks, use longer lookahead due to wider spreads
-            lookahead = 200 if entry_price < CONFIG['LOW_PRICE_THRESHOLD'] else 150
-            predicted_fill = self.velocity.predict_price(symbol, entry_price, lookahead_ms=lookahead)
+            lookahead = 200 if entry_price < CONFIG["LOW_PRICE_THRESHOLD"] else 150
+            predicted_fill = self.velocity.predict_price(
+                symbol, entry_price, lookahead_ms=lookahead
+            )
 
             # Use predicted fill price as basis for bracket orders
             # This compensates for slippage on fast-moving stocks
-            base_price = predicted_fill if speed_class in ['FAST', 'EXTREME'] else entry_price
+            base_price = (
+                predicted_fill if speed_class in ["FAST", "EXTREME"] else entry_price
+            )
 
             # Calculate exit prices based on price tier
             # Low-priced stocks ($0.20-$1.00) need cent-based stops, not percentage
-            if base_price < CONFIG['LOW_PRICE_THRESHOLD']:
+            if base_price < CONFIG["LOW_PRICE_THRESHOLD"]:
                 # Use absolute cent-based stops for low-priced stocks
-                stop_distance = CONFIG['MIN_STOP_CENTS']
-                profit_distance = CONFIG['MIN_PROFIT_CENTS']
+                stop_distance = CONFIG["MIN_STOP_CENTS"]
+                profit_distance = CONFIG["MIN_PROFIT_CENTS"]
 
                 # For very cheap stocks (<$0.50), widen even more
-                if base_price < CONFIG['PENNY_THRESHOLD']:
-                    stop_distance = CONFIG['MIN_STOP_CENTS'] * 1.5  # 3 cents
-                    profit_distance = CONFIG['MIN_PROFIT_CENTS'] * 1.5  # 6 cents
+                if base_price < CONFIG["PENNY_THRESHOLD"]:
+                    stop_distance = CONFIG["MIN_STOP_CENTS"] * 1.5  # 3 cents
+                    profit_distance = CONFIG["MIN_PROFIT_CENTS"] * 1.5  # 6 cents
 
                 stop_price = round(base_price - stop_distance, 2)
                 take_profit_price = round(base_price + profit_distance, 2)
@@ -332,19 +330,29 @@ class FastHFTScalper:
                 self.log(f"    [LOW PRICE MODE] Using cent-based stops")
             else:
                 # Use percentage-based stops for higher-priced stocks
-                stop_price = round(base_price * (1 - CONFIG['STOP_LOSS_PCT']), 2)
-                take_profit_price = round(base_price * (1 + CONFIG['TAKE_PROFIT_PCT']), 2)
+                stop_price = round(base_price * (1 - CONFIG["STOP_LOSS_PCT"]), 2)
+                take_profit_price = round(
+                    base_price * (1 + CONFIG["TAKE_PROFIT_PCT"]), 2
+                )
 
             # For EXTREME speed stocks, widen stops slightly to avoid whipsaws
-            if speed_class == 'EXTREME':
+            if speed_class == "EXTREME":
                 stop_distance = base_price - stop_price
                 stop_price = round(base_price - (stop_distance * 1.2), 2)
 
             self.log(f">>> BRACKET ORDER: {symbol} [{speed_class}]")
-            self.log(f"    Current: ${entry_price:.2f} | Predicted Fill: ${predicted_fill:.2f}")
-            self.log(f"    Velocity: {velocity*100:.3f}%/sec | Offset: {slippage_offset*100:.3f}%")
-            self.log(f"    Stop Loss: ${stop_price:.2f} ({CONFIG['STOP_LOSS_PCT']:.1%})")
-            self.log(f"    Take Profit: ${take_profit_price:.2f} ({CONFIG['TAKE_PROFIT_PCT']:.1%})")
+            self.log(
+                f"    Current: ${entry_price:.2f} | Predicted Fill: ${predicted_fill:.2f}"
+            )
+            self.log(
+                f"    Velocity: {velocity*100:.3f}%/sec | Offset: {slippage_offset*100:.3f}%"
+            )
+            self.log(
+                f"    Stop Loss: ${stop_price:.2f} ({CONFIG['STOP_LOSS_PCT']:.1%})"
+            )
+            self.log(
+                f"    Take Profit: ${take_profit_price:.2f} ({CONFIG['TAKE_PROFIT_PCT']:.1%})"
+            )
 
             # Create bracket order request
             order_request = MarketOrderRequest(
@@ -365,15 +373,15 @@ class FastHFTScalper:
 
             # Track position
             self.positions[symbol] = {
-                'entry_price': entry_price,
-                'qty': qty,
-                'order_id': order.id,
-                'stop_price': stop_price,
-                'take_profit_price': take_profit_price,
-                'high_water_mark': entry_price,
+                "entry_price": entry_price,
+                "qty": qty,
+                "order_id": order.id,
+                "stop_price": stop_price,
+                "take_profit_price": take_profit_price,
+                "high_water_mark": entry_price,
             }
 
-            self.stats['entries'] += 1
+            self.stats["entries"] += 1
             return True
 
         except Exception as e:
@@ -391,8 +399,8 @@ class FastHFTScalper:
             return
 
         pos = self.positions[symbol]
-        entry = pos['entry_price']
-        hwm = pos['high_water_mark']
+        entry = pos["entry_price"]
+        hwm = pos["high_water_mark"]
 
         # Only trail if we're in profit
         if current_price <= entry:
@@ -400,18 +408,20 @@ class FastHFTScalper:
 
         # Update high water mark
         if current_price > hwm:
-            pos['high_water_mark'] = current_price
+            pos["high_water_mark"] = current_price
 
             # Calculate new trailing stop
-            new_stop = round(current_price * (1 - CONFIG['TRAILING_STOP_PCT']), 2)
+            new_stop = round(current_price * (1 - CONFIG["TRAILING_STOP_PCT"]), 2)
 
             # Only raise the stop, never lower it
-            if new_stop > pos['stop_price']:
+            if new_stop > pos["stop_price"]:
                 try:
                     # Cancel existing orders and place new bracket
                     # (Alpaca doesn't allow modifying bracket legs directly)
-                    self.log(f"    TRAIL: {symbol} new stop ${new_stop:.2f} (was ${pos['stop_price']:.2f})")
-                    pos['stop_price'] = new_stop
+                    self.log(
+                        f"    TRAIL: {symbol} new stop ${new_stop:.2f} (was ${pos['stop_price']:.2f})"
+                    )
+                    pos["stop_price"] = new_stop
 
                     # Note: For true trailing, we'd need to:
                     # 1. Cancel the bracket
@@ -436,7 +446,7 @@ class FastHFTScalper:
             del self.blocked_symbols[symbol]
 
         # Check max positions
-        if len(self.positions) >= CONFIG['MAX_POSITIONS']:
+        if len(self.positions) >= CONFIG["MAX_POSITIONS"]:
             return False
 
         # Get signals
@@ -445,13 +455,13 @@ class FastHFTScalper:
             return False
 
         # Entry conditions
-        momentum_ok = signals['momentum'] > CONFIG['MIN_MOMENTUM']
-        accel_ok = signals['acceleration'] > CONFIG['MIN_ACCELERATION']
-        trend_ok = signals['trend'] > 0  # Uptrend
+        momentum_ok = signals["momentum"] > CONFIG["MIN_MOMENTUM"]
+        accel_ok = signals["acceleration"] > CONFIG["MIN_ACCELERATION"]
+        trend_ok = signals["trend"] > 0  # Uptrend
 
         if momentum_ok and accel_ok and trend_ok:
-            price = signals['price']
-            qty = max(1, int(CONFIG['POSITION_SIZE'] / price))
+            price = signals["price"]
+            qty = max(1, int(CONFIG["POSITION_SIZE"] / price))
 
             self.log(f">>> ENTRY SIGNAL: {symbol} @ ${price:.2f}")
             self.log(f"    Momentum: {signals['momentum']:.3%}")
@@ -491,12 +501,12 @@ class FastHFTScalper:
         while True:
             try:
                 # Get quotes for all symbols
-                for symbol in CONFIG['SYMBOLS']:
+                for symbol in CONFIG["SYMBOLS"]:
                     quote = self.get_quote(symbol)
                     if not quote:
                         continue
 
-                    price = quote['last']
+                    price = quote["last"]
 
                     # Update velocity predictor (must be first!)
                     self.velocity.update(symbol, price)
@@ -519,16 +529,18 @@ class FastHFTScalper:
                 # Status update
                 cycle += 1
                 if cycle % 40 == 0:  # Every 10 seconds
-                    pos_str = ', '.join(self.positions.keys()) or 'FLAT'
-                    self.log(f"[{cycle}] Positions: {pos_str} | "
-                            f"Entries: {self.stats['entries']}")
+                    pos_str = ", ".join(self.positions.keys()) or "FLAT"
+                    self.log(
+                        f"[{cycle}] Positions: {pos_str} | "
+                        f"Entries: {self.stats['entries']}"
+                    )
 
             except Exception as e:
                 self.log(f"Error: {e}")
 
-            time.sleep(CONFIG['POLL_INTERVAL'])
+            time.sleep(CONFIG["POLL_INTERVAL"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     scalper = FastHFTScalper()
     scalper.run()

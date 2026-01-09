@@ -21,28 +21,30 @@ Continuation Patterns:
 5. FADE - AH big + PM losing ground (exhaustion)
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime, time, timedelta
 from enum import Enum
-import asyncio
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class ContinuationPattern(Enum):
     """Types of overnight continuation patterns"""
+
     STRONG_CONTINUATION = "STRONG_CONTINUATION"  # AH and PM same direction, strong
-    WEAK_CONTINUATION = "WEAK_CONTINUATION"      # AH move, PM flat (holding)
-    ACCELERATION = "ACCELERATION"                 # PM move > AH move
-    FADE = "FADE"                                 # PM losing AH gains
-    REVERSAL = "REVERSAL"                         # PM opposite of AH
-    NO_MOVEMENT = "NO_MOVEMENT"                   # Nothing significant
+    WEAK_CONTINUATION = "WEAK_CONTINUATION"  # AH move, PM flat (holding)
+    ACCELERATION = "ACCELERATION"  # PM move > AH move
+    FADE = "FADE"  # PM losing AH gains
+    REVERSAL = "REVERSAL"  # PM opposite of AH
+    NO_MOVEMENT = "NO_MOVEMENT"  # Nothing significant
 
 
 class ContinuationStrength(Enum):
     """Strength of continuation signal"""
+
     STRONG = "STRONG"
     MODERATE = "MODERATE"
     WEAK = "WEAK"
@@ -52,6 +54,7 @@ class ContinuationStrength(Enum):
 @dataclass
 class SessionMove:
     """Movement during a trading session"""
+
     open_price: float = 0.0
     high_price: float = 0.0
     low_price: float = 0.0
@@ -66,33 +69,34 @@ class SessionMove:
             "low": round(self.low_price, 4),
             "close": round(self.close_price, 4),
             "volume": self.volume,
-            "change_pct": round(self.change_pct, 2)
+            "change_pct": round(self.change_pct, 2),
         }
 
 
 @dataclass
 class OvernightMover:
     """Stock with overnight movement data"""
+
     symbol: str
 
     # Session data
-    regular_close: float = 0.0          # 4 PM close
+    regular_close: float = 0.0  # 4 PM close
     after_hours: SessionMove = field(default_factory=SessionMove)
     premarket: SessionMove = field(default_factory=SessionMove)
 
     # Pattern analysis
     pattern: ContinuationPattern = ContinuationPattern.NO_MOVEMENT
     strength: ContinuationStrength = ContinuationStrength.NONE
-    continuation_score: float = 0.0      # 0-100
+    continuation_score: float = 0.0  # 0-100
 
     # Combined metrics
     total_overnight_change: float = 0.0  # AH + PM combined
-    ah_contribution: float = 0.0         # % of move from AH
-    pm_contribution: float = 0.0         # % of move from PM
+    ah_contribution: float = 0.0  # % of move from AH
+    pm_contribution: float = 0.0  # % of move from PM
 
     # Volume analysis
-    ah_volume_ratio: float = 0.0         # AH vol vs avg daily
-    pm_volume_ratio: float = 0.0         # PM vol vs avg daily
+    ah_volume_ratio: float = 0.0  # AH vol vs avg daily
+    pm_volume_ratio: float = 0.0  # PM vol vs avg daily
     avg_daily_volume: int = 0
 
     # Catalyst
@@ -132,10 +136,10 @@ class OvernightMover:
             "stop_loss": round(self.stop_loss, 4),
             "targets": {
                 "target_1": round(self.target_1, 4),
-                "target_2": round(self.target_2, 4)
+                "target_2": round(self.target_2, 4),
             },
             "warnings": self.warnings,
-            "last_update": self.last_update
+            "last_update": self.last_update,
         }
 
 
@@ -151,15 +155,15 @@ class OvernightContinuationScanner:
     """
 
     # Thresholds
-    MIN_AH_MOVE_PCT = 3.0           # Minimum AH move to track
-    MIN_PM_CONTINUATION_PCT = 1.0   # Minimum PM move for continuation
-    REVERSAL_THRESHOLD_PCT = -1.0   # PM move opposite of AH
-    FADE_THRESHOLD_PCT = -0.5       # PM giving back AH gains
+    MIN_AH_MOVE_PCT = 3.0  # Minimum AH move to track
+    MIN_PM_CONTINUATION_PCT = 1.0  # Minimum PM move for continuation
+    REVERSAL_THRESHOLD_PCT = -1.0  # PM move opposite of AH
+    FADE_THRESHOLD_PCT = -0.5  # PM giving back AH gains
 
     # Volume thresholds
-    MIN_AH_VOLUME = 50000           # Minimum AH volume
-    MIN_PM_VOLUME = 100000          # Minimum PM volume
-    GOOD_VOLUME_RATIO = 0.1         # 10% of avg daily = good
+    MIN_AH_VOLUME = 50000  # Minimum AH volume
+    MIN_PM_VOLUME = 100000  # Minimum PM volume
+    GOOD_VOLUME_RATIO = 0.1  # 10% of avg daily = good
 
     # Scoring weights
     WEIGHT_AH_MOVE = 25
@@ -183,7 +187,7 @@ class OvernightContinuationScanner:
         ah_close: float,
         ah_volume: int,
         avg_daily_volume: int = 0,
-        catalyst: str = ""
+        catalyst: str = "",
     ) -> Optional[OvernightMover]:
         """
         Record an after-hours move. Call this at end of AH session (~8 PM).
@@ -209,7 +213,7 @@ class OvernightContinuationScanner:
             low_price=ah_low,
             close_price=ah_close,
             volume=ah_volume,
-            change_pct=ah_change
+            change_pct=ah_change,
         )
 
         # Calculate volume ratio
@@ -226,7 +230,7 @@ class OvernightContinuationScanner:
             ah_volume_ratio=vol_ratio,
             has_catalyst=bool(catalyst),
             catalyst_headline=catalyst,
-            last_update=datetime.now().isoformat()
+            last_update=datetime.now().isoformat(),
         )
 
         self.movers[symbol] = mover
@@ -246,7 +250,7 @@ class OvernightContinuationScanner:
         pm_high: float,
         pm_low: float,
         pm_current: float,
-        pm_volume: int
+        pm_volume: int,
     ) -> Optional[OvernightMover]:
         """
         Update pre-market data and analyze continuation pattern.
@@ -261,8 +265,10 @@ class OvernightContinuationScanner:
 
         # Calculate PM change from AH close
         if mover.after_hours.close_price > 0:
-            pm_change = ((pm_current - mover.after_hours.close_price) /
-                        mover.after_hours.close_price) * 100
+            pm_change = (
+                (pm_current - mover.after_hours.close_price)
+                / mover.after_hours.close_price
+            ) * 100
         else:
             pm_change = 0.0
 
@@ -273,7 +279,7 @@ class OvernightContinuationScanner:
             low_price=pm_low,
             close_price=pm_current,
             volume=pm_volume,
-            change_pct=pm_change
+            change_pct=pm_change,
         )
 
         # Calculate PM volume ratio
@@ -286,7 +292,9 @@ class OvernightContinuationScanner:
         # Calculate contribution ratios
         total_abs = abs(mover.after_hours.change_pct) + abs(pm_change)
         if total_abs > 0:
-            mover.ah_contribution = (abs(mover.after_hours.change_pct) / total_abs) * 100
+            mover.ah_contribution = (
+                abs(mover.after_hours.change_pct) / total_abs
+            ) * 100
             mover.pm_contribution = (abs(pm_change) / total_abs) * 100
 
         # Determine continuation pattern
@@ -399,11 +407,16 @@ class OvernightContinuationScanner:
             headline = mover.catalyst_headline.lower()
 
             # High-value catalysts
-            if any(kw in headline for kw in ['fda', 'approval', 'earnings beat', 'merger', 'acquisition']):
+            if any(
+                kw in headline
+                for kw in ["fda", "approval", "earnings beat", "merger", "acquisition"]
+            ):
                 score += 25
-            elif any(kw in headline for kw in ['contract', 'earnings', 'upgrade', 'clinical']):
+            elif any(
+                kw in headline for kw in ["contract", "earnings", "upgrade", "clinical"]
+            ):
                 score += 20
-            elif any(kw in headline for kw in ['partnership', 'deal', 'agreement']):
+            elif any(kw in headline for kw in ["partnership", "deal", "agreement"]):
                 score += 15
             else:
                 score += 10  # Generic catalyst
@@ -476,23 +489,24 @@ class OvernightContinuationScanner:
         return warnings
 
     def get_continuations(
-        self,
-        min_strength: ContinuationStrength = ContinuationStrength.WEAK
+        self, min_strength: ContinuationStrength = ContinuationStrength.WEAK
     ) -> List[OvernightMover]:
         """Get all continuation setups above minimum strength"""
         strength_order = {
             ContinuationStrength.STRONG: 0,
             ContinuationStrength.MODERATE: 1,
             ContinuationStrength.WEAK: 2,
-            ContinuationStrength.NONE: 3
+            ContinuationStrength.NONE: 3,
         }
 
         min_order = strength_order[min_strength]
 
         results = [
-            m for m in self.movers.values()
+            m
+            for m in self.movers.values()
             if strength_order[m.strength] <= min_order
-            and m.pattern not in [ContinuationPattern.REVERSAL, ContinuationPattern.NO_MOVEMENT]
+            and m.pattern
+            not in [ContinuationPattern.REVERSAL, ContinuationPattern.NO_MOVEMENT]
         ]
 
         # Sort by score descending
@@ -503,30 +517,35 @@ class OvernightContinuationScanner:
     def get_strong_continuations(self) -> List[OvernightMover]:
         """Get only strong continuations (STRONG_CONTINUATION or ACCELERATION)"""
         return [
-            m for m in self.movers.values()
-            if m.pattern in [ContinuationPattern.STRONG_CONTINUATION, ContinuationPattern.ACCELERATION]
-            and m.strength in [ContinuationStrength.STRONG, ContinuationStrength.MODERATE]
+            m
+            for m in self.movers.values()
+            if m.pattern
+            in [
+                ContinuationPattern.STRONG_CONTINUATION,
+                ContinuationPattern.ACCELERATION,
+            ]
+            and m.strength
+            in [ContinuationStrength.STRONG, ContinuationStrength.MODERATE]
         ]
 
     def get_accelerators(self) -> List[OvernightMover]:
         """Get stocks where PM is accelerating vs AH (increasing momentum)"""
         return [
-            m for m in self.movers.values()
+            m
+            for m in self.movers.values()
             if m.pattern == ContinuationPattern.ACCELERATION
         ]
 
     def get_reversals(self) -> List[OvernightMover]:
         """Get stocks that reversed in PM (for avoidance)"""
         return [
-            m for m in self.movers.values()
-            if m.pattern == ContinuationPattern.REVERSAL
+            m for m in self.movers.values() if m.pattern == ContinuationPattern.REVERSAL
         ]
 
     def get_faders(self) -> List[OvernightMover]:
         """Get stocks fading in PM (for caution)"""
         return [
-            m for m in self.movers.values()
-            if m.pattern == ContinuationPattern.FADE
+            m for m in self.movers.values() if m.pattern == ContinuationPattern.FADE
         ]
 
     def get_mover(self, symbol: str) -> Optional[OvernightMover]:
@@ -536,9 +555,9 @@ class OvernightContinuationScanner:
     def get_bullish_continuations(self) -> List[OvernightMover]:
         """Get bullish continuations only (AH up, PM continuing)"""
         return [
-            m for m in self.get_continuations()
-            if m.after_hours.change_pct > 0
-            and m.premarket.change_pct >= 0
+            m
+            for m in self.get_continuations()
+            if m.after_hours.change_pct > 0 and m.premarket.change_pct >= 0
         ]
 
     def clear_movers(self):
@@ -571,14 +590,14 @@ class OvernightContinuationScanner:
                     "symbol": m.symbol,
                     "pattern": m.pattern.value,
                     "score": m.continuation_score,
-                    "total_change": m.total_overnight_change
+                    "total_change": m.total_overnight_change,
                 }
                 for m in sorted(
                     self.movers.values(),
                     key=lambda x: x.continuation_score,
-                    reverse=True
+                    reverse=True,
                 )[:5]
-            ]
+            ],
         }
 
 
@@ -595,31 +614,33 @@ def get_overnight_scanner() -> OvernightContinuationScanner:
 
 
 # Convenience functions
-def record_ah_move(symbol: str, regular_close: float, ah_close: float,
-                   ah_volume: int, **kwargs) -> Optional[OvernightMover]:
+def record_ah_move(
+    symbol: str, regular_close: float, ah_close: float, ah_volume: int, **kwargs
+) -> Optional[OvernightMover]:
     """Quick record of after-hours move"""
     return get_overnight_scanner().record_after_hours_move(
         symbol=symbol,
         regular_close=regular_close,
-        ah_high=kwargs.get('ah_high', ah_close),
-        ah_low=kwargs.get('ah_low', ah_close),
+        ah_high=kwargs.get("ah_high", ah_close),
+        ah_low=kwargs.get("ah_low", ah_close),
         ah_close=ah_close,
         ah_volume=ah_volume,
-        avg_daily_volume=kwargs.get('avg_volume', 0),
-        catalyst=kwargs.get('catalyst', '')
+        avg_daily_volume=kwargs.get("avg_volume", 0),
+        catalyst=kwargs.get("catalyst", ""),
     )
 
 
-def update_pm(symbol: str, pm_current: float, pm_volume: int,
-              **kwargs) -> Optional[OvernightMover]:
+def update_pm(
+    symbol: str, pm_current: float, pm_volume: int, **kwargs
+) -> Optional[OvernightMover]:
     """Quick update of pre-market data"""
     return get_overnight_scanner().update_premarket(
         symbol=symbol,
-        pm_open=kwargs.get('pm_open', pm_current),
-        pm_high=kwargs.get('pm_high', pm_current),
-        pm_low=kwargs.get('pm_low', pm_current),
+        pm_open=kwargs.get("pm_open", pm_current),
+        pm_high=kwargs.get("pm_high", pm_current),
+        pm_low=kwargs.get("pm_low", pm_current),
         pm_current=pm_current,
-        pm_volume=pm_volume
+        pm_volume=pm_volume,
     )
 
 

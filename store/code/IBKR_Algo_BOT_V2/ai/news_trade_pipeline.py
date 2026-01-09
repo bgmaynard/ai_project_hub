@@ -9,12 +9,12 @@ Designed for Day Trade Dash style trading.
 
 import asyncio
 import logging
+import os
 import threading
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable, Any
 from dataclasses import dataclass, field
-import os
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TradeCandidate:
     """A stock that passed news + strategy validation"""
+
     symbol: str
     headline: str
     catalyst_type: str
@@ -85,13 +86,14 @@ class TradeCandidate:
             "entry_warnings": self.entry_warnings,
             "status": self.status,
             "added_to_watchlist": self.added_to_watchlist,
-            "analysis_complete": self.analysis_complete
+            "analysis_complete": self.analysis_complete,
         }
 
 
 @dataclass
 class PipelineConfig:
     """Configuration for the news trade pipeline"""
+
     # Symbol filters
     min_price: float = 1.00
     max_price: float = 20.00
@@ -100,10 +102,17 @@ class PipelineConfig:
     min_change_percent: float = 5.0
 
     # Catalyst filters
-    required_catalysts: List[str] = field(default_factory=lambda: [
-        'fda', 'merger', 'earnings_beat', 'upgrade',
-        'fda_reject', 'earnings_miss', 'downgrade'
-    ])
+    required_catalysts: List[str] = field(
+        default_factory=lambda: [
+            "fda",
+            "merger",
+            "earnings_beat",
+            "upgrade",
+            "fda_reject",
+            "earnings_miss",
+            "downgrade",
+        ]
+    )
 
     # Analysis thresholds
     min_ai_confidence: float = 0.5
@@ -153,7 +162,7 @@ class PipelineConfig:
 
     # Trading hours (EST)
     pre_market_start: int = 4  # 4 AM
-    market_close: int = 16     # 4 PM
+    market_close: int = 16  # 4 PM
 
 
 class NewsTradePipeline:
@@ -188,7 +197,7 @@ class NewsTradePipeline:
             "manual_adds_detected": 0,
             "analysis_run": 0,
             "alerts_sent": 0,
-            "started_at": None
+            "started_at": None,
         }
 
         # Callbacks
@@ -206,6 +215,7 @@ class NewsTradePipeline:
         if self._fast_news is None:
             try:
                 from ai.benzinga_fast_news import get_fast_news
+
                 self._fast_news = get_fast_news()
             except ImportError:
                 logger.warning("BenzingaFastNews not available")
@@ -216,6 +226,7 @@ class NewsTradePipeline:
         if self._news_monitor is None:
             try:
                 from ai.news_feed_monitor import get_news_monitor
+
                 self._news_monitor = get_news_monitor()
             except ImportError:
                 logger.warning("NewsFeedMonitor not available")
@@ -226,6 +237,7 @@ class NewsTradePipeline:
         try:
             # Try unified market data first
             from unified_market_data import get_market_data
+
             md = get_market_data()
             quote = await md.get_quote(symbol)
             if quote:
@@ -236,6 +248,7 @@ class NewsTradePipeline:
         try:
             # Fallback to direct Schwab
             from schwab_market_data import get_schwab_market_data
+
             md = get_schwab_market_data()
             quote = await md.get_quote(symbol)
             if quote:
@@ -249,17 +262,19 @@ class NewsTradePipeline:
         """Get float shares for a symbol"""
         try:
             from ai.fundamental_analysis import get_stock_float
+
             result = await get_stock_float(symbol)
-            if result and 'float_shares' in result:
-                return result['float_shares'] or 0
+            if result and "float_shares" in result:
+                return result["float_shares"] or 0
         except:
             pass
 
         try:
             import yfinance as yf
+
             ticker = yf.Ticker(symbol)
             info = ticker.info
-            return info.get('floatShares', 0) or 0
+            return info.get("floatShares", 0) or 0
         except:
             pass
 
@@ -269,11 +284,12 @@ class NewsTradePipeline:
         """Add symbol to watchlist"""
         try:
             import httpx
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "http://localhost:9100/api/worklist",
                     json={"symbol": symbol},
-                    timeout=5.0
+                    timeout=5.0,
                 )
                 return response.status_code == 200
         except:
@@ -282,6 +298,7 @@ class NewsTradePipeline:
         try:
             # Direct approach
             from ai.intelligent_watchlist import get_intelligent_watchlist
+
             wl = get_intelligent_watchlist()
             wl.add_symbol(symbol)
             return True
@@ -292,19 +309,16 @@ class NewsTradePipeline:
 
     async def _run_analysis(self, symbol: str) -> Dict:
         """Run AI analysis on a symbol"""
-        results = {
-            "ai_signal": "",
-            "ai_confidence": 0.0,
-            "pattern": ""
-        }
+        results = {"ai_signal": "", "ai_confidence": 0.0, "pattern": ""}
 
         try:
             # AI Prediction
             from ai.ai_predictor import get_predictor
+
             predictor = get_predictor()
             prediction = await asyncio.wait_for(
                 asyncio.to_thread(predictor.predict, symbol),
-                timeout=self.config.analysis_timeout_seconds
+                timeout=self.config.analysis_timeout_seconds,
             )
             if prediction:
                 results["ai_signal"] = prediction.get("signal", "")
@@ -315,10 +329,11 @@ class NewsTradePipeline:
         try:
             # Chart patterns
             from ai.chart_patterns import get_pattern_detector
+
             detector = get_pattern_detector()
             patterns = await asyncio.wait_for(
                 asyncio.to_thread(detector.analyze, symbol),
-                timeout=self.config.analysis_timeout_seconds
+                timeout=self.config.analysis_timeout_seconds,
             )
             if patterns and patterns.get("patterns"):
                 results["pattern"] = patterns["patterns"][0].get("pattern", "")
@@ -334,14 +349,13 @@ class NewsTradePipeline:
         # Process in background
         if self._loop:
             asyncio.run_coroutine_threadsafe(
-                self._process_news_alert(alert),
-                self._loop
+                self._process_news_alert(alert), self._loop
             )
 
     async def _process_news_alert(self, alert):
         """Process a breaking news alert through the pipeline"""
         try:
-            symbols = alert.symbols if hasattr(alert, 'symbols') else []
+            symbols = alert.symbols if hasattr(alert, "symbols") else []
             if not symbols:
                 return
 
@@ -355,28 +369,45 @@ class NewsTradePipeline:
                 # Create candidate
                 candidate = TradeCandidate(
                     symbol=symbol,
-                    headline=alert.headline if hasattr(alert, 'headline') else str(alert),
-                    catalyst_type=alert.catalyst_type if hasattr(alert, 'catalyst_type') else 'unknown',
-                    sentiment=alert.sentiment if hasattr(alert, 'sentiment') else 'neutral',
-                    news_time=alert.published_at if hasattr(alert, 'published_at') else datetime.now(),
-                    detected_time=datetime.now()
+                    headline=(
+                        alert.headline if hasattr(alert, "headline") else str(alert)
+                    ),
+                    catalyst_type=(
+                        alert.catalyst_type
+                        if hasattr(alert, "catalyst_type")
+                        else "unknown"
+                    ),
+                    sentiment=(
+                        alert.sentiment if hasattr(alert, "sentiment") else "neutral"
+                    ),
+                    news_time=(
+                        alert.published_at
+                        if hasattr(alert, "published_at")
+                        else datetime.now()
+                    ),
+                    detected_time=datetime.now(),
                 )
 
                 # Validate catalyst type
                 if self.config.required_catalysts:
                     if candidate.catalyst_type not in self.config.required_catalysts:
-                        logger.debug(f"{symbol}: Catalyst {candidate.catalyst_type} not in required list")
+                        logger.debug(
+                            f"{symbol}: Catalyst {candidate.catalyst_type} not in required list"
+                        )
                         continue
 
                 # Get market data
                 quote = await self._get_market_data(symbol)
                 if quote:
-                    candidate.price = quote.get('price', 0) or quote.get('last', 0)
-                    candidate.volume = quote.get('volume', 0)
-                    candidate.change_percent = quote.get('change_percent', 0)
+                    candidate.price = quote.get("price", 0) or quote.get("last", 0)
+                    candidate.volume = quote.get("volume", 0)
+                    candidate.change_percent = quote.get("change_percent", 0)
 
                 # Validate price range
-                if candidate.price < self.config.min_price or candidate.price > self.config.max_price:
+                if (
+                    candidate.price < self.config.min_price
+                    or candidate.price > self.config.max_price
+                ):
                     logger.debug(f"{symbol}: Price ${candidate.price} out of range")
                     continue
 
@@ -387,15 +418,22 @@ class NewsTradePipeline:
 
                 # Validate change percent
                 if abs(candidate.change_percent) < self.config.min_change_percent:
-                    logger.debug(f"{symbol}: Change {candidate.change_percent}% below threshold")
+                    logger.debug(
+                        f"{symbol}: Change {candidate.change_percent}% below threshold"
+                    )
                     continue
 
                 # Get float data
                 candidate.float_shares = await self._get_float_data(symbol)
 
                 # Validate float (0 means unknown, allow it)
-                if candidate.float_shares > 0 and candidate.float_shares > self.config.max_float:
-                    logger.debug(f"{symbol}: Float {candidate.float_shares:,.0f} above maximum")
+                if (
+                    candidate.float_shares > 0
+                    and candidate.float_shares > self.config.max_float
+                ):
+                    logger.debug(
+                        f"{symbol}: Float {candidate.float_shares:,.0f} above maximum"
+                    )
                     continue
 
                 # Passed validation!
@@ -403,7 +441,9 @@ class NewsTradePipeline:
                 candidate.status = "validated"
                 self.candidates[symbol] = candidate
 
-                logger.info(f"CANDIDATE: {symbol} - {candidate.catalyst_type} - ${candidate.price:.2f} - {candidate.headline[:50]}...")
+                logger.info(
+                    f"CANDIDATE: {symbol} - {candidate.catalyst_type} - ${candidate.price:.2f} - {candidate.headline[:50]}..."
+                )
 
                 # Auto add to watchlist
                 if self.config.auto_add_to_watchlist:
@@ -473,7 +513,11 @@ class NewsTradePipeline:
             "ai_signal": candidate.ai_signal,
             "ai_confidence": candidate.ai_confidence,
             "pattern": candidate.pattern,
-            "priority": "HIGH" if candidate.catalyst_type in ['fda', 'merger', 'earnings_beat'] else "MEDIUM"
+            "priority": (
+                "HIGH"
+                if candidate.catalyst_type in ["fda", "merger", "earnings_beat"]
+                else "MEDIUM"
+            ),
         }
 
         # Log the alert
@@ -509,7 +553,9 @@ class NewsTradePipeline:
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
 
-        logger.info(f"NewsTradePipeline STARTED - watching {len(watchlist or [])} symbols")
+        logger.info(
+            f"NewsTradePipeline STARTED - watching {len(watchlist or [])} symbols"
+        )
 
     def stop(self):
         """Stop the pipeline"""
@@ -548,7 +594,10 @@ class NewsTradePipeline:
 
                 # Monitor watchlist for manual adds
                 if self.config.monitor_watchlist:
-                    if time.time() - last_watchlist_check >= self.config.watchlist_poll_interval:
+                    if (
+                        time.time() - last_watchlist_check
+                        >= self.config.watchlist_poll_interval
+                    ):
                         await self._check_watchlist_changes()
                         last_watchlist_check = time.time()
 
@@ -572,17 +621,17 @@ class NewsTradePipeline:
         """Check for new symbols added to watchlist manually"""
         try:
             import httpx
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    "http://localhost:9100/api/worklist",
-                    timeout=5.0
+                    "http://localhost:9100/api/worklist", timeout=5.0
                 )
                 if response.status_code == 200:
                     data = response.json()
                     current_symbols = set()
 
-                    for item in data.get('data', []):
-                        symbol = item.get('symbol')
+                    for item in data.get("data", []):
+                        symbol = item.get("symbol")
                         if symbol:
                             current_symbols.add(symbol)
 
@@ -612,15 +661,15 @@ class NewsTradePipeline:
                 catalyst_type="manual",
                 sentiment="neutral",
                 news_time=datetime.now(),
-                detected_time=datetime.now()
+                detected_time=datetime.now(),
             )
 
             # Get market data
             quote = await self._get_market_data(symbol)
             if quote:
-                candidate.price = quote.get('price', 0) or quote.get('last', 0)
-                candidate.volume = quote.get('volume', 0)
-                candidate.change_percent = quote.get('change_percent', 0)
+                candidate.price = quote.get("price", 0) or quote.get("last", 0)
+                candidate.volume = quote.get("volume", 0)
+                candidate.change_percent = quote.get("change_percent", 0)
 
             # Get float
             candidate.float_shares = await self._get_float_data(symbol)
@@ -674,11 +723,11 @@ class NewsTradePipeline:
                 "min_change_percent": self.config.min_change_percent,
                 "auto_add_to_watchlist": self.config.auto_add_to_watchlist,
                 "auto_run_analysis": self.config.auto_run_analysis,
-                "auto_alert": self.config.auto_alert
+                "auto_alert": self.config.auto_alert,
             },
             "stats": self.stats,
             "active_candidates": len(self.candidates),
-            "recent_alerts": len(self.alerts)
+            "recent_alerts": len(self.alerts),
         }
 
     def get_candidates(self) -> List[Dict]:
@@ -709,8 +758,9 @@ def get_news_trade_pipeline() -> NewsTradePipeline:
     return _pipeline
 
 
-def start_news_trade_pipeline(watchlist: List[str] = None,
-                               config: Dict = None) -> NewsTradePipeline:
+def start_news_trade_pipeline(
+    watchlist: List[str] = None, config: Dict = None
+) -> NewsTradePipeline:
     """Start the news trade pipeline"""
     pipeline = get_news_trade_pipeline()
 
@@ -735,12 +785,8 @@ if __name__ == "__main__":
         print(f"\n*** ALERT: {alert['action']} {alert['symbol']} ***\n")
 
     pipeline = start_news_trade_pipeline(
-        watchlist=['AAPL', 'TSLA', 'NVDA'],
-        config={
-            "min_price": 1.0,
-            "max_price": 50.0,
-            "min_change_percent": 3.0
-        }
+        watchlist=["AAPL", "TSLA", "NVDA"],
+        config={"min_price": 1.0, "max_price": 50.0, "min_change_percent": 3.0},
     )
 
     pipeline.on_alert = on_alert

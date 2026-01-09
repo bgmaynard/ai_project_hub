@@ -8,16 +8,18 @@ Provides endpoints for:
 - Risk status and portfolio metrics
 """
 
-from fastapi import APIRouter, HTTPException, Body, Query
-from typing import List, Dict, Optional
-from pydantic import BaseModel, Field
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Dict, List, Optional
+
+from fastapi import APIRouter, Body, HTTPException, Query
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(prefix="/api/risk", tags=["Risk Management"])
+
 
 class PositionSizeRequest(BaseModel):
     symbol: str
@@ -25,11 +27,13 @@ class PositionSizeRequest(BaseModel):
     stop_distance: float = Field(..., gt=0)
     risk_amount: float = Field(50.0, gt=0)
 
+
 class PositionSizeResponse(BaseModel):
     symbol: str
     shares: int
     position_value: float
     risk_amount: float
+
 
 class TradeValidationRequest(BaseModel):
     symbol: str
@@ -38,6 +42,7 @@ class TradeValidationRequest(BaseModel):
     target_price: float
     shares: int
 
+
 class TradeValidationResponse(BaseModel):
     symbol: str
     result: str
@@ -45,9 +50,11 @@ class TradeValidationResponse(BaseModel):
     risk_amount: float
     warnings: List[str]
 
+
 @router.get("/health")
 async def get_risk_health():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
 
 @router.post("/calculate-position-size", response_model=PositionSizeResponse)
 async def calculate_position_size(request: PositionSizeRequest):
@@ -58,10 +65,11 @@ async def calculate_position_size(request: PositionSizeRequest):
             symbol=request.symbol,
             shares=shares,
             position_value=position_value,
-            risk_amount=request.risk_amount
+            risk_amount=request.risk_amount,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/validate-trade", response_model=TradeValidationResponse)
 async def validate_trade(request: TradeValidationRequest):
@@ -70,7 +78,7 @@ async def validate_trade(request: TradeValidationRequest):
         reward_per_share = abs(request.target_price - request.entry_price)
         risk_amount = risk_per_share * request.shares
         rr_ratio = reward_per_share / risk_per_share if risk_per_share > 0 else 0
-        
+
         warnings = []
         result = "APPROVED"
         if rr_ratio < 2.0:
@@ -79,16 +87,17 @@ async def validate_trade(request: TradeValidationRequest):
         if risk_amount > 50.0:
             warnings.append(f"Risk ${risk_amount:.2f} exceeds max $50")
             result = "REJECTED"
-        
+
         return TradeValidationResponse(
             symbol=request.symbol,
             result=result,
             risk_reward_ratio=rr_ratio,
             risk_amount=risk_amount,
-            warnings=warnings
+            warnings=warnings,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/status")
 async def get_risk_status():
@@ -97,18 +106,22 @@ async def get_risk_status():
         "max_daily_loss": 200.0,
         "max_loss_per_trade": 50.0,
         "is_trading_halted": False,
-        "trades_today": 0
+        "trades_today": 0,
     }
+
 
 # ===== SLIPPAGE & REVERSAL MONITORING =====
 
 try:
-    from ai.warrior_slippage_monitor import get_slippage_monitor, SlippageLevel
-    from ai.warrior_reversal_detector import get_reversal_detector, ReversalType
+    from ai.warrior_reversal_detector import (ReversalType,
+                                              get_reversal_detector)
+    from ai.warrior_slippage_monitor import SlippageLevel, get_slippage_monitor
+
     SLIPPAGE_AVAILABLE = True
 except ImportError:
     SLIPPAGE_AVAILABLE = False
     logging.warning("Slippage/Reversal modules not available")
+
 
 class SlippageRecordRequest(BaseModel):
     symbol: str
@@ -117,11 +130,13 @@ class SlippageRecordRequest(BaseModel):
     actual_price: float = Field(gt=0)
     shares: int = Field(gt=0)
 
+
 class SlippageResponse(BaseModel):
     symbol: str
     slippage_pct: float
     slippage_level: str
     is_acceptable: bool
+
 
 class ReversalCheckRequest(BaseModel):
     symbol: str
@@ -129,6 +144,7 @@ class ReversalCheckRequest(BaseModel):
     entry_price: float
     recent_prices: List[float]
     direction: str = Field("long", pattern="^(long|short)$")
+
 
 class ReversalResponse(BaseModel):
     symbol: str
@@ -138,14 +154,15 @@ class ReversalResponse(BaseModel):
     recommendation: Optional[str]
     should_exit_fast: bool
 
+
 @router.post("/record-slippage", response_model=SlippageResponse)
 async def record_slippage(request: SlippageRecordRequest):
     """
     Record order execution slippage
-    
+
     Tracks difference between expected and actual fill prices.
     Alerts on excessive slippage (>0.25%)
-    
+
     Example:
         POST /api/risk/record-slippage
         {
@@ -158,7 +175,7 @@ async def record_slippage(request: SlippageRecordRequest):
     """
     if not SLIPPAGE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Slippage monitor not available")
-    
+
     try:
         monitor = get_slippage_monitor()
         execution = monitor.record_execution(
@@ -166,43 +183,45 @@ async def record_slippage(request: SlippageRecordRequest):
             request.side,
             request.expected_price,
             request.actual_price,
-            request.shares
+            request.shares,
         )
-        
+
         return SlippageResponse(
             symbol=request.symbol,
             slippage_pct=execution.slippage_pct,
             slippage_level=execution.slippage_level.value,
-            is_acceptable=execution.slippage_level == SlippageLevel.ACCEPTABLE
+            is_acceptable=execution.slippage_level == SlippageLevel.ACCEPTABLE,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/slippage-stats")
 async def get_slippage_stats(symbol: Optional[str] = Query(None)):
     """
     Get slippage statistics
-    
+
     Example:
         GET /api/risk/slippage-stats?symbol=AAPL
     """
     if not SLIPPAGE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Slippage monitor not available")
-    
+
     try:
         monitor = get_slippage_monitor()
         return monitor.get_stats(symbol)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/check-reversal", response_model=ReversalResponse)
 async def check_reversal(request: ReversalCheckRequest):
     """
     Check for jacknife reversal pattern
-    
+
     Detects violent price reversals requiring fast exit.
     Returns exit recommendation if critical reversal detected.
-    
+
     Example:
         POST /api/risk/check-reversal
         {
@@ -215,7 +234,7 @@ async def check_reversal(request: ReversalCheckRequest):
     """
     if not SLIPPAGE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Reversal detector not available")
-    
+
     try:
         detector = get_reversal_detector()
         reversal = detector.detect_jacknife(
@@ -223,9 +242,9 @@ async def check_reversal(request: ReversalCheckRequest):
             request.current_price,
             request.entry_price,
             request.recent_prices,
-            request.direction
+            request.direction,
         )
-        
+
         if reversal:
             return ReversalResponse(
                 symbol=request.symbol,
@@ -233,7 +252,7 @@ async def check_reversal(request: ReversalCheckRequest):
                 reversal_type=reversal.reversal_type.value,
                 severity=reversal.severity.value,
                 recommendation=reversal.recommendation,
-                should_exit_fast=detector.should_exit_fast(reversal)
+                should_exit_fast=detector.should_exit_fast(reversal),
             )
         else:
             return ReversalResponse(
@@ -242,7 +261,7 @@ async def check_reversal(request: ReversalCheckRequest):
                 reversal_type=None,
                 severity=None,
                 recommendation=None,
-                should_exit_fast=False
+                should_exit_fast=False,
             )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

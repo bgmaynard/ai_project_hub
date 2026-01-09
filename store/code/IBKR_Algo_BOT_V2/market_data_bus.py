@@ -14,8 +14,8 @@ CRITICAL RULE: NEVER use stale "last" price - only use live bid/ask from Schwab!
 
 import logging
 from datetime import datetime
-from typing import Optional, Dict, List
 from threading import Lock
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -45,24 +45,34 @@ class MarketDataBus:
             "schwab_hits": 0,
             "schwab_errors": 0,
             "failed_quotes": 0,
-            "stale_data_blocked": 0
+            "stale_data_blocked": 0,
         }
         self._init_providers()
-        logger.info("Market Data Bus initialized - Schwab: %s (ONLY SOURCE FOR TRADING)",
-                   "AVAILABLE" if self._schwab_available else "UNAVAILABLE")
+        logger.info(
+            "Market Data Bus initialized - Schwab: %s (ONLY SOURCE FOR TRADING)",
+            "AVAILABLE" if self._schwab_available else "UNAVAILABLE",
+        )
 
     def _init_providers(self):
         """Initialize market data providers - SCHWAB ONLY for trading"""
         # Initialize Schwab (ONLY SOURCE FOR TRADING)
         try:
-            from schwab_market_data import SchwabMarketData, is_schwab_available
+            from schwab_market_data import (SchwabMarketData,
+                                            is_schwab_available)
+
             if is_schwab_available():
                 self._schwab = SchwabMarketData()
                 self._schwab_available = True
-                logger.info("Schwab market data provider initialized - ONLY SOURCE FOR TRADING")
+                logger.info(
+                    "Schwab market data provider initialized - ONLY SOURCE FOR TRADING"
+                )
             else:
-                logger.error("CRITICAL: Schwab market data NOT available - trading decisions WILL FAIL!")
-                logger.error("Please ensure Schwab credentials are configured and token is valid.")
+                logger.error(
+                    "CRITICAL: Schwab market data NOT available - trading decisions WILL FAIL!"
+                )
+                logger.error(
+                    "Please ensure Schwab credentials are configured and token is valid."
+                )
         except Exception as e:
             logger.error(f"CRITICAL: Failed to initialize Schwab provider: {e}")
             logger.error("Trading decisions will fail without Schwab data!")
@@ -81,7 +91,9 @@ class MarketDataBus:
         # Must have at least one valid bid or ask
         if bid <= 0 and ask <= 0:
             self._stats["stale_data_blocked"] += 1
-            logger.warning(f"STALE DATA BLOCKED for {symbol}: bid={bid}, ask={ask}, last={quote.get('last')}")
+            logger.warning(
+                f"STALE DATA BLOCKED for {symbol}: bid={bid}, ask={ask}, last={quote.get('last')}"
+            )
             return False
 
         return True
@@ -106,18 +118,24 @@ class MarketDataBus:
         # SCHWAB ONLY - No fallback to Alpaca for trading decisions!
         if not self._schwab_available or not self._schwab:
             self._stats["failed_quotes"] += 1
-            logger.error(f"CANNOT GET QUOTE for {symbol} - Schwab not available! Trading decisions require Schwab data!")
+            logger.error(
+                f"CANNOT GET QUOTE for {symbol} - Schwab not available! Trading decisions require Schwab data!"
+            )
             return None
 
         try:
             quote = self._schwab.get_quote(symbol)
             if quote and (not require_bid_ask or self._validate_quote(quote, symbol)):
                 self._stats["schwab_hits"] += 1
-                logger.debug(f"Quote from Schwab for {symbol}: bid=${quote.get('bid'):.2f}, ask=${quote.get('ask'):.2f}")
+                logger.debug(
+                    f"Quote from Schwab for {symbol}: bid=${quote.get('bid'):.2f}, ask=${quote.get('ask'):.2f}"
+                )
                 return quote
             else:
                 self._stats["failed_quotes"] += 1
-                logger.error(f"Invalid quote data from Schwab for {symbol} - bid/ask may be missing")
+                logger.error(
+                    f"Invalid quote data from Schwab for {symbol} - bid/ask may be missing"
+                )
                 return None
         except Exception as e:
             self._stats["schwab_errors"] += 1
@@ -125,7 +143,9 @@ class MarketDataBus:
             logger.error(f"Schwab quote FAILED for {symbol}: {e}")
             return None
 
-    def get_quotes(self, symbols: List[str], require_bid_ask: bool = True) -> Dict[str, Dict]:
+    def get_quotes(
+        self, symbols: List[str], require_bid_ask: bool = True
+    ) -> Dict[str, Dict]:
         """
         Get quotes for multiple symbols from SCHWAB ONLY.
 
@@ -140,7 +160,9 @@ class MarketDataBus:
 
         # SCHWAB ONLY - No Alpaca fallback!
         if not self._schwab_available or not self._schwab:
-            logger.error("CANNOT GET BATCH QUOTES - Schwab not available! Trading decisions require Schwab data!")
+            logger.error(
+                "CANNOT GET BATCH QUOTES - Schwab not available! Trading decisions require Schwab data!"
+            )
             return results
 
         try:
@@ -195,7 +217,9 @@ class MarketDataBus:
 
         # Final validation
         if not price or price <= 0:
-            logger.error(f"Cannot determine order price for {symbol} {side} - quote: {quote}")
+            logger.error(
+                f"Cannot determine order price for {symbol} {side} - quote: {quote}"
+            )
             return None
 
         return round(price, 2)
@@ -206,7 +230,9 @@ class MarketDataBus:
             **self._stats,
             "schwab_available": self._schwab_available,
             "data_source": "SCHWAB_ONLY",
-            "status": "READY" if self._schwab_available else "ERROR: Schwab not available!"
+            "status": (
+                "READY" if self._schwab_available else "ERROR: Schwab not available!"
+            ),
         }
 
     def refresh_providers(self):
@@ -293,7 +319,9 @@ if __name__ == "__main__":
     symbols = ["AAPL", "MSFT", "TSLA", "SPY"]
     quotes = bus.get_quotes(symbols)
     for sym, q in quotes.items():
-        print(f"{sym}: bid=${q.get('bid', 0):.2f}, ask=${q.get('ask', 0):.2f}, source={q.get('source', 'unknown')}")
+        print(
+            f"{sym}: bid=${q.get('bid', 0):.2f}, ask=${q.get('ask', 0):.2f}, source={q.get('source', 'unknown')}"
+        )
 
     print(f"\nFinal Stats: {bus.get_stats()}")
     print("\n" + "=" * 60)

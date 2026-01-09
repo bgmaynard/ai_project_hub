@@ -3,18 +3,20 @@ Monitoring API Router - Backend for Trading Dashboard UI
 Provides REST endpoints for trade tracking, error logs, and performance monitoring
 """
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Query
-from fastapi.responses import JSONResponse
-from typing import List, Dict, Optional, Any
-from datetime import datetime, date, timedelta
-from pydantic import BaseModel, Field
 import asyncio
 import json
 import logging
-
 # Import database manager
 import sys
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from fastapi import (APIRouter, HTTPException, Query, WebSocket,
+                     WebSocketDisconnect)
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+
 sys.path.append(str(Path(__file__).parent.parent))
 from database.db_manager import get_db_manager
 
@@ -24,6 +26,7 @@ router = APIRouter(prefix="/api/monitoring", tags=["Monitoring"])
 
 
 # ==================== REQUEST/RESPONSE MODELS ====================
+
 
 class TradeFilters(BaseModel):
     symbol: Optional[str] = None
@@ -59,13 +62,14 @@ class PerformanceQuery(BaseModel):
 
 # ==================== TRADE TRACKING ENDPOINTS ====================
 
+
 @router.get("/trades")
 async def get_trades(
     symbol: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    limit: int = Query(100, ge=1, le=500)
+    limit: int = Query(100, ge=1, le=500),
 ):
     """
     Get trade history with optional filters
@@ -85,21 +89,17 @@ async def get_trades(
 
         filters = {}
         if symbol:
-            filters['symbol'] = symbol
+            filters["symbol"] = symbol
         if status:
-            filters['status'] = status
+            filters["status"] = status
         if date_from:
-            filters['date_from'] = date_from
+            filters["date_from"] = date_from
         if date_to:
-            filters['date_to'] = date_to
+            filters["date_to"] = date_to
 
         trades = db.get_trades(filters=filters, limit=limit)
 
-        return {
-            "success": True,
-            "count": len(trades),
-            "trades": trades
-        }
+        return {"success": True, "count": len(trades), "trades": trades}
 
     except Exception as e:
         logger.error(f"Error fetching trades: {e}")
@@ -125,7 +125,9 @@ async def get_active_trades():
             "success": True,
             "count": len(active_trades),
             "active_trades": active_trades,
-            "total_exposure": sum(t.get('shares', 0) * t.get('entry_price', 0) for t in active_trades)
+            "total_exposure": sum(
+                t.get("shares", 0) * t.get("entry_price", 0) for t in active_trades
+            ),
         }
 
     except Exception as e:
@@ -135,8 +137,7 @@ async def get_active_trades():
 
 @router.get("/trades/summary")
 async def get_trades_summary(
-    symbol: Optional[str] = Query(None),
-    days: int = Query(30, ge=1, le=365)
+    symbol: Optional[str] = Query(None), days: int = Query(30, ge=1, le=365)
 ):
     """
     Get aggregated trade statistics
@@ -153,9 +154,9 @@ async def get_trades_summary(
 
         # Get trades from last N days
         date_from = (date.today() - timedelta(days=days)).isoformat()
-        filters = {'date_from': date_from, 'status': 'closed'}
+        filters = {"date_from": date_from, "status": "closed"}
         if symbol:
-            filters['symbol'] = symbol
+            filters["symbol"] = symbol
 
         trades = db.get_trades(filters=filters, limit=1000)
 
@@ -167,23 +168,23 @@ async def get_trades_summary(
                     "win_rate": 0,
                     "total_pnl": 0,
                     "profit_factor": 0,
-                    "avg_r_multiple": 0
-                }
+                    "avg_r_multiple": 0,
+                },
             }
 
         # Calculate statistics
         total = len(trades)
-        winners = [t for t in trades if t.get('pnl', 0) > 0]
-        losers = [t for t in trades if t.get('pnl', 0) < 0]
+        winners = [t for t in trades if t.get("pnl", 0) > 0]
+        losers = [t for t in trades if t.get("pnl", 0) < 0]
 
         win_rate = (len(winners) / total * 100) if total > 0 else 0
-        total_pnl = sum(t.get('pnl', 0) for t in trades)
+        total_pnl = sum(t.get("pnl", 0) for t in trades)
 
-        gross_profit = sum(t.get('pnl', 0) for t in winners) if winners else 0
-        gross_loss = abs(sum(t.get('pnl', 0) for t in losers)) if losers else 0
+        gross_profit = sum(t.get("pnl", 0) for t in winners) if winners else 0
+        gross_loss = abs(sum(t.get("pnl", 0) for t in losers)) if losers else 0
         profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else 0
 
-        r_multiples = [t.get('r_multiple', 0) for t in trades if t.get('r_multiple')]
+        r_multiples = [t.get("r_multiple", 0) for t in trades if t.get("r_multiple")]
         avg_r = (sum(r_multiples) / len(r_multiples)) if r_multiples else 0
 
         return {
@@ -200,9 +201,11 @@ async def get_trades_summary(
                 "avg_win": round(gross_profit / len(winners), 2) if winners else 0,
                 "avg_loss": round(gross_loss / len(losers), 2) if losers else 0,
                 "avg_r_multiple": round(avg_r, 2),
-                "largest_win": max([t.get('pnl', 0) for t in winners]) if winners else 0,
-                "largest_loss": min([t.get('pnl', 0) for t in losers]) if losers else 0
-            }
+                "largest_win": (
+                    max([t.get("pnl", 0) for t in winners]) if winners else 0
+                ),
+                "largest_loss": min([t.get("pnl", 0) for t in losers]) if losers else 0,
+            },
         }
 
     except Exception as e:
@@ -212,12 +215,13 @@ async def get_trades_summary(
 
 # ==================== ERROR TRACKING ENDPOINTS ====================
 
+
 @router.get("/errors")
 async def get_errors(
     severity: Optional[str] = Query(None),
     module: Optional[str] = Query(None),
     resolved: Optional[bool] = Query(None),
-    limit: int = Query(50, ge=1, le=200)
+    limit: int = Query(50, ge=1, le=200),
 ):
     """
     Get system error logs with filters
@@ -236,19 +240,15 @@ async def get_errors(
 
         filters = {}
         if severity:
-            filters['severity'] = severity
+            filters["severity"] = severity
         if module:
-            filters['module'] = module
+            filters["module"] = module
         if resolved is not None:
-            filters['resolved'] = resolved
+            filters["resolved"] = resolved
 
         errors = db.get_errors(filters=filters, limit=limit)
 
-        return {
-            "success": True,
-            "count": len(errors),
-            "errors": errors
-        }
+        return {"success": True, "count": len(errors), "errors": errors}
 
     except Exception as e:
         logger.error(f"Error fetching error logs: {e}")
@@ -275,7 +275,7 @@ async def resolve_error(request: ResolveErrorRequest):
 
         return {
             "success": True,
-            "message": f"Error {request.error_id} marked as resolved"
+            "message": f"Error {request.error_id} marked as resolved",
         }
 
     except HTTPException:
@@ -307,13 +307,13 @@ async def get_error_stats(days: int = Query(7, ge=1, le=30)):
         by_module = {}
 
         for error in errors:
-            severity = error.get('severity', 'unknown')
-            module = error.get('module', 'unknown')
+            severity = error.get("severity", "unknown")
+            module = error.get("module", "unknown")
 
             by_severity[severity] = by_severity.get(severity, 0) + 1
             by_module[module] = by_module.get(module, 0) + 1
 
-        unresolved = [e for e in errors if not e.get('resolved', False)]
+        unresolved = [e for e in errors if not e.get("resolved", False)]
 
         return {
             "success": True,
@@ -322,8 +322,10 @@ async def get_error_stats(days: int = Query(7, ge=1, le=30)):
                 "unresolved": len(unresolved),
                 "by_severity": by_severity,
                 "by_module": by_module,
-                "most_common_module": max(by_module, key=by_module.get) if by_module else None
-            }
+                "most_common_module": (
+                    max(by_module, key=by_module.get) if by_module else None
+                ),
+            },
         }
 
     except Exception as e:
@@ -332,6 +334,7 @@ async def get_error_stats(days: int = Query(7, ge=1, le=30)):
 
 
 # ==================== PERFORMANCE METRICS ENDPOINTS ====================
+
 
 @router.get("/performance/daily")
 async def get_daily_performance(days: int = Query(30, ge=1, le=365)):
@@ -348,11 +351,7 @@ async def get_daily_performance(days: int = Query(30, ge=1, le=365)):
         db = get_db_manager()
         metrics = db.get_performance_metrics(days=days)
 
-        return {
-            "success": True,
-            "count": len(metrics),
-            "metrics": metrics
-        }
+        return {"success": True, "count": len(metrics), "metrics": metrics}
 
     except Exception as e:
         logger.error(f"Error fetching daily performance: {e}")
@@ -384,13 +383,10 @@ async def calculate_performance(target_date: Optional[str] = None):
             return {
                 "success": True,
                 "message": "No trades found for this date",
-                "metrics": {}
+                "metrics": {},
             }
 
-        return {
-            "success": True,
-            "metrics": metrics
-        }
+        return {"success": True, "metrics": metrics}
 
     except Exception as e:
         logger.error(f"Error calculating performance: {e}")
@@ -399,8 +395,7 @@ async def calculate_performance(target_date: Optional[str] = None):
 
 @router.get("/slippage/stats")
 async def get_slippage_stats(
-    symbol: Optional[str] = Query(None),
-    days: int = Query(7, ge=1, le=30)
+    symbol: Optional[str] = Query(None), days: int = Query(7, ge=1, le=30)
 ):
     """
     Get slippage statistics for execution quality monitoring
@@ -416,10 +411,7 @@ async def get_slippage_stats(
         db = get_db_manager()
         stats = db.get_slippage_stats(symbol=symbol, days=days)
 
-        return {
-            "success": True,
-            "stats": stats
-        }
+        return {"success": True, "stats": stats}
 
     except Exception as e:
         logger.error(f"Error fetching slippage stats: {e}")
@@ -427,6 +419,7 @@ async def get_slippage_stats(
 
 
 # ==================== LAYOUT MANAGEMENT ENDPOINTS ====================
+
 
 @router.post("/layouts/save")
 async def save_layout(request: SaveLayoutRequest):
@@ -445,13 +438,13 @@ async def save_layout(request: SaveLayoutRequest):
             layout_name=request.layout_name,
             layout_config=request.layout_config,
             is_default=request.is_default,
-            ui_type=request.ui_type
+            ui_type=request.ui_type,
         )
 
         return {
             "success": True,
             "layout_id": layout_id,
-            "message": f"Layout '{request.layout_name}' saved successfully for {request.ui_type}"
+            "message": f"Layout '{request.layout_name}' saved successfully for {request.ui_type}",
         }
 
     except Exception as e:
@@ -478,7 +471,7 @@ async def get_layouts(ui_type: Optional[str] = Query("monitor")):
             "success": True,
             "count": len(layouts),
             "ui_type": ui_type,
-            "layouts": layouts
+            "layouts": layouts,
         }
 
     except Exception as e:
@@ -506,14 +499,10 @@ async def get_default_layout(ui_type: Optional[str] = Query("monitor")):
                 "success": True,
                 "layout": None,
                 "ui_type": ui_type,
-                "message": f"No default layout configured for {ui_type}"
+                "message": f"No default layout configured for {ui_type}",
             }
 
-        return {
-            "success": True,
-            "ui_type": ui_type,
-            "layout": layout
-        }
+        return {"success": True, "ui_type": ui_type, "layout": layout}
 
     except Exception as e:
         logger.error(f"Error fetching default layout: {e}")
@@ -521,6 +510,7 @@ async def get_default_layout(ui_type: Optional[str] = Query("monitor")):
 
 
 # ==================== REAL-TIME WEBSOCKET ENDPOINT ====================
+
 
 class ConnectionManager:
     """Manage WebSocket connections for real-time updates"""
@@ -531,11 +521,15 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        logger.info(f"WebSocket connected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"WebSocket connected. Total connections: {len(self.active_connections)}"
+        )
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-        logger.info(f"WebSocket disconnected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"WebSocket disconnected. Total connections: {len(self.active_connections)}"
+        )
 
     async def broadcast(self, message: dict):
         """Broadcast message to all connected clients"""
@@ -574,13 +568,15 @@ async def websocket_endpoint(websocket: WebSocket):
         db = get_db_manager()
         active_trades = db.get_active_trades()
 
-        await websocket.send_json({
-            "type": "initial_data",
-            "data": {
-                "active_trades": active_trades,
-                "timestamp": datetime.now().isoformat()
+        await websocket.send_json(
+            {
+                "type": "initial_data",
+                "data": {
+                    "active_trades": active_trades,
+                    "timestamp": datetime.now().isoformat(),
+                },
             }
-        })
+        )
 
         # Keep connection alive and listen for client messages
         while True:
@@ -589,17 +585,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
 
                 # Echo or process client messages if needed
-                await websocket.send_json({
-                    "type": "pong",
-                    "timestamp": datetime.now().isoformat()
-                })
+                await websocket.send_json(
+                    {"type": "pong", "timestamp": datetime.now().isoformat()}
+                )
 
             except asyncio.TimeoutError:
                 # Send heartbeat every 30 seconds
-                await websocket.send_json({
-                    "type": "heartbeat",
-                    "timestamp": datetime.now().isoformat()
-                })
+                await websocket.send_json(
+                    {"type": "heartbeat", "timestamp": datetime.now().isoformat()}
+                )
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -612,6 +606,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 # ==================== HEALTH CHECK ====================
 
+
 @router.get("/health")
 async def health_check():
     """Check monitoring API health"""
@@ -623,36 +618,36 @@ async def health_check():
         return {
             "success": True,
             "status": "healthy",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return JSONResponse(
             status_code=503,
-            content={
-                "success": False,
-                "status": "unhealthy",
-                "error": str(e)
-            }
+            content={"success": False, "status": "unhealthy", "error": str(e)},
         )
 
 
 # Helper function to broadcast trade updates (called from trade execution code)
 async def broadcast_trade_update(trade_data: dict):
     """Broadcast trade update to all connected WebSocket clients"""
-    await manager.broadcast({
-        "type": "trade_update",
-        "data": trade_data,
-        "timestamp": datetime.now().isoformat()
-    })
+    await manager.broadcast(
+        {
+            "type": "trade_update",
+            "data": trade_data,
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
 
 
 # Helper function to broadcast error alerts
 async def broadcast_error_alert(error_data: dict):
     """Broadcast error alert to all connected WebSocket clients"""
-    await manager.broadcast({
-        "type": "error_alert",
-        "data": error_data,
-        "timestamp": datetime.now().isoformat()
-    })
+    await manager.broadcast(
+        {
+            "type": "error_alert",
+            "data": error_data,
+            "timestamp": datetime.now().isoformat(),
+        }
+    )

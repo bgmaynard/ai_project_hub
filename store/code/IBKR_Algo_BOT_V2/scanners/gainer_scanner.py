@@ -21,9 +21,10 @@ Conditions:
 """
 
 import logging
-from datetime import datetime, time
-from typing import List, Dict, Optional
 from dataclasses import dataclass
+from datetime import datetime, time
+from typing import Dict, List, Optional
+
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ from scanners import ScannerResult, ScannerType, get_scanner_config
 @dataclass
 class GainerCandidate:
     """Internal representation of a gainer candidate"""
+
     symbol: str
     last_price: float
     prior_close: float
@@ -57,7 +59,7 @@ class GainerScanner:
         self._candidates: Dict[str, GainerCandidate] = {}
         self._last_scan: Optional[datetime] = None
         self._avg_volumes: Dict[str, int] = {}  # Cache for avg volumes
-        self._et_tz = pytz.timezone('US/Eastern')
+        self._et_tz = pytz.timezone("US/Eastern")
 
     def is_active_window(self) -> bool:
         """Check if scanner should be active (04:00 - 16:00 ET)"""
@@ -67,7 +69,9 @@ class GainerScanner:
     def _check_schwab_health(self) -> bool:
         """Verify Schwab feed is healthy - fail closed"""
         try:
-            from schwab_market_data import is_schwab_available, get_token_status
+            from schwab_market_data import (get_token_status,
+                                            is_schwab_available)
+
             if not is_schwab_available():
                 return False
             status = get_token_status()
@@ -80,6 +84,7 @@ class GainerScanner:
         """Get current quote from Schwab"""
         try:
             from schwab_market_data import get_schwab_market_data
+
             schwab = get_schwab_market_data()
             if not schwab:
                 return None
@@ -94,7 +99,7 @@ class GainerScanner:
                 "ask": quote.get("ask", 0),
                 "volume": quote.get("volume", 0),
                 "close": quote.get("close", 0),  # Prior close
-                "change_percent": quote.get("change_percent", 0)
+                "change_percent": quote.get("change_percent", 0),
             }
 
         except Exception as e:
@@ -112,6 +117,7 @@ class GainerScanner:
 
         try:
             from schwab_market_data import get_schwab_market_data
+
             schwab = get_schwab_market_data()
             if not schwab:
                 return 0
@@ -122,18 +128,18 @@ class GainerScanner:
                 period_type="month",
                 period=1,
                 frequency_type="daily",
-                frequency=1
+                frequency=1,
             )
 
-            if not history or 'candles' not in history:
+            if not history or "candles" not in history:
                 return 0
 
-            candles = history['candles']
+            candles = history["candles"]
             if len(candles) < 5:
                 return 0
 
             # Calculate average volume (exclude today)
-            volumes = [c.get('volume', 0) for c in candles[:-1]]
+            volumes = [c.get("volume", 0) for c in candles[:-1]]
             avg_vol = int(sum(volumes) / len(volumes)) if volumes else 0
 
             # Cache it
@@ -238,7 +244,7 @@ class GainerScanner:
             rel_vol=rel_vol,
             bid=bid,
             ask=ask,
-            spread_pct=spread_pct
+            spread_pct=spread_pct,
         )
 
         # Return result
@@ -248,7 +254,7 @@ class GainerScanner:
             price=last_price,
             pct_change=round(pct_change * 100, 2),  # As percentage
             rel_vol=round(rel_vol, 2),
-            volume=volume
+            volume=volume,
         )
 
     def scan_symbols(self, symbols: List[str]) -> List[ScannerResult]:
@@ -278,7 +284,9 @@ class GainerScanner:
                 continue
 
         self._last_scan = datetime.now()
-        logger.info(f"[GainerScanner] Scanned {len(symbols)} symbols, found {len(results)} gainers")
+        logger.info(
+            f"[GainerScanner] Scanned {len(symbols)} symbols, found {len(results)} gainers"
+        )
 
         return results
 
@@ -291,7 +299,7 @@ class GainerScanner:
                 price=c.last_price,
                 pct_change=round(c.pct_change * 100, 2),
                 rel_vol=round(c.rel_vol, 2),
-                volume=c.volume
+                volume=c.volume,
             )
             for c in self._candidates.values()
         ]
@@ -312,7 +320,7 @@ class GainerScanner:
             "candidates": len(self._candidates),
             "volume_cache_size": len(self._avg_volumes),
             "last_scan": self._last_scan.isoformat() if self._last_scan else None,
-            "schwab_healthy": self._check_schwab_health()
+            "schwab_healthy": self._check_schwab_health(),
         }
 
 

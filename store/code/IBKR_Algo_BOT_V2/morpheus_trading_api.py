@@ -2,39 +2,39 @@
 Morpheus Trading Bot API
 Main API server with Schwab broker integration
 """
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
-import logging
 import asyncio
+import logging
+import uuid
+from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any, Union
-from pydantic import BaseModel
+from typing import Any, Dict, List, Optional, Union
 
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import uuid
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-
 # Broker configuration
-from config.broker_config import get_broker_config, BrokerType
-
+from config.broker_config import BrokerType, get_broker_config
+from fastapi import (FastAPI, HTTPException, Query, WebSocket,
+                     WebSocketDisconnect)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 # Unified Broker (Schwab)
-from unified_broker import get_unified_broker, OrderSide
+from unified_broker import OrderSide, get_unified_broker
 
 # Unified Market Data Provider (Schwab)
 try:
-    from unified_market_data import (
-        get_unified_market_data,
-        get_quote as unified_get_quote,
-        get_quotes as unified_get_quotes,
-        get_snapshot as unified_get_snapshot,
-        get_price as unified_get_price
-    )
+    from unified_market_data import get_price as unified_get_price
+    from unified_market_data import get_quote as unified_get_quote
+    from unified_market_data import get_quotes as unified_get_quotes
+    from unified_market_data import get_snapshot as unified_get_snapshot
+    from unified_market_data import get_unified_market_data
+
     HAS_UNIFIED_DATA = True
 except ImportError as e:
     HAS_UNIFIED_DATA = False
@@ -47,6 +47,7 @@ from compatibility_routes import router as compat_router
 # Watchlist management
 try:
     from watchlist_routes import router as watchlist_router
+
     HAS_WATCHLIST_ROUTES = True
 except ImportError:
     HAS_WATCHLIST_ROUTES = False
@@ -55,6 +56,7 @@ except ImportError:
 # TradingView integration
 try:
     from tradingview_integration import router as tradingview_router
+
     HAS_TRADINGVIEW = True
 except ImportError:
     HAS_TRADINGVIEW = False
@@ -63,6 +65,7 @@ except ImportError:
 # Analytics routes
 try:
     from analytics_routes import router as analytics_router
+
     HAS_ANALYTICS = True
 except ImportError:
     HAS_ANALYTICS = False
@@ -71,6 +74,7 @@ except ImportError:
 # Advanced Pipeline (Task Queue Mesh Mode, XGBoost, Optuna, Regime/Drift Detection)
 try:
     from src.pipeline.api_routes import router as pipeline_router
+
     HAS_ADVANCED_PIPELINE = True
 except ImportError:
     HAS_ADVANCED_PIPELINE = False
@@ -78,11 +82,15 @@ except ImportError:
 
 # AI Predictor
 try:
-    from ai.ai_predictor import get_predictor as get_ai_scanner, EnhancedAIPredictor
+    from ai.ai_predictor import EnhancedAIPredictor
+    from ai.ai_predictor import get_predictor as get_ai_scanner
+
     HAS_AI_SCANNER = True
     # Pre-load the model at startup
     _cached_predictor = EnhancedAIPredictor()
-    print(f"[INFO] AI Predictor loaded: Model={_cached_predictor.model is not None}, Accuracy={_cached_predictor.accuracy:.2%}")
+    print(
+        f"[INFO] AI Predictor loaded: Model={_cached_predictor.model is not None}, Accuracy={_cached_predictor.accuracy:.2%}"
+    )
 except ImportError as e:
     HAS_AI_SCANNER = False
     get_ai_scanner = None
@@ -92,6 +100,7 @@ except ImportError as e:
 # Claude AI API Router
 try:
     from ai.claude_api import router as claude_api_router
+
     HAS_CLAUDE_API = True
 except ImportError as e:
     logger.warning(f"Claude API router not available: {e}")
@@ -102,6 +111,7 @@ except ImportError as e:
 try:
     from hybrid_data_routes import router as hybrid_router
     from schwab_hybrid_data import get_hybrid_provider
+
     HAS_HYBRID_DATA = True
 except ImportError as e:
     logger.warning(f"Hybrid data not available: {e}")
@@ -110,15 +120,11 @@ except ImportError as e:
 
 # Multi-Channel Data Provider for parallel market data access
 try:
-    from multi_channel_data import (
-        get_multi_channel_provider,
-        DataChannel,
-        get_quote_fast,
-        get_quotes_fast,
-        get_snapshot_fast,
-        get_bars_for_ai,
-        get_bars_for_chart
-    )
+    from multi_channel_data import (DataChannel, get_bars_for_ai,
+                                    get_bars_for_chart,
+                                    get_multi_channel_provider, get_quote_fast,
+                                    get_quotes_fast, get_snapshot_fast)
+
     HAS_MULTI_CHANNEL = True
 except ImportError as e:
     logger.warning(f"Multi-channel data provider not available: {e}")
@@ -126,11 +132,9 @@ except ImportError as e:
 
 # Real-Time Streaming
 try:
-    from realtime_streaming import (
-        get_stream_manager,
-        StreamType,
-        RealtimeStreamManager
-    )
+    from realtime_streaming import (RealtimeStreamManager, StreamType,
+                                    get_stream_manager)
+
     HAS_STREAMING = True
 except ImportError as e:
     logger.warning(f"Real-time streaming not available: {e}")
@@ -140,6 +144,7 @@ except ImportError as e:
 try:
     from schwab_api_routes import router as schwab_router
     from schwab_trading import get_schwab_trading, is_schwab_trading_available
+
     HAS_SCHWAB_TRADING = True
 except ImportError as e:
     HAS_SCHWAB_TRADING = False
@@ -147,13 +152,12 @@ except ImportError as e:
 
 # Schwab WebSocket Streaming for Real-Time Data (using schwabdev)
 try:
-    from schwabdev_streaming import (
-        start_streaming as start_schwab_streaming,
-        stop_streaming as stop_schwab_streaming,
-        get_status as get_schwab_stream_status,
-        subscribe as schwab_subscribe,
-        get_cached_quote as get_schwab_stream_quote
-    )
+    from schwabdev_streaming import get_cached_quote as get_schwab_stream_quote
+    from schwabdev_streaming import get_status as get_schwab_stream_status
+    from schwabdev_streaming import start_streaming as start_schwab_streaming
+    from schwabdev_streaming import stop_streaming as stop_schwab_streaming
+    from schwabdev_streaming import subscribe as schwab_subscribe
+
     HAS_SCHWAB_STREAMING = True
     logger = logging.getLogger(__name__)
     logger.info("Schwabdev streaming module loaded")
@@ -164,13 +168,12 @@ except ImportError as e:
 
 # Schwab Fast Polling (fallback for when WebSocket streaming fails)
 try:
-    from schwab_fast_polling import (
-        start_polling as start_schwab_fast_polling,
-        stop_polling as stop_schwab_fast_polling,
-        get_status as get_schwab_fast_poll_status,
-        subscribe as schwab_fast_subscribe,
-        get_cached_quote as get_schwab_fast_quote
-    )
+    from schwab_fast_polling import get_cached_quote as get_schwab_fast_quote
+    from schwab_fast_polling import get_status as get_schwab_fast_poll_status
+    from schwab_fast_polling import start_polling as start_schwab_fast_polling
+    from schwab_fast_polling import stop_polling as stop_schwab_fast_polling
+    from schwab_fast_polling import subscribe as schwab_fast_subscribe
+
     HAS_SCHWAB_FAST_POLLING = True
 except ImportError as e:
     HAS_SCHWAB_FAST_POLLING = False
@@ -179,9 +182,9 @@ except ImportError as e:
 
 # Setup logging
 logging.basicConfig(
-    handlers=[RotatingFileHandler('bot.log', maxBytes=10*1024*1024, backupCount=3)],
+    handlers=[RotatingFileHandler("bot.log", maxBytes=10 * 1024 * 1024, backupCount=3)],
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
 logger = logging.getLogger(__name__)
@@ -190,7 +193,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Morpheus Trading Bot",
     description="AI-powered trading platform with Schwab broker integration",
-    version="2.1.0"
+    version="2.1.0",
 )
 
 # Enable CORS
@@ -243,22 +246,27 @@ async def get_primary_account():
     # Format response for UI compatibility (UI expects 'summary' object)
     return {
         "summary": {
-            "account_id": account.get("account_number", account.get("account_id", "Unknown")),
+            "account_id": account.get(
+                "account_number", account.get("account_id", "Unknown")
+            ),
             "account_type": account.get("type", account.get("account_type", "Unknown")),
             "net_liquidation": account.get("market_value", account.get("equity", 0)),
             "buying_power": account.get("buying_power", 0),
-            "total_cash": account.get("cash", account.get("cash_available_for_trading", 0)),
+            "total_cash": account.get(
+                "cash", account.get("cash_available_for_trading", 0)
+            ),
             "day_trading_buying_power": account.get("day_trading_buying_power", 0),
             "maintenance_margin": account.get("maintenance_requirement", 0),
-            "broker": broker
+            "broker": broker,
         },
         "positions": positions,
         "total_realized_pnl": account.get("daily_pl", 0),
         "broker": broker,
         "name": "Morpheus Trading Bot",
         # Also include raw account data for other uses
-        **account
+        **account,
     }
+
 
 @app.get("/api/accounts")
 async def get_accounts_list():
@@ -278,11 +286,13 @@ async def get_accounts_list():
                     for acc in all_accounts:
                         acc_num = acc.get("account_number")
                         # Get account type by fetching info for each
-                        accounts.append({
-                            "accountNumber": acc_num,
-                            "accountType": acc.get("type", "UNKNOWN"),
-                            "selected": acc_num == selected_account
-                        })
+                        accounts.append(
+                            {
+                                "accountNumber": acc_num,
+                                "accountType": acc.get("type", "UNKNOWN"),
+                                "selected": acc_num == selected_account,
+                            }
+                        )
         except Exception as e:
             logger.warning(f"Failed to fetch accounts: {e}")
 
@@ -306,15 +316,21 @@ async def select_account(account_number: str):
                     return {
                         "success": True,
                         "selected": account_number,
-                        "account_type": account_info.get("type") if account_info else "UNKNOWN"
+                        "account_type": (
+                            account_info.get("type") if account_info else "UNKNOWN"
+                        ),
                     }
                 else:
-                    return {"success": False, "error": f"Account {account_number} not found"}
+                    return {
+                        "success": False,
+                        "error": f"Account {account_number} not found",
+                    }
     except Exception as e:
         logger.error(f"Error selecting account: {e}")
         return {"success": False, "error": str(e)}
 
     return {"success": False, "error": "Unknown error"}
+
 
 @app.get("/api/orders")
 async def get_orders():
@@ -369,6 +385,7 @@ if HAS_HYBRID_DATA and hybrid_router:
 # Morphic AI Controller (Self-adapting AI)
 try:
     from ai.morphic_api_routes import router as morphic_router
+
     app.include_router(morphic_router, tags=["Morphic AI"])
     HAS_MORPHIC = True
     logger.info("Morphic AI Controller router included")
@@ -379,6 +396,7 @@ except ImportError as e:
 # AI Predictor Routes (Chronos, LightGBM, Ensemble)
 try:
     from ai.ai_api_routes import router as ai_predictor_router
+
     app.include_router(ai_predictor_router, tags=["AI Predictors"])
     HAS_AI_PREDICTORS = True
     logger.info("AI Predictor routes included (Chronos, LightGBM, Ensemble)")
@@ -389,6 +407,7 @@ except ImportError as e:
 # Strategy Template Library & Monitor (Claude-driven strategy management)
 try:
     from ai.strategy_api_routes import router as strategy_router
+
     app.include_router(strategy_router, tags=["Strategy Library"])
     HAS_STRATEGY_LIBRARY = True
     logger.info("Strategy Template Library router included")
@@ -399,6 +418,7 @@ except ImportError as e:
 # News Feed Monitor & Fundamental Analysis
 try:
     from ai.news_api_routes import router as news_router
+
     app.include_router(news_router, tags=["News & Fundamentals"])
     HAS_NEWS_FEED = True
     logger.info("News Feed & Fundamentals router included")
@@ -409,6 +429,7 @@ except ImportError as e:
 # Claude AI Stock Scanner
 try:
     from ai.scanner_api_routes import router as scanner_router
+
     app.include_router(scanner_router, tags=["Stock Scanner"])
     HAS_SCANNER = True
     logger.info("Claude AI Stock Scanner router included")
@@ -419,6 +440,7 @@ except ImportError as e:
 # Finviz Scanner (free supplemental data source)
 try:
     from ai.finviz_routes import router as finviz_router
+
     app.include_router(finviz_router, tags=["Finviz Scanner"])
     logger.info("Finviz Scanner router included")
 except ImportError as e:
@@ -427,6 +449,7 @@ except ImportError as e:
 # Momentum Scorer API
 try:
     from ai.momentum_scorer import get_momentum_scorer
+
     HAS_MOMENTUM_SCORER = True
     logger.info("Momentum Scorer loaded")
 except ImportError as e:
@@ -436,6 +459,7 @@ except ImportError as e:
 # Claude AI Watchlist Manager
 try:
     from ai.watchlist_api_routes import router as watchlist_ai_router
+
     app.include_router(watchlist_ai_router, tags=["AI Watchlist"])
     HAS_WATCHLIST_AI = True
     logger.info("Claude AI Watchlist Manager router included")
@@ -446,7 +470,10 @@ except ImportError as e:
 # Trading Pipeline & Coach (Automated Trading Flow)
 try:
     from ai.pipeline_api_routes import router as pipeline_coach_router
-    app.include_router(pipeline_coach_router, tags=["Trading Pipeline", "Trading Coach"])
+
+    app.include_router(
+        pipeline_coach_router, tags=["Trading Pipeline", "Trading Coach"]
+    )
     HAS_PIPELINE_COACH = True
     logger.info("Trading Pipeline & Coach router included")
 except ImportError as e:
@@ -456,6 +483,7 @@ except ImportError as e:
 # News Trade Pipeline (News -> Filter -> Analyze -> Alert)
 try:
     from ai.news_pipeline_routes import router as news_pipeline_router
+
     app.include_router(news_pipeline_router, tags=["News Pipeline", "Halt Detection"])
     HAS_NEWS_PIPELINE = True
     logger.info("News Trade Pipeline router included")
@@ -466,6 +494,7 @@ except ImportError as e:
 # Data Collection & Backtest Routes (Schwab minute data, PyBroker)
 try:
     from ai.data_api_routes import router as data_router
+
     app.include_router(data_router, tags=["Data Collection"])
     HAS_DATA_COLLECTION = True
     logger.info("Data Collection routes included")
@@ -476,6 +505,7 @@ except ImportError as e:
 # Scalp Assistant Routes (HFT Exit Manager)
 try:
     from ai.scalp_assistant_routes import router as scalp_router
+
     app.include_router(scalp_router, tags=["Scalp Assistant"])
     HAS_SCALP_ASSISTANT = True
     logger.info("Scalp Assistant routes included")
@@ -486,6 +516,7 @@ except ImportError as e:
 # Polygon Real-Time Streaming Routes
 try:
     from polygon_streaming_routes import router as polygon_stream_router
+
     app.include_router(polygon_stream_router, tags=["Polygon Streaming"])
     HAS_POLYGON_STREAMING = True
     logger.info("Polygon Streaming routes included")
@@ -496,6 +527,7 @@ except ImportError as e:
 # EDGAR SEC Filing Monitor Routes
 try:
     from ai.edgar_routes import router as edgar_router
+
     app.include_router(edgar_router, tags=["SEC EDGAR"])
     HAS_EDGAR_MONITOR = True
     logger.info("SEC EDGAR routes included")
@@ -506,6 +538,7 @@ except ImportError as e:
 # Pre-Market Scanner & News Log Routes
 try:
     from ai.premarket_routes import router as premarket_router
+
     app.include_router(premarket_router, tags=["Pre-Market Scanner"])
     HAS_PREMARKET_SCANNER = True
     logger.info("Pre-Market Scanner routes included")
@@ -516,6 +549,7 @@ except ImportError as e:
 # Warrior Trading Setup Detection Routes
 try:
     from ai.warrior_routes import router as warrior_router
+
     app.include_router(warrior_router, tags=["Warrior Trading"])
     HAS_WARRIOR_SETUP = True
     logger.info("Warrior Trading Setup Detection routes included")
@@ -526,6 +560,7 @@ except ImportError as e:
 # Strategy Policy Engine Routes
 try:
     from ai.strategy_policy_routes import router as strategy_policy_router
+
     app.include_router(strategy_policy_router, tags=["Strategy Policy"])
     HAS_STRATEGY_POLICY = True
     logger.info("Strategy Policy Engine routes included")
@@ -536,6 +571,7 @@ except ImportError as e:
 # Validation & Calibration Routes (Phase: Strategy Policy Validation)
 try:
     from ai.validation_routes import router as validation_router
+
     app.include_router(validation_router, tags=["Validation & Calibration"])
     HAS_VALIDATION = True
     logger.info("Validation & Calibration routes included")
@@ -546,6 +582,7 @@ except ImportError as e:
 # Task Queue Routes (HOD Momentum Bot Pipeline)
 try:
     from ai.task_queue_routes import router as task_queue_router
+
     app.include_router(task_queue_router, tags=["Task Queue"])
     HAS_TASK_QUEUE = True
     logger.info("Task Queue routes included (HOD Momentum Pipeline)")
@@ -555,7 +592,9 @@ except ImportError as e:
 
 # Momentum Watchlist Operator Controls
 try:
-    from ai.momentum_watchlist_routes import router as momentum_watchlist_router
+    from ai.momentum_watchlist_routes import \
+        router as momentum_watchlist_router
+
     app.include_router(momentum_watchlist_router, tags=["Watchlist Operator"])
     HAS_MOMENTUM_WATCHLIST = True
     logger.info("Momentum Watchlist operator control routes included")
@@ -566,6 +605,7 @@ except ImportError as e:
 # Lightweight Charts API Routes
 try:
     from charts_routes import router as charts_router
+
     app.include_router(charts_router, tags=["Charts"])
     HAS_CHARTS_API = True
     logger.info("Lightweight Charts API routes included")
@@ -576,6 +616,7 @@ except ImportError as e:
 # Warrior Trading Scanners
 try:
     from scanners.scanner_routes import router as scanner_router
+
     app.include_router(scanner_router, tags=["Warrior Scanners"])
     HAS_WARRIOR_SCANNERS = True
     logger.info("Warrior Trading Scanner routes included")
@@ -587,6 +628,7 @@ except ImportError as e:
 # ============================================================================
 # PYDANTIC MODELS
 # ============================================================================
+
 
 class TrainRequest(BaseModel):
     symbol: str
@@ -619,6 +661,7 @@ class ClaudeQueryRequest(BaseModel):
 # SYSTEM ENDPOINTS
 # ============================================================================
 
+
 @app.get("/")
 async def root():
     """Root endpoint"""
@@ -637,13 +680,14 @@ async def root():
         "broker": primary_broker,
         "broker_status": broker_status,
         "status": "operational",
-        "data_source": "Schwab"
+        "data_source": "Schwab",
     }
 
 
 # Health check cache to avoid slow API calls
 _health_cache = {"data": None, "timestamp": 0}
 _HEALTH_CACHE_TTL = 30  # Cache for 30 seconds
+
 
 @app.get("/api/health")
 async def health_check():
@@ -673,7 +717,9 @@ async def health_check():
             stream_mgr = get_stream_manager()
             status = stream_mgr.get_status()
             if status["running"]:
-                streaming_status = f"running ({status['subscription_count']} subscriptions)"
+                streaming_status = (
+                    f"running ({status['subscription_count']} subscriptions)"
+                )
             else:
                 streaming_status = "available"
         except Exception:
@@ -703,6 +749,7 @@ async def health_check():
     claude_available = False
     try:
         import os
+
         claude_available = bool(os.environ.get("ANTHROPIC_API_KEY"))
     except Exception:
         pass
@@ -713,7 +760,7 @@ async def health_check():
         "broker": {
             "type": "schwab",
             "connected": schwab_trading_status != "not_available",
-            "paper_trading": False
+            "paper_trading": False,
         },
         "services": {
             "api": "operational",
@@ -722,9 +769,9 @@ async def health_check():
             "primary_data_source": primary_data_source,
             "multi_channel_data": multi_channel_status,
             "realtime_streaming": streaming_status,
-            "schwab_trading": schwab_trading_status
+            "schwab_trading": schwab_trading_status,
         },
-        "claude_available": claude_available
+        "claude_available": claude_available,
     }
 
     # Cache the result
@@ -753,14 +800,11 @@ async def get_connection_health():
     """
     try:
         from ai.connection_health_monitor import get_health_monitor
+
         monitor = get_health_monitor()
         return monitor.get_status()
     except Exception as e:
-        return {
-            "healthy": False,
-            "error": str(e),
-            "connections": {}
-        }
+        return {"healthy": False, "error": str(e), "connections": {}}
 
 
 @app.get("/api/health/history")
@@ -768,11 +812,9 @@ async def get_connection_health_history(minutes: int = 30):
     """Get connection health history for trend analysis"""
     try:
         from ai.connection_health_monitor import get_health_monitor
+
         monitor = get_health_monitor()
-        return {
-            "history": monitor.get_health_history(minutes),
-            "minutes": minutes
-        }
+        return {"history": monitor.get_health_history(minutes), "minutes": minutes}
     except Exception as e:
         return {"error": str(e), "history": []}
 
@@ -802,7 +844,7 @@ async def get_gating_status():
         "vetoed": 0,
         "approval_rate": 0,
         "recent_vetoes": [],
-        "error": None
+        "error": None,
     }
 
     try:
@@ -812,7 +854,9 @@ async def get_gating_status():
         # Check if gating is enabled in scalper config
         scalper = get_hft_scalper()
         if scalper and scalper.config:
-            result["gating_enabled"] = getattr(scalper.config, 'require_gating_approval', False)
+            result["gating_enabled"] = getattr(
+                scalper.config, "require_gating_approval", False
+            )
 
         # Get gating stats
         manager = get_gated_trading_manager()
@@ -836,6 +880,7 @@ async def get_gating_status():
     except Exception as e:
         result["error"] = str(e)
         import traceback
+
         logger.error(f"Gating status error: {traceback.format_exc()}")
 
     return result
@@ -846,12 +891,10 @@ async def get_gating_vetoes(count: int = 20):
     """Get recent gating vetoes with full details"""
     try:
         from ai.gated_trading import get_gated_trading_manager
+
         manager = get_gated_trading_manager()
         vetoes = manager.get_recent_vetoes(count)
-        return {
-            "count": len(vetoes),
-            "vetoes": vetoes
-        }
+        return {"count": len(vetoes), "vetoes": vetoes}
     except Exception as e:
         return {"error": str(e), "vetoes": []}
 
@@ -874,12 +917,13 @@ async def get_system_status():
         "name": "Morpheus Trading Bot",
         "version": "2.1.0",
         "timestamp": datetime.now().isoformat(),
-        "overall_status": "operational"
+        "overall_status": "operational",
     }
 
     # Schwab token status
     try:
         from schwab_market_data import get_token_status, is_schwab_available
+
         token_status = get_token_status()
         status["schwab_token"] = token_status
         status["schwab_available"] = is_schwab_available()
@@ -900,7 +944,7 @@ async def get_system_status():
                         "available": True,
                         "accounts": len(accounts),
                         "selected_account": f"{selected[:4]}***" if selected else None,
-                        "status": "ready"
+                        "status": "ready",
                     }
         except Exception as e:
             schwab_trading_info["error"] = str(e)
@@ -915,7 +959,7 @@ async def get_system_status():
                 "active": broker.broker_name,
                 "is_connected": broker.is_connected,
                 "supports_market_orders": True,
-                "supports_limit_orders": True
+                "supports_limit_orders": True,
             }
     except Exception as e:
         broker_info["error"] = str(e)
@@ -930,7 +974,7 @@ async def get_system_status():
             data_sources = {
                 "primary": "schwab",
                 "schwab": provider_status["schwab"],
-                "available": provider_status["schwab"]["available"]
+                "available": provider_status["schwab"]["available"],
             }
         except Exception as e:
             data_sources["error"] = str(e)
@@ -942,7 +986,9 @@ async def get_system_status():
             provider = get_multi_channel_provider()
             status["multi_channel"] = {
                 "available": True,
-                "channels": len(provider.channels) if hasattr(provider, 'channels') else 0
+                "channels": (
+                    len(provider.channels) if hasattr(provider, "channels") else 0
+                ),
             }
         except Exception:
             status["multi_channel"] = {"available": False}
@@ -957,7 +1003,7 @@ async def get_system_status():
             status["streaming"] = {
                 "available": True,
                 "running": stream_status["running"],
-                "subscriptions": stream_status.get("subscription_count", 0)
+                "subscriptions": stream_status.get("subscription_count", 0),
             }
         except Exception:
             status["streaming"] = {"available": False}
@@ -970,16 +1016,17 @@ async def get_system_status():
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         ai_status["predictor"] = {
             "available": predictor is not None,
-            "loaded": predictor.is_loaded if hasattr(predictor, 'is_loaded') else False
+            "loaded": predictor.is_loaded if hasattr(predictor, "is_loaded") else False,
         }
     except Exception:
         ai_status["predictor"] = {"available": False}
 
     try:
         import os
+
         ai_status["claude"] = {
             "available": bool(os.environ.get("ANTHROPIC_API_KEY")),
-            "api_configured": bool(os.environ.get("ANTHROPIC_API_KEY"))
+            "api_configured": bool(os.environ.get("ANTHROPIC_API_KEY")),
         }
     except Exception:
         ai_status["claude"] = {"available": False}
@@ -999,6 +1046,7 @@ async def get_system_status():
 # ============================================================================
 # MARKET DATA ENDPOINTS
 # ============================================================================
+
 
 @app.get("/api/market/quote/{symbol}")
 async def get_quote(symbol: str):
@@ -1027,7 +1075,9 @@ async def get_snapshot(symbol: str):
         snapshot = unified_get_snapshot(symbol.upper())
 
         if snapshot is None:
-            raise HTTPException(status_code=404, detail=f"No snapshot data for {symbol}")
+            raise HTTPException(
+                status_code=404, detail=f"No snapshot data for {symbol}"
+            )
 
         return snapshot
 
@@ -1054,18 +1104,21 @@ async def get_timesales(symbol: str):
     # Try Polygon streaming first
     try:
         from polygon_streaming import get_polygon_streamer
+
         streamer = get_polygon_streamer()
         if streamer and streamer.running:
             polygon_trades = streamer.get_recent_trades(symbol.upper(), limit=100)
             if polygon_trades:
                 for t in polygon_trades:
-                    trades.append({
-                        "time": t.get("time", ""),
-                        "price": t.get("price", 0),
-                        "size": t.get("size", 0),
-                        "side": t.get("side", "N"),
-                        "source": "polygon"
-                    })
+                    trades.append(
+                        {
+                            "time": t.get("time", ""),
+                            "price": t.get("price", 0),
+                            "size": t.get("size", 0),
+                            "side": t.get("side", "N"),
+                            "source": "polygon",
+                        }
+                    )
     except Exception as e:
         logger.debug(f"Polygon trades not available: {e}")
 
@@ -1073,6 +1126,7 @@ async def get_timesales(symbol: str):
     if not trades:
         try:
             from schwab_market_data import get_schwab_market_data
+
             schwab = get_schwab_market_data()
             if schwab:
                 history = schwab.get_price_history(
@@ -1080,7 +1134,7 @@ async def get_timesales(symbol: str):
                     period_type="day",
                     period=1,
                     frequency_type="minute",
-                    frequency=1
+                    frequency=1,
                 )
 
                 if history and "candles" in history:
@@ -1096,15 +1150,21 @@ async def get_timesales(symbol: str):
                         # Use close price, determine side from open/close
                         open_p = candle.get("open", 0)
                         close_p = candle.get("close", 0)
-                        side = "B" if close_p > open_p else "S" if close_p < open_p else "N"
+                        side = (
+                            "B"
+                            if close_p > open_p
+                            else "S" if close_p < open_p else "N"
+                        )
 
-                        trades.append({
-                            "time": time_str,
-                            "price": close_p,
-                            "size": candle.get("volume", 0),
-                            "side": side,
-                            "source": "schwab"
-                        })
+                        trades.append(
+                            {
+                                "time": time_str,
+                                "price": close_p,
+                                "size": candle.get("volume", 0),
+                                "side": side,
+                                "source": "schwab",
+                            }
+                        )
         except Exception as e:
             logger.error(f"Error getting Schwab price history for T&S: {e}")
 
@@ -1121,7 +1181,7 @@ async def get_market_movers(index: str = "$SPX", direction: str = "up"):
         direction: "up" for gainers, "down" for losers
     """
     try:
-        from schwab_market_data import get_schwab_movers, get_all_movers
+        from schwab_market_data import get_all_movers, get_schwab_movers
 
         if direction == "all":
             return get_all_movers()
@@ -1131,7 +1191,7 @@ async def get_market_movers(index: str = "$SPX", direction: str = "up"):
                 "index": index,
                 "direction": direction,
                 "count": len(movers),
-                "movers": movers
+                "movers": movers,
             }
     except Exception as e:
         logger.error(f"Error getting movers: {e}")
@@ -1152,17 +1212,17 @@ async def get_scalp_candidates():
         all_movers = get_all_movers()
         scalp_candidates = []
 
-        for mover in all_movers.get('gainers', []):
-            price = mover.get('price', 0)
-            change = mover.get('change_pct', 0)
-            volume = mover.get('volume', 0)
+        for mover in all_movers.get("gainers", []):
+            price = mover.get("price", 0)
+            change = mover.get("change_pct", 0)
+            volume = mover.get("volume", 0)
 
             if 1.0 <= price <= 20.0 and change >= 5.0 and volume >= 500000:
-                mover['scalp_score'] = int(change * 2 + (volume / 1000000))
+                mover["scalp_score"] = int(change * 2 + (volume / 1000000))
                 scalp_candidates.append(mover)
 
         # Sort by scalp score
-        scalp_candidates.sort(key=lambda x: x.get('scalp_score', 0), reverse=True)
+        scalp_candidates.sort(key=lambda x: x.get("scalp_score", 0), reverse=True)
 
         return {
             "count": len(scalp_candidates),
@@ -1171,8 +1231,8 @@ async def get_scalp_candidates():
                 "min_price": 1.0,
                 "max_price": 20.0,
                 "min_change_pct": 5.0,
-                "min_volume": 500000
-            }
+                "min_volume": 500000,
+            },
         }
     except Exception as e:
         logger.error(f"Error getting scalp candidates: {e}")
@@ -1189,18 +1249,18 @@ async def get_historical_bars(request: MarketDataRequest):
         bars = provider.get_bars(
             symbol=request.symbol.upper(),
             timeframe=request.timeframe,
-            limit=request.limit
+            limit=request.limit,
         )
 
-        if bars is None or (hasattr(bars, 'empty') and bars.empty):
+        if bars is None or (hasattr(bars, "empty") and bars.empty):
             raise HTTPException(status_code=404, detail=f"No data for {request.symbol}")
 
         # Convert DataFrame to dict for JSON response if needed
-        if hasattr(bars, 'reset_index'):
+        if hasattr(bars, "reset_index"):
             return {
                 "symbol": request.symbol,
                 "timeframe": request.timeframe,
-                "bars": bars.reset_index().to_dict(orient='records')
+                "bars": bars.reset_index().to_dict(orient="records"),
             }
         return {"symbol": request.symbol, "timeframe": request.timeframe, "bars": bars}
 
@@ -1210,10 +1270,12 @@ async def get_historical_bars(request: MarketDataRequest):
 
 
 @app.get("/api/market/multi-quote")
-async def get_multi_quote(symbols: str = Query(..., description="Comma-separated symbols")):
+async def get_multi_quote(
+    symbols: str = Query(..., description="Comma-separated symbols")
+):
     """Get quotes for multiple symbols"""
     try:
-        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
 
         if not HAS_UNIFIED_DATA:
             raise HTTPException(status_code=503, detail="Market data not available")
@@ -1230,6 +1292,7 @@ async def get_multi_quote(symbols: str = Query(..., description="Comma-separated
 # UNIFIED MARKET DATA STATUS
 # ============================================================================
 
+
 @app.get("/api/data/unified/status")
 async def get_unified_data_status():
     """
@@ -1240,15 +1303,12 @@ async def get_unified_data_status():
     if not HAS_UNIFIED_DATA:
         return {
             "available": False,
-            "message": "Unified market data provider not available"
+            "message": "Unified market data provider not available",
         }
 
     try:
         provider = get_unified_market_data()
-        return {
-            "available": True,
-            **provider.get_status()
-        }
+        return {"available": True, **provider.get_status()}
     except Exception as e:
         logger.error(f"Error getting unified data status: {e}")
         return {"available": False, "error": str(e)}
@@ -1257,6 +1317,7 @@ async def get_unified_data_status():
 # ============================================================================
 # MULTI-CHANNEL DATA ENDPOINTS (Parallel Market Data Access)
 # ============================================================================
+
 
 @app.get("/api/data/channels/status")
 async def get_channel_status():
@@ -1273,7 +1334,7 @@ async def get_channel_status():
     if not HAS_MULTI_CHANNEL:
         return {
             "available": False,
-            "message": "Multi-channel data provider not available"
+            "message": "Multi-channel data provider not available",
         }
 
     try:
@@ -1281,7 +1342,7 @@ async def get_channel_status():
         return {
             "available": True,
             "status": provider.get_all_status(),
-            "aggregate": provider.get_aggregate_stats()
+            "aggregate": provider.get_aggregate_stats(),
         }
     except Exception as e:
         logger.error(f"Error getting channel status: {e}")
@@ -1322,7 +1383,9 @@ async def get_fast_quote(symbol: str, channel: str = "realtime"):
 
 
 @app.get("/api/data/channels/multi-quote")
-async def get_parallel_quotes(symbols: str = Query(..., description="Comma-separated symbols")):
+async def get_parallel_quotes(
+    symbols: str = Query(..., description="Comma-separated symbols")
+):
     """
     Get quotes for multiple symbols using parallel channels.
 
@@ -1331,13 +1394,13 @@ async def get_parallel_quotes(symbols: str = Query(..., description="Comma-separ
     """
     if not HAS_MULTI_CHANNEL:
         # Use unified market data (Schwab)
-        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
         if HAS_UNIFIED_DATA:
             return unified_get_quotes(symbol_list)
         raise HTTPException(status_code=503, detail="Market data not available")
 
     try:
-        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
         import time
 
         start = time.time()
@@ -1348,7 +1411,7 @@ async def get_parallel_quotes(symbols: str = Query(..., description="Comma-separ
             "quotes": quotes,
             "count": len(quotes),
             "elapsed_ms": round(elapsed_ms, 2),
-            "parallel": True
+            "parallel": True,
         }
     except Exception as e:
         logger.error(f"Error fetching parallel quotes: {e}")
@@ -1356,17 +1419,21 @@ async def get_parallel_quotes(symbols: str = Query(..., description="Comma-separ
 
 
 @app.get("/api/data/channels/snapshots")
-async def get_parallel_snapshots(symbols: str = Query(..., description="Comma-separated symbols")):
+async def get_parallel_snapshots(
+    symbols: str = Query(..., description="Comma-separated symbols")
+):
     """
     Get full market snapshots for multiple symbols using parallel channels.
 
     Includes: quote, last trade, daily bar, previous close, change %.
     """
     if not HAS_MULTI_CHANNEL:
-        raise HTTPException(status_code=503, detail="Multi-channel provider not available")
+        raise HTTPException(
+            status_code=503, detail="Multi-channel provider not available"
+        )
 
     try:
-        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
         import time
 
         provider = get_multi_channel_provider()
@@ -1378,7 +1445,7 @@ async def get_parallel_snapshots(symbols: str = Query(..., description="Comma-se
             "snapshots": snapshots,
             "count": len(snapshots),
             "elapsed_ms": round(elapsed_ms, 2),
-            "parallel": True
+            "parallel": True,
         }
     except Exception as e:
         logger.error(f"Error fetching parallel snapshots: {e}")
@@ -1387,10 +1454,7 @@ async def get_parallel_snapshots(symbols: str = Query(..., description="Comma-se
 
 @app.get("/api/data/channels/bars/{symbol}")
 async def get_channel_bars(
-    symbol: str,
-    channel: str = "charts",
-    timeframe: str = "1Day",
-    days: int = 30
+    symbol: str, channel: str = "charts", timeframe: str = "1Day", days: int = 30
 ):
     """
     Get historical bars using a specific channel.
@@ -1405,7 +1469,14 @@ async def get_channel_bars(
         if HAS_UNIFIED_DATA:
             provider = get_unified_market_data()
             bars = provider.get_bars(symbol.upper(), timeframe, days * 10)
-            return {"symbol": symbol, "bars": bars.to_dict(orient='records') if hasattr(bars, 'to_dict') else bars or []}
+            return {
+                "symbol": symbol,
+                "bars": (
+                    bars.to_dict(orient="records")
+                    if hasattr(bars, "to_dict")
+                    else bars or []
+                ),
+            }
         raise HTTPException(status_code=503, detail="Market data not available")
 
     try:
@@ -1425,7 +1496,7 @@ async def get_channel_bars(
             "days": days,
             "channel": channel,
             "bars": bars,
-            "count": len(bars)
+            "count": len(bars),
         }
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid channel: {channel}")
@@ -1438,7 +1509,7 @@ async def get_channel_bars(
 async def get_multi_symbol_bars(
     symbols: str = Query(..., description="Comma-separated symbols"),
     timeframe: str = "1Day",
-    days: int = 30
+    days: int = 30,
 ):
     """
     Get historical bars for multiple symbols in parallel.
@@ -1449,10 +1520,12 @@ async def get_multi_symbol_bars(
     - Watchlist historical analysis
     """
     if not HAS_MULTI_CHANNEL:
-        raise HTTPException(status_code=503, detail="Multi-channel provider not available")
+        raise HTTPException(
+            status_code=503, detail="Multi-channel provider not available"
+        )
 
     try:
-        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
         import time
 
         provider = get_multi_channel_provider()
@@ -1467,7 +1540,7 @@ async def get_multi_symbol_bars(
             "bars": bars,
             "count": sum(len(b) for b in bars.values()),
             "elapsed_ms": round(elapsed_ms, 2),
-            "parallel": True
+            "parallel": True,
         }
     except Exception as e:
         logger.error(f"Error fetching multi-symbol bars: {e}")
@@ -1477,6 +1550,7 @@ async def get_multi_symbol_bars(
 # ============================================================================
 # REAL-TIME WEBSOCKET STREAMING ENDPOINTS
 # ============================================================================
+
 
 @app.get("/api/streaming/status")
 async def get_streaming_status():
@@ -1490,17 +1564,11 @@ async def get_streaming_status():
     - Connected clients
     """
     if not HAS_STREAMING:
-        return {
-            "available": False,
-            "message": "Real-time streaming not available"
-        }
+        return {"available": False, "message": "Real-time streaming not available"}
 
     try:
         manager = get_stream_manager()
-        return {
-            "available": True,
-            "status": manager.get_status()
-        }
+        return {"available": True, "status": manager.get_status()}
     except Exception as e:
         logger.error(f"Error getting streaming status: {e}")
         return {"available": False, "error": str(e)}
@@ -1547,7 +1615,7 @@ async def subscribe_to_stream(data: Dict[str, Any]):
             "success": True,
             "subscribed": symbols,
             "types": [t.value for t in stream_types],
-            "status": manager.get_status()
+            "status": manager.get_status(),
         }
 
     except Exception as e:
@@ -1593,7 +1661,7 @@ async def unsubscribe_from_stream(data: Dict[str, Any]):
         return {
             "success": True,
             "unsubscribed": symbols,
-            "status": manager.get_status()
+            "status": manager.get_status(),
         }
 
     except Exception as e:
@@ -1613,7 +1681,7 @@ async def start_streaming():
         return {
             "success": True,
             "message": "Streaming service started",
-            "status": manager.get_status()
+            "status": manager.get_status(),
         }
     except Exception as e:
         logger.error(f"Error starting streaming: {e}")
@@ -1629,10 +1697,7 @@ async def stop_streaming():
     try:
         manager = get_stream_manager()
         await manager.stop()
-        return {
-            "success": True,
-            "message": "Streaming service stopped"
-        }
+        return {"success": True, "message": "Streaming service stopped"}
     except Exception as e:
         logger.error(f"Error stopping streaming: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1660,10 +1725,9 @@ async def websocket_market_stream(websocket: WebSocket):
     logger.info(f"[WS] Client connected: {client_id}")
 
     if not HAS_STREAMING:
-        await websocket.send_json({
-            "type": "error",
-            "message": "Streaming service not available"
-        })
+        await websocket.send_json(
+            {"type": "error", "message": "Streaming service not available"}
+        )
         await websocket.close()
         return
 
@@ -1671,12 +1735,14 @@ async def websocket_market_stream(websocket: WebSocket):
     message_queue = manager.register_client(client_id)
 
     # Send welcome message
-    await websocket.send_json({
-        "type": "connected",
-        "client_id": client_id,
-        "message": "Connected to market stream",
-        "status": manager.get_status()
-    })
+    await websocket.send_json(
+        {
+            "type": "connected",
+            "client_id": client_id,
+            "message": "Connected to market stream",
+            "status": manager.get_status(),
+        }
+    )
 
     async def send_messages():
         """Forward messages from queue to WebSocket"""
@@ -1709,31 +1775,30 @@ async def websocket_market_stream(websocket: WebSocket):
                             stream_types.append(StreamType.BARS)
 
                     await manager.subscribe(symbols, stream_types)
-                    await websocket.send_json({
-                        "type": "subscribed",
-                        "symbols": symbols,
-                        "stream_types": [t.value for t in stream_types]
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "subscribed",
+                            "symbols": symbols,
+                            "stream_types": [t.value for t in stream_types],
+                        }
+                    )
 
                 elif action == "unsubscribe":
                     symbols = data.get("symbols", [])
                     await manager.unsubscribe(symbols)
-                    await websocket.send_json({
-                        "type": "unsubscribed",
-                        "symbols": symbols
-                    })
+                    await websocket.send_json(
+                        {"type": "unsubscribed", "symbols": symbols}
+                    )
 
                 elif action == "status":
-                    await websocket.send_json({
-                        "type": "status",
-                        "status": manager.get_status()
-                    })
+                    await websocket.send_json(
+                        {"type": "status", "status": manager.get_status()}
+                    )
 
                 elif action == "ping":
-                    await websocket.send_json({
-                        "type": "pong",
-                        "timestamp": datetime.now().isoformat()
-                    })
+                    await websocket.send_json(
+                        {"type": "pong", "timestamp": datetime.now().isoformat()}
+                    )
 
             except WebSocketDisconnect:
                 break
@@ -1748,8 +1813,7 @@ async def websocket_market_stream(websocket: WebSocket):
 
         # Wait for either task to complete (usually due to disconnect)
         done, pending = await asyncio.wait(
-            [send_task, receive_task],
-            return_when=asyncio.FIRST_COMPLETED
+            [send_task, receive_task], return_when=asyncio.FIRST_COMPLETED
         )
 
         # Cancel pending tasks
@@ -1769,13 +1833,16 @@ async def websocket_market_stream(websocket: WebSocket):
 # GOVERNOR WEBSOCKET - Real-time health monitoring with auto-reconnect
 # ============================================================================
 
+
 @app.get("/api/governor/status")
 async def api_governor_status():
     """REST endpoint for Governor status (used by UI initial load)"""
     return await get_governor_status()
 
+
 # Track connected governor clients
 governor_clients: Dict[str, WebSocket] = {}
+
 
 @app.websocket("/ws/governor")
 async def websocket_governor(websocket: WebSocket):
@@ -1801,12 +1868,14 @@ async def websocket_governor(websocket: WebSocket):
     # Send welcome message with initial status
     try:
         initial_status = await get_governor_status()
-        await websocket.send_json({
-            "type": "connected",
-            "client_id": client_id,
-            "timestamp": datetime.now().isoformat(),
-            "status": initial_status
-        })
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "client_id": client_id,
+                "timestamp": datetime.now().isoformat(),
+                "status": initial_status,
+            }
+        )
     except Exception as e:
         logger.error(f"[Governor WS] Error sending welcome: {e}")
 
@@ -1819,12 +1888,14 @@ async def websocket_governor(websocket: WebSocket):
         while True:
             try:
                 heartbeat_seq += 1
-                await websocket.send_json({
-                    "type": "heartbeat",
-                    "seq": heartbeat_seq,
-                    "timestamp": datetime.now().isoformat(),
-                    "server_time": datetime.now().strftime("%H:%M:%S")
-                })
+                await websocket.send_json(
+                    {
+                        "type": "heartbeat",
+                        "seq": heartbeat_seq,
+                        "timestamp": datetime.now().isoformat(),
+                        "server_time": datetime.now().strftime("%H:%M:%S"),
+                    }
+                )
                 await asyncio.sleep(3)
             except Exception:
                 break
@@ -1839,11 +1910,13 @@ async def websocket_governor(websocket: WebSocket):
                 # Only send if status changed or every 5th iteration
                 status_json = str(current_status)
                 if status_json != last_status:
-                    await websocket.send_json({
-                        "type": "status",
-                        "timestamp": datetime.now().isoformat(),
-                        "data": current_status
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "status",
+                            "timestamp": datetime.now().isoformat(),
+                            "data": current_status,
+                        }
+                    )
                     last_status = status_json
 
                 await asyncio.sleep(5)
@@ -1858,36 +1931,45 @@ async def websocket_governor(websocket: WebSocket):
                 command = data.get("command")
 
                 if command == "ping":
-                    await websocket.send_json({
-                        "type": "pong",
-                        "timestamp": datetime.now().isoformat(),
-                        "client_seq": data.get("seq", 0)
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "pong",
+                            "timestamp": datetime.now().isoformat(),
+                            "client_seq": data.get("seq", 0),
+                        }
+                    )
                 elif command == "status":
                     status = await get_governor_status()
-                    await websocket.send_json({
-                        "type": "status",
-                        "timestamp": datetime.now().isoformat(),
-                        "data": status
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "status",
+                            "timestamp": datetime.now().isoformat(),
+                            "data": status,
+                        }
+                    )
                 elif command == "reconnect_feeds":
                     # Trigger feed reconnection
                     try:
                         from polygon_streaming import get_polygon_stream
+
                         stream = get_polygon_stream()
                         if stream:
                             stream.restart()
-                            await websocket.send_json({
-                                "type": "alert",
-                                "level": "info",
-                                "message": "Feeds reconnecting..."
-                            })
+                            await websocket.send_json(
+                                {
+                                    "type": "alert",
+                                    "level": "info",
+                                    "message": "Feeds reconnecting...",
+                                }
+                            )
                     except Exception as e:
-                        await websocket.send_json({
-                            "type": "alert",
-                            "level": "error",
-                            "message": f"Reconnect failed: {str(e)}"
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "alert",
+                                "level": "error",
+                                "message": f"Reconnect failed: {str(e)}",
+                            }
+                        )
             except WebSocketDisconnect:
                 break
             except Exception as e:
@@ -1897,9 +1979,7 @@ async def websocket_governor(websocket: WebSocket):
     try:
         # Run heartbeat, status updates, and command receiver concurrently
         await asyncio.gather(
-            send_heartbeat(),
-            send_status_updates(),
-            receive_commands()
+            send_heartbeat(), send_status_updates(), receive_commands()
         )
     except WebSocketDisconnect:
         logger.info(f"[Governor WS] Client disconnected: {client_id}")
@@ -1918,6 +1998,7 @@ async def get_governor_status() -> dict:
         safe_status = {}
         try:
             from ai.safe_activation import get_safe_activation
+
             safe = get_safe_activation()
             safe_status = safe.get_status()
         except:
@@ -1927,6 +2008,7 @@ async def get_governor_status() -> dict:
         scalp_running = False
         try:
             from ai.scalp_assistant import get_scalp_assistant
+
             assistant = get_scalp_assistant()
             scalp_running = assistant.running if assistant else False
         except:
@@ -1937,16 +2019,25 @@ async def get_governor_status() -> dict:
         hft_scalper_status = {}
         try:
             from ai.hft_scalper import get_hft_scalper
+
             scalper = get_hft_scalper()
             if scalper:
                 hft_scalper_running = scalper.is_running
                 hft_scalper_status = {
                     "running": scalper.is_running,
-                    "enabled": getattr(scalper.config, 'enabled', False),
-                    "paper_mode": getattr(scalper.config, 'paper_mode', True),
-                    "watchlist_count": len(getattr(scalper.config, 'watchlist', [])),
-                    "daily_trades": scalper.daily_stats.get("trades", 0) if hasattr(scalper, 'daily_stats') else 0,
-                    "daily_pnl": scalper.daily_stats.get("pnl", 0) if hasattr(scalper, 'daily_stats') else 0
+                    "enabled": getattr(scalper.config, "enabled", False),
+                    "paper_mode": getattr(scalper.config, "paper_mode", True),
+                    "watchlist_count": len(getattr(scalper.config, "watchlist", [])),
+                    "daily_trades": (
+                        scalper.daily_stats.get("trades", 0)
+                        if hasattr(scalper, "daily_stats")
+                        else 0
+                    ),
+                    "daily_pnl": (
+                        scalper.daily_stats.get("pnl", 0)
+                        if hasattr(scalper, "daily_stats")
+                        else 0
+                    ),
                 }
         except Exception as e:
             logger.debug(f"HFT scalper status error: {e}")
@@ -1958,24 +2049,26 @@ async def get_governor_status() -> dict:
         connectivity = {"system_state": "UNKNOWN"}
         try:
             from ai.connectivity_manager import get_connectivity_manager
+
             cm = get_connectivity_manager()
             if cm:
                 system_state = cm.get_system_state()
                 connectivity = {
                     "system_state": system_state.value,
-                    "system_state_reason": cm._get_state_reason(system_state)
+                    "system_state_reason": cm._get_state_reason(system_state),
                 }
         except Exception as e:
             logger.debug(f"Connectivity status error: {e}")
 
         return {
             "safe_activation": safe_status,
-            "scalp_running": scalp_running or hft_scalper_running,  # Either scalp assistant or HFT scalper
+            "scalp_running": scalp_running
+            or hft_scalper_running,  # Either scalp assistant or HFT scalper
             "hft_scalper": hft_scalper_status,
             "broker": {"connected": True, "source": "Schwab"},  # Using Schwab for data
             "connectivity": connectivity,
             "server_time": datetime.now().isoformat(),
-            "trading_window": get_trading_window_status()
+            "trading_window": get_trading_window_status(),
         }
     except Exception as e:
         logger.error(f"Error getting governor status: {e}")
@@ -1985,10 +2078,11 @@ async def get_governor_status() -> dict:
 def get_trading_window_status() -> dict:
     """Get current trading window status"""
     from datetime import time
+
     import pytz
 
     try:
-        et_tz = pytz.timezone('US/Eastern')
+        et_tz = pytz.timezone("US/Eastern")
         now_et = datetime.now(et_tz)
         current_time = now_et.time()
 
@@ -2008,7 +2102,7 @@ def get_trading_window_status() -> dict:
         return {
             "window": window,
             "detail": detail,
-            "time_et": now_et.strftime("%H:%M:%S ET")
+            "time_et": now_et.strftime("%H:%M:%S ET"),
         }
     except:
         return {"window": "UNKNOWN", "detail": "Cannot determine", "time_et": ""}
@@ -2018,14 +2112,14 @@ def get_trading_window_status() -> dict:
 # AI PREDICTION ENDPOINTS
 # ============================================================================
 
+
 @app.post("/api/ai/train")
 async def train_model(request: TrainRequest):
     """Train AI prediction model on a single symbol"""
     try:
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         result = predictor.train(
-            symbol=request.symbol.upper(),
-            test_size=request.test_size
+            symbol=request.symbol.upper(), test_size=request.test_size
         )
 
         return result
@@ -2040,17 +2134,14 @@ async def train_model_multi(request: TrainMultiRequest):
     """Train AI prediction model on multiple symbols for better generalization"""
     try:
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
-        if not predictor or not hasattr(predictor, 'train_multi'):
+        if not predictor or not hasattr(predictor, "train_multi"):
             return {
                 "success": False,
                 "error": "AI Scanner not available",
-                "message": "Train a single symbol first with /api/ai/train"
+                "message": "Train a single symbol first with /api/ai/train",
             }
         symbols = [s.upper() for s in request.symbols]
-        result = predictor.train_multi(
-            symbols=symbols,
-            test_size=request.test_size
-        )
+        result = predictor.train_multi(symbols=symbols, test_size=request.test_size)
 
         return result
 
@@ -2063,10 +2154,11 @@ async def train_model_multi(request: TrainMultiRequest):
 async def train_model_compat(data: dict):
     """Compatibility route for UI - Train AI prediction model"""
     import time
+
     try:
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
-        symbol = data.get('symbol', 'AAPL').upper()
-        test_size = data.get('test_size', 0.2)
+        symbol = data.get("symbol", "AAPL").upper()
+        test_size = data.get("test_size", 0.2)
 
         result = predictor.train(symbol=symbol, test_size=test_size)
 
@@ -2076,8 +2168,8 @@ async def train_model_compat(data: dict):
                 "training_id": f"train_{symbol}_{int(time.time())}",
                 "symbol": symbol,
                 "status": "completed",
-                "metrics": result
-            }
+                "metrics": result,
+            },
         }
     except Exception as e:
         logger.error(f"Error training model: {e}")
@@ -2105,20 +2197,30 @@ async def train_walkforward(data: dict):
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
 
         # Default to a diverse set of stocks
-        default_symbols = ["TSLA", "NVDA", "AMD", "META", "AAPL", "GOOGL", "MSFT",
-                          "AMZN", "PLTR", "COIN", "MARA", "SOFI"]
+        default_symbols = [
+            "TSLA",
+            "NVDA",
+            "AMD",
+            "META",
+            "AAPL",
+            "GOOGL",
+            "MSFT",
+            "AMZN",
+            "PLTR",
+            "COIN",
+            "MARA",
+            "SOFI",
+        ]
 
-        symbols = data.get('symbols', default_symbols)
+        symbols = data.get("symbols", default_symbols)
         if isinstance(symbols, str):
-            symbols = [s.strip().upper() for s in symbols.split(',')]
+            symbols = [s.strip().upper() for s in symbols.split(",")]
 
-        train_months = int(data.get('train_months', 12))
-        test_months = int(data.get('test_months', 3))
+        train_months = int(data.get("train_months", 12))
+        test_months = int(data.get("test_months", 3))
 
         result = predictor.train_walkforward(
-            symbols=symbols,
-            train_months=train_months,
-            test_months=test_months
+            symbols=symbols, train_months=train_months, test_months=test_months
         )
 
         return result
@@ -2132,23 +2234,26 @@ async def train_walkforward(data: dict):
 async def run_backtest_endpoint(data: dict):
     """Run a backtest simulation using AI predictions on historical data"""
     try:
-        from backtester import get_backtester
         from dataclasses import asdict
+
+        from backtester import get_backtester
 
         backtester = get_backtester()
 
         # Extract parameters
-        symbols = data.get('symbols', ['SPY'])
+        symbols = data.get("symbols", ["SPY"])
         if isinstance(symbols, str):
-            symbols = [s.strip().upper() for s in symbols.split(',')]
+            symbols = [s.strip().upper() for s in symbols.split(",")]
 
-        start_date = data.get('start_date', (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d'))
-        end_date = data.get('end_date', datetime.now().strftime('%Y-%m-%d'))
-        initial_capital = float(data.get('initial_capital', 100000))
-        position_size_pct = float(data.get('position_size_pct', 0.1))
-        confidence_threshold = float(data.get('confidence_threshold', 0.15))
-        max_positions = int(data.get('max_positions', 5))
-        holding_period = int(data.get('holding_period', 5))
+        start_date = data.get(
+            "start_date", (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+        )
+        end_date = data.get("end_date", datetime.now().strftime("%Y-%m-%d"))
+        initial_capital = float(data.get("initial_capital", 100000))
+        position_size_pct = float(data.get("position_size_pct", 0.1))
+        confidence_threshold = float(data.get("confidence_threshold", 0.15))
+        max_positions = int(data.get("max_positions", 5))
+        holding_period = int(data.get("holding_period", 5))
 
         # Run backtest
         result = backtester.run_backtest(
@@ -2159,27 +2264,24 @@ async def run_backtest_endpoint(data: dict):
             position_size_pct=position_size_pct,
             confidence_threshold=confidence_threshold,
             max_positions=max_positions,
-            holding_period=holding_period
+            holding_period=holding_period,
         )
 
-        return {
-            "success": True,
-            "data": asdict(result)
-        }
+        return {"success": True, "data": asdict(result)}
 
     except Exception as e:
         logger.error(f"Backtest error: {e}")
-        return {
-            "success": False,
-            "message": str(e)
-        }
+        return {"success": False, "message": str(e)}
 
 
 def _sync_predict(predictor, symbol: str, timeframe: str):
     """Synchronous prediction function to run in thread pool"""
     import traceback
+
     try:
-        print(f"[_sync_predict] Calling predict for {symbol}, tf={timeframe}, predictor={predictor}")
+        print(
+            f"[_sync_predict] Calling predict for {symbol}, tf={timeframe}, predictor={predictor}"
+        )
         result = predictor.predict(symbol, period=timeframe)
         print(f"[_sync_predict] Result: {result}")
         return result
@@ -2196,34 +2298,61 @@ async def predict(request: PredictRequest):
     # Convert timeframe to valid yfinance period
     # Valid: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
     timeframe_map = {
-        "1day": "3mo", "1d": "3mo", "1Day": "3mo",
-        "5day": "3mo", "5d": "3mo", "5Day": "3mo",
-        "1week": "3mo", "1w": "3mo", "1Week": "3mo",
-        "1month": "3mo", "1m": "3mo", "1Month": "3mo", "1mo": "3mo",
-        "3month": "3mo", "3m": "3mo", "3Month": "3mo", "3mo": "3mo",
-        "6month": "6mo", "6m": "6mo", "6Month": "6mo", "6mo": "6mo",
-        "1year": "1y", "1y": "1y", "1Year": "1y",
-        "2year": "2y", "2y": "2y", "2Year": "2y",
+        "1day": "3mo",
+        "1d": "3mo",
+        "1Day": "3mo",
+        "5day": "3mo",
+        "5d": "3mo",
+        "5Day": "3mo",
+        "1week": "3mo",
+        "1w": "3mo",
+        "1Week": "3mo",
+        "1month": "3mo",
+        "1m": "3mo",
+        "1Month": "3mo",
+        "1mo": "3mo",
+        "3month": "3mo",
+        "3m": "3mo",
+        "3Month": "3mo",
+        "3mo": "3mo",
+        "6month": "6mo",
+        "6m": "6mo",
+        "6Month": "6mo",
+        "6mo": "6mo",
+        "1year": "1y",
+        "1y": "1y",
+        "1Year": "1y",
+        "2year": "2y",
+        "2y": "2y",
+        "2Year": "2y",
     }
     raw_timeframe = request.timeframe if request.timeframe else "3mo"
     timeframe = timeframe_map.get(raw_timeframe, "3mo")  # Default to 3mo
 
-    logger.info(f"[PREDICT] Request for {symbol}, raw_timeframe={raw_timeframe}, mapped_timeframe={timeframe}")
-    logger.info(f"[PREDICT] _cached_predictor={_cached_predictor}, model_loaded={_cached_predictor.model is not None if _cached_predictor else 'N/A'}")
+    logger.info(
+        f"[PREDICT] Request for {symbol}, raw_timeframe={raw_timeframe}, mapped_timeframe={timeframe}"
+    )
+    logger.info(
+        f"[PREDICT] _cached_predictor={_cached_predictor}, model_loaded={_cached_predictor.model is not None if _cached_predictor else 'N/A'}"
+    )
 
     try:
         # Check if predictor is available
         if not _cached_predictor or _cached_predictor.model is None:
             # Try fallback
             predictor = get_ai_scanner() if HAS_AI_SCANNER else None
-            if not predictor or not hasattr(predictor, 'model') or predictor.model is None:
+            if (
+                not predictor
+                or not hasattr(predictor, "model")
+                or predictor.model is None
+            ):
                 return {
                     "success": False,
                     "symbol": symbol,
                     "signal": "NEUTRAL",
                     "confidence": 0.0,
                     "action": "HOLD",
-                    "error": "No model available - train the AI first"
+                    "error": "No model available - train the AI first",
                 }
         else:
             predictor = _cached_predictor
@@ -2232,17 +2361,17 @@ async def predict(request: PredictRequest):
         result = await asyncio.to_thread(_sync_predict, predictor, symbol, timeframe)
 
         # Map the result format
-        signal = result.get('signal', 'NEUTRAL')
-        confidence = result.get('confidence', 0.5)
-        prob_up = result.get('prob_up', 0.5)
+        signal = result.get("signal", "NEUTRAL")
+        confidence = result.get("confidence", 0.5)
+        prob_up = result.get("prob_up", 0.5)
 
         # Determine action
-        if 'BULLISH' in signal:
-            action = 'BUY'
-        elif 'BEARISH' in signal:
-            action = 'SELL'
+        if "BULLISH" in signal:
+            action = "BUY"
+        elif "BEARISH" in signal:
+            action = "SELL"
         else:
-            action = 'HOLD'
+            action = "HOLD"
 
         return {
             "success": True,
@@ -2251,7 +2380,7 @@ async def predict(request: PredictRequest):
             "confidence": confidence / 100 if confidence > 1 else confidence,
             "prob_up": prob_up / 100 if prob_up > 1 else prob_up,
             "action": action,
-            "model": result.get('signal_detail', 'LightGBM (70% accuracy)')
+            "model": result.get("signal_detail", "LightGBM (70% accuracy)"),
         }
 
     except ValueError as e:
@@ -2264,7 +2393,7 @@ async def predict(request: PredictRequest):
                 "confidence": 0.0,
                 "action": "HOLD",
                 "error": error_msg,
-                "message": "Unable to fetch market data. Try a different symbol or check if market is open."
+                "message": "Unable to fetch market data. Try a different symbol or check if market is open.",
             }
         return {
             "success": False,
@@ -2272,7 +2401,7 @@ async def predict(request: PredictRequest):
             "signal": "NEUTRAL",
             "confidence": 0.0,
             "action": "HOLD",
-            "error": error_msg
+            "error": error_msg,
         }
     except Exception as e:
         logger.error(f"Error making prediction: {e}")
@@ -2282,7 +2411,7 @@ async def predict(request: PredictRequest):
             "signal": "NEUTRAL",
             "confidence": 0.0,
             "action": "HOLD",
-            "error": str(e)
+            "error": str(e),
         }
 
 
@@ -2293,16 +2422,11 @@ async def get_model_info():
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
 
         if predictor.model is None:
-            return {
-                "trained": False,
-                "message": "No model trained yet"
-            }
+            return {"trained": False, "message": "No model trained yet"}
 
         # Get top features
         sorted_features = sorted(
-            predictor.feature_importance.items(),
-            key=lambda x: x[1],
-            reverse=True
+            predictor.feature_importance.items(), key=lambda x: x[1], reverse=True
         )[:10]
 
         return {
@@ -2314,7 +2438,7 @@ async def get_model_info():
                 {"name": name, "importance": float(importance)}
                 for name, importance in sorted_features
             ],
-            "data_source": "Schwab"
+            "data_source": "Schwab",
         }
 
     except Exception as e:
@@ -2327,17 +2451,34 @@ async def get_brain_status():
     """Get BackgroundBrain status for AI Monitor"""
     try:
         from ai.background_brain import get_background_brain
+
         brain = get_background_brain()
 
         return {
             "success": True,
             "data": {
-                "running": brain.is_running if hasattr(brain, 'is_running') else False,
-                "regime": brain.current_regime if hasattr(brain, 'current_regime') else "UNKNOWN",
-                "regime_confidence": brain.regime_confidence if hasattr(brain, 'regime_confidence') else 0.0,
-                "last_update": brain.last_update.isoformat() if hasattr(brain, 'last_update') and brain.last_update else None,
-                "symbols_tracked": len(brain.tracked_symbols) if hasattr(brain, 'tracked_symbols') else 0
-            }
+                "running": brain.is_running if hasattr(brain, "is_running") else False,
+                "regime": (
+                    brain.current_regime
+                    if hasattr(brain, "current_regime")
+                    else "UNKNOWN"
+                ),
+                "regime_confidence": (
+                    brain.regime_confidence
+                    if hasattr(brain, "regime_confidence")
+                    else 0.0
+                ),
+                "last_update": (
+                    brain.last_update.isoformat()
+                    if hasattr(brain, "last_update") and brain.last_update
+                    else None
+                ),
+                "symbols_tracked": (
+                    len(brain.tracked_symbols)
+                    if hasattr(brain, "tracked_symbols")
+                    else 0
+                ),
+            },
         }
     except ImportError:
         return {"success": True, "data": {"running": False, "regime": "N/A"}}
@@ -2360,7 +2501,7 @@ async def get_stock_ai_prediction(symbol: str):
         "prob_up": 50.0,  # Default neutral
         "confidence": 50.0,
         "market_regime": "UNKNOWN",
-        "signals": []
+        "signals": [],
     }
 
     try:
@@ -2368,13 +2509,22 @@ async def get_stock_ai_prediction(symbol: str):
         df = None
         try:
             from polygon_data import get_polygon_data
+
             polygon = get_polygon_data()
             bars = await polygon.get_minute_bars(symbol, limit=200)
             if bars and len(bars) > 50:
                 df = pd.DataFrame(bars)
                 df.columns = [c.lower() for c in df.columns]
-                if 'c' in df.columns:
-                    df = df.rename(columns={'o': 'open', 'h': 'high', 'l': 'low', 'c': 'close', 'v': 'volume'})
+                if "c" in df.columns:
+                    df = df.rename(
+                        columns={
+                            "o": "open",
+                            "h": "high",
+                            "l": "low",
+                            "c": "close",
+                            "v": "volume",
+                        }
+                    )
         except Exception as e:
             logger.debug(f"Polygon data unavailable: {e}")
 
@@ -2382,6 +2532,7 @@ async def get_stock_ai_prediction(symbol: str):
         if df is None or len(df) < 50:
             try:
                 import yfinance as yf
+
                 ticker = yf.Ticker(symbol)
                 df = ticker.history(period="5d", interval="5m")
                 if not df.empty:
@@ -2394,6 +2545,7 @@ async def get_stock_ai_prediction(symbol: str):
         if df is not None and len(df) >= 50:
             try:
                 from ai.ensemble_predictor import get_ensemble_predictor
+
                 predictor = get_ensemble_predictor()
                 prediction = predictor.predict(symbol, df)
                 if prediction:
@@ -2425,19 +2577,16 @@ async def get_stock_ai_prediction(symbol: str):
 
     except Exception as e:
         logger.error(f"AI prediction error for {symbol}: {e}")
-        return {
-            "symbol": symbol,
-            "prob_up": 50.0,
-            "confidence": 50.0,
-            "error": str(e)
-        }
+        return {"symbol": symbol, "prob_up": 50.0, "confidence": 50.0, "error": str(e)}
 
 
 @app.get("/api/ai/batch-predict")
-async def batch_predict(symbols: str = Query(..., description="Comma-separated symbols")):
+async def batch_predict(
+    symbols: str = Query(..., description="Comma-separated symbols")
+):
     """Get AI predictions for multiple symbols"""
     try:
-        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
 
         results = []
@@ -2447,10 +2596,7 @@ async def batch_predict(symbols: str = Query(..., description="Comma-separated s
                 results.append(prediction)
             except Exception as e:
                 logger.warning(f"Failed to predict {symbol}: {e}")
-                results.append({
-                    "symbol": symbol,
-                    "error": str(e)
-                })
+                results.append({"symbol": symbol, "error": str(e)})
 
         return results
 
@@ -2475,16 +2621,18 @@ async def get_models_performance():
         # Check for trained models
         for model_file in models_dir.glob("*.keras"):
             symbol = model_file.stem.replace("_mtf", "").replace("_lstm", "").upper()
-            models.append({
-                "name": symbol,
-                "type": "LSTM MTF",
-                "accuracy": 0.65,  # Placeholder - would load from saved metrics
-                "win_rate": 0.55,
-                "sharpe_ratio": 1.2,
-                "total_trades": 0,
-                "profitable_trades": 0,
-                "avg_profit": 0.0
-            })
+            models.append(
+                {
+                    "name": symbol,
+                    "type": "LSTM MTF",
+                    "accuracy": 0.65,  # Placeholder - would load from saved metrics
+                    "win_rate": 0.55,
+                    "sharpe_ratio": 1.2,
+                    "total_trades": 0,
+                    "profitable_trades": 0,
+                    "avg_profit": 0.0,
+                }
+            )
 
         # Check lstm_mtf subdirectory
         lstm_mtf_dir = models_dir / "lstm_mtf"
@@ -2492,16 +2640,18 @@ async def get_models_performance():
             for model_file in lstm_mtf_dir.glob("*.keras"):
                 symbol = model_file.stem.replace("_mtf", "").upper()
                 if not any(m["name"] == symbol for m in models):
-                    models.append({
-                        "name": symbol,
-                        "type": "LSTM MTF",
-                        "accuracy": 0.65,
-                        "win_rate": 0.55,
-                        "sharpe_ratio": 1.2,
-                        "total_trades": 0,
-                        "profitable_trades": 0,
-                        "avg_profit": 0.0
-                    })
+                    models.append(
+                        {
+                            "name": symbol,
+                            "type": "LSTM MTF",
+                            "accuracy": 0.65,
+                            "win_rate": 0.55,
+                            "sharpe_ratio": 1.2,
+                            "total_trades": 0,
+                            "profitable_trades": 0,
+                            "avg_profit": 0.0,
+                        }
+                    )
 
         return {"success": True, "data": models}
 
@@ -2514,6 +2664,7 @@ async def get_models_performance():
 # AI TRIGGER ENDPOINTS
 # ============================================================================
 
+
 @app.get("/api/ai/trigger/{symbol}")
 async def get_trigger(symbol: str):
     """Get MACD/RSI trigger signal for a symbol"""
@@ -2523,10 +2674,7 @@ async def get_trigger(symbol: str):
         generator = get_trigger_generator()
         trigger = generator.generate_trigger(symbol.upper())
 
-        return {
-            "success": True,
-            "data": trigger.to_dict()
-        }
+        return {"success": True, "data": trigger.to_dict()}
 
     except Exception as e:
         logger.error(f"Error getting trigger for {symbol}: {e}")
@@ -2534,19 +2682,21 @@ async def get_trigger(symbol: str):
 
 
 @app.get("/api/ai/triggers/scan")
-async def scan_triggers(symbols: str = Query(..., description="Comma-separated symbols")):
+async def scan_triggers(
+    symbols: str = Query(..., description="Comma-separated symbols")
+):
     """Scan multiple symbols for actionable triggers"""
     try:
         from ai.trigger_signal_generator import get_trigger_generator
 
-        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
         generator = get_trigger_generator()
         triggers = generator.scan_for_triggers(symbol_list)
 
         return {
             "success": True,
             "count": len(triggers),
-            "data": [t.to_dict() for t in triggers]
+            "data": [t.to_dict() for t in triggers],
         }
 
     except Exception as e:
@@ -2561,10 +2711,7 @@ async def predict_with_triggers(symbol: str):
         predictor = get_ai_scanner() if HAS_AI_SCANNER else None
         result = predictor.predict_with_triggers(symbol.upper())
 
-        return {
-            "success": True,
-            "data": result
-        }
+        return {"success": True, "data": result}
 
     except Exception as e:
         logger.error(f"Error getting prediction with triggers for {symbol}: {e}")
@@ -2579,7 +2726,7 @@ async def batch_triggers(request: dict):
 
         symbols = request.get("symbols", [])
         if isinstance(symbols, str):
-            symbols = [s.strip().upper() for s in symbols.split(',')]
+            symbols = [s.strip().upper() for s in symbols.split(",")]
 
         generator = get_trigger_generator()
         results = []
@@ -2590,11 +2737,7 @@ async def batch_triggers(request: dict):
                 results.append(trigger.to_dict())
             except Exception as e:
                 logger.warning(f"Failed to get trigger for {symbol}: {e}")
-                results.append({
-                    "symbol": symbol,
-                    "action": "ERROR",
-                    "error": str(e)
-                })
+                results.append({"symbol": symbol, "action": "ERROR", "error": str(e)})
 
         # Filter to only actionable triggers
         actionable = [t for t in results if t.get("action") in ["BUY", "SELL"]]
@@ -2604,7 +2747,7 @@ async def batch_triggers(request: dict):
             "total": len(results),
             "actionable_count": len(actionable),
             "all_triggers": results,
-            "actionable_triggers": actionable
+            "actionable_triggers": actionable,
         }
 
     except Exception as e:
@@ -2616,20 +2759,33 @@ async def batch_triggers(request: dict):
 # WATCHLIST ENDPOINTS
 # ============================================================================
 
+
 @app.get("/api/watchlist")
 async def get_watchlist():
     """Get default watchlist with market data"""
     # Get symbols from database watchlist manager
     try:
         from watchlist_manager import get_watchlist_manager
+
         manager = get_watchlist_manager()
         default_wl = manager.get_default_watchlist()
-        watchlist = default_wl.get('symbols', [])
-        watchlist_name = default_wl.get('name', 'Default Watchlist')
+        watchlist = default_wl.get("symbols", [])
+        watchlist_name = default_wl.get("name", "Default Watchlist")
     except Exception as e:
         logger.warning(f"Could not load watchlist from database: {e}")
         # Fallback to hardcoded defaults
-        watchlist = ["SPY", "QQQ", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "AMD"]
+        watchlist = [
+            "SPY",
+            "QQQ",
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "AMZN",
+            "TSLA",
+            "NVDA",
+            "META",
+            "AMD",
+        ]
         watchlist_name = "Default Watchlist"
 
     # Use unified provider (Schwab)
@@ -2638,16 +2794,13 @@ async def get_watchlist():
     else:
         quotes = {sym: {"symbol": sym, "price": 0} for sym in watchlist}
 
-    return {
-        "name": watchlist_name,
-        "symbols": watchlist,
-        "quotes": quotes
-    }
+    return {"name": watchlist_name, "symbols": watchlist, "quotes": quotes}
 
 
 # ============================================================================
 # CLAUDE AI CHAT ENDPOINTS
 # ============================================================================
+
 
 @app.post("/api/claude/query")
 async def claude_query(request: ClaudeQueryRequest):
@@ -2668,17 +2821,24 @@ async def claude_query(request: ClaudeQueryRequest):
     query = request.query
     context = request.context or {}
     symbol = request.symbol or "SPY"
-    conversation_id = context.get("conversation_id") if isinstance(context, dict) else None
+    conversation_id = (
+        context.get("conversation_id") if isinstance(context, dict) else None
+    )
 
     try:
         # Check for status queries about Schwab/brokers
         query_lower = query.lower()
-        if any(kw in query_lower for kw in ['schwab', 'broker', 'connected', 'status', 'account']):
+        if any(
+            kw in query_lower
+            for kw in ["schwab", "broker", "connected", "status", "account"]
+        ):
             # Get broker status
             schwab_status = "Not available"
 
             try:
-                from schwab_trading import get_schwab_trading, is_schwab_trading_available
+                from schwab_trading import (get_schwab_trading,
+                                            is_schwab_trading_available)
+
                 if is_schwab_trading_available():
                     trading = get_schwab_trading()
                     if trading:
@@ -2694,11 +2854,12 @@ async def claude_query(request: ClaudeQueryRequest):
                 "success": True,
                 "data": {
                     "response": f"📊 **Broker Status**\n\n• **Schwab:** {schwab_status}\n\nSchwab is the active broker for trading.",
-                    "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    "conversation_id": conversation_id
+                    or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                     "timestamp": datetime.now().isoformat(),
                     "action": "status_check",
-                    "action_details": {"schwab": schwab_status}
-                }
+                    "action_details": {"schwab": schwab_status},
+                },
             }
 
         # Import Claude bot intelligence
@@ -2713,7 +2874,7 @@ async def claude_query(request: ClaudeQueryRequest):
             "connected": broker.is_connected if broker else False,
             "account": None,
             "positions": [],
-            "recent_orders": []
+            "recent_orders": [],
         }
 
         # Fetch real account data if connected
@@ -2721,7 +2882,9 @@ async def claude_query(request: ClaudeQueryRequest):
             try:
                 trading_context["account"] = broker.get_account()
                 trading_context["positions"] = broker.get_positions()
-                trading_context["recent_orders"] = broker.get_orders()[:10] if broker.get_orders() else []
+                trading_context["recent_orders"] = (
+                    broker.get_orders()[:10] if broker.get_orders() else []
+                )
             except Exception as e:
                 logger.warning(f"Could not fetch trading context: {e}")
 
@@ -2730,18 +2893,24 @@ async def claude_query(request: ClaudeQueryRequest):
             trading_context.update(context)
 
         # Check for NLP trading commands
-        trade_result = await _parse_and_execute_nlp_trade(query, connector, trading_context)
+        trade_result = await _parse_and_execute_nlp_trade(
+            query, connector, trading_context
+        )
 
         if trade_result.get("executed"):
             # A trade was executed via NLP
-            response_text = trade_result.get("response", "Command executed successfully.")
+            response_text = trade_result.get(
+                "response", "Command executed successfully."
+            )
             action_taken = trade_result.get("action", "trade")
             action_details = trade_result.get("details", {})
         else:
             # No trade command - use Claude AI for analysis/chat
             try:
                 result = ai.chat_with_tools(query, use_tools=True)
-                response_text = result.get("response", "I couldn't process your request. Please try again.")
+                response_text = result.get(
+                    "response", "I couldn't process your request. Please try again."
+                )
                 action_taken = "chat"
                 action_details = {"mood": result.get("mood", "neutral")}
             except Exception as chat_err:
@@ -2754,11 +2923,12 @@ async def claude_query(request: ClaudeQueryRequest):
             "success": True,
             "data": {
                 "response": response_text,
-                "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "conversation_id": conversation_id
+                or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                 "timestamp": datetime.now().isoformat(),
                 "action": action_taken,
-                "action_details": action_details
-            }
+                "action_details": action_details,
+            },
         }
 
     except ImportError as e:
@@ -2767,9 +2937,10 @@ async def claude_query(request: ClaudeQueryRequest):
             "success": False,
             "data": {
                 "response": "I'm here to help with your trading questions. The AI service may be initializing - please try again in a moment.",
-                "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "timestamp": datetime.now().isoformat()
-            }
+                "conversation_id": conversation_id
+                or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "timestamp": datetime.now().isoformat(),
+            },
         }
     except Exception as e:
         logger.error(f"Claude query error: {e}")
@@ -2777,9 +2948,10 @@ async def claude_query(request: ClaudeQueryRequest):
             "success": False,
             "data": {
                 "response": f"Error processing request: {str(e)}",
-                "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "timestamp": datetime.now().isoformat()
-            }
+                "conversation_id": conversation_id
+                or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "timestamp": datetime.now().isoformat(),
+            },
         }
 
 
@@ -2818,7 +2990,7 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
                     "executed": True,
                     "action": "order_failed",
                     "response": "❌ No broker connected. Please check your API credentials.",
-                    "details": {"error": "No broker available"}
+                    "details": {"error": "No broker available"},
                 }
 
             if limit_price:
@@ -2828,14 +3000,21 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
                         "executed": True,
                         "action": "limit_order",
                         "response": f"✅ Placed {side.value} limit order via {result.broker}: {quantity} shares of {symbol} at ${limit_price:.2f}",
-                        "details": {"symbol": symbol, "quantity": quantity, "side": side.value, "limit_price": limit_price, "order_id": result.order_id, "broker": result.broker}
+                        "details": {
+                            "symbol": symbol,
+                            "quantity": quantity,
+                            "side": side.value,
+                            "limit_price": limit_price,
+                            "order_id": result.order_id,
+                            "broker": result.broker,
+                        },
                     }
                 else:
                     return {
                         "executed": True,
                         "action": "order_failed",
                         "response": f"❌ Order failed on {result.broker}: {result.error}",
-                        "details": {"error": result.error, "broker": result.broker}
+                        "details": {"error": result.error, "broker": result.broker},
                     }
             else:
                 # Market orders - warn user but execute via UnifiedBroker
@@ -2845,21 +3024,27 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
                         "executed": True,
                         "action": "market_order",
                         "response": f"✅ Placed {side.value} market order via {result.broker}: {quantity} shares of {symbol}",
-                        "details": {"symbol": symbol, "quantity": quantity, "side": side.value, "order_id": result.order_id, "broker": result.broker}
+                        "details": {
+                            "symbol": symbol,
+                            "quantity": quantity,
+                            "side": side.value,
+                            "order_id": result.order_id,
+                            "broker": result.broker,
+                        },
                     }
                 else:
                     return {
                         "executed": True,
                         "action": "order_failed",
                         "response": f"❌ Order failed on {result.broker}: {result.error}",
-                        "details": {"error": result.error, "broker": result.broker}
+                        "details": {"error": result.error, "broker": result.broker},
                     }
         except Exception as e:
             return {
                 "executed": True,
                 "action": "order_failed",
                 "response": f"❌ Order failed: {str(e)}",
-                "details": {"error": str(e)}
+                "details": {"error": str(e)},
             }
 
     # Pattern: Close position
@@ -2875,7 +3060,7 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
                     "executed": True,
                     "action": "close_failed",
                     "response": "❌ No broker connected",
-                    "details": {"error": "No broker available"}
+                    "details": {"error": "No broker available"},
                 }
             result = broker.close_position(symbol)
             if result.success:
@@ -2883,25 +3068,32 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
                     "executed": True,
                     "action": "close_position",
                     "response": f"✅ Closed position in {symbol} via {result.broker}",
-                    "details": {"symbol": symbol, "order_id": result.order_id, "broker": result.broker}
+                    "details": {
+                        "symbol": symbol,
+                        "order_id": result.order_id,
+                        "broker": result.broker,
+                    },
                 }
             else:
                 return {
                     "executed": True,
                     "action": "close_failed",
                     "response": f"❌ Could not close {symbol}: {result.error}",
-                    "details": {"error": result.error, "broker": result.broker}
+                    "details": {"error": result.error, "broker": result.broker},
                 }
         except Exception as e:
             return {
                 "executed": True,
                 "action": "close_failed",
                 "response": f"❌ Could not close {symbol}: {str(e)}",
-                "details": {"error": str(e)}
+                "details": {"error": str(e)},
             }
 
     # Pattern: Close all positions
-    if any(phrase in query_lower for phrase in ["close all", "liquidate all", "sell everything", "flatten"]):
+    if any(
+        phrase in query_lower
+        for phrase in ["close all", "liquidate all", "sell everything", "flatten"]
+    ):
         try:
             broker = get_unified_broker()
             if not broker.is_connected:
@@ -2909,7 +3101,7 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
                     "executed": True,
                     "action": "close_all_failed",
                     "response": "❌ No broker connected",
-                    "details": {"error": "No broker available"}
+                    "details": {"error": "No broker available"},
                 }
             results = broker.close_all_positions()
             success_count = sum(1 for r in results if r.success)
@@ -2917,37 +3109,66 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
                 "executed": True,
                 "action": "close_all",
                 "response": f"✅ Closed {success_count}/{len(results)} positions via {broker.broker_name}",
-                "details": {"results": [{"symbol": r.symbol, "success": r.success, "error": r.error} for r in results]}
+                "details": {
+                    "results": [
+                        {"symbol": r.symbol, "success": r.success, "error": r.error}
+                        for r in results
+                    ]
+                },
             }
         except Exception as e:
             return {
                 "executed": True,
                 "action": "close_all_failed",
                 "response": f"❌ Could not close all positions: {str(e)}",
-                "details": {"error": str(e)}
+                "details": {"error": str(e)},
             }
 
     # Pattern: Show positions
-    if any(phrase in query_lower for phrase in ["show position", "my position", "what am i holding", "current holdings", "show holdings"]):
+    if any(
+        phrase in query_lower
+        for phrase in [
+            "show position",
+            "my position",
+            "what am i holding",
+            "current holdings",
+            "show holdings",
+        ]
+    ):
         positions = context.get("positions", [])
         if positions:
-            pos_text = "\n".join([f"• {p.get('symbol', 'N/A')}: {p.get('qty', 0)} shares @ ${float(p.get('avg_entry_price', 0)):.2f} (P&L: ${float(p.get('unrealized_pl', 0)):.2f})" for p in positions[:10]])
+            pos_text = "\n".join(
+                [
+                    f"• {p.get('symbol', 'N/A')}: {p.get('qty', 0)} shares @ ${float(p.get('avg_entry_price', 0)):.2f} (P&L: ${float(p.get('unrealized_pl', 0)):.2f})"
+                    for p in positions[:10]
+                ]
+            )
             return {
                 "executed": True,
                 "action": "show_positions",
                 "response": f"📊 **Current Positions:**\n{pos_text}",
-                "details": {"positions": positions}
+                "details": {"positions": positions},
             }
         else:
             return {
                 "executed": True,
                 "action": "show_positions",
                 "response": "📊 No open positions",
-                "details": {"positions": []}
+                "details": {"positions": []},
             }
 
     # Pattern: Show account/balance
-    if any(phrase in query_lower for phrase in ["show balance", "account balance", "buying power", "how much", "my account", "show account"]):
+    if any(
+        phrase in query_lower
+        for phrase in [
+            "show balance",
+            "account balance",
+            "buying power",
+            "how much",
+            "my account",
+            "show account",
+        ]
+    ):
         account = context.get("account", {})
         if account:
             equity = float(account.get("equity", 0))
@@ -2957,53 +3178,67 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
                 "executed": True,
                 "action": "show_account",
                 "response": f"💰 **Account Summary:**\n• Equity: ${equity:,.2f}\n• Buying Power: ${buying_power:,.2f}\n• Cash: ${cash:,.2f}",
-                "details": {"account": account}
+                "details": {"account": account},
             }
         else:
             return {
                 "executed": True,
                 "action": "show_account",
                 "response": "💰 Account data unavailable. Please check connection.",
-                "details": {}
+                "details": {},
             }
 
     # Pattern: Start/stop bot
-    if any(phrase in query_lower for phrase in ["start bot", "start trading", "enable auto", "turn on bot"]):
+    if any(
+        phrase in query_lower
+        for phrase in ["start bot", "start trading", "enable auto", "turn on bot"]
+    ):
         try:
             from bot_manager import get_bot_manager
+
             bot = get_bot_manager()
             await bot.start()
             return {
                 "executed": True,
                 "action": "start_bot",
                 "response": "🤖 Auto-trading bot STARTED. Monitoring markets...",
-                "details": {"status": "running"}
+                "details": {"status": "running"},
             }
         except Exception as e:
             return {
                 "executed": True,
                 "action": "start_bot_failed",
                 "response": f"❌ Could not start bot: {str(e)}",
-                "details": {"error": str(e)}
+                "details": {"error": str(e)},
             }
 
-    if any(phrase in query_lower for phrase in ["stop bot", "stop trading", "disable auto", "turn off bot", "pause bot"]):
+    if any(
+        phrase in query_lower
+        for phrase in [
+            "stop bot",
+            "stop trading",
+            "disable auto",
+            "turn off bot",
+            "pause bot",
+        ]
+    ):
         try:
             from bot_manager import get_bot_manager
+
             bot = get_bot_manager()
             await bot.stop()
             return {
                 "executed": True,
                 "action": "stop_bot",
                 "response": "🛑 Auto-trading bot STOPPED.",
-                "details": {"status": "stopped"}
+                "details": {"status": "stopped"},
             }
         except Exception as e:
             return {
                 "executed": True,
                 "action": "stop_bot_failed",
                 "response": f"❌ Could not stop bot: {str(e)}",
-                "details": {"error": str(e)}
+                "details": {"error": str(e)},
             }
 
     # No command matched - return not executed
@@ -3014,17 +3249,20 @@ async def _parse_and_execute_nlp_trade(query: str, connector, context: Dict) -> 
 # STATIC FILES
 # ============================================================================
 
+
 # Favicon endpoint
 @app.get("/favicon.ico")
 async def favicon():
     """Return a simple SVG favicon"""
     from fastapi.responses import Response
-    svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
         <rect width="32" height="32" rx="4" fill="#1a1a2e"/>
         <path d="M8 22 L16 10 L24 22" stroke="#00d4aa" stroke-width="3" fill="none"/>
         <circle cx="16" cy="8" r="2" fill="#00d4aa"/>
-    </svg>'''
+    </svg>"""
     return Response(content=svg, media_type="image/svg+xml")
+
 
 # Mount UI directory if it exists
 ui_path = Path("ui")
@@ -3035,6 +3273,7 @@ if ui_path.exists():
     async def dashboard():
         """DEPRECATED: Redirect to /trading-new"""
         from starlette.responses import RedirectResponse
+
         return RedirectResponse(url="/trading-new", status_code=302)
 
     @app.get("/trading-new")
@@ -3048,7 +3287,11 @@ if ui_path.exists():
     # Mount new Trading UI (Golden Layout React app) - AFTER routes to avoid shadowing
     trading_ui_path = Path("ui/trading/dist")
     if trading_ui_path.exists():
-        app.mount("/trading-new", StaticFiles(directory="ui/trading/dist", html=True), name="trading-ui")
+        app.mount(
+            "/trading-new",
+            StaticFiles(directory="ui/trading/dist", html=True),
+            name="trading-ui",
+        )
 
     @app.get("/trading")
     async def trading_dashboard():
@@ -3072,24 +3315,31 @@ if ui_path.exists():
         ai_cc_index = Path("ui/ai-control-center/build/index.html")
         if ai_cc_index.exists():
             return FileResponse(ai_cc_index)
-        return {"error": "AI Control Center not built. Run 'npm run build' in ui/ai-control-center/"}
+        return {
+            "error": "AI Control Center not built. Run 'npm run build' in ui/ai-control-center/"
+        }
 
     # Mount AI Control Center React app
     ai_cc_path = Path("ui/ai-control-center/build")
     if ai_cc_path.exists():
-        app.mount("/ai-control-center", StaticFiles(directory="ui/ai-control-center/build", html=True), name="ai-control-center")
+        app.mount(
+            "/ai-control-center",
+            StaticFiles(directory="ui/ai-control-center/build", html=True),
+            name="ai-control-center",
+        )
 
 
 # ============================================================================
 # STARTUP & SHUTDOWN
 # ============================================================================
 
+
 @app.on_event("startup")
 async def startup_event():
     """Application startup"""
-    logger.info("="*80)
+    logger.info("=" * 80)
     logger.info("MORPHEUS TRADING BOT")
-    logger.info("="*80)
+    logger.info("=" * 80)
 
     # Check broker configuration
     config = get_broker_config()
@@ -3126,7 +3376,9 @@ async def startup_event():
     if HAS_MULTI_CHANNEL:
         try:
             provider = get_multi_channel_provider()
-            logger.info(f"[OK] Multi-Channel Data Provider Active ({len(provider.channels)} channels)")
+            logger.info(
+                f"[OK] Multi-Channel Data Provider Active ({len(provider.channels)} channels)"
+            )
             for channel in provider.channels:
                 logger.info(f"     - {channel.value.upper()} channel ready")
         except Exception as e:
@@ -3148,6 +3400,7 @@ async def startup_event():
     # Start background position sync with slippage combat
     try:
         from ai.position_sync import start_sync
+
         sync = start_sync()
         logger.info("[OK] Position Synchronizer Started")
         logger.info("     - Sync interval: 5 seconds")
@@ -3159,10 +3412,13 @@ async def startup_event():
     # Initialize market regime detector
     try:
         from ai.market_regime import get_regime_detector
+
         detector = get_regime_detector()
         phase_info = detector.get_phase_info()
         logger.info(f"[OK] Market Regime Detector Active")
-        logger.info(f"     - Current Phase: {phase_info.get('current_phase', 'unknown')}")
+        logger.info(
+            f"     - Current Phase: {phase_info.get('current_phase', 'unknown')}"
+        )
         logger.info(f"     - Time: {phase_info.get('current_time_et', 'unknown')}")
     except Exception as e:
         logger.warning(f"[WARN] Regime detector error: {e}")
@@ -3170,6 +3426,7 @@ async def startup_event():
     # Initialize loss cutter
     try:
         from ai.loss_cutter import get_loss_cutter
+
         cutter = get_loss_cutter()
         logger.info("[OK] Loss Cutter Active")
         logger.info(f"     - Max Loss: {cutter.max_loss_pct}%")
@@ -3179,8 +3436,11 @@ async def startup_event():
 
     # Initialize Background AI Brain for continuous learning
     try:
-        from ai.background_brain import start_brain, get_background_brain
-        brain = start_brain(cpu_target=0.3)  # Use 30% CPU for background AI (conservative)
+        from ai.background_brain import get_background_brain, start_brain
+
+        brain = start_brain(
+            cpu_target=0.3
+        )  # Use 30% CPU for background AI (conservative)
         logger.info("[OK] Background AI Brain Started")
         logger.info(f"     - CPU Target: 30%")
         logger.info(f"     - Worker Threads: {brain.worker_threads}")
@@ -3193,11 +3453,12 @@ async def startup_event():
     # Initialize Circuit Breaker for drawdown protection
     try:
         from ai.circuit_breaker import get_circuit_breaker
+
         breaker = get_circuit_breaker()
         broker = get_unified_broker()
         if broker and broker.is_connected:
             account = broker.get_account()
-            equity = float(account.get('market_value', account.get('equity', 0)))
+            equity = float(account.get("market_value", account.get("equity", 0)))
             breaker.initialize_day(equity)
             logger.info("[OK] Circuit Breaker Active")
             logger.info(f"     - Starting Equity: ${equity:,.2f}")
@@ -3208,19 +3469,32 @@ async def startup_event():
 
     # Initialize Schwab real-time market data (WebSocket streaming or Fast Polling fallback)
     schwab_realtime_started = False
-    default_symbols = ["SPY", "QQQ", "AAPL", "MSFT", "TSLA", "NVDA", "AMD", "META", "GOOGL", "AMZN"]
+    default_symbols = [
+        "SPY",
+        "QQQ",
+        "AAPL",
+        "MSFT",
+        "TSLA",
+        "NVDA",
+        "AMD",
+        "META",
+        "GOOGL",
+        "AMZN",
+    ]
 
     if HAS_SCHWAB_STREAMING and HAS_SCHWAB_TRADING:
         try:
             from schwab_market_data import is_schwab_available
+
             if is_schwab_available():
                 # Try WebSocket streaming first
                 start_schwab_streaming(default_symbols)
                 # Check if it actually started
                 import time
+
                 time.sleep(1)  # Wait for streaming to initialize
                 status = get_schwab_stream_status()
-                if status.get('running'):
+                if status.get("running"):
                     logger.info("[OK] Schwab WebSocket Streaming Started")
                     logger.info(f"     - Subscribed to {len(default_symbols)} symbols")
                     logger.info("     - Real-time quotes enabled (sub-second updates)")
@@ -3234,6 +3508,7 @@ async def startup_event():
     if not schwab_realtime_started and HAS_SCHWAB_FAST_POLLING and HAS_SCHWAB_TRADING:
         try:
             from schwab_market_data import is_schwab_available
+
             if is_schwab_available():
                 start_schwab_fast_polling(default_symbols)
                 logger.info("[OK] Schwab Fast Polling Started (WebSocket fallback)")
@@ -3249,6 +3524,7 @@ async def startup_event():
     # Initialize Connection Health Monitor
     try:
         from ai.connection_health_monitor import start_health_monitor
+
         health_monitor = start_health_monitor()
         logger.info("[OK] Connection Health Monitor Started")
         logger.info("     - Auto-recovery: ENABLED")
@@ -3256,12 +3532,12 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"[WARN] Health monitor error: {e}")
 
-    logger.info("="*80)
+    logger.info("=" * 80)
     logger.info("Server ready on http://localhost:9100")
     logger.info("Trading Dashboard: http://localhost:9100/trading-new")
     logger.info("AI Control Center: http://localhost:9100/ai-control-center")
     logger.info("API Docs: http://localhost:9100/docs")
-    logger.info("="*80)
+    logger.info("=" * 80)
 
 
 @app.on_event("shutdown")
@@ -3272,6 +3548,7 @@ async def shutdown_event():
     # Stop Connection Health Monitor
     try:
         from ai.connection_health_monitor import get_health_monitor
+
         monitor = get_health_monitor()
         monitor.stop()
         logger.info("Connection health monitor stopped")
@@ -3301,19 +3578,15 @@ async def shutdown_event():
 
 # Import realtime hub for WebSocket management
 try:
-    from ai.realtime_hub import (
-        get_realtime_hub,
-        Channel,
-        broadcast_trade,
-        broadcast_position_update,
-        broadcast_bot_status,
-        broadcast_prediction,
-        broadcast_brain_status,
-        broadcast_var_update,
-        broadcast_drawdown_update,
-        broadcast_circuit_breaker,
-        broadcast_risk_alert
-    )
+    from ai.realtime_hub import (Channel, broadcast_bot_status,
+                                 broadcast_brain_status,
+                                 broadcast_circuit_breaker,
+                                 broadcast_drawdown_update,
+                                 broadcast_position_update,
+                                 broadcast_prediction, broadcast_risk_alert,
+                                 broadcast_trade, broadcast_var_update,
+                                 get_realtime_hub)
+
     HAS_REALTIME_HUB = True
 except ImportError as e:
     logger.warning(f"Realtime hub not available: {e}")
@@ -3349,10 +3622,9 @@ async def websocket_realtime_hub(websocket: WebSocket):
     logger.info(f"[WS-RT] Client connected: {client_id}")
 
     if not HAS_REALTIME_HUB:
-        await websocket.send_json({
-            "type": "error",
-            "message": "Realtime hub not available"
-        })
+        await websocket.send_json(
+            {"type": "error", "message": "Realtime hub not available"}
+        )
         await websocket.close()
         return
 
@@ -3362,13 +3634,15 @@ async def websocket_realtime_hub(websocket: WebSocket):
     message_queue = hub.register_client(client_id)
 
     # Send welcome message
-    await websocket.send_json({
-        "type": "connected",
-        "client_id": client_id,
-        "message": "Connected to realtime hub",
-        "channels": [c.value for c in Channel if c != Channel.ALL],
-        "status": hub.get_status()
-    })
+    await websocket.send_json(
+        {
+            "type": "connected",
+            "client_id": client_id,
+            "message": "Connected to realtime hub",
+            "channels": [c.value for c in Channel if c != Channel.ALL],
+            "status": hub.get_status(),
+        }
+    )
 
     async def send_messages():
         """Forward messages from queue to WebSocket"""
@@ -3390,40 +3664,34 @@ async def websocket_realtime_hub(websocket: WebSocket):
                 if action == "subscribe":
                     channels = data.get("channels", [])
                     hub.subscribe(client_id, channels)
-                    await websocket.send_json({
-                        "type": "subscribed",
-                        "channels": channels
-                    })
+                    await websocket.send_json(
+                        {"type": "subscribed", "channels": channels}
+                    )
 
                 elif action == "unsubscribe":
                     channels = data.get("channels", [])
                     hub.unsubscribe(client_id, channels)
-                    await websocket.send_json({
-                        "type": "unsubscribed",
-                        "channels": channels
-                    })
+                    await websocket.send_json(
+                        {"type": "unsubscribed", "channels": channels}
+                    )
 
                 elif action == "get_history":
                     channel = data.get("channel", "trading")
                     limit = data.get("limit", 20)
                     history = hub.get_history(channel, limit)
-                    await websocket.send_json({
-                        "type": "history",
-                        "channel": channel,
-                        "messages": history
-                    })
+                    await websocket.send_json(
+                        {"type": "history", "channel": channel, "messages": history}
+                    )
 
                 elif action == "status":
-                    await websocket.send_json({
-                        "type": "status",
-                        "hub": hub.get_status()
-                    })
+                    await websocket.send_json(
+                        {"type": "status", "hub": hub.get_status()}
+                    )
 
                 elif action == "ping":
-                    await websocket.send_json({
-                        "type": "pong",
-                        "timestamp": datetime.now().isoformat()
-                    })
+                    await websocket.send_json(
+                        {"type": "pong", "timestamp": datetime.now().isoformat()}
+                    )
 
             except WebSocketDisconnect:
                 break
@@ -3437,8 +3705,7 @@ async def websocket_realtime_hub(websocket: WebSocket):
         receive_task = asyncio.create_task(receive_commands())
 
         done, pending = await asyncio.wait(
-            [send_task, receive_task],
-            return_when=asyncio.FIRST_COMPLETED
+            [send_task, receive_task], return_when=asyncio.FIRST_COMPLETED
         )
 
         for task in pending:
@@ -3460,10 +3727,7 @@ async def get_realtime_status():
         return {"success": False, "error": "Realtime hub not available"}
 
     hub = get_realtime_hub()
-    return {
-        "success": True,
-        "status": hub.get_status()
-    }
+    return {"success": True, "status": hub.get_status()}
 
 
 @app.get("/api/realtime/history/{channel}")
@@ -3479,7 +3743,7 @@ async def get_realtime_history(channel: str, limit: int = 20):
         "success": True,
         "channel": channel,
         "messages": history,
-        "count": len(history)
+        "count": len(history),
     }
 
 
@@ -3507,13 +3771,14 @@ async def broadcast_message(data: dict):
     return {
         "success": True,
         "message": f"Broadcast sent to {channel}",
-        "type": message_type
+        "type": message_type,
     }
 
 
 # ============================================================================
 # BACKGROUND TASK: PERIODIC RISK UPDATES
 # ============================================================================
+
 
 async def periodic_risk_broadcast():
     """Background task to broadcast risk updates every 30 seconds"""
@@ -3528,11 +3793,12 @@ async def periodic_risk_broadcast():
             broker = get_unified_broker()
             if broker and broker.is_connected:
                 account = broker.get_account()
-                equity = float(account.get('market_value', account.get('equity', 0)))
+                equity = float(account.get("market_value", account.get("equity", 0)))
 
                 # Broadcast drawdown
                 try:
                     from ai.portfolio_guard import get_portfolio_guard
+
                     guard = get_portfolio_guard()
                     dd = guard.calculate_drawdown(equity)
 
@@ -3542,9 +3808,9 @@ async def periodic_risk_broadcast():
                             "drawdown_pct": dd.drawdown_pct,
                             "max_drawdown_pct": dd.max_drawdown_pct,
                             "equity": equity,
-                            "is_at_peak": dd.is_at_peak
+                            "is_at_peak": dd.is_at_peak,
                         },
-                        "drawdown"
+                        "drawdown",
                     )
                 except Exception as e:
                     logger.debug(f"Error broadcasting drawdown: {e}")
@@ -3552,6 +3818,7 @@ async def periodic_risk_broadcast():
                 # Broadcast circuit breaker status
                 try:
                     from ai.circuit_breaker import get_circuit_breaker
+
                     breaker = get_circuit_breaker()
                     state = breaker.check_breaker()
 
@@ -3561,9 +3828,9 @@ async def periodic_risk_broadcast():
                             "level": state.level,
                             "can_trade": state.can_trade,
                             "daily_pnl": state.daily_pnl,
-                            "daily_pnl_pct": state.daily_pnl_pct
+                            "daily_pnl_pct": state.daily_pnl_pct,
                         },
-                        "circuit_breaker"
+                        "circuit_breaker",
                     )
                 except Exception as e:
                     logger.debug(f"Error broadcasting circuit breaker: {e}")
@@ -3595,11 +3862,13 @@ async def run_startup_connectivity_test():
 
     Logs results and saves connectivity report.
     """
+
     async def delayed_test():
         await asyncio.sleep(5)  # Wait for services to initialize
 
         try:
             from ai.connectivity_manager import get_connectivity_manager
+
             manager = get_connectivity_manager()
 
             logger.info("=" * 60)
@@ -3617,7 +3886,9 @@ async def run_startup_connectivity_test():
 
             # Log first tick status
             if manager.first_tick_received:
-                logger.info(f"First tick: {manager.first_tick_symbol} at {manager.first_tick_received}")
+                logger.info(
+                    f"First tick: {manager.first_tick_symbol} at {manager.first_tick_received}"
+                )
             else:
                 logger.info("First tick: Not yet received")
 
@@ -3633,18 +3904,18 @@ async def run_startup_connectivity_test():
 # ============================================================================
 
 if __name__ == "__main__":
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("MORPHEUS TRADING BOT")
-    print("="*80)
+    print("=" * 80)
     print("Starting server on http://localhost:9100")
     print("Trading Dashboard: http://localhost:9100/trading-new")
     print("API Docs: http://localhost:9100/docs")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     uvicorn.run(
         app,
         host="0.0.0.0",
         port=9100,
         log_level="warning",  # Reduced from 'info' for faster response times
-        access_log=False      # Disable access logging - was causing 2-3s latency!
+        access_log=False,  # Disable access logging - was causing 2-3s latency!
     )

@@ -12,23 +12,24 @@ Uses FinBERT for financial sentiment analysis
 Aggregates signals for trading decisions
 """
 
-import os
+import asyncio
 import logging
+import os
+from collections import defaultdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
-from collections import defaultdict
-import asyncio
-import aiohttp
 
-# NLP & Sentiment
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
+import aiohttp
 import numpy as np
+import torch
+# NLP & Sentiment
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 # Data sources
 try:
     import tweepy
+
     TWITTER_AVAILABLE = True
 except ImportError:
     TWITTER_AVAILABLE = False
@@ -36,15 +37,15 @@ except ImportError:
 
 try:
     import praw
+
     REDDIT_AVAILABLE = True
 except ImportError:
     REDDIT_AVAILABLE = False
     logging.warning("praw not installed - Reddit integration disabled")
 
+import time
 # Caching
 from functools import lru_cache
-import time
-
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SentimentSignal:
     """Individual sentiment signal from a source"""
+
     source: str  # 'news', 'twitter', 'reddit', 'stocktwits'
     symbol: str
     timestamp: datetime
@@ -66,6 +68,7 @@ class SentimentSignal:
 @dataclass
 class BreakingNewsAlert:
     """Breaking news alert - trigger for warrior trading system"""
+
     symbol: str
     timestamp: datetime
     alert_type: str  # 'positive', 'negative', 'neutral'
@@ -80,31 +83,32 @@ class BreakingNewsAlert:
     def to_dict(self) -> Dict:
         """Convert to dictionary for API response"""
         return {
-            'symbol': self.symbol,
-            'timestamp': self.timestamp.isoformat(),
-            'alert_type': self.alert_type,
-            'severity': self.severity,
-            'sentiment_score': self.sentiment_score,
-            'confidence': self.confidence,
-            'sources_count': self.sources_count,
-            'headline': self.headline,
-            'trigger_time': self.trigger_time.isoformat(),
-            'signals': [
+            "symbol": self.symbol,
+            "timestamp": self.timestamp.isoformat(),
+            "alert_type": self.alert_type,
+            "severity": self.severity,
+            "sentiment_score": self.sentiment_score,
+            "confidence": self.confidence,
+            "sources_count": self.sources_count,
+            "headline": self.headline,
+            "trigger_time": self.trigger_time.isoformat(),
+            "signals": [
                 {
-                    'source': s.source,
-                    'text': s.text,
-                    'score': s.score,
-                    'url': s.url,
-                    'timestamp': s.timestamp.isoformat()
+                    "source": s.source,
+                    "text": s.text,
+                    "score": s.score,
+                    "url": s.url,
+                    "timestamp": s.timestamp.isoformat(),
                 }
                 for s in self.signals[:3]  # Top 3 signals
-            ]
+            ],
         }
 
 
 @dataclass
 class AggregatedSentiment:
     """Aggregated sentiment across all sources"""
+
     symbol: str
     timestamp: datetime
     overall_score: float  # -1.0 to 1.0
@@ -115,7 +119,9 @@ class AggregatedSentiment:
     trending: bool  # Is this symbol trending?
     momentum: float  # Sentiment momentum (rate of change)
     top_signals: List[SentimentSignal]  # Top 5 signals
-    breaking_news: Optional['BreakingNewsAlert'] = None  # Breaking news alert if detected
+    breaking_news: Optional["BreakingNewsAlert"] = (
+        None  # Breaking news alert if detected
+    )
 
 
 class FinBERTSentimentAnalyzer:
@@ -131,7 +137,9 @@ class FinBERTSentimentAnalyzer:
         logger.info(f"Loading FinBERT model on {self.device}...")
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_name
+            )
             self.model.to(self.device)
             self.model.eval()
             logger.info("✓ FinBERT model loaded successfully")
@@ -159,11 +167,7 @@ class FinBERTSentimentAnalyzer:
         try:
             # Tokenize
             inputs = self.tokenizer(
-                text,
-                return_tensors="pt",
-                truncation=True,
-                max_length=512,
-                padding=True
+                text, return_tensors="pt", truncation=True, max_length=512, padding=True
             ).to(self.device)
 
             # Predict
@@ -194,12 +198,35 @@ class FinBERTSentimentAnalyzer:
         text_lower = text.lower()
 
         # Bullish keywords
-        bullish = ['bullish', 'buy', 'calls', 'moon', 'rocket', 'breakout',
-                   'surge', 'rally', 'strong', 'gap up', 'squeeze', 'momentum']
+        bullish = [
+            "bullish",
+            "buy",
+            "calls",
+            "moon",
+            "rocket",
+            "breakout",
+            "surge",
+            "rally",
+            "strong",
+            "gap up",
+            "squeeze",
+            "momentum",
+        ]
 
         # Bearish keywords
-        bearish = ['bearish', 'sell', 'puts', 'crash', 'dump', 'breakdown',
-                   'plunge', 'fall', 'weak', 'gap down', 'resistance']
+        bearish = [
+            "bearish",
+            "sell",
+            "puts",
+            "crash",
+            "dump",
+            "breakdown",
+            "plunge",
+            "fall",
+            "weak",
+            "gap down",
+            "resistance",
+        ]
 
         bull_count = sum(1 for word in bullish if word in text_lower)
         bear_count = sum(1 for word in bearish if word in text_lower)
@@ -262,12 +289,11 @@ class NewsAPIClient:
                 "from": from_time,
                 "sortBy": "publishedAt",
                 "apiKey": self.api_key,
-                "language": "en"
+                "language": "en",
             }
 
             async with self.session.get(
-                f"{self.base_url}/everything",
-                params=params
+                f"{self.base_url}/everything", params=params
             ) as response:
                 if response.status == 200:
                     data = await response.json()
@@ -334,7 +360,7 @@ class TwitterClient:
             tweets = self.client.search_recent_tweets(
                 query=query,
                 max_results=min(max_results, 100),
-                tweet_fields=['created_at', 'public_metrics', 'author_id']
+                tweet_fields=["created_at", "public_metrics", "author_id"],
             )
 
             if not tweets.data:
@@ -343,13 +369,15 @@ class TwitterClient:
             # Format results
             results = []
             for tweet in tweets.data:
-                results.append({
-                    'id': tweet.id,
-                    'text': tweet.text,
-                    'created_at': tweet.created_at,
-                    'metrics': tweet.public_metrics,
-                    'author_id': tweet.author_id
-                })
+                results.append(
+                    {
+                        "id": tweet.id,
+                        "text": tweet.text,
+                        "created_at": tweet.created_at,
+                        "metrics": tweet.public_metrics,
+                        "author_id": tweet.author_id,
+                    }
+                )
 
             return results
 
@@ -381,9 +409,7 @@ class RedditClient:
 
         try:
             self.reddit = praw.Reddit(
-                client_id=client_id,
-                client_secret=client_secret,
-                user_agent=user_agent
+                client_id=client_id, client_secret=client_secret, user_agent=user_agent
             )
             logger.info("✓ Reddit client initialized")
         except Exception as e:
@@ -391,10 +417,7 @@ class RedditClient:
             self.reddit = None
 
     async def fetch_mentions(
-        self,
-        symbol: str,
-        subreddits: List[str] = None,
-        limit: int = 100
+        self, symbol: str, subreddits: List[str] = None, limit: int = 100
     ) -> List[Dict]:
         """
         Fetch Reddit mentions of a symbol
@@ -411,7 +434,7 @@ class RedditClient:
             return []
 
         if subreddits is None:
-            subreddits = ['wallstreetbets', 'stocks', 'daytrading', 'options']
+            subreddits = ["wallstreetbets", "stocks", "daytrading", "options"]
 
         results = []
 
@@ -420,19 +443,21 @@ class RedditClient:
                 subreddit = self.reddit.subreddit(subreddit_name)
 
                 # Search posts
-                for post in subreddit.search(symbol, limit=limit, time_filter='day'):
-                    results.append({
-                        'type': 'post',
-                        'id': post.id,
-                        'title': post.title,
-                        'text': post.selftext,
-                        'created_at': datetime.fromtimestamp(post.created_utc),
-                        'score': post.score,
-                        'num_comments': post.num_comments,
-                        'url': post.url,
-                        'subreddit': subreddit_name,
-                        'author': str(post.author) if post.author else '[deleted]'
-                    })
+                for post in subreddit.search(symbol, limit=limit, time_filter="day"):
+                    results.append(
+                        {
+                            "type": "post",
+                            "id": post.id,
+                            "title": post.title,
+                            "text": post.selftext,
+                            "created_at": datetime.fromtimestamp(post.created_utc),
+                            "score": post.score,
+                            "num_comments": post.num_comments,
+                            "url": post.url,
+                            "subreddit": subreddit_name,
+                            "author": str(post.author) if post.author else "[deleted]",
+                        }
+                    )
 
             return results
 
@@ -465,10 +490,7 @@ class WarriorSentimentAnalyzer:
         logger.info("✓ Warrior Sentiment Analyzer initialized")
 
     async def analyze_symbol(
-        self,
-        symbol: str,
-        hours: int = 24,
-        sources: List[str] = None
+        self, symbol: str, hours: int = 24, sources: List[str] = None
     ) -> AggregatedSentiment:
         """
         Analyze sentiment for a symbol across all sources
@@ -491,23 +513,23 @@ class WarriorSentimentAnalyzer:
                 return cached
 
         if sources is None:
-            sources = ['news', 'twitter', 'reddit']
+            sources = ["news", "twitter", "reddit"]
 
         # Collect signals from all sources
         all_signals = []
 
         # News
-        if 'news' in sources:
+        if "news" in sources:
             news_signals = await self._analyze_news(symbol, hours)
             all_signals.extend(news_signals)
 
         # Twitter
-        if 'twitter' in sources:
+        if "twitter" in sources:
             twitter_signals = await self._analyze_twitter(symbol)
             all_signals.extend(twitter_signals)
 
         # Reddit
-        if 'reddit' in sources:
+        if "reddit" in sources:
             reddit_signals = await self._analyze_reddit(symbol)
             all_signals.extend(reddit_signals)
 
@@ -532,16 +554,20 @@ class WarriorSentimentAnalyzer:
 
             score, confidence = self.sentiment_engine.analyze(text)
 
-            signals.append(SentimentSignal(
-                source='news',
-                symbol=symbol,
-                timestamp=datetime.fromisoformat(article['publishedAt'].replace('Z', '+00:00')),
-                score=score,
-                confidence=confidence,
-                text=text[:200],
-                url=article.get('url'),
-                author=article.get('source', {}).get('name')
-            ))
+            signals.append(
+                SentimentSignal(
+                    source="news",
+                    symbol=symbol,
+                    timestamp=datetime.fromisoformat(
+                        article["publishedAt"].replace("Z", "+00:00")
+                    ),
+                    score=score,
+                    confidence=confidence,
+                    text=text[:200],
+                    url=article.get("url"),
+                    author=article.get("source", {}).get("name"),
+                )
+            )
 
         logger.info(f"Analyzed {len(signals)} news articles for {symbol}")
         return signals
@@ -553,28 +579,29 @@ class WarriorSentimentAnalyzer:
         tweets = await self.twitter_client.fetch_tweets(symbol)
 
         for tweet in tweets:
-            score, confidence = self.sentiment_engine.analyze(tweet['text'])
+            score, confidence = self.sentiment_engine.analyze(tweet["text"])
 
             # Weight by engagement
-            metrics = tweet.get('metrics', {})
+            metrics = tweet.get("metrics", {})
             engagement = (
-                metrics.get('like_count', 0) +
-                metrics.get('retweet_count', 0) * 2
+                metrics.get("like_count", 0) + metrics.get("retweet_count", 0) * 2
             )
 
             # Boost confidence for high-engagement tweets
             if engagement > 100:
                 confidence = min(confidence * 1.2, 1.0)
 
-            signals.append(SentimentSignal(
-                source='twitter',
-                symbol=symbol,
-                timestamp=tweet['created_at'],
-                score=score,
-                confidence=confidence,
-                text=tweet['text'][:200],
-                metrics=metrics
-            ))
+            signals.append(
+                SentimentSignal(
+                    source="twitter",
+                    symbol=symbol,
+                    timestamp=tweet["created_at"],
+                    score=score,
+                    confidence=confidence,
+                    text=tweet["text"][:200],
+                    metrics=metrics,
+                )
+            )
 
         logger.info(f"Analyzed {len(signals)} tweets for ${symbol}")
         return signals
@@ -590,29 +617,32 @@ class WarriorSentimentAnalyzer:
             score, confidence = self.sentiment_engine.analyze(text)
 
             # Weight by upvotes
-            upvotes = post.get('score', 0)
+            upvotes = post.get("score", 0)
             if upvotes > 100:
                 confidence = min(confidence * 1.3, 1.0)
 
-            signals.append(SentimentSignal(
-                source='reddit',
-                symbol=symbol,
-                timestamp=post['created_at'],
-                score=score,
-                confidence=confidence,
-                text=text[:200],
-                url=post.get('url'),
-                author=post.get('author'),
-                metrics={'upvotes': upvotes, 'comments': post.get('num_comments', 0)}
-            ))
+            signals.append(
+                SentimentSignal(
+                    source="reddit",
+                    symbol=symbol,
+                    timestamp=post["created_at"],
+                    score=score,
+                    confidence=confidence,
+                    text=text[:200],
+                    url=post.get("url"),
+                    author=post.get("author"),
+                    metrics={
+                        "upvotes": upvotes,
+                        "comments": post.get("num_comments", 0),
+                    },
+                )
+            )
 
         logger.info(f"Analyzed {len(signals)} Reddit posts for {symbol}")
         return signals
 
     def _aggregate_signals(
-        self,
-        symbol: str,
-        signals: List[SentimentSignal]
+        self, symbol: str, signals: List[SentimentSignal]
     ) -> AggregatedSentiment:
         """
         Aggregate signals into overall sentiment
@@ -628,7 +658,7 @@ class WarriorSentimentAnalyzer:
                 source_counts={},
                 trending=False,
                 momentum=0.0,
-                top_signals=[]
+                top_signals=[],
             )
 
         # Calculate weighted average score
@@ -647,19 +677,18 @@ class WarriorSentimentAnalyzer:
             source_counts[signal.source] += 1
 
         overall_score = weighted_sum / total_weight if total_weight > 0 else 0.0
-        overall_confidence = min(len(signals) / 50.0, 1.0)  # More signals = more confident
+        overall_confidence = min(
+            len(signals) / 50.0, 1.0
+        )  # More signals = more confident
 
         # Calculate per-source averages
         avg_source_scores = {
-            source: np.mean(scores)
-            for source, scores in source_scores.items()
+            source: np.mean(scores) for source, scores in source_scores.items()
         }
 
         # Sort signals by confidence * abs(score)
         sorted_signals = sorted(
-            signals,
-            key=lambda s: s.confidence * abs(s.score),
-            reverse=True
+            signals, key=lambda s: s.confidence * abs(s.score), reverse=True
         )
         top_signals = sorted_signals[:5]
 
@@ -671,8 +700,12 @@ class WarriorSentimentAnalyzer:
         recent_signals = [s for s in signals if s.timestamp > recent_cutoff]
         older_signals = [s for s in signals if s.timestamp <= recent_cutoff]
 
-        recent_score = np.mean([s.score for s in recent_signals]) if recent_signals else 0.0
-        older_score = np.mean([s.score for s in older_signals]) if older_signals else 0.0
+        recent_score = (
+            np.mean([s.score for s in recent_signals]) if recent_signals else 0.0
+        )
+        older_score = (
+            np.mean([s.score for s in older_signals]) if older_signals else 0.0
+        )
         momentum = recent_score - older_score
 
         # Detect breaking news
@@ -689,13 +722,11 @@ class WarriorSentimentAnalyzer:
             trending=trending,
             momentum=momentum,
             top_signals=top_signals,
-            breaking_news=breaking_news
+            breaking_news=breaking_news,
         )
 
     def _detect_breaking_news(
-        self,
-        symbol: str,
-        signals: List[SentimentSignal]
+        self, symbol: str, signals: List[SentimentSignal]
     ) -> Optional[BreakingNewsAlert]:
         """
         Detect breaking news based on recent, high-impact signals
@@ -718,8 +749,7 @@ class WarriorSentimentAnalyzer:
 
         # Filter for high-impact signals (high score & confidence)
         high_impact = [
-            s for s in recent_signals
-            if abs(s.score) > 0.6 and s.confidence > 0.7
+            s for s in recent_signals if abs(s.score) > 0.6 and s.confidence > 0.7
         ]
 
         if not high_impact:
@@ -733,14 +763,14 @@ class WarriorSentimentAnalyzer:
         high_engagement = False
         for signal in high_impact:
             if signal.metrics:
-                if signal.source == 'twitter':
-                    likes = signal.metrics.get('like_count', 0)
-                    retweets = signal.metrics.get('retweet_count', 0)
+                if signal.source == "twitter":
+                    likes = signal.metrics.get("like_count", 0)
+                    retweets = signal.metrics.get("retweet_count", 0)
                     if likes + retweets * 2 > 500:  # High engagement threshold
                         high_engagement = True
                         break
-                elif signal.source == 'reddit':
-                    upvotes = signal.metrics.get('upvotes', 0)
+                elif signal.source == "reddit":
+                    upvotes = signal.metrics.get("upvotes", 0)
                     if upvotes > 200:  # High upvotes threshold
                         high_engagement = True
                         break
@@ -755,11 +785,11 @@ class WarriorSentimentAnalyzer:
 
         # Determine alert type
         if avg_score > 0.3:
-            alert_type = 'positive'
+            alert_type = "positive"
         elif avg_score < -0.3:
-            alert_type = 'negative'
+            alert_type = "negative"
         else:
-            alert_type = 'neutral'
+            alert_type = "neutral"
 
         # Calculate severity (0.0 to 1.0)
         # Based on: absolute score, confidence, number of sources, recency
@@ -769,22 +799,24 @@ class WarriorSentimentAnalyzer:
         recency_factor = min(len(high_impact) / 10.0, 1.0)  # More signals = more severe
 
         severity = (
-            score_factor * 0.4 +
-            confidence_factor * 0.3 +
-            source_factor * 0.2 +
-            recency_factor * 0.1
+            score_factor * 0.4
+            + confidence_factor * 0.3
+            + source_factor * 0.2
+            + recency_factor * 0.1
         )
 
         # Sort by confidence * abs(score) to get best signals
         sorted_signals = sorted(
-            high_impact,
-            key=lambda s: s.confidence * abs(s.score),
-            reverse=True
+            high_impact, key=lambda s: s.confidence * abs(s.score), reverse=True
         )
 
         # Generate headline from top signal
         top_signal = sorted_signals[0]
-        headline = top_signal.text[:150] + "..." if len(top_signal.text) > 150 else top_signal.text
+        headline = (
+            top_signal.text[:150] + "..."
+            if len(top_signal.text) > 150
+            else top_signal.text
+        )
 
         return BreakingNewsAlert(
             symbol=symbol,
@@ -796,7 +828,7 @@ class WarriorSentimentAnalyzer:
             sources_count=len(sources),
             headline=headline,
             signals=sorted_signals[:5],  # Top 5 signals
-            trigger_time=datetime.now()
+            trigger_time=datetime.now(),
         )
 
     async def close(self):
@@ -826,12 +858,12 @@ if __name__ == "__main__":
         analyzer = get_sentiment_analyzer()
 
         # Test symbols
-        symbols = ['AAPL', 'TSLA', 'SPY']
+        symbols = ["AAPL", "TSLA", "SPY"]
 
         for symbol in symbols:
             print(f"\n{'='*60}")
             print(f"Analyzing sentiment for {symbol}")
-            print('='*60)
+            print("=" * 60)
 
             sentiment = await analyzer.analyze_symbol(symbol, hours=24)
 
@@ -847,7 +879,9 @@ if __name__ == "__main__":
 
             print(f"\nTop Signals:")
             for i, signal in enumerate(sentiment.top_signals[:3], 1):
-                print(f"  {i}. [{signal.source}] {signal.score:+.2f} - {signal.text[:100]}...")
+                print(
+                    f"  {i}. [{signal.source}] {signal.score:+.2f} - {signal.text[:100]}..."
+                )
 
         await analyzer.close()
 

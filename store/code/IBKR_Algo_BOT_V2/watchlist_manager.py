@@ -3,14 +3,15 @@ Watchlist Manager - Database-backed symbol list management
 Manages watchlists for AI training, backtesting, and automated trading
 Automatically runs pattern backtesting when symbols are added for baseline performance
 """
-import sqlite3
+
 import json
 import logging
+import sqlite3
 import threading
-from datetime import datetime
-from typing import List, Dict, Optional
-from pathlib import Path
 import uuid
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,8 @@ class WatchlistManager:
 
         with sqlite3.connect(self.db_path) as conn:
             # Create watchlists table if not exists
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS watchlists (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     watchlist_id TEXT UNIQUE NOT NULL,
@@ -42,10 +44,12 @@ class WatchlistManager:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Create pattern backtest baselines table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS pattern_baselines (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     symbol TEXT NOT NULL,
@@ -63,7 +67,8 @@ class WatchlistManager:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(symbol, pattern_name)
                 )
-            """)
+            """
+            )
             conn.commit()
 
     def _get_connection(self):
@@ -86,10 +91,13 @@ class WatchlistManager:
         symbols_json = json.dumps([s.upper() for s in symbols])
 
         with self._get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO watchlists (watchlist_id, watchlist_name, symbols)
                 VALUES (?, ?, ?)
-            """, (watchlist_id, name, symbols_json))
+            """,
+                (watchlist_id, name, symbols_json),
+            )
             conn.commit()
 
             logger.info(f"Created watchlist '{name}' with {len(symbols)} symbols")
@@ -106,20 +114,23 @@ class WatchlistManager:
             Watchlist dict or None if not found
         """
         with self._get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM watchlists WHERE watchlist_id = ?
-            """, (watchlist_id,))
+            """,
+                (watchlist_id,),
+            )
 
             row = cursor.fetchone()
 
             if row:
                 return {
-                    'id': row['id'],
-                    'watchlist_id': row['watchlist_id'],
-                    'name': row['watchlist_name'],
-                    'symbols': json.loads(row['symbols']),
-                    'created_at': row['created_at'],
-                    'updated_at': row['updated_at']
+                    "id": row["id"],
+                    "watchlist_id": row["watchlist_id"],
+                    "name": row["watchlist_name"],
+                    "symbols": json.loads(row["symbols"]),
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
                 }
 
             return None
@@ -134,20 +145,23 @@ class WatchlistManager:
             Watchlist dict or None if not found
         """
         with self._get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM watchlists WHERE watchlist_name = ?
-            """, (name,))
+            """,
+                (name,),
+            )
 
             row = cursor.fetchone()
 
             if row:
                 return {
-                    'id': row['id'],
-                    'watchlist_id': row['watchlist_id'],
-                    'name': row['watchlist_name'],
-                    'symbols': json.loads(row['symbols']),
-                    'created_at': row['created_at'],
-                    'updated_at': row['updated_at']
+                    "id": row["id"],
+                    "watchlist_id": row["watchlist_id"],
+                    "name": row["watchlist_name"],
+                    "symbols": json.loads(row["symbols"]),
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
                 }
 
             return None
@@ -159,26 +173,34 @@ class WatchlistManager:
             List of watchlist dicts
         """
         with self._get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM watchlists ORDER BY watchlist_name
-            """)
+            """
+            )
 
             watchlists = []
             for row in cursor.fetchall():
-                watchlists.append({
-                    'id': row['id'],
-                    'watchlist_id': row['watchlist_id'],
-                    'name': row['watchlist_name'],
-                    'symbols': json.loads(row['symbols']),
-                    'symbol_count': len(json.loads(row['symbols'])),
-                    'created_at': row['created_at'],
-                    'updated_at': row['updated_at']
-                })
+                watchlists.append(
+                    {
+                        "id": row["id"],
+                        "watchlist_id": row["watchlist_id"],
+                        "name": row["watchlist_name"],
+                        "symbols": json.loads(row["symbols"]),
+                        "symbol_count": len(json.loads(row["symbols"])),
+                        "created_at": row["created_at"],
+                        "updated_at": row["updated_at"],
+                    }
+                )
 
             return watchlists
 
-    def update_watchlist(self, watchlist_id: str, name: Optional[str] = None,
-                        symbols: Optional[List[str]] = None) -> Optional[Dict]:
+    def update_watchlist(
+        self,
+        watchlist_id: str,
+        name: Optional[str] = None,
+        symbols: Optional[List[str]] = None,
+    ) -> Optional[Dict]:
         """Update a watchlist
 
         Args:
@@ -212,11 +234,14 @@ class WatchlistManager:
         params.append(watchlist_id)
 
         with self._get_connection() as conn:
-            conn.execute(f"""
+            conn.execute(
+                f"""
                 UPDATE watchlists
                 SET {', '.join(update_fields)}
                 WHERE watchlist_id = ?
-            """, params)
+            """,
+                params,
+            )
             conn.commit()
 
             logger.info(f"Updated watchlist '{watchlist['name']}'")
@@ -237,7 +262,7 @@ class WatchlistManager:
         if not watchlist:
             return None
 
-        current_symbols = set(watchlist['symbols'])
+        current_symbols = set(watchlist["symbols"])
         new_symbols = [s.upper() for s in symbols]
 
         # Identify truly new symbols (not already in watchlist)
@@ -261,6 +286,7 @@ class WatchlistManager:
         Args:
             symbols: List of symbols to backtest
         """
+
         def run_backtest():
             try:
                 from ai.pattern_backtester import PatternBacktester
@@ -274,7 +300,7 @@ class WatchlistManager:
                         # Run backtest for 6 months of history
                         results = backtester.backtest_symbol(symbol, period="6mo")
 
-                        if results and 'pattern_results' in results:
+                        if results and "pattern_results" in results:
                             # Store results in database
                             self._store_backtest_baseline(symbol, results)
                             logger.info(f"Baseline backtest completed for {symbol}")
@@ -301,34 +327,39 @@ class WatchlistManager:
             symbol: Stock symbol
             results: Backtest results dict
         """
-        pattern_results = results.get('pattern_results', {})
-        period = results.get('period', '6mo')
+        pattern_results = results.get("pattern_results", {})
+        period = results.get("period", "6mo")
 
         with self._get_connection() as conn:
             for pattern_name, stats in pattern_results.items():
                 try:
-                    conn.execute("""
+                    conn.execute(
+                        """
                         INSERT OR REPLACE INTO pattern_baselines
                         (symbol, pattern_name, total_signals, wins, losses,
                          win_rate, avg_return, profit_factor, best_return,
                          worst_return, backtest_period, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        symbol.upper(),
-                        pattern_name,
-                        stats.get('total_signals', 0),
-                        stats.get('wins', 0),
-                        stats.get('losses', 0),
-                        stats.get('win_rate', 0),
-                        stats.get('avg_return', 0),
-                        stats.get('profit_factor', 0),
-                        stats.get('best_return', 0),
-                        stats.get('worst_return', 0),
-                        period,
-                        datetime.now().isoformat()
-                    ))
+                    """,
+                        (
+                            symbol.upper(),
+                            pattern_name,
+                            stats.get("total_signals", 0),
+                            stats.get("wins", 0),
+                            stats.get("losses", 0),
+                            stats.get("win_rate", 0),
+                            stats.get("avg_return", 0),
+                            stats.get("profit_factor", 0),
+                            stats.get("best_return", 0),
+                            stats.get("worst_return", 0),
+                            period,
+                            datetime.now().isoformat(),
+                        ),
+                    )
                 except Exception as e:
-                    logger.error(f"Failed to store baseline for {symbol}/{pattern_name}: {e}")
+                    logger.error(
+                        f"Failed to store baseline for {symbol}/{pattern_name}: {e}"
+                    )
 
             conn.commit()
             logger.info(f"Stored {len(pattern_results)} pattern baselines for {symbol}")
@@ -343,32 +374,39 @@ class WatchlistManager:
             List of pattern baseline dicts
         """
         with self._get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM pattern_baselines
                 WHERE symbol = ?
                 ORDER BY win_rate DESC
-            """, (symbol.upper(),))
+            """,
+                (symbol.upper(),),
+            )
 
             baselines = []
             for row in cursor.fetchall():
-                baselines.append({
-                    'symbol': row['symbol'],
-                    'pattern': row['pattern_name'],
-                    'total_signals': row['total_signals'],
-                    'wins': row['wins'],
-                    'losses': row['losses'],
-                    'win_rate': row['win_rate'],
-                    'avg_return': row['avg_return'],
-                    'profit_factor': row['profit_factor'],
-                    'best_return': row['best_return'],
-                    'worst_return': row['worst_return'],
-                    'period': row['backtest_period'],
-                    'updated_at': row['updated_at']
-                })
+                baselines.append(
+                    {
+                        "symbol": row["symbol"],
+                        "pattern": row["pattern_name"],
+                        "total_signals": row["total_signals"],
+                        "wins": row["wins"],
+                        "losses": row["losses"],
+                        "win_rate": row["win_rate"],
+                        "avg_return": row["avg_return"],
+                        "profit_factor": row["profit_factor"],
+                        "best_return": row["best_return"],
+                        "worst_return": row["worst_return"],
+                        "period": row["backtest_period"],
+                        "updated_at": row["updated_at"],
+                    }
+                )
 
             return baselines
 
-    def get_best_patterns_for_symbol(self, symbol: str, min_win_rate: float = 0.5) -> List[Dict]:
+    def get_best_patterns_for_symbol(
+        self, symbol: str, min_win_rate: float = 0.5
+    ) -> List[Dict]:
         """Get best performing patterns for a symbol
 
         Args:
@@ -379,12 +417,15 @@ class WatchlistManager:
             List of top patterns
         """
         with self._get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM pattern_baselines
                 WHERE symbol = ? AND win_rate >= ? AND total_signals >= 3
                 ORDER BY profit_factor DESC, win_rate DESC
                 LIMIT 5
-            """, (symbol.upper(), min_win_rate))
+            """,
+                (symbol.upper(), min_win_rate),
+            )
 
             return [dict(row) for row in cursor.fetchall()]
 
@@ -395,10 +436,12 @@ class WatchlistManager:
             List of all baselines
         """
         with self._get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM pattern_baselines
                 ORDER BY symbol, win_rate DESC
-            """)
+            """
+            )
 
             return [dict(row) for row in cursor.fetchall()]
 
@@ -416,7 +459,7 @@ class WatchlistManager:
         if not watchlist:
             return None
 
-        current_symbols = set(watchlist['symbols'])
+        current_symbols = set(watchlist["symbols"])
         remove_symbols = set(s.upper() for s in symbols)
 
         # Remove symbols
@@ -434,9 +477,12 @@ class WatchlistManager:
             True if deleted, False if not found
         """
         with self._get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 DELETE FROM watchlists WHERE watchlist_id = ?
-            """, (watchlist_id,))
+            """,
+                (watchlist_id,),
+            )
             conn.commit()
 
             deleted = cursor.rowcount > 0
@@ -460,8 +506,16 @@ class WatchlistManager:
 
         # Create default watchlist
         default_symbols = [
-            "SPY", "QQQ", "AAPL", "MSFT", "GOOGL",
-            "AMZN", "TSLA", "NVDA", "META", "AMD"
+            "SPY",
+            "QQQ",
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "AMZN",
+            "TSLA",
+            "NVDA",
+            "META",
+            "AMD",
         ]
 
         return self.create_watchlist("Default", default_symbols)
@@ -475,13 +529,14 @@ class WatchlistManager:
         all_symbols = set()
 
         for watchlist in self.get_all_watchlists():
-            all_symbols.update(watchlist['symbols'])
+            all_symbols.update(watchlist["symbols"])
 
         return sorted(list(all_symbols))
 
 
 # Singleton instance
 _watchlist_manager = None
+
 
 def get_watchlist_manager() -> WatchlistManager:
     """Get singleton watchlist manager instance"""

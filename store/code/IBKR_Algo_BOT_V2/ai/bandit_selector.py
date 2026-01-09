@@ -19,21 +19,23 @@ Architecture:
 Created: December 2025
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from collections import defaultdict
 import json
 import logging
-from pathlib import Path
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
 class ArmType(Enum):
     """Types of arms (options) the bandit can select"""
+
     SYMBOL = "symbol"
     MODEL = "model"
     STRATEGY = "strategy"
@@ -48,17 +50,22 @@ class BetaArm:
     - alpha = successes + 1
     - beta = failures + 1
     """
+
     name: str
     arm_type: ArmType
     alpha: float = 1.0  # Successes + prior
-    beta: float = 1.0   # Failures + prior
+    beta: float = 1.0  # Failures + prior
     total_pulls: int = 0
     total_reward: float = 0.0
     last_updated: str = ""
 
     # Contextual stats (per regime)
-    regime_alpha: Dict[str, float] = field(default_factory=lambda: defaultdict(lambda: 1.0))
-    regime_beta: Dict[str, float] = field(default_factory=lambda: defaultdict(lambda: 1.0))
+    regime_alpha: Dict[str, float] = field(
+        default_factory=lambda: defaultdict(lambda: 1.0)
+    )
+    regime_beta: Dict[str, float] = field(
+        default_factory=lambda: defaultdict(lambda: 1.0)
+    )
 
     def sample(self, regime: Optional[str] = None) -> float:
         """Sample from Beta distribution (Thompson Sampling)"""
@@ -83,7 +90,7 @@ class BetaArm:
         # For binary outcomes: reward = 1 (success) or 0 (failure)
         # For continuous: reward in [0, 1] treated as probability
         self.alpha += reward
-        self.beta += (1 - reward)
+        self.beta += 1 - reward
 
         self.total_pulls += 1
         self.total_reward += reward
@@ -91,8 +98,12 @@ class BetaArm:
 
         # Update contextual stats
         if regime:
-            self.regime_alpha[regime] = 1 + (self.regime_alpha.get(regime, 1) - 1) * decay + reward
-            self.regime_beta[regime] = 1 + (self.regime_beta.get(regime, 1) - 1) * decay + (1 - reward)
+            self.regime_alpha[regime] = (
+                1 + (self.regime_alpha.get(regime, 1) - 1) * decay + reward
+            )
+            self.regime_beta[regime] = (
+                1 + (self.regime_beta.get(regime, 1) - 1) * decay + (1 - reward)
+            )
 
     @property
     def mean(self) -> float:
@@ -110,6 +121,7 @@ class BetaArm:
         """95% confidence interval"""
         # Approximate using Beta quantiles
         from scipy import stats
+
         try:
             low = stats.beta.ppf(0.025, self.alpha, self.beta)
             high = stats.beta.ppf(0.975, self.alpha, self.beta)
@@ -119,21 +131,22 @@ class BetaArm:
 
     def to_dict(self) -> Dict:
         return {
-            'name': self.name,
-            'arm_type': self.arm_type.value,
-            'alpha': self.alpha,
-            'beta': self.beta,
-            'total_pulls': self.total_pulls,
-            'total_reward': self.total_reward,
-            'mean': self.mean,
-            'variance': self.variance,
-            'last_updated': self.last_updated
+            "name": self.name,
+            "arm_type": self.arm_type.value,
+            "alpha": self.alpha,
+            "beta": self.beta,
+            "total_pulls": self.total_pulls,
+            "total_reward": self.total_reward,
+            "mean": self.mean,
+            "variance": self.variance,
+            "last_updated": self.last_updated,
         }
 
 
 @dataclass
 class SelectionResult:
     """Result of bandit selection"""
+
     selected: str
     arm_type: ArmType
     sample_value: float
@@ -145,14 +158,14 @@ class SelectionResult:
 
     def to_dict(self) -> Dict:
         return {
-            'selected': self.selected,
-            'arm_type': self.arm_type.value,
-            'sample_value': self.sample_value,
-            'expected_value': self.expected_value,
-            'confidence': self.confidence,
-            'regime': self.regime,
-            'alternatives': self.alternatives,
-            'timestamp': self.timestamp
+            "selected": self.selected,
+            "arm_type": self.arm_type.value,
+            "sample_value": self.sample_value,
+            "expected_value": self.expected_value,
+            "confidence": self.confidence,
+            "regime": self.regime,
+            "alternatives": self.alternatives,
+            "timestamp": self.timestamp,
         }
 
 
@@ -166,7 +179,7 @@ class MultiarmedBandit:
         self,
         decay_rate: float = 0.999,  # Decay for non-stationarity
         min_pulls_for_confidence: int = 10,
-        state_path: str = "store/bandit_state.json"
+        state_path: str = "store/bandit_state.json",
     ):
         self.decay_rate = decay_rate
         self.min_pulls_for_confidence = min_pulls_for_confidence
@@ -177,7 +190,7 @@ class MultiarmedBandit:
             ArmType.SYMBOL: {},
             ArmType.MODEL: {},
             ArmType.STRATEGY: {},
-            ArmType.TIMEFRAME: {}
+            ArmType.TIMEFRAME: {},
         }
 
         # Selection history
@@ -189,14 +202,17 @@ class MultiarmedBandit:
 
         logger.info("MultiarmedBandit initialized")
 
-    def add_arm(self, name: str, arm_type: ArmType, prior_alpha: float = 1.0, prior_beta: float = 1.0):
+    def add_arm(
+        self,
+        name: str,
+        arm_type: ArmType,
+        prior_alpha: float = 1.0,
+        prior_beta: float = 1.0,
+    ):
         """Add a new arm (option) to the bandit"""
         if name not in self.arms[arm_type]:
             self.arms[arm_type][name] = BetaArm(
-                name=name,
-                arm_type=arm_type,
-                alpha=prior_alpha,
-                beta=prior_beta
+                name=name, arm_type=arm_type, alpha=prior_alpha, beta=prior_beta
             )
             logger.debug(f"Added {arm_type.value} arm: {name}")
 
@@ -206,7 +222,7 @@ class MultiarmedBandit:
         candidates: Optional[List[str]] = None,
         regime: Optional[str] = None,
         top_k: int = 1,
-        explore_boost: float = 0.0
+        explore_boost: float = 0.0,
     ) -> SelectionResult:
         """
         Select best arm(s) using Thompson Sampling.
@@ -228,7 +244,9 @@ class MultiarmedBandit:
             for name in candidates:
                 if name not in available_arms:
                     self.add_arm(name, arm_type)
-            available_arms = {k: v for k, v in available_arms.items() if k in candidates}
+            available_arms = {
+                k: v for k, v in available_arms.items() if k in candidates
+            }
 
         if not available_arms:
             raise ValueError(f"No arms available for type {arm_type.value}")
@@ -240,36 +258,44 @@ class MultiarmedBandit:
 
             # Add exploration bonus for under-explored arms
             if arm.total_pulls < self.min_pulls_for_confidence:
-                explore_bonus = explore_boost * (1 - arm.total_pulls / self.min_pulls_for_confidence)
+                explore_bonus = explore_boost * (
+                    1 - arm.total_pulls / self.min_pulls_for_confidence
+                )
                 sample = min(1.0, sample + explore_bonus)
 
-            samples.append({
-                'name': name,
-                'sample': sample,
-                'mean': arm.mean,
-                'pulls': arm.total_pulls,
-                'variance': arm.variance
-            })
+            samples.append(
+                {
+                    "name": name,
+                    "sample": sample,
+                    "mean": arm.mean,
+                    "pulls": arm.total_pulls,
+                    "variance": arm.variance,
+                }
+            )
 
         # Sort by sample value (Thompson Sampling)
-        samples.sort(key=lambda x: x['sample'], reverse=True)
+        samples.sort(key=lambda x: x["sample"], reverse=True)
 
         # Select best
         best = samples[0]
-        selected_arm = available_arms[best['name']]
+        selected_arm = available_arms[best["name"]]
 
         # Calculate confidence
-        confidence = 1.0 - selected_arm.variance if selected_arm.total_pulls >= self.min_pulls_for_confidence else 0.5
+        confidence = (
+            1.0 - selected_arm.variance
+            if selected_arm.total_pulls >= self.min_pulls_for_confidence
+            else 0.5
+        )
 
         result = SelectionResult(
-            selected=best['name'],
+            selected=best["name"],
             arm_type=arm_type,
-            sample_value=best['sample'],
-            expected_value=best['mean'],
+            sample_value=best["sample"],
+            expected_value=best["mean"],
             confidence=confidence,
             regime=regime,
             alternatives=samples[:5],  # Top 5 alternatives
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
         # Record selection
@@ -284,7 +310,7 @@ class MultiarmedBandit:
         arm_type: ArmType,
         n: int,
         candidates: Optional[List[str]] = None,
-        regime: Optional[str] = None
+        regime: Optional[str] = None,
     ) -> List[str]:
         """Select top n arms without replacement"""
         available_arms = self.arms[arm_type]
@@ -293,7 +319,9 @@ class MultiarmedBandit:
             for name in candidates:
                 if name not in available_arms:
                     self.add_arm(name, arm_type)
-            available_arms = {k: v for k, v in available_arms.items() if k in candidates}
+            available_arms = {
+                k: v for k, v in available_arms.items() if k in candidates
+            }
 
         # Sample all
         samples = [(name, arm.sample(regime)) for name, arm in available_arms.items()]
@@ -302,11 +330,7 @@ class MultiarmedBandit:
         return [name for name, _ in samples[:n]]
 
     def update(
-        self,
-        name: str,
-        arm_type: ArmType,
-        reward: float,
-        regime: Optional[str] = None
+        self, name: str, arm_type: ArmType, reward: float, regime: Optional[str] = None
     ):
         """
         Update arm with observed reward.
@@ -321,7 +345,9 @@ class MultiarmedBandit:
             self.add_arm(name, arm_type)
 
         self.arms[arm_type][name].update(reward, regime, self.decay_rate)
-        logger.debug(f"Updated {arm_type.value}/{name}: reward={reward:.3f}, mean={self.arms[arm_type][name].mean:.3f}")
+        logger.debug(
+            f"Updated {arm_type.value}/{name}: reward={reward:.3f}, mean={self.arms[arm_type][name].mean:.3f}"
+        )
 
     def record_trade_outcome(
         self,
@@ -329,7 +355,7 @@ class MultiarmedBandit:
         model: str,
         strategy: str,
         pnl_pct: float,
-        regime: Optional[str] = None
+        regime: Optional[str] = None,
     ):
         """
         Record trade outcome and update all relevant arms.
@@ -357,42 +383,47 @@ class MultiarmedBandit:
         self.update(model, ArmType.MODEL, reward, regime)
         self.update(strategy, ArmType.STRATEGY, reward, regime)
 
-        logger.info(f"Recorded trade: {symbol} ({model}/{strategy}) -> {pnl_pct:+.2f}% = reward {reward:.3f}")
+        logger.info(
+            f"Recorded trade: {symbol} ({model}/{strategy}) -> {pnl_pct:+.2f}% = reward {reward:.3f}"
+        )
 
-    def get_rankings(self, arm_type: ArmType, regime: Optional[str] = None) -> List[Dict]:
+    def get_rankings(
+        self, arm_type: ArmType, regime: Optional[str] = None
+    ) -> List[Dict]:
         """Get ranked list of arms by expected value"""
         arms = self.arms[arm_type]
 
         rankings = []
         for name, arm in arms.items():
-            rankings.append({
-                'name': name,
-                'mean': arm.mean,
-                'variance': arm.variance,
-                'pulls': arm.total_pulls,
-                'total_reward': arm.total_reward,
-                'confidence_interval': arm.confidence_interval,
-                'last_updated': arm.last_updated
-            })
+            rankings.append(
+                {
+                    "name": name,
+                    "mean": arm.mean,
+                    "variance": arm.variance,
+                    "pulls": arm.total_pulls,
+                    "total_reward": arm.total_reward,
+                    "confidence_interval": arm.confidence_interval,
+                    "last_updated": arm.last_updated,
+                }
+            )
 
-        rankings.sort(key=lambda x: x['mean'], reverse=True)
+        rankings.sort(key=lambda x: x["mean"], reverse=True)
         return rankings
 
     def get_stats(self) -> Dict:
         """Get overall bandit statistics"""
-        stats = {
-            'total_selections': len(self.selection_history),
-            'arms_by_type': {}
-        }
+        stats = {"total_selections": len(self.selection_history), "arms_by_type": {}}
 
         for arm_type in ArmType:
             arms = self.arms[arm_type]
             if arms:
-                stats['arms_by_type'][arm_type.value] = {
-                    'count': len(arms),
-                    'total_pulls': sum(a.total_pulls for a in arms.values()),
-                    'best_arm': max(arms.values(), key=lambda a: a.mean).name if arms else None,
-                    'best_mean': max(a.mean for a in arms.values()) if arms else 0
+                stats["arms_by_type"][arm_type.value] = {
+                    "count": len(arms),
+                    "total_pulls": sum(a.total_pulls for a in arms.values()),
+                    "best_arm": (
+                        max(arms.values(), key=lambda a: a.mean).name if arms else None
+                    ),
+                    "best_mean": max(a.mean for a in arms.values()) if arms else 0,
                 }
 
         return stats
@@ -403,26 +434,26 @@ class MultiarmedBandit:
             Path(self.state_path).parent.mkdir(parents=True, exist_ok=True)
 
             state = {
-                'arms': {},
-                'selection_history': self.selection_history[-100:],  # Last 100
-                'saved_at': datetime.now().isoformat()
+                "arms": {},
+                "selection_history": self.selection_history[-100:],  # Last 100
+                "saved_at": datetime.now().isoformat(),
             }
 
             for arm_type in ArmType:
-                state['arms'][arm_type.value] = {
+                state["arms"][arm_type.value] = {
                     name: {
-                        'alpha': arm.alpha,
-                        'beta': arm.beta,
-                        'total_pulls': arm.total_pulls,
-                        'total_reward': arm.total_reward,
-                        'last_updated': arm.last_updated,
-                        'regime_alpha': dict(arm.regime_alpha),
-                        'regime_beta': dict(arm.regime_beta)
+                        "alpha": arm.alpha,
+                        "beta": arm.beta,
+                        "total_pulls": arm.total_pulls,
+                        "total_reward": arm.total_reward,
+                        "last_updated": arm.last_updated,
+                        "regime_alpha": dict(arm.regime_alpha),
+                        "regime_beta": dict(arm.regime_beta),
                     }
                     for name, arm in self.arms[arm_type].items()
                 }
 
-            with open(self.state_path, 'w') as f:
+            with open(self.state_path, "w") as f:
                 json.dump(state, f, indent=2)
 
             logger.debug(f"Saved bandit state to {self.state_path}")
@@ -433,27 +464,31 @@ class MultiarmedBandit:
         """Load bandit state from disk"""
         try:
             if Path(self.state_path).exists():
-                with open(self.state_path, 'r') as f:
+                with open(self.state_path, "r") as f:
                     state = json.load(f)
 
-                for arm_type_str, arms_data in state.get('arms', {}).items():
+                for arm_type_str, arms_data in state.get("arms", {}).items():
                     arm_type = ArmType(arm_type_str)
                     for name, data in arms_data.items():
                         arm = BetaArm(
                             name=name,
                             arm_type=arm_type,
-                            alpha=data['alpha'],
-                            beta=data['beta'],
-                            total_pulls=data['total_pulls'],
-                            total_reward=data['total_reward'],
-                            last_updated=data.get('last_updated', '')
+                            alpha=data["alpha"],
+                            beta=data["beta"],
+                            total_pulls=data["total_pulls"],
+                            total_reward=data["total_reward"],
+                            last_updated=data.get("last_updated", ""),
                         )
                         # Load regime stats
-                        arm.regime_alpha = defaultdict(lambda: 1.0, data.get('regime_alpha', {}))
-                        arm.regime_beta = defaultdict(lambda: 1.0, data.get('regime_beta', {}))
+                        arm.regime_alpha = defaultdict(
+                            lambda: 1.0, data.get("regime_alpha", {})
+                        )
+                        arm.regime_beta = defaultdict(
+                            lambda: 1.0, data.get("regime_beta", {})
+                        )
                         self.arms[arm_type][name] = arm
 
-                self.selection_history = state.get('selection_history', [])
+                self.selection_history = state.get("selection_history", [])
                 logger.info(f"Loaded bandit state from {self.state_path}")
         except Exception as e:
             logger.warning(f"Could not load bandit state: {e}")
@@ -474,8 +509,21 @@ class SymbolSelector:
 
         # Default symbols to track
         self.default_symbols = [
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA',
-            'AMD', 'INTC', 'CRM', 'NFLX', 'PYPL', 'SQ', 'SHOP', 'COIN'
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "AMZN",
+            "NVDA",
+            "META",
+            "TSLA",
+            "AMD",
+            "INTC",
+            "CRM",
+            "NFLX",
+            "PYPL",
+            "SQ",
+            "SHOP",
+            "COIN",
         ]
 
         # Initialize arms
@@ -487,7 +535,7 @@ class SymbolSelector:
         n: int = 5,
         candidates: Optional[List[str]] = None,
         regime: Optional[str] = None,
-        require_min_pulls: bool = False
+        require_min_pulls: bool = False,
     ) -> List[str]:
         """
         Select top n symbols for trading.
@@ -507,9 +555,11 @@ class SymbolSelector:
         # Filter by min pulls if required
         if require_min_pulls:
             candidates = [
-                s for s in candidates
+                s
+                for s in candidates
                 if s in self.bandit.arms[ArmType.SYMBOL]
-                and self.bandit.arms[ArmType.SYMBOL][s].total_pulls >= self.bandit.min_pulls_for_confidence
+                and self.bandit.arms[ArmType.SYMBOL][s].total_pulls
+                >= self.bandit.min_pulls_for_confidence
             ]
 
         if not candidates:
@@ -520,7 +570,7 @@ class SymbolSelector:
     def get_symbol_scores(self) -> Dict[str, Dict]:
         """Get current scores for all tracked symbols"""
         rankings = self.bandit.get_rankings(ArmType.SYMBOL)
-        return {r['name']: r for r in rankings}
+        return {r["name"]: r for r in rankings}
 
 
 class ModelSelector:
@@ -534,11 +584,11 @@ class ModelSelector:
 
         # Available models
         self.available_models = [
-            'lightgbm',      # LightGBM ML model
-            'ensemble',      # Ensemble predictor
-            'heuristic',     # Pure heuristic rules
-            'momentum',      # Momentum scoring
-            'rl_agent'       # RL trading agent
+            "lightgbm",  # LightGBM ML model
+            "ensemble",  # Ensemble predictor
+            "heuristic",  # Pure heuristic rules
+            "momentum",  # Momentum scoring
+            "rl_agent",  # RL trading agent
         ]
 
         # Initialize arms
@@ -546,9 +596,7 @@ class ModelSelector:
             self.bandit.add_arm(model, ArmType.MODEL)
 
     def select_model(
-        self,
-        symbol: Optional[str] = None,
-        regime: Optional[str] = None
+        self, symbol: Optional[str] = None, regime: Optional[str] = None
     ) -> str:
         """
         Select best model for prediction.
@@ -561,9 +609,7 @@ class ModelSelector:
             Selected model name
         """
         result = self.bandit.select(
-            ArmType.MODEL,
-            candidates=self.available_models,
-            regime=regime
+            ArmType.MODEL, candidates=self.available_models, regime=regime
         )
         return result.selected
 
@@ -582,12 +628,12 @@ class StrategySelector:
 
         # Available strategies
         self.available_strategies = [
-            'momentum_breakout',    # Buy breakouts on momentum
-            'mean_reversion',       # Buy dips, sell rips
-            'trend_following',      # Follow established trends
-            'scalping',             # Quick in-and-out trades
-            'swing_trading',        # Multi-day holds
-            'warrior_small_cap'     # Warrior Trading small cap strategy
+            "momentum_breakout",  # Buy breakouts on momentum
+            "mean_reversion",  # Buy dips, sell rips
+            "trend_following",  # Follow established trends
+            "scalping",  # Quick in-and-out trades
+            "swing_trading",  # Multi-day holds
+            "warrior_small_cap",  # Warrior Trading small cap strategy
         ]
 
         # Initialize arms
@@ -597,9 +643,7 @@ class StrategySelector:
     def select_strategy(self, regime: Optional[str] = None) -> str:
         """Select best strategy for current conditions"""
         result = self.bandit.select(
-            ArmType.STRATEGY,
-            candidates=self.available_strategies,
-            regime=regime
+            ArmType.STRATEGY, candidates=self.available_strategies, regime=regime
         )
         return result.selected
 
@@ -658,23 +702,23 @@ if __name__ == "__main__":
     bandit = get_bandit()
 
     # Add some symbols
-    symbols = ['AAPL', 'TSLA', 'NVDA', 'AMD', 'MSFT']
+    symbols = ["AAPL", "TSLA", "NVDA", "AMD", "MSFT"]
     for symbol in symbols:
         bandit.add_arm(symbol, ArmType.SYMBOL)
 
     # Simulate some trade outcomes
     print("\nSimulating trade outcomes...")
     trades = [
-        ('AAPL', 'lightgbm', 'momentum_breakout', 2.5, 'TRENDING_UP'),
-        ('AAPL', 'lightgbm', 'momentum_breakout', 1.8, 'TRENDING_UP'),
-        ('TSLA', 'ensemble', 'momentum_breakout', -3.2, 'VOLATILE'),
-        ('NVDA', 'ensemble', 'trend_following', 4.1, 'TRENDING_UP'),
-        ('NVDA', 'lightgbm', 'trend_following', 2.9, 'TRENDING_UP'),
-        ('AMD', 'heuristic', 'mean_reversion', -1.5, 'RANGING'),
-        ('MSFT', 'lightgbm', 'swing_trading', 1.2, 'TRENDING_UP'),
-        ('AAPL', 'ensemble', 'momentum_breakout', 3.1, 'TRENDING_UP'),
-        ('TSLA', 'rl_agent', 'scalping', -0.8, 'VOLATILE'),
-        ('NVDA', 'ensemble', 'trend_following', 5.2, 'TRENDING_UP'),
+        ("AAPL", "lightgbm", "momentum_breakout", 2.5, "TRENDING_UP"),
+        ("AAPL", "lightgbm", "momentum_breakout", 1.8, "TRENDING_UP"),
+        ("TSLA", "ensemble", "momentum_breakout", -3.2, "VOLATILE"),
+        ("NVDA", "ensemble", "trend_following", 4.1, "TRENDING_UP"),
+        ("NVDA", "lightgbm", "trend_following", 2.9, "TRENDING_UP"),
+        ("AMD", "heuristic", "mean_reversion", -1.5, "RANGING"),
+        ("MSFT", "lightgbm", "swing_trading", 1.2, "TRENDING_UP"),
+        ("AAPL", "ensemble", "momentum_breakout", 3.1, "TRENDING_UP"),
+        ("TSLA", "rl_agent", "scalping", -0.8, "VOLATILE"),
+        ("NVDA", "ensemble", "trend_following", 5.2, "TRENDING_UP"),
     ]
 
     for symbol, model, strategy, pnl, regime in trades:
@@ -686,8 +730,10 @@ if __name__ == "__main__":
     print("=" * 60)
 
     for _ in range(3):
-        result = bandit.select(ArmType.SYMBOL, regime='TRENDING_UP')
-        print(f"Selected: {result.selected} (sample={result.sample_value:.3f}, mean={result.expected_value:.3f})")
+        result = bandit.select(ArmType.SYMBOL, regime="TRENDING_UP")
+        print(
+            f"Selected: {result.selected} (sample={result.sample_value:.3f}, mean={result.expected_value:.3f})"
+        )
 
     # Rankings
     print("\n" + "=" * 60)
@@ -696,7 +742,9 @@ if __name__ == "__main__":
 
     rankings = bandit.get_rankings(ArmType.SYMBOL)
     for i, r in enumerate(rankings, 1):
-        print(f"{i}. {r['name']}: mean={r['mean']:.3f}, pulls={r['pulls']}, CI={r['confidence_interval']}")
+        print(
+            f"{i}. {r['name']}: mean={r['mean']:.3f}, pulls={r['pulls']}, CI={r['confidence_interval']}"
+        )
 
     # Model rankings
     print("\n" + "=" * 60)
@@ -722,15 +770,15 @@ if __name__ == "__main__":
     print("=" * 60)
 
     symbol_selector = get_symbol_selector()
-    selected_symbols = symbol_selector.select_symbols(n=3, regime='TRENDING_UP')
+    selected_symbols = symbol_selector.select_symbols(n=3, regime="TRENDING_UP")
     print(f"Top 3 symbols for TRENDING_UP: {selected_symbols}")
 
     model_selector = get_model_selector()
-    best_model = model_selector.select_model(regime='TRENDING_UP')
+    best_model = model_selector.select_model(regime="TRENDING_UP")
     print(f"Best model for TRENDING_UP: {best_model}")
 
     strategy_selector = get_strategy_selector()
-    best_strategy = strategy_selector.select_strategy(regime='TRENDING_UP')
+    best_strategy = strategy_selector.select_strategy(regime="TRENDING_UP")
     print(f"Best strategy for TRENDING_UP: {best_strategy}")
 
     # Save state

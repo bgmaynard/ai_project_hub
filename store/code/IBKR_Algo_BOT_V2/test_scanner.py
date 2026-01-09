@@ -4,9 +4,9 @@ Quick test script for Warrior Trading Scanner
 Run this to verify the scanner is working correctly.
 """
 
+import logging
 import sys
 from pathlib import Path
-import logging
 
 # Add project root to path
 project_root = Path(__file__).parent
@@ -15,13 +15,13 @@ sys.path.insert(0, str(project_root))
 from ai.warrior_scanner import WarriorScanner
 from config.config_loader import get_config
 
+
 def main():
     """Test the Warrior Trading Scanner"""
 
     # Set up logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     print("=" * 80)
@@ -49,8 +49,8 @@ def main():
 
         candidates = scanner.scan_premarket(
             min_gap_percent=3.0,  # Lower for testing
-            min_rvol=1.5,          # Lower for testing
-            max_float=100.0        # Higher for testing
+            min_rvol=1.5,  # Lower for testing
+            max_float=100.0,  # Higher for testing
         )
 
         if not candidates:
@@ -60,14 +60,18 @@ def main():
             print(f"\n[OK] Found {len(candidates)} candidates!\n")
 
             # Display results
-            print(f"{'Symbol':8} {'Price':>8} {'Gap %':>8} {'RVOL':>6} "
-                  f"{'Float':>8} {'Score':>6}")
+            print(
+                f"{'Symbol':8} {'Price':>8} {'Gap %':>8} {'RVOL':>6} "
+                f"{'Float':>8} {'Score':>6}"
+            )
             print("-" * 60)
 
             for c in candidates[:10]:  # Show top 10
-                print(f"{c.symbol:8} ${c.price:7.2f} {c.gap_percent:+7.1f}% "
-                      f"{c.relative_volume:6.1f} {c.float_shares:7.1f}M "
-                      f"{c.confidence_score:6.0f}")
+                print(
+                    f"{c.symbol:8} ${c.price:7.2f} {c.gap_percent:+7.1f}% "
+                    f"{c.relative_volume:6.1f} {c.float_shares:7.1f}M "
+                    f"{c.confidence_score:6.0f}"
+                )
 
             # Show details for #1
             if candidates:
@@ -97,6 +101,7 @@ def main():
     except Exception as e:
         print(f"\n[FAIL] Error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

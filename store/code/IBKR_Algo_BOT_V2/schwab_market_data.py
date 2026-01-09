@@ -3,15 +3,16 @@ Schwab/ThinkOrSwim Market Data Integration
 Real-time market data from Schwab API for AI Trading Platform
 Uses direct HTTP API calls with automatic token refresh
 """
-import os
+
+import base64
 import json
 import logging
-import base64
-import time
+import os
 import threading
+import time
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import httpx
 
@@ -42,11 +43,13 @@ def _load_token() -> Optional[Dict]:
             return None
 
         try:
-            with open(TOKEN_FILE, 'r') as f:
+            with open(TOKEN_FILE, "r") as f:
                 _token_data = json.load(f)
 
             # Calculate expiry (access token expires in 30 mins, but we refresh early)
-            _token_expiry = datetime.now() + timedelta(seconds=_token_data.get('expires_in', 1800) - 300)
+            _token_expiry = datetime.now() + timedelta(
+                seconds=_token_data.get("expires_in", 1800) - 300
+            )
             logger.info("Schwab token loaded successfully")
             return _token_data
         except Exception as e:
@@ -61,13 +64,15 @@ def _save_token(token_data: Dict):
     with _token_lock:
         try:
             # Atomic write: write to temp file then rename
-            temp_file = TOKEN_FILE.with_suffix('.tmp')
-            with open(temp_file, 'w') as f:
+            temp_file = TOKEN_FILE.with_suffix(".tmp")
+            with open(temp_file, "w") as f:
                 json.dump(token_data, f, indent=2)
             temp_file.replace(TOKEN_FILE)  # Atomic on most systems
 
             _token_data = token_data
-            _token_expiry = datetime.now() + timedelta(seconds=token_data.get('expires_in', 1800) - 300)
+            _token_expiry = datetime.now() + timedelta(
+                seconds=token_data.get("expires_in", 1800) - 300
+            )
             logger.info("Schwab token saved successfully")
         except Exception as e:
             logger.error(f"Failed to save Schwab token: {e}")
@@ -82,18 +87,20 @@ def _refresh_token() -> bool:
         if _last_refresh_attempt:
             elapsed = (datetime.now() - _last_refresh_attempt).total_seconds()
             if elapsed < _refresh_cooldown_seconds:
-                logger.debug(f"Token refresh on cooldown ({elapsed:.0f}s < {_refresh_cooldown_seconds}s)")
+                logger.debug(
+                    f"Token refresh on cooldown ({elapsed:.0f}s < {_refresh_cooldown_seconds}s)"
+                )
                 return _schwab_available  # Return current state
 
         _last_refresh_attempt = datetime.now()
 
-        if not _token_data or 'refresh_token' not in _token_data:
+        if not _token_data or "refresh_token" not in _token_data:
             logger.error("No refresh token available")
             _schwab_available = False
             return False
 
-        app_key = os.getenv('SCHWAB_APP_KEY')
-        app_secret = os.getenv('SCHWAB_APP_SECRET')
+        app_key = os.getenv("SCHWAB_APP_KEY")
+        app_secret = os.getenv("SCHWAB_APP_SECRET")
 
         if not app_key or not app_secret:
             logger.error("Schwab credentials not configured")
@@ -107,32 +114,34 @@ def _refresh_token() -> bool:
 
             headers = {
                 "Authorization": f"Basic {encoded_credentials}",
-                "Content-Type": "application/x-www-form-urlencoded"
+                "Content-Type": "application/x-www-form-urlencoded",
             }
 
             data = {
                 "grant_type": "refresh_token",
-                "refresh_token": _token_data['refresh_token']
+                "refresh_token": _token_data["refresh_token"],
             }
 
             response = httpx.post(
                 f"{SCHWAB_API_BASE}/v1/oauth/token",
                 headers=headers,
                 data=data,
-                timeout=30.0
+                timeout=30.0,
             )
 
             if response.status_code == 200:
                 new_token = response.json()
                 # Keep refresh token if not returned
-                if 'refresh_token' not in new_token:
-                    new_token['refresh_token'] = _token_data['refresh_token']
+                if "refresh_token" not in new_token:
+                    new_token["refresh_token"] = _token_data["refresh_token"]
                 _save_token(new_token)
                 _schwab_available = True
                 logger.info("Schwab token refreshed successfully")
                 return True
             else:
-                logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Token refresh failed: {response.status_code} - {response.text}"
+                )
                 _schwab_available = False
                 return False
 
@@ -162,7 +171,7 @@ def _ensure_token() -> Optional[str]:
                 return None
 
         _schwab_available = True
-        return _token_data.get('access_token')
+        return _token_data.get("access_token")
 
 
 def _make_request(endpoint: str, params: Optional[Dict] = None) -> Optional[Dict]:
@@ -174,14 +183,11 @@ def _make_request(endpoint: str, params: Optional[Dict] = None) -> Optional[Dict
     try:
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "Accept": "application/json"
+            "Accept": "application/json",
         }
 
         response = httpx.get(
-            f"{SCHWAB_API_BASE}{endpoint}",
-            headers=headers,
-            params=params,
-            timeout=30.0
+            f"{SCHWAB_API_BASE}{endpoint}", headers=headers, params=params, timeout=30.0
         )
 
         if response.status_code == 200:
@@ -196,14 +202,16 @@ def _make_request(endpoint: str, params: Optional[Dict] = None) -> Optional[Dict
                     f"{SCHWAB_API_BASE}{endpoint}",
                     headers=headers,
                     params=params,
-                    timeout=30.0
+                    timeout=30.0,
                 )
                 if response.status_code == 200:
                     return response.json()
             logger.error(f"Request failed after refresh: {response.status_code}")
             return None
         else:
-            logger.error(f"Schwab API error: {response.status_code} - {response.text[:200]}")
+            logger.error(
+                f"Schwab API error: {response.status_code} - {response.text[:200]}"
+            )
             return None
 
     except Exception as e:
@@ -216,8 +224,8 @@ def is_schwab_available() -> bool:
     global _schwab_available
 
     # Check credentials
-    api_key = os.getenv('SCHWAB_APP_KEY')
-    app_secret = os.getenv('SCHWAB_APP_SECRET')
+    api_key = os.getenv("SCHWAB_APP_KEY")
+    app_secret = os.getenv("SCHWAB_APP_SECRET")
 
     if not api_key or not app_secret:
         return False
@@ -250,7 +258,7 @@ def get_token_status() -> Dict:
                 "status": "no_token",
                 "message": "No Schwab token found. Run schwab_authenticate.py",
                 "expires_in_seconds": 0,
-                "needs_refresh": True
+                "needs_refresh": True,
             }
 
         if _token_expiry is None:
@@ -259,7 +267,7 @@ def get_token_status() -> Dict:
                 "status": "unknown_expiry",
                 "message": "Token expiry unknown",
                 "expires_in_seconds": 0,
-                "needs_refresh": True
+                "needs_refresh": True,
             }
 
         expires_in = (_token_expiry - now).total_seconds()
@@ -283,8 +291,10 @@ def get_token_status() -> Dict:
             "expires_in_seconds": max(0, int(expires_in)),
             "expires_at": _token_expiry.isoformat() if _token_expiry else None,
             "needs_refresh": needs_refresh,
-            "has_refresh_token": _token_data.get('refresh_token') is not None if _token_data else False,
-            "schwab_available": _schwab_available
+            "has_refresh_token": (
+                _token_data.get("refresh_token") is not None if _token_data else False
+            ),
+            "schwab_available": _schwab_available,
         }
 
 
@@ -326,29 +336,33 @@ class SchwabMarketData:
             if not data or symbol not in data:
                 return None
 
-            quote_data = data[symbol].get('quote', {})
+            quote_data = data[symbol].get("quote", {})
 
             result = {
                 "symbol": symbol,
-                "bid": float(quote_data.get('bidPrice', 0) or 0),
-                "ask": float(quote_data.get('askPrice', 0) or 0),
-                "last": float(quote_data.get('lastPrice', 0) or 0),
-                "bid_size": int(quote_data.get('bidSize', 0) or 0),
-                "ask_size": int(quote_data.get('askSize', 0) or 0),
-                "volume": int(quote_data.get('totalVolume', 0) or 0),
-                "high": float(quote_data.get('highPrice', 0) or 0),
-                "low": float(quote_data.get('lowPrice', 0) or 0),
-                "open": float(quote_data.get('openPrice', 0) or 0),
-                "close": float(quote_data.get('closePrice', 0) or 0),
-                "change": float(quote_data.get('netChange', 0) or 0),
-                "change_percent": float(quote_data.get('netPercentChangeInDouble', 0) or 0),
+                "bid": float(quote_data.get("bidPrice", 0) or 0),
+                "ask": float(quote_data.get("askPrice", 0) or 0),
+                "last": float(quote_data.get("lastPrice", 0) or 0),
+                "bid_size": int(quote_data.get("bidSize", 0) or 0),
+                "ask_size": int(quote_data.get("askSize", 0) or 0),
+                "volume": int(quote_data.get("totalVolume", 0) or 0),
+                "high": float(quote_data.get("highPrice", 0) or 0),
+                "low": float(quote_data.get("lowPrice", 0) or 0),
+                "open": float(quote_data.get("openPrice", 0) or 0),
+                "close": float(quote_data.get("closePrice", 0) or 0),
+                "change": float(quote_data.get("netChange", 0) or 0),
+                "change_percent": float(
+                    quote_data.get("netPercentChangeInDouble", 0) or 0
+                ),
                 "timestamp": datetime.now().isoformat(),
-                "source": "schwab"
+                "source": "schwab",
             }
 
             # Calculate change_percent if API returns 0 (common in pre-market)
             if result["change_percent"] == 0 and result["close"] > 0:
-                result["change_percent"] = round((result["change"] / result["close"]) * 100, 2)
+                result["change_percent"] = round(
+                    (result["change"] / result["close"]) * 100, 2
+                )
 
             # Update cache
             self._cache[symbol] = result
@@ -371,6 +385,7 @@ class SchwabMarketData:
             Dictionary mapping symbols to quote data
         """
         import time as _time
+
         start = _time.time()
 
         results = {}
@@ -391,40 +406,50 @@ class SchwabMarketData:
         try:
             # Schwab API accepts comma-separated symbols
             symbol_str = ",".join(symbols_to_fetch)
-            logger.info(f"[SCHWAB] Making batch API call for {len(symbols_to_fetch)} symbols")
+            logger.info(
+                f"[SCHWAB] Making batch API call for {len(symbols_to_fetch)} symbols"
+            )
             t1 = _time.time()
-            data = _make_request(f"/marketdata/v1/quotes", params={"symbols": symbol_str})
+            data = _make_request(
+                f"/marketdata/v1/quotes", params={"symbols": symbol_str}
+            )
             t2 = _time.time()
             logger.info(f"[SCHWAB] HTTP request took {(t2-t1)*1000:.0f}ms")
 
             if not data:
-                logger.warning(f"[SCHWAB] API returned no data for {len(symbols_to_fetch)} symbols")
+                logger.warning(
+                    f"[SCHWAB] API returned no data for {len(symbols_to_fetch)} symbols"
+                )
                 return results
 
             for symbol in symbols_to_fetch:
                 if symbol in data:
-                    quote_data = data[symbol].get('quote', {})
+                    quote_data = data[symbol].get("quote", {})
                     result = {
                         "symbol": symbol,
-                        "bid": float(quote_data.get('bidPrice', 0) or 0),
-                        "ask": float(quote_data.get('askPrice', 0) or 0),
-                        "last": float(quote_data.get('lastPrice', 0) or 0),
-                        "bid_size": int(quote_data.get('bidSize', 0) or 0),
-                        "ask_size": int(quote_data.get('askSize', 0) or 0),
-                        "volume": int(quote_data.get('totalVolume', 0) or 0),
-                        "high": float(quote_data.get('highPrice', 0) or 0),
-                        "low": float(quote_data.get('lowPrice', 0) or 0),
-                        "open": float(quote_data.get('openPrice', 0) or 0),
-                        "close": float(quote_data.get('closePrice', 0) or 0),
-                        "change": float(quote_data.get('netChange', 0) or 0),
-                        "change_percent": float(quote_data.get('netPercentChangeInDouble', 0) or 0),
+                        "bid": float(quote_data.get("bidPrice", 0) or 0),
+                        "ask": float(quote_data.get("askPrice", 0) or 0),
+                        "last": float(quote_data.get("lastPrice", 0) or 0),
+                        "bid_size": int(quote_data.get("bidSize", 0) or 0),
+                        "ask_size": int(quote_data.get("askSize", 0) or 0),
+                        "volume": int(quote_data.get("totalVolume", 0) or 0),
+                        "high": float(quote_data.get("highPrice", 0) or 0),
+                        "low": float(quote_data.get("lowPrice", 0) or 0),
+                        "open": float(quote_data.get("openPrice", 0) or 0),
+                        "close": float(quote_data.get("closePrice", 0) or 0),
+                        "change": float(quote_data.get("netChange", 0) or 0),
+                        "change_percent": float(
+                            quote_data.get("netPercentChangeInDouble", 0) or 0
+                        ),
                         "timestamp": datetime.now().isoformat(),
-                        "source": "schwab"
+                        "source": "schwab",
                     }
 
                     # Calculate change_percent if API returns 0 (common in pre-market)
                     if result["change_percent"] == 0 and result["close"] > 0:
-                        result["change_percent"] = round((result["change"] / result["close"]) * 100, 2)
+                        result["change_percent"] = round(
+                            (result["change"] / result["close"]) * 100, 2
+                        )
 
                     results[symbol] = result
 
@@ -432,7 +457,9 @@ class SchwabMarketData:
                     self._cache[symbol] = result
                     self._cache_time[symbol] = datetime.now()
 
-            logger.info(f"[SCHWAB] get_quotes TOTAL: {(_time.time()-start)*1000:.0f}ms, returned {len(results)} quotes")
+            logger.info(
+                f"[SCHWAB] get_quotes TOTAL: {(_time.time()-start)*1000:.0f}ms, returned {len(results)} quotes"
+            )
 
         except Exception as e:
             logger.error(f"Error getting Schwab quotes: {e}")
@@ -458,7 +485,7 @@ class SchwabMarketData:
         period_type: str = "day",
         period: int = 1,
         frequency_type: str = "minute",
-        frequency: int = 1
+        frequency: int = 1,
     ) -> Optional[Dict]:
         """
         Get historical price data
@@ -478,13 +505,13 @@ class SchwabMarketData:
                 "periodType": period_type,
                 "period": period,
                 "frequencyType": frequency_type,
-                "frequency": frequency
+                "frequency": frequency,
             }
 
-            data = _make_request(f"/marketdata/v1/pricehistory", params={
-                "symbol": symbol.upper(),
-                **params
-            })
+            data = _make_request(
+                f"/marketdata/v1/pricehistory",
+                params={"symbol": symbol.upper(), **params},
+            )
 
             return data
 
@@ -531,7 +558,9 @@ def get_schwab_quote(symbol: str) -> Optional[Dict]:
     return None
 
 
-def get_schwab_movers(index: str = "$SPX", direction: str = "up", change_type: str = "percent") -> List[Dict]:
+def get_schwab_movers(
+    index: str = "$SPX", direction: str = "up", change_type: str = "percent"
+) -> List[Dict]:
     """
     Get top movers from Schwab (gainers or losers)
 
@@ -548,7 +577,7 @@ def get_schwab_movers(index: str = "$SPX", direction: str = "up", change_type: s
         endpoint = f"/marketdata/v1/movers/{index}"
         params = {
             "sort": "PERCENT_CHANGE_UP" if direction == "up" else "PERCENT_CHANGE_DOWN",
-            "frequency": "0"  # 0 = all, 1 = 5 min, etc.
+            "frequency": "0",  # 0 = all, 1 = 5 min, etc.
         }
 
         data = _make_request(endpoint, params)
@@ -558,34 +587,40 @@ def get_schwab_movers(index: str = "$SPX", direction: str = "up", change_type: s
             return []
 
         movers = []
-        screeners = data.get('screeners', [])
+        screeners = data.get("screeners", [])
 
         # Schwab API returns stocks directly in screeners array (not nested in instruments)
         for item in screeners:
             # Handle both formats: direct stock data or nested instruments
-            if 'instruments' in item:
+            if "instruments" in item:
                 # Old format with nested instruments
-                for inst in item.get('instruments', []):
-                    movers.append({
-                        'symbol': inst.get('symbol', ''),
-                        'description': inst.get('description', ''),
-                        'price': inst.get('lastPrice', inst.get('last', 0)),
-                        'change': inst.get('netChange', 0),
-                        'change_pct': inst.get('netPercentChange', 0) * 100,  # Convert to percentage
-                        'volume': inst.get('totalVolume', inst.get('volume', 0)),
-                        'direction': direction
-                    })
+                for inst in item.get("instruments", []):
+                    movers.append(
+                        {
+                            "symbol": inst.get("symbol", ""),
+                            "description": inst.get("description", ""),
+                            "price": inst.get("lastPrice", inst.get("last", 0)),
+                            "change": inst.get("netChange", 0),
+                            "change_pct": inst.get("netPercentChange", 0)
+                            * 100,  # Convert to percentage
+                            "volume": inst.get("totalVolume", inst.get("volume", 0)),
+                            "direction": direction,
+                        }
+                    )
             else:
                 # Direct stock data format
-                movers.append({
-                    'symbol': item.get('symbol', ''),
-                    'description': item.get('description', ''),
-                    'price': item.get('lastPrice', item.get('last', 0)),
-                    'change': item.get('netChange', 0),
-                    'change_pct': item.get('netPercentChange', 0) * 100,  # Convert to percentage
-                    'volume': item.get('totalVolume', item.get('volume', 0)),
-                    'direction': direction
-                })
+                movers.append(
+                    {
+                        "symbol": item.get("symbol", ""),
+                        "description": item.get("description", ""),
+                        "price": item.get("lastPrice", item.get("last", 0)),
+                        "change": item.get("netChange", 0),
+                        "change_pct": item.get("netPercentChange", 0)
+                        * 100,  # Convert to percentage
+                        "volume": item.get("totalVolume", item.get("volume", 0)),
+                        "direction": direction,
+                    }
+                )
 
         return movers
 
@@ -601,25 +636,23 @@ def get_all_movers() -> Dict[str, List[Dict]]:
     Returns:
         Dictionary with 'gainers' and 'losers' lists
     """
-    results = {
-        'gainers': [],
-        'losers': [],
-        'timestamp': datetime.now().isoformat()
-    }
+    results = {"gainers": [], "losers": [], "timestamp": datetime.now().isoformat()}
 
     # Get SPX movers (most common)
-    results['gainers'] = get_schwab_movers("$SPX", "up")
-    results['losers'] = get_schwab_movers("$SPX", "down")
+    results["gainers"] = get_schwab_movers("$SPX", "up")
+    results["losers"] = get_schwab_movers("$SPX", "down")
 
     # Also try NASDAQ
     nasdaq_gainers = get_schwab_movers("$COMPX", "up")
     for m in nasdaq_gainers:
-        if m['symbol'] not in [g['symbol'] for g in results['gainers']]:
-            results['gainers'].append(m)
+        if m["symbol"] not in [g["symbol"] for g in results["gainers"]]:
+            results["gainers"].append(m)
 
     # Sort by change percent
-    results['gainers'] = sorted(results['gainers'], key=lambda x: x.get('change_pct', 0), reverse=True)
-    results['losers'] = sorted(results['losers'], key=lambda x: x.get('change_pct', 0))
+    results["gainers"] = sorted(
+        results["gainers"], key=lambda x: x.get("change_pct", 0), reverse=True
+    )
+    results["losers"] = sorted(results["losers"], key=lambda x: x.get("change_pct", 0))
 
     return results
 

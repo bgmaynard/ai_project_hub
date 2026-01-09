@@ -19,11 +19,11 @@ Strategy development:
 import json
 import logging
 import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from dataclasses import dataclass, field, asdict
-from pathlib import Path
 import statistics
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,7 @@ HALT_DATA_FILE = DATA_DIR / "halt_history.json"
 @dataclass
 class HaltRecord:
     """Complete record of a halt event"""
+
     # Identification
     symbol: str
     halt_id: str
@@ -84,6 +85,7 @@ class HaltRecord:
 @dataclass
 class HaltStrategy:
     """Strategy rules for trading halt resumptions"""
+
     name: str
     description: str
 
@@ -123,7 +125,9 @@ class HaltAnalytics:
         self._load_data()
         self._init_default_strategies()
 
-        logger.info(f"HaltAnalytics initialized with {len(self.halt_history)} historical records")
+        logger.info(
+            f"HaltAnalytics initialized with {len(self.halt_history)} historical records"
+        )
 
     def _load_data(self):
         """Load historical halt data"""
@@ -131,10 +135,10 @@ class HaltAnalytics:
             DATA_DIR.mkdir(parents=True, exist_ok=True)
 
             if HALT_DATA_FILE.exists():
-                with open(HALT_DATA_FILE, 'r') as f:
+                with open(HALT_DATA_FILE, "r") as f:
                     data = json.load(f)
                     self.halt_history = [
-                        HaltRecord(**record) for record in data.get('halts', [])
+                        HaltRecord(**record) for record in data.get("halts", [])
                     ]
                     logger.info(f"Loaded {len(self.halt_history)} halt records")
         except Exception as e:
@@ -147,11 +151,11 @@ class HaltAnalytics:
             DATA_DIR.mkdir(parents=True, exist_ok=True)
 
             data = {
-                'halts': [h.to_dict() for h in self.halt_history],
-                'last_updated': datetime.now().isoformat()
+                "halts": [h.to_dict() for h in self.halt_history],
+                "last_updated": datetime.now().isoformat(),
             }
 
-            with open(HALT_DATA_FILE, 'w') as f:
+            with open(HALT_DATA_FILE, "w") as f:
                 json.dump(data, f, indent=2)
 
             logger.info(f"Saved {len(self.halt_history)} halt records")
@@ -170,7 +174,7 @@ class HaltAnalytics:
                 min_pre_halt_momentum=5.0,
                 entry_delay_seconds=3,
                 stop_loss_percent=3.0,
-                take_profit_percent=6.0
+                take_profit_percent=6.0,
             ),
             "bearish_fade": HaltStrategy(
                 name="Bearish Fade",
@@ -181,7 +185,7 @@ class HaltAnalytics:
                 min_pre_halt_momentum=-5.0,
                 entry_delay_seconds=5,
                 stop_loss_percent=3.0,
-                take_profit_percent=6.0
+                take_profit_percent=6.0,
             ),
             "gap_reversal": HaltStrategy(
                 name="Gap Reversal",
@@ -191,27 +195,32 @@ class HaltAnalytics:
                 max_resume_gap=30.0,
                 entry_delay_seconds=10,  # Wait for reversal signal
                 stop_loss_percent=5.0,
-                take_profit_percent=8.0
-            )
+                take_profit_percent=8.0,
+            ),
         }
 
-    def record_halt(self,
-                   symbol: str,
-                   halt_price: float,
-                   halt_time: datetime,
-                   halt_type: str,
-                   pre_halt_price_5min: float,
-                   pre_halt_volume: int) -> HaltRecord:
+    def record_halt(
+        self,
+        symbol: str,
+        halt_price: float,
+        halt_time: datetime,
+        halt_type: str,
+        pre_halt_price_5min: float,
+        pre_halt_volume: int,
+    ) -> HaltRecord:
         """Record a new halt event"""
 
         # Calculate pre-halt momentum
-        pre_halt_momentum = ((halt_price - pre_halt_price_5min) / pre_halt_price_5min * 100
-                            if pre_halt_price_5min > 0 else 0)
+        pre_halt_momentum = (
+            (halt_price - pre_halt_price_5min) / pre_halt_price_5min * 100
+            if pre_halt_price_5min > 0
+            else 0
+        )
 
         record = HaltRecord(
             symbol=symbol,
             halt_id=f"{symbol}_{halt_time.strftime('%Y%m%d_%H%M%S')}",
-            date=halt_time.strftime('%Y-%m-%d'),
+            date=halt_time.strftime("%Y-%m-%d"),
             halt_time=halt_time.isoformat(),
             halt_price=halt_price,
             halt_type=halt_type,
@@ -223,20 +232,21 @@ class HaltAnalytics:
             resume_price=0.0,
             halt_duration_seconds=0,
             resume_gap_percent=0.0,
-            resume_direction=""
+            resume_direction="",
         )
 
         self.halt_history.append(record)
         self._save_data()
 
-        logger.info(f"Recorded halt: {symbol} at ${halt_price:.2f}, momentum: {pre_halt_momentum:+.1f}%")
+        logger.info(
+            f"Recorded halt: {symbol} at ${halt_price:.2f}, momentum: {pre_halt_momentum:+.1f}%"
+        )
 
         return record
 
-    def record_resume(self,
-                     halt_id: str,
-                     resume_price: float,
-                     resume_time: datetime) -> Optional[HaltRecord]:
+    def record_resume(
+        self, halt_id: str, resume_price: float, resume_time: datetime
+    ) -> Optional[HaltRecord]:
         """Record halt resume and calculate metrics"""
 
         # Find the halt record
@@ -258,8 +268,12 @@ class HaltAnalytics:
         record.halt_duration_seconds = int((resume_time - halt_time).total_seconds())
 
         record.resume_gap_percent = round(
-            (resume_price - record.halt_price) / record.halt_price * 100
-            if record.halt_price > 0 else 0, 2
+            (
+                (resume_price - record.halt_price) / record.halt_price * 100
+                if record.halt_price > 0
+                else 0
+            ),
+            2,
         )
 
         # Determine direction
@@ -281,10 +295,7 @@ class HaltAnalytics:
 
         return record
 
-    def record_post_resume(self,
-                          halt_id: str,
-                          price_1min: float,
-                          price_5min: float):
+    def record_post_resume(self, halt_id: str, price_1min: float, price_5min: float):
         """Record post-resume price action"""
 
         record = None
@@ -298,14 +309,22 @@ class HaltAnalytics:
 
         record.post_1min_price = price_1min
         record.post_1min_change = round(
-            (price_1min - record.resume_price) / record.resume_price * 100
-            if record.resume_price > 0 else 0, 2
+            (
+                (price_1min - record.resume_price) / record.resume_price * 100
+                if record.resume_price > 0
+                else 0
+            ),
+            2,
         )
 
         record.post_5min_price = price_5min
         record.post_5min_change = round(
-            (price_5min - record.resume_price) / record.resume_price * 100
-            if record.resume_price > 0 else 0, 2
+            (
+                (price_5min - record.resume_price) / record.resume_price * 100
+                if record.resume_price > 0
+                else 0
+            ),
+            2,
         )
 
         # Determine outcome
@@ -328,7 +347,7 @@ class HaltAnalytics:
             return {
                 "status": "insufficient_data",
                 "message": f"Need more data. Currently have {len(self.halt_history)} records.",
-                "min_required": 5
+                "min_required": 5,
             }
 
         # Filter completed records (have resume data)
@@ -337,7 +356,7 @@ class HaltAnalytics:
         if len(completed) < 3:
             return {
                 "status": "insufficient_completed",
-                "message": f"Need more completed halts. Have {len(completed)} of {len(self.halt_history)}."
+                "message": f"Need more completed halts. Have {len(completed)} of {len(self.halt_history)}.",
             }
 
         # Basic stats
@@ -356,31 +375,36 @@ class HaltAnalytics:
             "status": "success",
             "total_halts": len(self.halt_history),
             "completed_halts": len(completed),
-
             "direction_breakdown": {
                 "bullish": len(bullish_resumes),
                 "bearish": len(bearish_resumes),
-                "neutral": len(completed) - len(bullish_resumes) - len(bearish_resumes)
+                "neutral": len(completed) - len(bullish_resumes) - len(bearish_resumes),
             },
-
             "continuation_rates": {
-                "bullish": round(len(bullish_cont) / len(bullish_resumes) * 100, 1) if bullish_resumes else 0,
-                "bearish": round(len(bearish_cont) / len(bearish_resumes) * 100, 1) if bearish_resumes else 0
+                "bullish": (
+                    round(len(bullish_cont) / len(bullish_resumes) * 100, 1)
+                    if bullish_resumes
+                    else 0
+                ),
+                "bearish": (
+                    round(len(bearish_cont) / len(bearish_resumes) * 100, 1)
+                    if bearish_resumes
+                    else 0
+                ),
             },
-
             "gap_stats": {
                 "avg_gap": round(statistics.mean(gaps), 2) if gaps else 0,
                 "max_gap": round(max(gaps), 2) if gaps else 0,
-                "min_gap": round(min(gaps), 2) if gaps else 0
+                "min_gap": round(min(gaps), 2) if gaps else 0,
             },
-
             "duration_stats": {
-                "avg_duration_sec": round(statistics.mean(durations), 0) if durations else 0,
+                "avg_duration_sec": (
+                    round(statistics.mean(durations), 0) if durations else 0
+                ),
                 "max_duration_sec": max(durations) if durations else 0,
-                "min_duration_sec": min(durations) if durations else 0
+                "min_duration_sec": min(durations) if durations else 0,
             },
-
-            "recommendations": self._generate_recommendations(completed)
+            "recommendations": self._generate_recommendations(completed),
         }
 
         return analysis
@@ -433,26 +457,34 @@ class HaltAnalytics:
             confidence = self._calculate_confidence(halt_record, strategy)
 
             if confidence >= strategy.min_confidence:
-                signals.append({
-                    "strategy": name,
-                    "action": "BUY" if strategy.required_direction == "BULLISH" else "SELL",
-                    "confidence": round(confidence, 2),
-                    "entry_delay": strategy.entry_delay_seconds,
-                    "stop_loss": strategy.stop_loss_percent,
-                    "take_profit": strategy.take_profit_percent
-                })
+                signals.append(
+                    {
+                        "strategy": name,
+                        "action": (
+                            "BUY"
+                            if strategy.required_direction == "BULLISH"
+                            else "SELL"
+                        ),
+                        "confidence": round(confidence, 2),
+                        "entry_delay": strategy.entry_delay_seconds,
+                        "stop_loss": strategy.stop_loss_percent,
+                        "take_profit": strategy.take_profit_percent,
+                    }
+                )
 
         if not signals:
             return {
                 "action": "SKIP",
-                "reason": "No strategy meets confidence threshold"
+                "reason": "No strategy meets confidence threshold",
             }
 
         # Return highest confidence signal
-        best = max(signals, key=lambda x: x['confidence'])
+        best = max(signals, key=lambda x: x["confidence"])
         return best
 
-    def _calculate_confidence(self, record: HaltRecord, strategy: HaltStrategy) -> float:
+    def _calculate_confidence(
+        self, record: HaltRecord, strategy: HaltStrategy
+    ) -> float:
         """Calculate confidence for a strategy"""
         confidence = 0.5  # Base
 
@@ -500,7 +532,7 @@ class HaltAnalytics:
             "total_records": len(self.halt_history),
             "symbols_tracked": len(set(h.symbol for h in self.halt_history)),
             "strategies_available": list(self.strategies.keys()),
-            "data_file": str(HALT_DATA_FILE)
+            "data_file": str(HALT_DATA_FILE),
         }
 
 
@@ -528,7 +560,7 @@ if __name__ == "__main__":
         halt_time=datetime.now(),
         halt_type="LULD_UP",
         pre_halt_price_5min=9.80,
-        pre_halt_volume=500000
+        pre_halt_volume=500000,
     )
 
     print(f"Recorded: {record.halt_id}")
@@ -537,7 +569,7 @@ if __name__ == "__main__":
     analytics.record_resume(
         halt_id=record.halt_id,
         resume_price=11.20,
-        resume_time=datetime.now() + timedelta(minutes=5)
+        resume_time=datetime.now() + timedelta(minutes=5),
     )
 
     # Get analysis

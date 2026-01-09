@@ -16,8 +16,8 @@ All output feeds into MomentumWatchlist for ranking.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Dict
 from enum import Enum
+from typing import Dict, List, Optional
 
 
 class ScannerType(Enum):
@@ -29,18 +29,19 @@ class ScannerType(Enum):
 @dataclass
 class ScannerResult:
     """Standard output format for all scanners"""
+
     symbol: str
     scanner: ScannerType
     price: float
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
     # Scanner-specific fields
-    gap_pct: Optional[float] = None          # GAPPER
-    premarket_volume: Optional[int] = None   # GAPPER
-    pct_change: Optional[float] = None       # GAINER
-    rel_vol: Optional[float] = None          # GAINER, HOD
-    volume: Optional[int] = None             # GAINER, HOD
-    day_high: Optional[float] = None         # HOD
+    gap_pct: Optional[float] = None  # GAPPER
+    premarket_volume: Optional[int] = None  # GAPPER
+    pct_change: Optional[float] = None  # GAINER
+    rel_vol: Optional[float] = None  # GAINER, HOD
+    volume: Optional[int] = None  # GAINER, HOD
+    day_high: Optional[float] = None  # HOD
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for API output"""
@@ -48,7 +49,7 @@ class ScannerResult:
             "symbol": self.symbol,
             "scanner": self.scanner.value,
             "price": self.price,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
         }
         # Add non-None optional fields
         if self.gap_pct is not None:
@@ -69,17 +70,18 @@ class ScannerResult:
 @dataclass
 class ScannerConfig:
     """Common configuration for all scanners"""
+
     # Price filters
     min_price: float = 2.00
     max_price: float = 20.00
     max_spread_pct: float = 0.015  # 1.5% max spread
 
     # Gap scanner
-    gap_min_pct: float = 0.04      # 4% minimum gap
+    gap_min_pct: float = 0.04  # 4% minimum gap
     gap_min_volume: int = 200_000  # Pre-market volume
 
     # Gainer scanner
-    gainer_min_pct: float = 0.05   # 5% minimum change
+    gainer_min_pct: float = 0.05  # 5% minimum change
     gainer_min_rel_vol: float = 2.5
     gainer_min_volume: int = 750_000
 

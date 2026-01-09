@@ -1,10 +1,12 @@
-﻿import os
+﻿import asyncio
 import datetime
-import asyncio
+import os
 from typing import Optional
 
 try:
-    from ib_insync import IB, Stock, MarketOrder, LimitOrder, StopOrder, StopLimitOrder, Order, util as ib_util
+    from ib_insync import (IB, LimitOrder, MarketOrder, Order, Stock,
+                           StopLimitOrder, StopOrder)
+    from ib_insync import util as ib_util
 except Exception:
     # Allow running in OFFLINE_MODE without ib_insync installed
     IB = object  # type: ignore
@@ -13,14 +15,17 @@ except Exception:
 
 # -------------------- helpers --------------------
 
+
 def _offline() -> bool:
     return os.getenv("OFFLINE_MODE", "0").lower() in ("1", "true", "yes", "on")
+
 
 def _stamp() -> str:
     try:
         return datetime.datetime.now().astimezone().isoformat()
     except Exception:
         return datetime.datetime.utcnow().isoformat() + "Z"
+
 
 def _ensure_loop() -> None:
     """Ensure an asyncio event loop exists in this thread (FastAPI / AnyIO worker)."""
@@ -37,6 +42,7 @@ def _ensure_loop() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
+
 # -------------------- module state --------------------
 
 _last_error: Optional[str] = None
@@ -47,6 +53,7 @@ _last_ok: Optional[str] = None
 _ensure_loop()
 
 # -------------------- mock payloads (offline/weekend) --------------------
+
 
 def _mock_status():
     return {
@@ -65,31 +72,75 @@ def _mock_status():
         },
     }
 
+
 def _mock_quote(symbol: str):
-    return {"ok": True, "symbol": symbol.upper(), "last": 123.45, "bid": 123.40, "ask": 123.50, "mock": True}
+    return {
+        "ok": True,
+        "symbol": symbol.upper(),
+        "last": 123.45,
+        "bid": 123.40,
+        "ask": 123.50,
+        "mock": True,
+    }
+
 
 def _mock_place(symbol, side, order_type, qty):
     return {
-        "ok": True, "mock": True, "symbol": symbol.upper(), "side": side.upper(),
-        "type": order_type.upper(), "orderId": 900000, "status": "Submitted (mock)",
-        "filled": 0, "remaining": qty, "avgFillPrice": None
+        "ok": True,
+        "mock": True,
+        "symbol": symbol.upper(),
+        "side": side.upper(),
+        "type": order_type.upper(),
+        "orderId": 900000,
+        "status": "Submitted (mock)",
+        "filled": 0,
+        "remaining": qty,
+        "avgFillPrice": None,
     }
 
-def _mock_preview(symbol, side, order_type, limit_price, stop_price, trail_type, trail_value, activation_price, tif, outside_rth, note="OFFLINE_MODE mock"):
+
+def _mock_preview(
+    symbol,
+    side,
+    order_type,
+    limit_price,
+    stop_price,
+    trail_type,
+    trail_value,
+    activation_price,
+    tif,
+    outside_rth,
+    note="OFFLINE_MODE mock",
+):
     return {
-        "ok": True, "mock": True, "symbol": symbol.upper(), "side": side.upper(), "type": order_type.upper(),
-        "tif": tif.upper(), "outsideRth": bool(outside_rth),
+        "ok": True,
+        "mock": True,
+        "symbol": symbol.upper(),
+        "side": side.upper(),
+        "type": order_type.upper(),
+        "tif": tif.upper(),
+        "outsideRth": bool(outside_rth),
         "prices": {
-            "limitPrice": limit_price, "stopPrice": stop_price, "trailType": trail_type,
-            "trailValue": trail_value, "activationPrice": activation_price
+            "limitPrice": limit_price,
+            "stopPrice": stop_price,
+            "trailType": trail_type,
+            "trailValue": trail_value,
+            "activationPrice": activation_price,
         },
         "preview": {
-            "initMarginChange": "100.00", "maintMarginChange": "100.00", "equityWithLoanChange": "-100.00",
-            "commission": "1.00", "minCommission": "1.00", "maxCommission": "1.00", "warningText": note
-        }
+            "initMarginChange": "100.00",
+            "maintMarginChange": "100.00",
+            "equityWithLoanChange": "-100.00",
+            "commission": "1.00",
+            "minCommission": "1.00",
+            "maxCommission": "1.00",
+            "warningText": note,
+        },
     }
 
+
 # -------------------- connection --------------------
+
 
 def _connect(readonly: bool = True):
     """Connect to TWS/Gateway. Uses async connect when available; records diag timestamps."""
@@ -108,7 +159,11 @@ def _connect(readonly: bool = True):
         return ib
     try:
         if ib_util is not None and hasattr(ib, "connectAsync"):
-            ib_util.run(ib.connectAsync(host, port, clientId=client_id, readonly=readonly, timeout=3))
+            ib_util.run(
+                ib.connectAsync(
+                    host, port, clientId=client_id, readonly=readonly, timeout=3
+                )
+            )
         else:
             ib.connect(host, port, clientId=client_id, readonly=readonly, timeout=3)
         if ib.isConnected():
@@ -117,10 +172,13 @@ def _connect(readonly: bool = True):
         _last_error = f"{type(e).__name__}: {e}"
     return ib
 
+
 def _contract_for(symbol: str):
     return Stock(symbol, "SMART", "USD") if hasattr(Stock, "__name__") else None
 
+
 # -------------------- status & quotes --------------------
+
 
 def ib_status():
     if _offline():
@@ -148,13 +206,16 @@ def ib_status():
         "account": acct,
         "serverTime": str(server_time) if server_time else None,
         "diag": {
-            "lastAttempt": _last_attempt, "lastOk": _last_ok, "lastError": _last_error,
+            "lastAttempt": _last_attempt,
+            "lastOk": _last_ok,
+            "lastError": _last_error,
             "host": os.getenv("TWS_HOST", "127.0.0.1"),
             "port": int(os.getenv("TWS_PORT", "7497")),
             "clientId": int(os.getenv("TWS_CLIENT_ID", "19")),
-            "readonly": True
-        }
+            "readonly": True,
+        },
     }
+
 
 def get_quote(symbol: str):
     if _offline():
@@ -170,7 +231,13 @@ def get_quote(symbol: str):
         bid = float(t.bid) if t.bid is not None else None
         ask = float(t.ask) if t.ask is not None else None
         ib.disconnect()
-        return {"ok": True, "symbol": symbol.upper(), "last": last, "bid": bid, "ask": ask}
+        return {
+            "ok": True,
+            "symbol": symbol.upper(),
+            "last": last,
+            "bid": bid,
+            "ask": ask,
+        }
     except Exception as e:
         try:
             ib.disconnect()
@@ -178,9 +245,23 @@ def get_quote(symbol: str):
             pass
         return {"ok": False, "error": str(e)}
 
+
 # -------------------- order building --------------------
 
-def _build_order(side, order_type, qty, limit_price, stop_price, tif, outside_rth, *, trail_type=None, trail_value=None, activation_price=None):
+
+def _build_order(
+    side,
+    order_type,
+    qty,
+    limit_price,
+    stop_price,
+    tif,
+    outside_rth,
+    *,
+    trail_type=None,
+    trail_value=None,
+    activation_price=None,
+):
     side = side.upper()
     order_type = order_type.upper()
     tif = tif.upper()
@@ -222,9 +303,24 @@ def _build_order(side, order_type, qty, limit_price, stop_price, tif, outside_rt
     o.outsideRth = bool(outside_rth)
     return o
 
+
 # -------------------- orders / account --------------------
 
-def place_order(symbol, side, qty, order_type, limit_price=None, stop_price=None, tif="DAY", outside_rth=False, *, trail_type=None, trail_value=None, activation_price=None):
+
+def place_order(
+    symbol,
+    side,
+    qty,
+    order_type,
+    limit_price=None,
+    stop_price=None,
+    tif="DAY",
+    outside_rth=False,
+    *,
+    trail_type=None,
+    trail_value=None,
+    activation_price=None,
+):
     if _offline():
         return _mock_place(symbol, side, order_type, qty)
     ib = _connect(readonly=False)
@@ -237,8 +333,16 @@ def place_order(symbol, side, qty, order_type, limit_price=None, stop_price=None
         pass
     try:
         o = _build_order(
-            side, order_type, qty, limit_price, stop_price, tif, outside_rth,
-            trail_type=trail_type, trail_value=trail_value, activation_price=activation_price
+            side,
+            order_type,
+            qty,
+            limit_price,
+            stop_price,
+            tif,
+            outside_rth,
+            trail_type=trail_type,
+            trail_value=trail_value,
+            activation_price=activation_price,
         )
     except Exception as e:
         try:
@@ -255,7 +359,15 @@ def place_order(symbol, side, qty, order_type, limit_price=None, stop_price=None
             "symbol": symbol.upper(),
             "side": side.upper(),
             "type": order_type.upper(),
-            "orderId": getattr(s, "orderId", getattr(tr, "order", None).orderId if getattr(tr, "order", None) else None),
+            "orderId": getattr(
+                s,
+                "orderId",
+                (
+                    getattr(tr, "order", None).orderId
+                    if getattr(tr, "order", None)
+                    else None
+                ),
+            ),
             "status": getattr(s, "status", None),
             "filled": getattr(s, "filled", None),
             "remaining": getattr(s, "remaining", None),
@@ -270,6 +382,7 @@ def place_order(symbol, side, qty, order_type, limit_price=None, stop_price=None
         except Exception:
             pass
         return {"ok": False, "error": err}
+
 
 def cancel_all_orders():
     if _offline():
@@ -288,6 +401,7 @@ def cancel_all_orders():
             pass
         return {"ok": False, "error": str(e)}
 
+
 def list_open_orders():
     if _offline():
         return {"ok": True, "mock": True, "openOrders": []}
@@ -299,18 +413,20 @@ def list_open_orders():
         for o in ib.openOrders():
             s = getattr(o, "order", o)
             c = getattr(o, "contract", None)
-            out.append({
-                "orderId": getattr(s, "orderId", None),
-                "action": getattr(s, "action", None),
-                "orderType": getattr(s, "orderType", None),
-                "totalQuantity": getattr(s, "totalQuantity", None),
-                "lmtPrice": getattr(s, "lmtPrice", None),
-                "auxPrice": getattr(s, "auxPrice", None),
-                "trailingPercent": getattr(s, "trailingPercent", None),
-                "trailStopPrice": getattr(s, "trailStopPrice", None),
-                "tif": getattr(s, "tif", None),
-                "symbol": getattr(c, "symbol", None) if c else None,
-            })
+            out.append(
+                {
+                    "orderId": getattr(s, "orderId", None),
+                    "action": getattr(s, "action", None),
+                    "orderType": getattr(s, "orderType", None),
+                    "totalQuantity": getattr(s, "totalQuantity", None),
+                    "lmtPrice": getattr(s, "lmtPrice", None),
+                    "auxPrice": getattr(s, "auxPrice", None),
+                    "trailingPercent": getattr(s, "trailingPercent", None),
+                    "trailStopPrice": getattr(s, "trailStopPrice", None),
+                    "tif": getattr(s, "tif", None),
+                    "symbol": getattr(c, "symbol", None) if c else None,
+                }
+            )
         ib.disconnect()
         return {"ok": True, "openOrders": out}
     except Exception as e:
@@ -319,6 +435,7 @@ def list_open_orders():
         except Exception:
             pass
         return {"ok": False, "error": str(e)}
+
 
 def list_positions():
     if _offline():
@@ -330,12 +447,14 @@ def list_positions():
         out = []
         for p in ib.positions():
             c = p.contract
-            out.append({
-                "symbol": c.symbol,
-                "exchange": c.exchange,
-                "position": p.position,
-                "avgCost": p.avgCost,
-            })
+            out.append(
+                {
+                    "symbol": c.symbol,
+                    "exchange": c.exchange,
+                    "position": p.position,
+                    "avgCost": p.avgCost,
+                }
+            )
         ib.disconnect()
         return {"ok": True, "positions": out}
     except Exception as e:
@@ -344,6 +463,7 @@ def list_positions():
         except Exception:
             pass
         return {"ok": False, "error": str(e)}
+
 
 def account_snapshot():
     if _offline():
@@ -364,11 +484,37 @@ def account_snapshot():
             pass
         return {"ok": False, "error": str(e)}
 
+
 # -------------------- What-If / Preview --------------------
 
-def preview_order(symbol, side, qty, order_type, limit_price=None, stop_price=None, tif="DAY", outside_rth=False, *, trail_type=None, trail_value=None, activation_price=None):
+
+def preview_order(
+    symbol,
+    side,
+    qty,
+    order_type,
+    limit_price=None,
+    stop_price=None,
+    tif="DAY",
+    outside_rth=False,
+    *,
+    trail_type=None,
+    trail_value=None,
+    activation_price=None,
+):
     if _offline():
-        return _mock_preview(symbol, side, order_type, limit_price, stop_price, trail_type, trail_value, activation_price, tif, outside_rth)
+        return _mock_preview(
+            symbol,
+            side,
+            order_type,
+            limit_price,
+            stop_price,
+            trail_type,
+            trail_value,
+            activation_price,
+            tif,
+            outside_rth,
+        )
     ib = _connect(readonly=False)
     if not ib or not ib.isConnected():
         return {"ok": False, "error": "Not connected to TWS for preview"}
@@ -379,8 +525,16 @@ def preview_order(symbol, side, qty, order_type, limit_price=None, stop_price=No
         pass
     try:
         o = _build_order(
-            side, order_type, qty, limit_price, stop_price, tif, outside_rth,
-            trail_type=trail_type, trail_value=trail_value, activation_price=activation_price
+            side,
+            order_type,
+            qty,
+            limit_price,
+            stop_price,
+            tif,
+            outside_rth,
+            trail_type=trail_type,
+            trail_value=trail_value,
+            activation_price=activation_price,
         )
         o.whatIf = True
     except Exception as e:
@@ -414,9 +568,11 @@ def preview_order(symbol, side, qty, order_type, limit_price=None, stop_price=No
                 "warningText": getattr(st, "warningText", None),
             },
             "prices": {
-                "limitPrice": limit_price, "stopPrice": stop_price,
-                "trailType": trail_type, "trailValue": trail_value,
-                "activationPrice": activation_price
+                "limitPrice": limit_price,
+                "stopPrice": stop_price,
+                "trailType": trail_type,
+                "trailValue": trail_value,
+                "activationPrice": activation_price,
             },
         }
     except Exception as e:
@@ -426,10 +582,17 @@ def preview_order(symbol, side, qty, order_type, limit_price=None, stop_price=No
         except Exception:
             pass
         return {"ok": False, "error": err}
+
+
 def cancel_order(order_id: int):
     """Cancel a specific order by orderId."""
     if _offline():
-        return {"ok": True, "mock": True, "orderId": int(order_id), "status": "Canceled (mock)"}
+        return {
+            "ok": True,
+            "mock": True,
+            "orderId": int(order_id),
+            "status": "Canceled (mock)",
+        }
     ib = _connect(readonly=False)
     if not ib or not ib.isConnected():
         return {"ok": False, "error": "Not connected to TWS for orders"}
@@ -455,7 +618,10 @@ def cancel_order(order_id: int):
                 pass
         if not matches:
             ib.disconnect()
-            return {"ok": False, "error": f"OrderId {order_id} not found among open orders"}
+            return {
+                "ok": False,
+                "error": f"OrderId {order_id} not found among open orders",
+            }
 
         # cancel
         for o in matches:

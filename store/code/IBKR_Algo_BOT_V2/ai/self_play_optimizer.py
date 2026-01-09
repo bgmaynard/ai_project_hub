@@ -18,16 +18,17 @@ Architecture:
 Created: December 2025
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from collections import deque
-from enum import Enum
-import random
-import logging
 import json
+import logging
+import random
+from collections import deque
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,9 @@ logger = logging.getLogger(__name__)
 try:
     import torch
     import torch.nn as nn
-    import torch.optim as optim
     import torch.nn.functional as F
+    import torch.optim as optim
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -45,22 +47,25 @@ except ImportError:
 
 class AgentRole(Enum):
     """Agent roles in self-play"""
-    ENTRY = "entry"   # Decides when to enter positions
-    EXIT = "exit"     # Decides when to exit positions
+
+    ENTRY = "entry"  # Decides when to enter positions
+    EXIT = "exit"  # Decides when to exit positions
 
 
 class MarketAction(Enum):
     """Possible actions"""
-    WAIT = 0     # Do nothing
-    ENTER = 1    # Enter position
-    EXIT = 2     # Exit position
+
+    WAIT = 0  # Do nothing
+    ENTER = 1  # Enter position
+    EXIT = 2  # Exit position
 
 
 @dataclass
 class GameState:
     """State of the trading game"""
+
     # Price data
-    prices: np.ndarray        # Recent price history
+    prices: np.ndarray  # Recent price history
     current_price: float
 
     # Position info
@@ -95,21 +100,27 @@ class GameState:
         else:
             price_changes = np.zeros(19)
 
-        features = np.concatenate([
-            price_changes,  # 19 features
+        features = np.concatenate(
             [
-                self.rsi / 100,
-                np.tanh(self.macd * 10),
-                self.bb_position,
-                np.tanh(self.volume_ratio - 1),
-                np.tanh(self.trend * 10),
-                min(self.volatility * 10, 1),
-                float(self.has_position),
-                np.tanh(self.unrealized_pnl * 20) if self.has_position else 0,
-                min((self.time_step - self.entry_time) / 20, 1) if self.has_position else 0,
-                self.time_step / self.max_steps
+                price_changes,  # 19 features
+                [
+                    self.rsi / 100,
+                    np.tanh(self.macd * 10),
+                    self.bb_position,
+                    np.tanh(self.volume_ratio - 1),
+                    np.tanh(self.trend * 10),
+                    min(self.volatility * 10, 1),
+                    float(self.has_position),
+                    np.tanh(self.unrealized_pnl * 20) if self.has_position else 0,
+                    (
+                        min((self.time_step - self.entry_time) / 20, 1)
+                        if self.has_position
+                        else 0
+                    ),
+                    self.time_step / self.max_steps,
+                ],
             ]
-        ])
+        )
         return features.astype(np.float32)
 
     @property
@@ -120,19 +131,21 @@ class GameState:
 @dataclass
 class GameOutcome:
     """Outcome of a trading game"""
+
     total_pnl: float
     total_trades: int
     win_rate: float
     sharpe_ratio: float
     max_drawdown: float
-    entry_score: float    # Entry agent performance
-    exit_score: float     # Exit agent performance
-    trades: List[Dict]    # Individual trades
+    entry_score: float  # Entry agent performance
+    exit_score: float  # Exit agent performance
+    trades: List[Dict]  # Individual trades
 
 
 @dataclass
 class TradeRecord:
     """Record of a single trade"""
+
     entry_time: int
     entry_price: float
     exit_time: int
@@ -143,6 +156,7 @@ class TradeRecord:
 
 
 if HAS_TORCH:
+
     class PolicyNetwork(nn.Module):
         """Policy network for agent decisions"""
 
@@ -181,7 +195,7 @@ class TradingAgent:
         role: AgentRole,
         learning_rate: float = 0.001,
         gamma: float = 0.99,
-        entropy_coef: float = 0.01
+        entropy_coef: float = 0.01,
     ):
         self.role = role
         self.learning_rate = learning_rate
@@ -212,7 +226,9 @@ class TradingAgent:
 
         logger.info(f"TradingAgent ({role.value}) initialized")
 
-    def select_action(self, state: GameState, training: bool = True) -> Tuple[int, float]:
+    def select_action(
+        self, state: GameState, training: bool = True
+    ) -> Tuple[int, float]:
         """
         Select action based on current state.
 
@@ -223,7 +239,9 @@ class TradingAgent:
 
         if HAS_TORCH:
             with torch.no_grad():
-                state_tensor = torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                state_tensor = (
+                    torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                )
                 self.policy_net.eval()
                 policy, value = self.policy_net(state_tensor)
 
@@ -352,7 +370,9 @@ class TradingAgent:
 
         if HAS_TORCH:
             with torch.no_grad():
-                state_tensor = torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                state_tensor = (
+                    torch.FloatTensor(state_array).unsqueeze(0).to(self.device)
+                )
                 self.policy_net.eval()
                 policy, _ = self.policy_net(state_tensor)
             probs = policy.squeeze().cpu().numpy()
@@ -366,10 +386,7 @@ class TradingAgent:
                 probs = np.array([0.5, 0.5])
 
         action_name = "ENTER" if self.role == AgentRole.ENTRY else "EXIT"
-        return {
-            "WAIT": float(probs[0]),
-            action_name: float(probs[1])
-        }
+        return {"WAIT": float(probs[0]), action_name: float(probs[1])}
 
 
 class TradingGame:
@@ -383,7 +400,7 @@ class TradingGame:
         transaction_cost: float = 0.001,
         slippage: float = 0.0005,
         max_holding_time: int = 20,  # Force exit after N steps
-        reward_scaling: float = 100.0
+        reward_scaling: float = 100.0,
     ):
         self.transaction_cost = transaction_cost
         self.slippage = slippage
@@ -404,16 +421,16 @@ class TradingGame:
             prices=prices[:50],  # Start with some history
             current_price=prices[50],
             time_step=0,
-            max_steps=len(prices) - 51
+            max_steps=len(prices) - 51,
         )
 
         if indicators:
-            self.state.rsi = indicators.get('rsi', 50)
-            self.state.macd = indicators.get('macd', 0)
-            self.state.bb_position = indicators.get('bb_position', 0.5)
-            self.state.volume_ratio = indicators.get('volume_ratio', 1)
-            self.state.trend = indicators.get('trend', 0)
-            self.state.volatility = indicators.get('volatility', 0.02)
+            self.state.rsi = indicators.get("rsi", 50)
+            self.state.macd = indicators.get("macd", 0)
+            self.state.bb_position = indicators.get("bb_position", 0.5)
+            self.state.volume_ratio = indicators.get("volume_ratio", 1)
+            self.state.trend = indicators.get("trend", 0)
+            self.state.volatility = indicators.get("volatility", 0.02)
 
         self._full_prices = prices
         self._indicators = indicators or {}
@@ -421,9 +438,7 @@ class TradingGame:
         return self.state
 
     def step(
-        self,
-        entry_action: int,
-        exit_action: int
+        self, entry_action: int, exit_action: int
     ) -> Tuple[GameState, float, float, bool, Dict]:
         """
         Execute one step of the game.
@@ -437,7 +452,7 @@ class TradingGame:
         """
         entry_reward = 0.0
         exit_reward = 0.0
-        info = {'action': 'none'}
+        info = {"action": "none"}
 
         old_price = self.state.current_price
 
@@ -463,7 +478,7 @@ class TradingGame:
                     exit_price=exit_price,
                     pnl=pnl * self.state.entry_price,  # Dollar P&L
                     pnl_pct=pnl * 100,
-                    holding_time=holding_time
+                    holding_time=holding_time,
                 )
                 self.trades.append(trade)
 
@@ -480,7 +495,9 @@ class TradingGame:
                 # Rewards
                 if pnl > 0:
                     # Winning trade: reward both agents
-                    exit_reward = pnl * self.reward_scaling * 2  # Exit gets more for timing
+                    exit_reward = (
+                        pnl * self.reward_scaling * 2
+                    )  # Exit gets more for timing
                     entry_reward = pnl * self.reward_scaling
                 else:
                     # Losing trade: penalize both
@@ -493,7 +510,7 @@ class TradingGame:
                 elif pnl < 0 and holding_time > 10:
                     exit_reward -= 0.5
 
-                info = {'action': 'exit', 'pnl': pnl, 'forced': force_exit}
+                info = {"action": "exit", "pnl": pnl, "forced": force_exit}
 
             else:
                 # Holding - small time cost
@@ -504,13 +521,13 @@ class TradingGame:
             if entry_action == 1:
                 # Execute entry
                 entry_price = self.state.current_price * (1 + self.slippage)
-                entry_price *= (1 + self.transaction_cost)
+                entry_price *= 1 + self.transaction_cost
 
                 self.state.has_position = True
                 self.state.entry_price = entry_price
                 self.state.entry_time = self.state.time_step
 
-                info = {'action': 'enter', 'price': entry_price}
+                info = {"action": "enter", "price": entry_price}
             else:
                 # Waiting - small penalty for missed opportunities in trending market
                 entry_reward = -0.005
@@ -521,14 +538,14 @@ class TradingGame:
         # Update state
         if self.state.time_step + 50 < len(self._full_prices):
             idx = self.state.time_step + 50
-            self.state.prices = self._full_prices[idx-49:idx+1]
+            self.state.prices = self._full_prices[idx - 49 : idx + 1]
             self.state.current_price = self._full_prices[idx]
 
             # Update unrealized P&L
             if self.state.has_position:
                 self.state.unrealized_pnl = (
-                    (self.state.current_price - self.state.entry_price) /
-                    self.state.entry_price
+                    (self.state.current_price - self.state.entry_price)
+                    / self.state.entry_price
                 ) * self.reward_scaling
 
         # Track equity
@@ -541,7 +558,9 @@ class TradingGame:
         # Final rewards if done
         if done and self.state.has_position:
             # Force close at end
-            pnl = (self.state.current_price - self.state.entry_price) / self.state.entry_price
+            pnl = (
+                self.state.current_price - self.state.entry_price
+            ) / self.state.entry_price
             pnl -= self.transaction_cost
 
             self.state.realized_pnl += pnl * self.reward_scaling
@@ -583,7 +602,7 @@ class TradingGame:
             max_drawdown=max_dd,
             entry_score=0,  # Calculated separately
             exit_score=0,
-            trades=[asdict(t) for t in self.trades]
+            trades=[asdict(t) for t in self.trades],
         )
 
 
@@ -596,7 +615,7 @@ class SelfPlayTrainer:
         self,
         learning_rate: float = 0.001,
         gamma: float = 0.99,
-        model_path: str = "store/models/selfplay"
+        model_path: str = "store/models/selfplay",
     ):
         self.entry_agent = TradingAgent(AgentRole.ENTRY, learning_rate, gamma)
         self.exit_agent = TradingAgent(AgentRole.EXIT, learning_rate, gamma)
@@ -605,14 +624,16 @@ class SelfPlayTrainer:
 
         # Training history
         self.training_history: List[Dict] = []
-        self.best_pnl = float('-inf')
+        self.best_pnl = float("-inf")
 
         # Load if exists
         self._load_models()
 
         logger.info("SelfPlayTrainer initialized")
 
-    def train_episode(self, prices: np.ndarray, indicators: Optional[Dict] = None) -> Dict:
+    def train_episode(
+        self, prices: np.ndarray, indicators: Optional[Dict] = None
+    ) -> Dict:
         """Train one episode of self-play"""
         state = self.game.reset(prices, indicators)
 
@@ -621,8 +642,12 @@ class SelfPlayTrainer:
 
         while True:
             # Get actions from both agents
-            entry_action, entry_value = self.entry_agent.select_action(state, training=True)
-            exit_action, exit_value = self.exit_agent.select_action(state, training=True)
+            entry_action, entry_value = self.entry_agent.select_action(
+                state, training=True
+            )
+            exit_action, exit_value = self.exit_agent.select_action(
+                state, training=True
+            )
 
             # Execute step
             next_state, entry_reward, exit_reward, done, info = self.game.step(
@@ -654,18 +679,18 @@ class SelfPlayTrainer:
 
         # Record
         result = {
-            'episode': self.entry_agent.episode,
-            'total_pnl': outcome.total_pnl,
-            'trades': outcome.total_trades,
-            'win_rate': outcome.win_rate,
-            'sharpe': outcome.sharpe_ratio,
-            'max_dd': outcome.max_drawdown,
-            'entry_reward': total_entry_reward,
-            'exit_reward': total_exit_reward,
-            'entry_loss': entry_loss,
-            'exit_loss': exit_loss,
-            'entry_elo': self.entry_agent.elo_rating,
-            'exit_elo': self.exit_agent.elo_rating
+            "episode": self.entry_agent.episode,
+            "total_pnl": outcome.total_pnl,
+            "trades": outcome.total_trades,
+            "win_rate": outcome.win_rate,
+            "sharpe": outcome.sharpe_ratio,
+            "max_dd": outcome.max_drawdown,
+            "entry_reward": total_entry_reward,
+            "exit_reward": total_exit_reward,
+            "entry_loss": entry_loss,
+            "exit_loss": exit_loss,
+            "entry_elo": self.entry_agent.elo_rating,
+            "exit_elo": self.exit_agent.elo_rating,
         }
 
         self.training_history.append(result)
@@ -688,7 +713,9 @@ class SelfPlayTrainer:
         exit_score = 1 if outcome.sharpe_ratio > 0 else 0
 
         # Expected scores
-        entry_expected = 1 / (1 + 10 ** ((self.exit_agent.elo_rating - self.entry_agent.elo_rating) / 400))
+        entry_expected = 1 / (
+            1 + 10 ** ((self.exit_agent.elo_rating - self.entry_agent.elo_rating) / 400)
+        )
         exit_expected = 1 - entry_expected
 
         # Update
@@ -707,13 +734,15 @@ class SelfPlayTrainer:
 
             next_state, _, _, done, info = self.game.step(entry_action, exit_action)
 
-            if info['action'] != 'none':
-                decisions.append({
-                    'time_step': state.time_step,
-                    'action': info['action'],
-                    'price': state.current_price,
-                    **info
-                })
+            if info["action"] != "none":
+                decisions.append(
+                    {
+                        "time_step": state.time_step,
+                        "action": info["action"],
+                        "price": state.current_price,
+                        **info,
+                    }
+                )
 
             state = next_state
 
@@ -723,10 +752,10 @@ class SelfPlayTrainer:
         outcome = self.game.get_outcome()
 
         return {
-            'outcome': asdict(outcome),
-            'decisions': decisions,
-            'entry_probs': self.entry_agent.get_action_probs(state),
-            'exit_probs': self.exit_agent.get_action_probs(state)
+            "outcome": asdict(outcome),
+            "decisions": decisions,
+            "entry_probs": self.entry_agent.get_action_probs(state),
+            "exit_probs": self.exit_agent.get_action_probs(state),
         }
 
     def get_entry_signal(self, state: GameState) -> Dict:
@@ -735,9 +764,9 @@ class SelfPlayTrainer:
         action, _ = self.entry_agent.select_action(state, training=False)
 
         return {
-            'should_enter': action == 1,
-            'confidence': probs['ENTER'],
-            'probabilities': probs
+            "should_enter": action == 1,
+            "confidence": probs["ENTER"],
+            "probabilities": probs,
         }
 
     def get_exit_signal(self, state: GameState) -> Dict:
@@ -746,9 +775,9 @@ class SelfPlayTrainer:
         action, _ = self.exit_agent.select_action(state, training=False)
 
         return {
-            'should_exit': action == 1,
-            'confidence': probs['EXIT'],
-            'probabilities': probs
+            "should_exit": action == 1,
+            "confidence": probs["EXIT"],
+            "probabilities": probs,
         }
 
     def _save_models(self):
@@ -757,24 +786,36 @@ class SelfPlayTrainer:
             Path(self.model_path).mkdir(parents=True, exist_ok=True)
 
             if HAS_TORCH:
-                torch.save({
-                    'entry_state': self.entry_agent.policy_net.state_dict(),
-                    'exit_state': self.exit_agent.policy_net.state_dict(),
-                    'entry_elo': self.entry_agent.elo_rating,
-                    'exit_elo': self.exit_agent.elo_rating,
-                    'entry_episode': self.entry_agent.episode,
-                    'exit_episode': self.exit_agent.episode,
-                    'best_pnl': self.best_pnl
-                }, f"{self.model_path}/selfplay_agents.pt")
+                torch.save(
+                    {
+                        "entry_state": self.entry_agent.policy_net.state_dict(),
+                        "exit_state": self.exit_agent.policy_net.state_dict(),
+                        "entry_elo": self.entry_agent.elo_rating,
+                        "exit_elo": self.exit_agent.elo_rating,
+                        "entry_episode": self.entry_agent.episode,
+                        "exit_episode": self.exit_agent.episode,
+                        "best_pnl": self.best_pnl,
+                    },
+                    f"{self.model_path}/selfplay_agents.pt",
+                )
             else:
-                with open(f"{self.model_path}/selfplay_agents.json", 'w') as f:
-                    json.dump({
-                        'entry_qtable': {str(k): v.tolist() for k, v in self.entry_agent.q_table.items()},
-                        'exit_qtable': {str(k): v.tolist() for k, v in self.exit_agent.q_table.items()},
-                        'entry_elo': self.entry_agent.elo_rating,
-                        'exit_elo': self.exit_agent.elo_rating,
-                        'best_pnl': self.best_pnl
-                    }, f)
+                with open(f"{self.model_path}/selfplay_agents.json", "w") as f:
+                    json.dump(
+                        {
+                            "entry_qtable": {
+                                str(k): v.tolist()
+                                for k, v in self.entry_agent.q_table.items()
+                            },
+                            "exit_qtable": {
+                                str(k): v.tolist()
+                                for k, v in self.exit_agent.q_table.items()
+                            },
+                            "entry_elo": self.entry_agent.elo_rating,
+                            "exit_elo": self.exit_agent.elo_rating,
+                            "best_pnl": self.best_pnl,
+                        },
+                        f,
+                    )
 
             logger.info(f"Saved self-play models to {self.model_path}")
         except Exception as e:
@@ -786,25 +827,33 @@ class SelfPlayTrainer:
             if HAS_TORCH:
                 path = f"{self.model_path}/selfplay_agents.pt"
                 if Path(path).exists():
-                    checkpoint = torch.load(path, map_location=self.entry_agent.device, weights_only=False)
-                    self.entry_agent.policy_net.load_state_dict(checkpoint['entry_state'])
-                    self.exit_agent.policy_net.load_state_dict(checkpoint['exit_state'])
-                    self.entry_agent.elo_rating = checkpoint['entry_elo']
-                    self.exit_agent.elo_rating = checkpoint['exit_elo']
-                    self.entry_agent.episode = checkpoint['entry_episode']
-                    self.exit_agent.episode = checkpoint['exit_episode']
-                    self.best_pnl = checkpoint['best_pnl']
+                    checkpoint = torch.load(
+                        path, map_location=self.entry_agent.device, weights_only=False
+                    )
+                    self.entry_agent.policy_net.load_state_dict(
+                        checkpoint["entry_state"]
+                    )
+                    self.exit_agent.policy_net.load_state_dict(checkpoint["exit_state"])
+                    self.entry_agent.elo_rating = checkpoint["entry_elo"]
+                    self.exit_agent.elo_rating = checkpoint["exit_elo"]
+                    self.entry_agent.episode = checkpoint["entry_episode"]
+                    self.exit_agent.episode = checkpoint["exit_episode"]
+                    self.best_pnl = checkpoint["best_pnl"]
                     logger.info(f"Loaded self-play models from {path}")
             else:
                 path = f"{self.model_path}/selfplay_agents.json"
                 if Path(path).exists():
-                    with open(path, 'r') as f:
+                    with open(path, "r") as f:
                         data = json.load(f)
-                    self.entry_agent.q_table = {eval(k): np.array(v) for k, v in data['entry_qtable'].items()}
-                    self.exit_agent.q_table = {eval(k): np.array(v) for k, v in data['exit_qtable'].items()}
-                    self.entry_agent.elo_rating = data['entry_elo']
-                    self.exit_agent.elo_rating = data['exit_elo']
-                    self.best_pnl = data['best_pnl']
+                    self.entry_agent.q_table = {
+                        eval(k): np.array(v) for k, v in data["entry_qtable"].items()
+                    }
+                    self.exit_agent.q_table = {
+                        eval(k): np.array(v) for k, v in data["exit_qtable"].items()
+                    }
+                    self.entry_agent.elo_rating = data["entry_elo"]
+                    self.exit_agent.elo_rating = data["exit_elo"]
+                    self.best_pnl = data["best_pnl"]
                     logger.info(f"Loaded self-play models from {path}")
         except Exception as e:
             logger.warning(f"Could not load models: {e}")
@@ -812,11 +861,13 @@ class SelfPlayTrainer:
     def get_stats(self) -> Dict:
         """Get training statistics"""
         return {
-            'episodes': self.entry_agent.episode,
-            'entry_elo': self.entry_agent.elo_rating,
-            'exit_elo': self.exit_agent.elo_rating,
-            'best_pnl': self.best_pnl,
-            'recent_history': self.training_history[-20:] if self.training_history else []
+            "episodes": self.entry_agent.episode,
+            "entry_elo": self.entry_agent.elo_rating,
+            "exit_elo": self.exit_agent.elo_rating,
+            "best_pnl": self.best_pnl,
+            "recent_history": (
+                self.training_history[-20:] if self.training_history else []
+            ),
         }
 
 
@@ -850,9 +901,11 @@ if __name__ == "__main__":
     print("\nTraining for 10 episodes...")
     for ep in range(10):
         result = trainer.train_episode(prices)
-        print(f"Episode {result['episode']}: PnL={result['total_pnl']:.2f}, "
-              f"trades={result['trades']}, win_rate={result['win_rate']:.1%}, "
-              f"Entry ELO={result['entry_elo']:.0f}, Exit ELO={result['exit_elo']:.0f}")
+        print(
+            f"Episode {result['episode']}: PnL={result['total_pnl']:.2f}, "
+            f"trades={result['trades']}, win_rate={result['win_rate']:.1%}, "
+            f"Entry ELO={result['entry_elo']:.0f}, Exit ELO={result['exit_elo']:.0f}"
+        )
 
     # Evaluate
     print("\n" + "=" * 60)

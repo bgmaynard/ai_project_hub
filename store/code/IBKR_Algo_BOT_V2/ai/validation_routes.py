@@ -10,23 +10,16 @@ Endpoints:
 - /api/validation/export - Observability exports
 """
 
+import logging
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional, Dict, List, Any
-import logging
 
-from .momentum_snapshot import (
-    get_momentum_snapshot_engine,
-    MomentumOutputState
-)
-from .exit_imperatives import (
-    get_exit_imperative_engine,
-    ExitReason
-)
-from .safe_activation import (
-    get_safe_activation,
-    ActivationMode
-)
+from .exit_imperatives import ExitReason, get_exit_imperative_engine
+from .momentum_snapshot import (MomentumOutputState,
+                                get_momentum_snapshot_engine)
+from .safe_activation import ActivationMode, get_safe_activation
 from .strategy_policy_engine import get_strategy_policy_engine
 
 logger = logging.getLogger(__name__)
@@ -35,6 +28,7 @@ router = APIRouter(prefix="/api/validation", tags=["Validation & Calibration"])
 
 
 # ==================== Request Models ====================
+
 
 class PriceUpdate(BaseModel):
     symbol: str
@@ -95,6 +89,7 @@ class RecordTradeRequest(BaseModel):
 
 # ==================== Momentum Snapshot Routes ====================
 
+
 @router.post("/momentum/price")
 async def add_price_update(data: PriceUpdate):
     """Add a price update for momentum tracking"""
@@ -104,7 +99,7 @@ async def add_price_update(data: PriceUpdate):
         price=data.price,
         volume=data.volume,
         bid=data.bid,
-        ask=data.ask
+        ask=data.ask,
     )
     return {"status": "recorded", "symbol": data.symbol}
 
@@ -138,7 +133,7 @@ async def check_entry_eligibility(symbol: str):
         "symbol": symbol,
         "can_enter": can_enter,
         "reason": reason,
-        "current_state": engine.get_state(symbol.upper()).value
+        "current_state": engine.get_state(symbol.upper()).value,
     }
 
 
@@ -152,7 +147,7 @@ async def check_exit_signal(symbol: str):
         "should_exit": should_exit,
         "reason": reason,
         "urgency": urgency,
-        "current_state": engine.get_state(symbol.upper()).value
+        "current_state": engine.get_state(symbol.upper()).value,
     }
 
 
@@ -160,22 +155,16 @@ async def check_exit_signal(symbol: str):
 async def get_all_momentum_states():
     """Get all symbol momentum states"""
     engine = get_momentum_snapshot_engine()
-    return {
-        "states": engine.get_all_states(),
-        "stats": engine.get_stats()
-    }
+    return {"states": engine.get_all_states(), "stats": engine.get_stats()}
 
 
 @router.get("/momentum/transitions")
 async def get_momentum_transitions(
-    symbol: str = None,
-    limit: int = Query(50, description="Max entries")
+    symbol: str = None, limit: int = Query(50, description="Max entries")
 ):
     """Get momentum state transition log"""
     engine = get_momentum_snapshot_engine()
-    return {
-        "transitions": engine.get_transition_log(symbol, limit)
-    }
+    return {"transitions": engine.get_transition_log(symbol, limit)}
 
 
 @router.post("/momentum/reset/{symbol}")
@@ -188,6 +177,7 @@ async def reset_momentum_symbol(symbol: str):
 
 # ==================== Exit Imperatives Routes ====================
 
+
 @router.post("/exit/register")
 async def register_position_for_exit(data: PositionRegister):
     """Register a position for exit monitoring"""
@@ -197,7 +187,7 @@ async def register_position_for_exit(data: PositionRegister):
         entry_price=data.entry_price,
         shares=data.shares,
         stop_price=data.stop_price,
-        target_price=data.target_price
+        target_price=data.target_price,
     )
     return {"status": "registered", "symbol": data.symbol}
 
@@ -227,7 +217,7 @@ async def check_exit_imperatives(data: ExitCheck):
         momentum_state=data.momentum_state,
         regime=data.regime,
         volatility=data.volatility,
-        above_vwap=data.above_vwap
+        above_vwap=data.above_vwap,
     )
     return result.to_dict()
 
@@ -241,8 +231,7 @@ async def get_monitored_positions():
 
 @router.get("/exit/log")
 async def get_exit_log(
-    symbol: str = None,
-    limit: int = Query(50, description="Max entries")
+    symbol: str = None, limit: int = Query(50, description="Max entries")
 ):
     """Get exit imperative log"""
     engine = get_exit_imperative_engine()
@@ -272,6 +261,7 @@ async def update_exit_config(config: Dict[str, Any]):
 
 
 # ==================== Safe Activation Routes ====================
+
 
 @router.get("/safe/status")
 async def get_safe_status():
@@ -307,11 +297,11 @@ async def activate_safe_mode(data: SafeActivateRequest):
     result = safe.activate(
         mode=mode,
         position_multiplier=data.position_multiplier,
-        symbol_whitelist=data.symbol_whitelist
+        symbol_whitelist=data.symbol_whitelist,
     )
 
-    if not result['success']:
-        raise HTTPException(400, result.get('error', 'Activation failed'))
+    if not result["success"]:
+        raise HTTPException(400, result.get("error", "Activation failed"))
 
     return result
 
@@ -328,15 +318,13 @@ async def check_trade_allowed(data: TradeCheckRequest):
     """Check if a trade is allowed under safe mode"""
     safe = get_safe_activation()
     allowed, reason, adjusted_size = safe.can_trade(
-        symbol=data.symbol.upper(),
-        strategy_id=data.strategy_id,
-        size_usd=data.size_usd
+        symbol=data.symbol.upper(), strategy_id=data.strategy_id, size_usd=data.size_usd
     )
     return {
         "allowed": allowed,
         "reason": reason,
         "adjusted_size_usd": adjusted_size,
-        "original_size_usd": data.size_usd
+        "original_size_usd": data.size_usd,
     }
 
 
@@ -394,8 +382,8 @@ async def reset_kill_switch(force: bool = False):
     safe = get_safe_activation()
     result = safe.reset_kill_switch(force=force)
 
-    if not result['success']:
-        raise HTTPException(400, result.get('error', 'Reset failed'))
+    if not result["success"]:
+        raise HTTPException(400, result.get("error", "Reset failed"))
 
     return result
 
@@ -409,6 +397,7 @@ async def reset_daily_metrics():
 
 
 # ==================== Observability Export Routes ====================
+
 
 @router.get("/export/json")
 async def export_observability_json():
@@ -443,6 +432,7 @@ async def get_observability_summary():
 
 # ==================== Unified Validation Check ====================
 
+
 @router.post("/check-entry/{symbol}")
 async def unified_entry_check(
     symbol: str,
@@ -451,7 +441,7 @@ async def unified_entry_check(
     current_price: float,
     momentum_state: str = "",
     regime: str = "",
-    above_vwap: bool = True
+    above_vwap: bool = True,
 ):
     """
     Unified entry check that validates through all systems.
@@ -475,7 +465,7 @@ async def unified_entry_check(
         "approved": False,
         "checks": {},
         "adjusted_size": 0,
-        "reasons": []
+        "reasons": [],
     }
 
     # Check 1: Safe activation
@@ -483,7 +473,7 @@ async def unified_entry_check(
     results["checks"]["safe_activation"] = {
         "passed": allowed,
         "reason": reason,
-        "adjusted_size": adjusted_size
+        "adjusted_size": adjusted_size,
     }
     if not allowed:
         results["reasons"].append(f"Safe: {reason}")
@@ -496,7 +486,7 @@ async def unified_entry_check(
     results["checks"]["momentum"] = {
         "passed": can_enter,
         "state": state.value,
-        "reason": mom_reason
+        "reason": mom_reason,
     }
     if not can_enter:
         results["reasons"].append(f"Momentum: {mom_reason}")
@@ -504,6 +494,7 @@ async def unified_entry_check(
     # Check 3: Policy evaluation
     try:
         from .chronos_adapter import get_chronos_adapter
+
         chronos = get_chronos_adapter()
         context = chronos.get_context(symbol)
         chronos_dict = context.to_dict() if context else {"market_regime": regime}
@@ -514,7 +505,7 @@ async def unified_entry_check(
     results["checks"]["policy"] = {
         "passed": policy_result.enabled,
         "position_multiplier": policy_result.position_multiplier,
-        "reasons": policy_result.reasons
+        "reasons": policy_result.reasons,
     }
     if not policy_result.enabled:
         results["reasons"].append(f"Policy: {'; '.join(policy_result.reasons)}")
@@ -525,9 +516,9 @@ async def unified_entry_check(
 
     # Final decision
     all_passed = (
-        results["checks"]["safe_activation"]["passed"] and
-        results["checks"]["momentum"]["passed"] and
-        results["checks"]["policy"]["passed"]
+        results["checks"]["safe_activation"]["passed"]
+        and results["checks"]["momentum"]["passed"]
+        and results["checks"]["policy"]["passed"]
     )
 
     results["approved"] = all_passed
@@ -544,6 +535,7 @@ async def unified_entry_check(
 
 # ==================== Connectivity Management ====================
 
+
 @router.get("/connectivity/status")
 async def get_connectivity_status():
     """
@@ -559,6 +551,7 @@ async def get_connectivity_status():
     """
     try:
         from .connectivity_manager import get_connectivity_manager
+
         manager = get_connectivity_manager()
         return {"success": True, **manager.get_connectivity_report()}
     except Exception as e:
@@ -581,6 +574,7 @@ async def run_connectivity_self_test():
     """
     try:
         from .connectivity_manager import get_connectivity_manager
+
         manager = get_connectivity_manager()
         results = await manager.run_startup_self_test()
         return {"success": True, **results}
@@ -603,6 +597,7 @@ async def reconnect_feeds(paper_mode: bool = True):
     """
     try:
         from .connectivity_manager import get_connectivity_manager
+
         manager = get_connectivity_manager()
         results = await manager.reconnect_feeds(paper_mode=paper_mode)
         return results
@@ -625,6 +620,7 @@ async def get_connectivity_report():
     """
     try:
         from .connectivity_manager import get_connectivity_manager
+
         manager = get_connectivity_manager()
         report = manager.get_connectivity_report()
 
@@ -638,7 +634,9 @@ async def get_connectivity_report():
         lines.append(f"SYSTEM STATE: {report['system_state']}")
         lines.append(f"REASON: {report['system_state_reason']}")
         lines.append("")
-        lines.append(f"MARKET: {report['market']['status']} - {report['market']['detail']}")
+        lines.append(
+            f"MARKET: {report['market']['status']} - {report['market']['detail']}"
+        )
         lines.append(f"ET TIME: {report['market']['et_time']}")
         lines.append("")
         lines.append("-" * 70)
@@ -647,30 +645,31 @@ async def get_connectivity_report():
         lines.append(f"{'Service':<20} {'Status':<10} {'Last Event':<25} Detail")
         lines.append("-" * 70)
 
-        for name, svc in report['services'].items():
-            last_event = svc.get('last_successful_event', '-')
+        for name, svc in report["services"].items():
+            last_event = svc.get("last_successful_event", "-")
             if last_event and len(last_event) > 23:
                 last_event = last_event[:23]
-            detail = svc.get('detail', '')[:30]
-            lines.append(f"{name:<20} {svc['status']:<10} {last_event or '-':<25} {detail}")
+            detail = svc.get("detail", "")[:30]
+            lines.append(
+                f"{name:<20} {svc['status']:<10} {last_event or '-':<25} {detail}"
+            )
 
         lines.append("-" * 70)
-        lines.append(f"SUMMARY: {report['summary']['services_up']} UP / "
-                    f"{report['summary']['services_down']} DOWN / "
-                    f"{report['summary']['services_degraded']} DEGRADED")
+        lines.append(
+            f"SUMMARY: {report['summary']['services_up']} UP / "
+            f"{report['summary']['services_down']} DOWN / "
+            f"{report['summary']['services_degraded']} DEGRADED"
+        )
         lines.append("=" * 70)
 
-        return {
-            "success": True,
-            "report": report,
-            "formatted": "\n".join(lines)
-        }
+        return {"success": True, "report": report, "formatted": "\n".join(lines)}
     except Exception as e:
         logger.error(f"Report error: {e}")
         return {"success": False, "error": str(e)}
 
 
 # ==================== Market Time ====================
+
 
 @router.get("/time/status")
 async def get_time_status():
@@ -690,19 +689,22 @@ async def get_time_status():
     """
     try:
         from .market_time import get_time_status as get_market_time
+
         return {"success": True, **get_market_time()}
     except Exception as e:
         logger.error(f"Time status error: {e}")
         from datetime import datetime
+
         return {
             "success": False,
             "error": str(e),
             "et_time": datetime.now().isoformat(),
-            "market_status": "UNKNOWN"
+            "market_status": "UNKNOWN",
         }
 
 
 # ==================== Chronos Status ====================
+
 
 @router.get("/chronos/status")
 async def get_chronos_status():
@@ -718,18 +720,16 @@ async def get_chronos_status():
     """
     try:
         from .chronos_adapter import get_chronos_adapter
+
         chronos = get_chronos_adapter()
         return {"success": True, **chronos.get_status()}
     except Exception as e:
         logger.error(f"Chronos status error: {e}")
-        return {
-            "success": False,
-            "available": False,
-            "error": str(e)
-        }
+        return {"success": False, "available": False, "error": str(e)}
 
 
 # ==================== Pre-Market Readiness Check ====================
+
 
 @router.get("/pre-market-ready")
 async def check_pre_market_readiness():
@@ -747,6 +747,7 @@ async def check_pre_market_readiness():
     Used to verify system is ready before 07:00 ET trading window.
     """
     from datetime import datetime
+
     import httpx
 
     checks = {}
@@ -759,7 +760,7 @@ async def check_pre_market_readiness():
         checks[name] = {
             "status": "PASS" if passed else "FAIL",
             "detail": detail,
-            "last_check": timestamp or datetime.now().isoformat()
+            "last_check": timestamp or datetime.now().isoformat(),
         }
         if not passed:
             all_passed = False
@@ -770,12 +771,14 @@ async def check_pre_market_readiness():
         async with httpx.AsyncClient() as client:
             resp = await client.get("http://localhost:9100/api/health", timeout=5)
             health = resp.json()
-            market_data_ok = health.get("services", {}).get("market_data") != "unavailable"
+            market_data_ok = (
+                health.get("services", {}).get("market_data") != "unavailable"
+            )
             record_check(
                 "market_data",
                 market_data_ok,
                 health.get("services", {}).get("market_data", "unknown"),
-                health.get("timestamp")
+                health.get("timestamp"),
             )
     except Exception as e:
         record_check("market_data", False, f"Health check failed: {str(e)}")
@@ -783,7 +786,9 @@ async def check_pre_market_readiness():
     # Check 2: Streams Subscribed (Polygon WebSocket)
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.get("http://localhost:9100/api/polygon/stream/status", timeout=5)
+            resp = await client.get(
+                "http://localhost:9100/api/polygon/stream/status", timeout=5
+            )
             stream = resp.json()
             stream_ok = stream.get("connected", False) or stream.get("available", False)
             trade_subs = len(stream.get("trade_subscriptions", []))
@@ -791,7 +796,7 @@ async def check_pre_market_readiness():
                 "websocket_streams",
                 stream_ok,
                 f"Connected: {stream_ok}, Subscriptions: {trade_subs}",
-                stream.get("last_message")
+                stream.get("last_message"),
             )
     except Exception as e:
         record_check("websocket_streams", False, f"Stream check failed: {str(e)}")
@@ -799,13 +804,14 @@ async def check_pre_market_readiness():
     # Check 3: Chronos Responding
     try:
         from .chronos_adapter import get_chronos_adapter
+
         chronos = get_chronos_adapter()
         chronos_ok = chronos.available
         model_name = "amazon/chronos-t5-small" if chronos_ok else "unavailable"
         record_check(
             "chronos_service",
             chronos_ok,
-            f"Model: {model_name}, Available: {chronos_ok}"
+            f"Model: {model_name}, Available: {chronos_ok}",
         )
     except Exception as e:
         record_check("chronos_service", False, f"Chronos check failed: {str(e)}")
@@ -817,7 +823,9 @@ async def check_pre_market_readiness():
         async with httpx.AsyncClient() as client:
             # News trader
             try:
-                resp = await client.get("http://localhost:9100/api/scanner/news-trader/status", timeout=3)
+                resp = await client.get(
+                    "http://localhost:9100/api/scanner/news-trader/status", timeout=3
+                )
                 news = resp.json()
                 scanner_status["news"] = news.get("scalper_running", False)
                 scanner_timestamps["news"] = news.get("last_scan_time")
@@ -826,7 +834,9 @@ async def check_pre_market_readiness():
 
             # HFT Scalper
             try:
-                resp = await client.get("http://localhost:9100/api/scanner/scalper/status", timeout=3)
+                resp = await client.get(
+                    "http://localhost:9100/api/scanner/scalper/status", timeout=3
+                )
                 scalper = resp.json()
                 scanner_status["scalper"] = scalper.get("is_running", False)
                 scanner_timestamps["scalper"] = scalper.get("last_scan_time")
@@ -835,7 +845,9 @@ async def check_pre_market_readiness():
 
             # Premarket
             try:
-                resp = await client.get("http://localhost:9100/api/scanner/premarket/status", timeout=3)
+                resp = await client.get(
+                    "http://localhost:9100/api/scanner/premarket/status", timeout=3
+                )
                 premarket = resp.json()
                 scanner_status["premarket"] = premarket.get("last_updated")
                 scanner_timestamps["premarket"] = premarket.get("last_updated")
@@ -860,7 +872,7 @@ async def check_pre_market_readiness():
         record_check(
             "gating_engine",
             gating_ok,
-            f"Mode: {safe.config.mode.value}, Policies: {len(policy.get_all_policies().get('policies', {}))}"
+            f"Mode: {safe.config.mode.value}, Policies: {len(policy.get_all_policies().get('policies', {}))}",
         )
     except Exception as e:
         record_check("gating_engine", False, f"Gating engine check failed: {str(e)}")
@@ -873,13 +885,14 @@ async def check_pre_market_readiness():
         record_check(
             "kill_switch",
             kill_switch_off,
-            f"Active: {safe._kill_switch_active}, Reason: {reason}"
+            f"Active: {safe._kill_switch_active}, Reason: {reason}",
         )
     except Exception as e:
         record_check("kill_switch", False, f"Kill switch check failed: {str(e)}")
 
     # Determine overall status
     from .safe_activation import GovernorHealthState
+
     safe = get_safe_activation()
     health_state = safe.get_governor_health_state(services_healthy=all_passed)
 
@@ -903,5 +916,5 @@ async def check_pre_market_readiness():
         "timestamp": datetime.now().isoformat(),
         "checks": checks,
         "issues": messages if messages else None,
-        "scanner_timestamps": scanner_timestamps
+        "scanner_timestamps": scanner_timestamps,
     }

@@ -5,22 +5,18 @@ Phase 5: Sentiment Analysis Testing
 Tests all components of the sentiment analysis system
 """
 
-import pytest
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
 # Import sentiment analyzer components
-from ai.warrior_sentiment_analyzer import (
-    FinBERTSentimentAnalyzer,
-    NewsAPIClient,
-    TwitterClient,
-    RedditClient,
-    WarriorSentimentAnalyzer,
-    SentimentSignal,
-    AggregatedSentiment,
-    get_sentiment_analyzer
-)
+from ai.warrior_sentiment_analyzer import (AggregatedSentiment,
+                                           FinBERTSentimentAnalyzer,
+                                           NewsAPIClient, RedditClient,
+                                           SentimentSignal, TwitterClient,
+                                           WarriorSentimentAnalyzer,
+                                           get_sentiment_analyzer)
 
 
 class TestFinBERTSentimentAnalyzer:
@@ -99,7 +95,7 @@ class TestNewsAPIClient:
 
     def test_init_without_api_key(self):
         """Test initialization without API key"""
-        with patch.dict('os.environ', {}, clear=True):
+        with patch.dict("os.environ", {}, clear=True):
             client = NewsAPIClient()
             assert client.api_key is None
 
@@ -120,13 +116,15 @@ class TestNewsAPIClient:
         # Mock the session response
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(return_value={
-            "articles": [
-                {"title": "Test News", "publishedAt": "2025-01-01T00:00:00Z"}
-            ]
-        })
+        mock_response.json = AsyncMock(
+            return_value={
+                "articles": [
+                    {"title": "Test News", "publishedAt": "2025-01-01T00:00:00Z"}
+                ]
+            }
+        )
 
-        with patch('aiohttp.ClientSession') as mock_session_class:
+        with patch("aiohttp.ClientSession") as mock_session_class:
             mock_session = AsyncMock()
             mock_session.get.return_value.__aenter__.return_value = mock_response
             mock_session.closed = False
@@ -148,7 +146,7 @@ class TestTwitterClient:
 
     def test_init_without_credentials(self):
         """Test initialization without credentials"""
-        with patch.dict('os.environ', {}, clear=True):
+        with patch.dict("os.environ", {}, clear=True):
             client = TwitterClient()
             assert client.client is None
 
@@ -167,7 +165,7 @@ class TestRedditClient:
 
     def test_init_without_credentials(self):
         """Test initialization without credentials"""
-        with patch.dict('os.environ', {}, clear=True):
+        with patch.dict("os.environ", {}, clear=True):
             client = RedditClient()
             assert client.reddit is None
 
@@ -224,7 +222,7 @@ class TestWarriorSentimentAnalyzer:
                 "description": "Apple shows bullish momentum",
                 "publishedAt": datetime.now().isoformat() + "Z",
                 "url": "http://example.com",
-                "source": {"name": "TestNews"}
+                "source": {"name": "TestNews"},
             }
         ]
 
@@ -232,12 +230,12 @@ class TestWarriorSentimentAnalyzer:
         analyzer.twitter_client.fetch_tweets = AsyncMock(return_value=[])
         analyzer.reddit_client.fetch_mentions = AsyncMock(return_value=[])
 
-        sentiment = await analyzer.analyze_symbol("AAPL", hours=24, sources=['news'])
+        sentiment = await analyzer.analyze_symbol("AAPL", hours=24, sources=["news"])
 
         assert sentiment.symbol == "AAPL"
         assert sentiment.signals_count > 0
-        assert 'news' in sentiment.source_scores
-        assert sentiment.source_counts['news'] > 0
+        assert "news" in sentiment.source_scores
+        assert sentiment.source_counts["news"] > 0
 
     @pytest.mark.asyncio
     async def test_caching(self):
@@ -250,7 +248,7 @@ class TestWarriorSentimentAnalyzer:
                 "title": "Test",
                 "description": "Test",
                 "publishedAt": datetime.now().isoformat() + "Z",
-                "source": {"name": "Test"}
+                "source": {"name": "Test"},
             }
         ]
 
@@ -259,10 +257,10 @@ class TestWarriorSentimentAnalyzer:
         analyzer.reddit_client.fetch_mentions = AsyncMock(return_value=[])
 
         # First call
-        sentiment1 = await analyzer.analyze_symbol("AAPL", hours=24, sources=['news'])
+        sentiment1 = await analyzer.analyze_symbol("AAPL", hours=24, sources=["news"])
 
         # Second call (should use cache)
-        sentiment2 = await analyzer.analyze_symbol("AAPL", hours=24, sources=['news'])
+        sentiment2 = await analyzer.analyze_symbol("AAPL", hours=24, sources=["news"])
 
         # Should get same timestamp (cached)
         assert sentiment1.timestamp == sentiment2.timestamp
@@ -277,16 +275,18 @@ class TestWarriorSentimentAnalyzer:
         # Create many signals to trigger trending
         signals = []
         for i in range(25):
-            signals.append(SentimentSignal(
-                source='twitter',
-                symbol='MEME',
-                timestamp=datetime.now(),
-                score=0.5,
-                confidence=0.7,
-                text=f"Test signal {i}"
-            ))
+            signals.append(
+                SentimentSignal(
+                    source="twitter",
+                    symbol="MEME",
+                    timestamp=datetime.now(),
+                    score=0.5,
+                    confidence=0.7,
+                    text=f"Test signal {i}",
+                )
+            )
 
-        aggregated = analyzer._aggregate_signals('MEME', signals)
+        aggregated = analyzer._aggregate_signals("MEME", signals)
 
         assert aggregated.trending == True, "Should detect trending with 25+ signals"
         assert aggregated.signals_count == 25
@@ -300,27 +300,31 @@ class TestWarriorSentimentAnalyzer:
 
         # Old signals (negative)
         for i in range(5):
-            signals.append(SentimentSignal(
-                source='twitter',
-                symbol='TEST',
-                timestamp=datetime.now() - timedelta(hours=12),
-                score=-0.5,
-                confidence=0.7,
-                text=f"Bearish signal {i}"
-            ))
+            signals.append(
+                SentimentSignal(
+                    source="twitter",
+                    symbol="TEST",
+                    timestamp=datetime.now() - timedelta(hours=12),
+                    score=-0.5,
+                    confidence=0.7,
+                    text=f"Bearish signal {i}",
+                )
+            )
 
         # Recent signals (positive)
         for i in range(5):
-            signals.append(SentimentSignal(
-                source='twitter',
-                symbol='TEST',
-                timestamp=datetime.now() - timedelta(hours=1),
-                score=0.5,
-                confidence=0.7,
-                text=f"Bullish signal {i}"
-            ))
+            signals.append(
+                SentimentSignal(
+                    source="twitter",
+                    symbol="TEST",
+                    timestamp=datetime.now() - timedelta(hours=1),
+                    score=0.5,
+                    confidence=0.7,
+                    text=f"Bullish signal {i}",
+                )
+            )
 
-        aggregated = analyzer._aggregate_signals('TEST', signals)
+        aggregated = analyzer._aggregate_signals("TEST", signals)
 
         # Momentum should be positive (recent more positive than old)
         assert aggregated.momentum > 0, "Should detect positive momentum shift"
@@ -332,16 +336,16 @@ class TestSentimentSignal:
     def test_create_signal(self):
         """Test creating a sentiment signal"""
         signal = SentimentSignal(
-            source='news',
-            symbol='AAPL',
+            source="news",
+            symbol="AAPL",
             timestamp=datetime.now(),
             score=0.5,
             confidence=0.8,
-            text="Test news article"
+            text="Test news article",
         )
 
-        assert signal.source == 'news'
-        assert signal.symbol == 'AAPL'
+        assert signal.source == "news"
+        assert signal.symbol == "AAPL"
         assert -1.0 <= signal.score <= 1.0
         assert 0.0 <= signal.confidence <= 1.0
 
@@ -352,28 +356,28 @@ class TestAggregatedSentiment:
     def test_create_aggregated(self):
         """Test creating aggregated sentiment"""
         signal = SentimentSignal(
-            source='news',
-            symbol='TEST',
+            source="news",
+            symbol="TEST",
             timestamp=datetime.now(),
             score=0.5,
             confidence=0.8,
-            text="Test"
+            text="Test",
         )
 
         aggregated = AggregatedSentiment(
-            symbol='TEST',
+            symbol="TEST",
             timestamp=datetime.now(),
             overall_score=0.5,
             overall_confidence=0.8,
             signals_count=1,
-            source_scores={'news': 0.5},
-            source_counts={'news': 1},
+            source_scores={"news": 0.5},
+            source_counts={"news": 1},
             trending=False,
             momentum=0.0,
-            top_signals=[signal]
+            top_signals=[signal],
         )
 
-        assert aggregated.symbol == 'TEST'
+        assert aggregated.symbol == "TEST"
         assert aggregated.signals_count == 1
         assert len(aggregated.top_signals) == 1
 
@@ -435,7 +439,7 @@ if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
 
     # Run integration test separately
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Running integration test...")
-    print("="*60)
+    print("=" * 60)
     asyncio.run(test_full_sentiment_analysis())

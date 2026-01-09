@@ -10,13 +10,15 @@ Features:
 - Callback system for UI updates
 - Integrates with unified market data system
 """
-import os
+
 import json
 import logging
+import os
 import threading
 from datetime import datetime
-from typing import Dict, List, Optional, Callable, Set
 from pathlib import Path
+from typing import Callable, Dict, List, Optional, Set
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,7 +37,7 @@ _stats = {
     "errors": 0,
     "reconnects": 0,
     "started_at": None,
-    "last_quote": None
+    "last_quote": None,
 }
 
 TOKEN_FILE = Path(__file__).parent / "schwab_token.json"
@@ -54,14 +56,16 @@ def _convert_token_format():
 
         # Check if we need to sync (source newer than destination)
         source_mtime = TOKEN_FILE.stat().st_mtime
-        dest_mtime = SCHWABDEV_TOKEN_FILE.stat().st_mtime if SCHWABDEV_TOKEN_FILE.exists() else 0
+        dest_mtime = (
+            SCHWABDEV_TOKEN_FILE.stat().st_mtime if SCHWABDEV_TOKEN_FILE.exists() else 0
+        )
 
         if SCHWABDEV_TOKEN_FILE.exists() and dest_mtime >= source_mtime:
             # Destination is up to date
             logger.debug("[SCHWABDEV] Token file already up to date")
             return True
 
-        with open(TOKEN_FILE, 'r') as f:
+        with open(TOKEN_FILE, "r") as f:
             source_token = json.load(f)
 
         # Skip if source is already in schwabdev format (wrong file)
@@ -69,7 +73,7 @@ def _convert_token_format():
             return True
 
         # Convert to schwabdev format with current timestamp
-        now = datetime.now(tz=__import__('datetime').timezone.utc).isoformat()
+        now = datetime.now(tz=__import__("datetime").timezone.utc).isoformat()
         schwabdev_token = {
             "token_dictionary": {
                 "access_token": source_token.get("access_token"),
@@ -77,16 +81,18 @@ def _convert_token_format():
                 "id_token": source_token.get("id_token"),
                 "expires_in": source_token.get("expires_in", 1800),
                 "token_type": source_token.get("token_type", "Bearer"),
-                "scope": source_token.get("scope", "api")
+                "scope": source_token.get("scope", "api"),
             },
             "access_token_issued": now,
-            "refresh_token_issued": now
+            "refresh_token_issued": now,
         }
 
-        with open(SCHWABDEV_TOKEN_FILE, 'w') as f:
+        with open(SCHWABDEV_TOKEN_FILE, "w") as f:
             json.dump(schwabdev_token, f, indent=2)
 
-        logger.info(f"[SCHWABDEV] Token synced from {TOKEN_FILE} to {SCHWABDEV_TOKEN_FILE}")
+        logger.info(
+            f"[SCHWABDEV] Token synced from {TOKEN_FILE} to {SCHWABDEV_TOKEN_FILE}"
+        )
         return True
 
     except Exception as e:
@@ -104,13 +110,15 @@ def _get_client():
     try:
         import schwabdev
 
-        app_key = os.getenv('SCHWAB_APP_KEY')
-        app_secret = os.getenv('SCHWAB_APP_SECRET')
-        callback_url = os.getenv('SCHWAB_CALLBACK_URL', 'https://127.0.0.1:6969')
+        app_key = os.getenv("SCHWAB_APP_KEY")
+        app_secret = os.getenv("SCHWAB_APP_SECRET")
+        callback_url = os.getenv("SCHWAB_CALLBACK_URL", "https://127.0.0.1:6969")
 
         # Ensure callback_url is lowercase https (schwabdev requirement)
         if callback_url:
-            callback_url = callback_url.replace('HTTPS://', 'https://').replace('HTTP://', 'http://')
+            callback_url = callback_url.replace("HTTPS://", "https://").replace(
+                "HTTP://", "http://"
+            )
 
         if not app_key or not app_secret:
             logger.error("SCHWAB_APP_KEY or SCHWAB_APP_SECRET not configured")
@@ -130,7 +138,7 @@ def _get_client():
             app_secret=app_secret,
             callback_url=callback_url,
             tokens_file=str(SCHWABDEV_TOKEN_FILE),
-            timeout=30
+            timeout=30,
         )
 
         logger.info("[SCHWABDEV] Client initialized successfully")
@@ -175,7 +183,9 @@ def _stream_receiver(message):
                 content = resp.get("content", {})
                 code = content.get("code", -1)
                 msg = content.get("msg", "")
-                logger.debug(f"[SCHWABDEV] {service} response: code={code}, msg={msg[:50]}")
+                logger.debug(
+                    f"[SCHWABDEV] {service} response: code={code}, msg={msg[:50]}"
+                )
 
         # Handle direct content format
         elif "content" in message:
@@ -247,12 +257,18 @@ def _process_quotes(content: List[Dict]):
                 "volume": safe_int(get_val("8", "volume", 0)),
                 "high": safe_float(get_val("12", "high", 0)),
                 "low": safe_float(get_val("14", "low", 0)),  # Field 14 for low
-                "close": safe_float(get_val("29", "close", 0)),  # Field 29 often has close
+                "close": safe_float(
+                    get_val("29", "close", 0)
+                ),  # Field 29 often has close
                 "open": safe_float(get_val("17", "open", 0)),  # Field 17 for open
-                "change": safe_float(get_val("18", "change", 0)),  # Field 18 for net change
-                "change_percent": safe_float(get_val("19", "change_percent", 0)),  # Field 19 for change %
+                "change": safe_float(
+                    get_val("18", "change", 0)
+                ),  # Field 18 for net change
+                "change_percent": safe_float(
+                    get_val("19", "change_percent", 0)
+                ),  # Field 19 for change %
                 "timestamp": datetime.now().isoformat(),
-                "source": "schwabdev_stream"
+                "source": "schwabdev_stream",
             }
 
             # Update cache
@@ -288,6 +304,7 @@ def _notify_callbacks(symbol: str, quote: Dict):
 # PUBLIC API
 # ============================================================================
 
+
 def start_streaming(symbols: Optional[List[str]] = None) -> bool:
     """
     Start the schwabdev streaming service.
@@ -322,6 +339,7 @@ def start_streaming(symbols: Optional[List[str]] = None) -> bool:
 
         # Wait for stream to connect before subscribing
         import time
+
         time.sleep(2)
 
         # Subscribe to symbols if provided
@@ -378,25 +396,31 @@ def subscribe(symbols: List[str]) -> bool:
             sub_request = _stream.level_one_equities(
                 symbols,
                 "0,1,2,3,4,5,8,12,13,15,28,29,30",
-                command="SUBS"  # Use SUBS for initial subscription
+                command="SUBS",  # Use SUBS for initial subscription
             )
 
             # Handle async context (FastAPI runs an event loop)
             import asyncio
+
             try:
                 loop = asyncio.get_running_loop()
                 # Already in async context - schedule send_async as a task
                 asyncio.ensure_future(_stream.send_async(sub_request))
-                logger.info(f"[SCHWABDEV] Subscribed (async) to {len(symbols)} symbols: {symbols[:5]}...")
+                logger.info(
+                    f"[SCHWABDEV] Subscribed (async) to {len(symbols)} symbols: {symbols[:5]}..."
+                )
             except RuntimeError:
                 # No running loop - safe to use sync send
                 _stream.send(sub_request)
-                logger.info(f"[SCHWABDEV] Subscribed to {len(symbols)} symbols: {symbols[:5]}...")
+                logger.info(
+                    f"[SCHWABDEV] Subscribed to {len(symbols)} symbols: {symbols[:5]}..."
+                )
 
             return True
         except Exception as e:
             logger.error(f"[SCHWABDEV] Subscribe error: {e}")
             import traceback
+
             traceback.print_exc()
             return False
 
@@ -417,6 +441,7 @@ def unsubscribe(symbols: List[str]) -> bool:
 
             # Handle async context (FastAPI runs an event loop)
             import asyncio
+
             try:
                 loop = asyncio.get_running_loop()
                 asyncio.ensure_future(_stream.send_async(unsub_request))
@@ -461,7 +486,7 @@ def get_status() -> Dict:
         "subscription_count": len(_subscribed_symbols),
         "cached_quotes": len(_quote_cache),
         "stats": _stats.copy(),
-        "source": "schwabdev"
+        "source": "schwabdev",
     }
 
 
@@ -474,11 +499,23 @@ def is_streaming() -> bool:
 # AUTO-START HELPER
 # ============================================================================
 
+
 def auto_start_with_watchlist():
     """Auto-start streaming with watchlist symbols"""
     try:
         # Default watchlist symbols
-        default_symbols = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA", "AMD", "META", "GOOGL", "AMZN"]
+        default_symbols = [
+            "SPY",
+            "QQQ",
+            "AAPL",
+            "MSFT",
+            "NVDA",
+            "TSLA",
+            "AMD",
+            "META",
+            "GOOGL",
+            "AMZN",
+        ]
 
         # Try to load from worklist
         try:
@@ -510,7 +547,9 @@ if __name__ == "__main__":
 
     # Define a simple callback
     def print_quote(symbol, quote):
-        print(f"  {symbol}: ${quote['last']:.2f} (bid: ${quote['bid']:.2f}, ask: ${quote['ask']:.2f})")
+        print(
+            f"  {symbol}: ${quote['last']:.2f} (bid: ${quote['bid']:.2f}, ask: ${quote['ask']:.2f})"
+        )
 
     register_callback(print_quote)
 
@@ -524,7 +563,7 @@ if __name__ == "__main__":
             status = get_status()
             print(f"[{i+1}s] Quotes received: {status['stats']['quotes_received']}")
 
-            if status['stats']['quotes_received'] > 0:
+            if status["stats"]["quotes_received"] > 0:
                 print("\nCached quotes:")
                 for sym, q in get_all_cached_quotes().items():
                     print(f"  {sym}: ${q['last']:.2f}")

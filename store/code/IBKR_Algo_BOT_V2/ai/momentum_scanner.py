@@ -17,16 +17,17 @@ Filters by trading criteria:
 - Float: <10M shares
 """
 
-import requests
-import time
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
-from dataclasses import dataclass, asdict
-from collections import defaultdict
-import threading
 import json
+import logging
+import threading
+import time
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, List, Optional, Set
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -34,39 +35,39 @@ logger = logging.getLogger(__name__)
 # TRADING CRITERIA (Ross Cameron / Warrior Trading Style)
 # =============================================================================
 CRITERIA = {
-    'min_price': 0.50,
-    'max_price': 20.00,
-    'min_volume': 100000,      # 100K minimum daily volume
-    'max_spread_pct': 1.0,     # 1% max spread
-    'max_float': 10_000_000,   # 10M shares max float
-    'min_gap_pct': 10.0,       # 10% minimum gap for gapper scan
-    'min_momentum_pct': 20.0,  # 20% minimum momentum (was 50%, lowered for more hits)
-    'min_rvol': 2.0,           # 2x relative volume minimum
-    'min_confidence': 0.60,    # 60% minimum confidence score
+    "min_price": 0.50,
+    "max_price": 20.00,
+    "min_volume": 100000,  # 100K minimum daily volume
+    "max_spread_pct": 1.0,  # 1% max spread
+    "max_float": 10_000_000,  # 10M shares max float
+    "min_gap_pct": 10.0,  # 10% minimum gap for gapper scan
+    "min_momentum_pct": 20.0,  # 20% minimum momentum (was 50%, lowered for more hits)
+    "min_rvol": 2.0,  # 2x relative volume minimum
+    "min_confidence": 0.60,  # 60% minimum confidence score
 }
 
 # Scanner presets for different strategies
 SCANNER_PRESETS = {
-    'warrior_momentum': {
-        'min_price': 0.50,
-        'max_price': 20.00,
-        'min_gap_pct': 10.0,
-        'min_rvol': 2.0,
-        'max_float': 10_000_000,
+    "warrior_momentum": {
+        "min_price": 0.50,
+        "max_price": 20.00,
+        "min_gap_pct": 10.0,
+        "min_rvol": 2.0,
+        "max_float": 10_000_000,
     },
-    'penny_rockets': {
-        'min_price': 0.10,
-        'max_price': 5.00,
-        'min_gap_pct': 20.0,
-        'min_rvol': 3.0,
-        'max_float': 5_000_000,
+    "penny_rockets": {
+        "min_price": 0.10,
+        "max_price": 5.00,
+        "min_gap_pct": 20.0,
+        "min_rvol": 3.0,
+        "max_float": 5_000_000,
     },
-    'mid_cap_breakout': {
-        'min_price': 5.00,
-        'max_price': 50.00,
-        'min_gap_pct': 5.0,
-        'min_rvol': 1.5,
-        'max_float': 50_000_000,
+    "mid_cap_breakout": {
+        "min_price": 5.00,
+        "max_price": 50.00,
+        "min_gap_pct": 5.0,
+        "min_rvol": 1.5,
+        "max_float": 50_000_000,
     },
 }
 
@@ -74,19 +75,20 @@ SCANNER_PRESETS = {
 @dataclass
 class MomentumStock:
     """Represents a stock meeting momentum criteria"""
+
     symbol: str
     price: float
-    change_pct: float          # % change from prev close
-    gap_pct: float             # Pre-market gap %
+    change_pct: float  # % change from prev close
+    gap_pct: float  # Pre-market gap %
     volume: int
     avg_volume: int
-    rvol: float                # Relative volume
+    rvol: float  # Relative volume
     float_shares: int
     spread_pct: float
     high_of_day: float
     low_of_day: float
-    momentum_score: float      # 0-100 composite score
-    catalyst: str              # News/catalyst if any
+    momentum_score: float  # 0-100 composite score
+    catalyst: str  # News/catalyst if any
     timestamp: str
     added_to_watchlist: bool = False
 
@@ -119,10 +121,10 @@ class MomentumScanner:
 
         # Statistics
         self.stats = {
-            'scans_completed': 0,
-            'stocks_found': 0,
-            'stocks_added_to_watchlist': 0,
-            'last_scan_duration': 0,
+            "scans_completed": 0,
+            "stocks_found": 0,
+            "stocks_added_to_watchlist": 0,
+            "last_scan_duration": 0,
         }
 
         logger.info("MomentumScanner initialized")
@@ -132,11 +134,32 @@ class MomentumScanner:
         # Start with common momentum tickers
         base_universe = {
             # Popular momentum/meme stocks
-            'TSLA', 'NVDA', 'AMD', 'PLTR', 'SOFI', 'NIO', 'LCID',
-            'MARA', 'RIOT', 'COIN', 'HOOD', 'GME', 'AMC', 'BBBY',
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META',
+            "TSLA",
+            "NVDA",
+            "AMD",
+            "PLTR",
+            "SOFI",
+            "NIO",
+            "LCID",
+            "MARA",
+            "RIOT",
+            "COIN",
+            "HOOD",
+            "GME",
+            "AMC",
+            "BBBY",
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "AMZN",
+            "META",
             # Biotech (often gap hard)
-            'MRNA', 'BNTX', 'SAVA', 'SRPT', 'VKTX', 'DRUG',
+            "MRNA",
+            "BNTX",
+            "SAVA",
+            "SRPT",
+            "VKTX",
+            "DRUG",
             # Small caps (add as we find them)
         }
         self.scan_universe = base_universe
@@ -146,7 +169,7 @@ class MomentumScanner:
         if universe_file.exists():
             try:
                 data = json.loads(universe_file.read_text())
-                self.scan_universe.update(data.get('symbols', []))
+                self.scan_universe.update(data.get("symbols", []))
             except:
                 pass
 
@@ -179,13 +202,15 @@ class MomentumScanner:
             pass
         return None
 
-    def get_bars(self, symbol: str, timeframe: str = "1Day", limit: int = 5) -> List[Dict]:
+    def get_bars(
+        self, symbol: str, timeframe: str = "1Day", limit: int = 5
+    ) -> List[Dict]:
         """Get historical bars for a symbol"""
         try:
             r = requests.get(
                 f"{self.api_url}/bars/{symbol}",
-                params={'timeframe': timeframe, 'limit': limit},
-                timeout=5
+                params={"timeframe": timeframe, "limit": limit},
+                timeout=5,
             )
             if r.status_code == 200:
                 return r.json()
@@ -200,9 +225,10 @@ class MomentumScanner:
 
         try:
             import yfinance as yf
+
             ticker = yf.Ticker(symbol)
             info = ticker.info
-            float_shares = info.get('floatShares', 0) or 0
+            float_shares = info.get("floatShares", 0) or 0
 
             # Cache it
             if float_shares > 0:
@@ -223,13 +249,13 @@ class MomentumScanner:
             return None
 
         # Extract quote data
-        price = float(quote.get('last', 0) or quote.get('bid', 0) or 0)
-        bid = float(quote.get('bid', 0) or 0)
-        ask = float(quote.get('ask', 0) or 0)
-        volume = int(quote.get('volume', 0) or 0)
-        prev_close = float(quote.get('prev_close', 0) or price)
-        high = float(quote.get('high', price) or price)
-        low = float(quote.get('low', price) or price)
+        price = float(quote.get("last", 0) or quote.get("bid", 0) or 0)
+        bid = float(quote.get("bid", 0) or 0)
+        ask = float(quote.get("ask", 0) or 0)
+        volume = int(quote.get("volume", 0) or 0)
+        prev_close = float(quote.get("prev_close", 0) or price)
+        high = float(quote.get("high", price) or price)
+        low = float(quote.get("low", price) or price)
 
         if price <= 0:
             return None
@@ -243,7 +269,7 @@ class MomentumScanner:
         bars = self.get_bars(symbol, "1Day", 20)
         avg_volume = 0
         if bars:
-            volumes = [b.get('volume', 0) for b in bars if b.get('volume', 0) > 0]
+            volumes = [b.get("volume", 0) for b in bars if b.get("volume", 0) > 0]
             avg_volume = int(sum(volumes) / len(volumes)) if volumes else volume
 
         rvol = (volume / avg_volume) if avg_volume > 0 else 1.0
@@ -256,23 +282,23 @@ class MomentumScanner:
         # =========================================
 
         # Price filter
-        if price < CRITERIA['min_price'] or price > CRITERIA['max_price']:
+        if price < CRITERIA["min_price"] or price > CRITERIA["max_price"]:
             return None
 
         # Volume filter
-        if volume < CRITERIA['min_volume']:
+        if volume < CRITERIA["min_volume"]:
             return None
 
         # Spread filter
-        if spread_pct > CRITERIA['max_spread_pct']:
+        if spread_pct > CRITERIA["max_spread_pct"]:
             return None
 
         # Float filter (if we have data)
-        if float_shares > 0 and float_shares > CRITERIA['max_float']:
+        if float_shares > 0 and float_shares > CRITERIA["max_float"]:
             return None
 
         # Momentum filter - must have significant move
-        if abs(change_pct) < CRITERIA['min_momentum_pct']:
+        if abs(change_pct) < CRITERIA["min_momentum_pct"]:
             return None
 
         # =========================================
@@ -313,7 +339,7 @@ class MomentumScanner:
             score += 4
 
         # Must meet minimum confidence
-        if score < CRITERIA['min_confidence'] * 100:
+        if score < CRITERIA["min_confidence"] * 100:
             return None
 
         # Determine catalyst (placeholder - would integrate with news)
@@ -345,10 +371,10 @@ class MomentumScanner:
         try:
             r = requests.post(
                 "http://localhost:9100/api/worklist/add",
-                json={'symbol': symbol, 'action': 'watch'},
-                timeout=3
+                json={"symbol": symbol, "action": "watch"},
+                timeout=3,
             )
-            return r.json().get('success', False)
+            return r.json().get("success", False)
         except:
             return False
 
@@ -364,7 +390,7 @@ class MomentumScanner:
         for symbol in list(self.scan_universe)[:50]:  # Limit to avoid rate limits
             try:
                 stock = self.check_criteria(symbol)
-                if stock and stock.gap_pct >= CRITERIA['min_gap_pct']:
+                if stock and stock.gap_pct >= CRITERIA["min_gap_pct"]:
                     gappers.append(stock)
             except Exception as e:
                 logger.debug(f"Error checking {symbol}: {e}")
@@ -381,7 +407,7 @@ class MomentumScanner:
         for symbol in list(self.scan_universe)[:50]:
             try:
                 stock = self.check_criteria(symbol)
-                if stock and abs(stock.change_pct) >= CRITERIA['min_momentum_pct']:
+                if stock and abs(stock.change_pct) >= CRITERIA["min_momentum_pct"]:
                     runners.append(stock)
             except Exception as e:
                 logger.debug(f"Error checking {symbol}: {e}")
@@ -398,7 +424,7 @@ class MomentumScanner:
         for symbol in list(self.scan_universe)[:50]:
             try:
                 stock = self.check_criteria(symbol)
-                if stock and stock.rvol >= CRITERIA['min_rvol']:
+                if stock and stock.rvol >= CRITERIA["min_rvol"]:
                     unusual.append(stock)
             except Exception as e:
                 logger.debug(f"Error checking {symbol}: {e}")
@@ -423,8 +449,8 @@ class MomentumScanner:
                 r = requests.get(url, timeout=10)
                 if r.status_code == 200:
                     data = r.json()
-                    for stock in data.get('results', []):
-                        sym = stock.get('symbol', '')
+                    for stock in data.get("results", []):
+                        sym = stock.get("symbol", "")
                         if sym and sym not in self.scan_universe:
                             new_symbols.append(sym)
                             self.scan_universe.add(sym)
@@ -432,7 +458,9 @@ class MomentumScanner:
                 pass
 
         if new_symbols:
-            logger.info(f"Discovered {len(new_symbols)} new symbols: {new_symbols[:10]}")
+            logger.info(
+                f"Discovered {len(new_symbols)} new symbols: {new_symbols[:10]}"
+            )
 
         return new_symbols
 
@@ -461,9 +489,7 @@ class MomentumScanner:
 
         # Sort by momentum score
         sorted_stocks = sorted(
-            all_stocks.values(),
-            key=lambda x: x.momentum_score,
-            reverse=True
+            all_stocks.values(), key=lambda x: x.momentum_score, reverse=True
         )
 
         # Auto-add top 5 to watchlist
@@ -487,31 +513,29 @@ class MomentumScanner:
 
         # Update stats
         elapsed = time.time() - start_time
-        self.stats['scans_completed'] += 1
-        self.stats['stocks_found'] = len(sorted_stocks)
-        self.stats['stocks_added_to_watchlist'] += added_count
-        self.stats['last_scan_duration'] = elapsed
+        self.stats["scans_completed"] += 1
+        self.stats["stocks_found"] = len(sorted_stocks)
+        self.stats["stocks_added_to_watchlist"] += added_count
+        self.stats["last_scan_duration"] = elapsed
 
         return {
-            'success': True,
-            'timestamp': self.last_scan_time,
-            'duration_seconds': elapsed,
-            'stocks_found': len(sorted_stocks),
-            'stocks_added': added_count,
-            'top_stocks': [asdict(s) for s in sorted_stocks[:10]],
-            'by_category': {
-                'gappers': len(gappers),
-                'momentum_runners': len(runners),
-                'unusual_volume': len(unusual),
-            }
+            "success": True,
+            "timestamp": self.last_scan_time,
+            "duration_seconds": elapsed,
+            "stocks_found": len(sorted_stocks),
+            "stocks_added": added_count,
+            "top_stocks": [asdict(s) for s in sorted_stocks[:10]],
+            "by_category": {
+                "gappers": len(gappers),
+                "momentum_runners": len(runners),
+                "unusual_volume": len(unusual),
+            },
         }
 
     def get_top_stocks(self, limit: int = 10) -> List[Dict]:
         """Get current top momentum stocks"""
         sorted_stocks = sorted(
-            self.momentum_stocks.values(),
-            key=lambda x: x.momentum_score,
-            reverse=True
+            self.momentum_stocks.values(), key=lambda x: x.momentum_score, reverse=True
         )
         return [asdict(s) for s in sorted_stocks[:limit]]
 
@@ -552,13 +576,13 @@ class MomentumScanner:
     def get_status(self) -> Dict:
         """Get scanner status"""
         return {
-            'running': self.running,
-            'last_scan': self.last_scan_time,
-            'universe_size': len(self.scan_universe),
-            'stocks_tracked': len(self.momentum_stocks),
-            'seen_today': len(self.seen_today),
-            'stats': self.stats,
-            'criteria': CRITERIA,
+            "running": self.running,
+            "last_scan": self.last_scan_time,
+            "universe_size": len(self.scan_universe),
+            "stocks_tracked": len(self.momentum_stocks),
+            "seen_today": len(self.seen_today),
+            "stats": self.stats,
+            "criteria": CRITERIA,
         }
 
 
@@ -577,18 +601,21 @@ def get_momentum_scanner() -> MomentumScanner:
 # =============================================================================
 # CLI for testing
 # =============================================================================
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s | %(levelname)s | %(message)s'
+        level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
     )
 
     print("=" * 60)
     print("  MOMENTUM STOCK SCANNER")
     print("=" * 60)
     print(f"Criteria: ${CRITERIA['min_price']:.2f}-${CRITERIA['max_price']:.2f}")
-    print(f"Volume: >{CRITERIA['min_volume']:,} | Spread: <{CRITERIA['max_spread_pct']}%")
-    print(f"Float: <{CRITERIA['max_float']/1_000_000:.0f}M | RVOL: >{CRITERIA['min_rvol']}x")
+    print(
+        f"Volume: >{CRITERIA['min_volume']:,} | Spread: <{CRITERIA['max_spread_pct']}%"
+    )
+    print(
+        f"Float: <{CRITERIA['max_float']/1_000_000:.0f}M | RVOL: >{CRITERIA['min_rvol']}x"
+    )
     print(f"Min Momentum: {CRITERIA['min_momentum_pct']}%")
     print("=" * 60)
 
@@ -605,11 +632,13 @@ if __name__ == '__main__':
     print("TOP MOMENTUM STOCKS:")
     print("=" * 60)
 
-    for i, stock in enumerate(result['top_stocks'], 1):
-        print(f"{i}. {stock['symbol']:6} | ${stock['price']:.2f} | "
-              f"{stock['change_pct']:+.1f}% | RVOL: {stock['rvol']:.1f}x | "
-              f"Score: {stock['momentum_score']:.0f}")
+    for i, stock in enumerate(result["top_stocks"], 1):
+        print(
+            f"{i}. {stock['symbol']:6} | ${stock['price']:.2f} | "
+            f"{stock['change_pct']:+.1f}% | RVOL: {stock['rvol']:.1f}x | "
+            f"Score: {stock['momentum_score']:.0f}"
+        )
 
-    if not result['top_stocks']:
+    if not result["top_stocks"]:
         print("No stocks meeting criteria found.")
         print("Try expanding the scan universe or adjusting criteria.")

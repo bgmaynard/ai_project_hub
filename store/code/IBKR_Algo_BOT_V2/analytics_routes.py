@@ -2,16 +2,19 @@
 Analytics API Routes
 Portfolio analytics, trade tracking, and execution metrics
 """
+
+import logging
+from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional, List
-import logging
 
 logger = logging.getLogger(__name__)
 
 # Optional imports - these modules may not exist
 try:
     from portfolio_analytics import get_portfolio_analytics
+
     HAS_PORTFOLIO_ANALYTICS = True
 except ImportError:
     HAS_PORTFOLIO_ANALYTICS = False
@@ -19,6 +22,7 @@ except ImportError:
 
 try:
     from trade_execution import get_execution_tracker
+
     HAS_EXECUTION_TRACKER = True
 except ImportError:
     HAS_EXECUTION_TRACKER = False
@@ -26,6 +30,7 @@ except ImportError:
 
 try:
     from unified_broker import get_unified_broker
+
     HAS_UNIFIED_BROKER = True
 except ImportError:
     HAS_UNIFIED_BROKER = False
@@ -33,6 +38,7 @@ except ImportError:
 
 try:
     from unified_market_data import get_unified_market_data
+
     HAS_UNIFIED_DATA = True
 except ImportError:
     HAS_UNIFIED_DATA = False
@@ -44,6 +50,7 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 # ============================================================================
 # REQUEST MODELS
 # ============================================================================
+
 
 class TradeEntryRequest(BaseModel):
     symbol: str
@@ -81,6 +88,7 @@ class ExecutionCompleteRequest(BaseModel):
 # PORTFOLIO ANALYTICS ENDPOINTS
 # ============================================================================
 
+
 @router.get("/portfolio/metrics")
 async def get_portfolio_metrics():
     """Get comprehensive portfolio performance metrics"""
@@ -93,7 +101,9 @@ async def get_portfolio_metrics():
         if broker.is_connected:
             account = broker.get_account()
             if account:
-                account_value = float(account.get("market_value", account.get("portfolio_value", 100000)))
+                account_value = float(
+                    account.get("market_value", account.get("portfolio_value", 100000))
+                )
 
         metrics = analytics.calculate_metrics(account_value)
         return metrics
@@ -124,15 +134,11 @@ async def get_positions_with_pnl():
             # Get trade record P&L if available
             trade_pnl = analytics.calculate_position_pnl(symbol, current_price)
 
-            enhanced_positions.append({
-                **pos,
-                "trade_record": trade_pnl if "error" not in trade_pnl else None
-            })
+            enhanced_positions.append(
+                {**pos, "trade_record": trade_pnl if "error" not in trade_pnl else None}
+            )
 
-        return {
-            "positions": enhanced_positions,
-            "count": len(enhanced_positions)
-        }
+        return {"positions": enhanced_positions, "count": len(enhanced_positions)}
 
     except HTTPException:
         raise
@@ -153,7 +159,7 @@ async def record_trade_entry(request: TradeEntryRequest):
             price=request.price,
             order_id=request.order_id,
             ai_signal=request.ai_signal,
-            ai_confidence=request.ai_confidence
+            ai_confidence=request.ai_confidence,
         )
 
         return {
@@ -163,8 +169,8 @@ async def record_trade_entry(request: TradeEntryRequest):
                 "side": trade.side,
                 "quantity": trade.quantity,
                 "entry_price": trade.entry_price,
-                "entry_time": trade.entry_time
-            }
+                "entry_time": trade.entry_time,
+            },
         }
 
     except Exception as e:
@@ -178,13 +184,13 @@ async def record_trade_exit(request: TradeExitRequest):
     try:
         analytics = get_portfolio_analytics()
         trade = analytics.record_trade_exit(
-            symbol=request.symbol,
-            price=request.price,
-            order_id=request.order_id
+            symbol=request.symbol, price=request.price, order_id=request.order_id
         )
 
         if trade is None:
-            raise HTTPException(status_code=404, detail=f"No open trade found for {request.symbol}")
+            raise HTTPException(
+                status_code=404, detail=f"No open trade found for {request.symbol}"
+            )
 
         return {
             "success": True,
@@ -195,8 +201,8 @@ async def record_trade_exit(request: TradeExitRequest):
                 "entry_price": trade.entry_price,
                 "exit_price": trade.exit_price,
                 "pnl": trade.pnl,
-                "pnl_percent": trade.pnl_percent
-            }
+                "pnl_percent": trade.pnl_percent,
+            },
         }
 
     except HTTPException:
@@ -261,6 +267,7 @@ async def get_ai_performance():
 # EXECUTION TRACKING ENDPOINTS
 # ============================================================================
 
+
 @router.post("/execution/start")
 async def start_execution_tracking(request: ExecutionStartRequest):
     """Start tracking an order for execution quality analysis"""
@@ -273,7 +280,7 @@ async def start_execution_tracking(request: ExecutionStartRequest):
             quantity=request.quantity,
             order_type=request.order_type,
             requested_price=request.requested_price,
-            market_price=request.market_price
+            market_price=request.market_price,
         )
 
         return {"success": True, "order_id": request.order_id, "status": "tracking"}
@@ -291,11 +298,13 @@ async def complete_execution_tracking(request: ExecutionCompleteRequest):
         execution = tracker.record_execution(
             order_id=request.order_id,
             executed_price=request.executed_price,
-            status=request.status
+            status=request.status,
         )
 
         if execution is None:
-            raise HTTPException(status_code=404, detail=f"Order {request.order_id} not being tracked")
+            raise HTTPException(
+                status_code=404, detail=f"Order {request.order_id} not being tracked"
+            )
 
         return {
             "success": True,
@@ -305,8 +314,8 @@ async def complete_execution_tracking(request: ExecutionCompleteRequest):
                 "executed_price": execution.executed_price,
                 "slippage": execution.slippage,
                 "slippage_percent": execution.slippage_percent,
-                "execution_time_ms": execution.execution_time_ms
-            }
+                "execution_time_ms": execution.execution_time_ms,
+            },
         }
 
     except HTTPException:
@@ -359,11 +368,7 @@ async def get_slippage_alerts(threshold: float = Query(default=0.5, ge=0.01, le=
     try:
         tracker = get_execution_tracker()
         alerts = tracker.check_slippage_alert(threshold)
-        return {
-            "threshold_percent": threshold,
-            "alerts": alerts,
-            "count": len(alerts)
-        }
+        return {"threshold_percent": threshold, "alerts": alerts, "count": len(alerts)}
 
     except Exception as e:
         logger.error(f"Error getting slippage alerts: {e}")
@@ -373,6 +378,7 @@ async def get_slippage_alerts(threshold: float = Query(default=0.5, ge=0.01, le=
 # ============================================================================
 # COMBINED DASHBOARD ENDPOINT
 # ============================================================================
+
 
 @router.get("/dashboard")
 async def get_analytics_dashboard():
@@ -388,12 +394,14 @@ async def get_analytics_dashboard():
         if broker.is_connected:
             account = broker.get_account()
             if account:
-                account_value = float(account.get("market_value", account.get("portfolio_value", 100000)))
+                account_value = float(
+                    account.get("market_value", account.get("portfolio_value", 100000))
+                )
                 account_info = {
                     "portfolio_value": account_value,
                     "buying_power": float(account.get("buying_power", 0)),
                     "cash": float(account.get("cash", 0)),
-                    "equity": float(account.get("market_value", 0))
+                    "equity": float(account.get("market_value", 0)),
                 }
 
         return {
@@ -402,7 +410,7 @@ async def get_analytics_dashboard():
             "open_trades": len(analytics.get_open_trades()),
             "execution_stats": tracker.get_execution_stats(30),
             "ai_performance": analytics.get_ai_performance(),
-            "timestamp": __import__("datetime").datetime.now().isoformat()
+            "timestamp": __import__("datetime").datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -417,6 +425,7 @@ async def get_analytics_dashboard():
 # Trade Analytics Module
 try:
     from trade_analytics import get_trade_analytics
+
     HAS_TRADE_ANALYTICS = True
 except ImportError as e:
     logger.warning(f"Trade analytics not available: {e}")
@@ -425,6 +434,7 @@ except ImportError as e:
 # Schwab Trading (for account switching)
 try:
     from schwab_trading import get_schwab_trading
+
     HAS_SCHWAB_DIRECT = True
 except ImportError:
     HAS_SCHWAB_DIRECT = False
@@ -432,6 +442,7 @@ except ImportError:
 
 class ManualTradeRecord(BaseModel):
     """Trade record for manual entry"""
+
     symbol: str
     side: str
     quantity: float
@@ -453,11 +464,7 @@ async def get_all_accounts():
     accounts = schwab.get_accounts()
     selected = schwab.get_selected_account()
 
-    return {
-        "accounts": accounts,
-        "selected": selected,
-        "count": len(accounts)
-    }
+    return {"accounts": accounts, "selected": selected, "count": len(accounts)}
 
 
 @router.post("/accounts/switch/{account_number}")
@@ -468,10 +475,12 @@ async def switch_account(account_number: str):
 
     schwab = get_schwab_trading()
     accounts = schwab.get_accounts()
-    valid_accounts = [a['account_number'] for a in accounts]
+    valid_accounts = [a["account_number"] for a in accounts]
 
     if account_number not in valid_accounts:
-        raise HTTPException(status_code=404, detail=f"Account {account_number} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Account {account_number} not found"
+        )
 
     success = schwab.select_account(account_number)
 
@@ -481,7 +490,7 @@ async def switch_account(account_number: str):
         return {
             "success": True,
             "selected_account": account_number,
-            "account_info": info
+            "account_info": info,
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to switch account")
@@ -502,23 +511,25 @@ async def get_all_accounts_summary():
     total_pnl = 0
 
     for acc in accounts:
-        acc_num = acc['account_number']
+        acc_num = acc["account_number"]
         schwab.select_account(acc_num)
         info = schwab.get_account_info()
         positions = schwab.get_positions()
 
         if info:
-            summaries.append({
-                "account": acc_num,
-                "type": info.get('type', 'N/A'),
-                "cash": round(info.get('cash', 0), 2),
-                "market_value": round(info.get('market_value', 0), 2),
-                "daily_pnl": round(info.get('daily_pl', 0), 2),
-                "daily_pnl_pct": round(info.get('daily_pl_pct', 0), 2),
-                "positions_count": len(positions) if positions else 0
-            })
-            total_value += info.get('market_value', 0)
-            total_pnl += info.get('daily_pl', 0)
+            summaries.append(
+                {
+                    "account": acc_num,
+                    "type": info.get("type", "N/A"),
+                    "cash": round(info.get("cash", 0), 2),
+                    "market_value": round(info.get("market_value", 0), 2),
+                    "daily_pnl": round(info.get("daily_pl", 0), 2),
+                    "daily_pnl_pct": round(info.get("daily_pl_pct", 0), 2),
+                    "positions_count": len(positions) if positions else 0,
+                }
+            )
+            total_value += info.get("market_value", 0)
+            total_pnl += info.get("daily_pl", 0)
 
     # Restore original account
     if original_account:
@@ -529,8 +540,8 @@ async def get_all_accounts_summary():
         "totals": {
             "total_value": round(total_value, 2),
             "total_daily_pnl": round(total_pnl, 2),
-            "account_count": len(summaries)
-        }
+            "account_count": len(summaries),
+        },
     }
 
 
@@ -550,7 +561,7 @@ async def sync_trades_from_broker():
     results = []
 
     for acc in accounts:
-        acc_num = acc['account_number']
+        acc_num = acc["account_number"]
         schwab.select_account(acc_num)
 
         # Get filled orders
@@ -558,20 +569,14 @@ async def sync_trades_from_broker():
         imported = analytics.sync_from_schwab(orders, acc_num)
         total_imported += imported
 
-        results.append({
-            "account": acc_num,
-            "orders_found": len(orders),
-            "imported": imported
-        })
+        results.append(
+            {"account": acc_num, "orders_found": len(orders), "imported": imported}
+        )
 
     if original_account:
         schwab.select_account(original_account)
 
-    return {
-        "success": True,
-        "total_imported": total_imported,
-        "by_account": results
-    }
+    return {"success": True, "total_imported": total_imported, "by_account": results}
 
 
 @router.post("/journal/record")
@@ -580,7 +585,8 @@ async def record_manual_trade(trade: ManualTradeRecord):
     if not HAS_TRADE_ANALYTICS:
         raise HTTPException(status_code=503, detail="Trade analytics not available")
 
-    from datetime import datetime, date
+    from datetime import date, datetime
+
     analytics = get_trade_analytics()
 
     trade_id = f"MANUAL-{datetime.now().strftime('%Y%m%d%H%M%S')}-{trade.symbol}"
@@ -597,7 +603,7 @@ async def record_manual_trade(trade: ManualTradeRecord):
         "setup": trade.setup,
         "notes": trade.notes,
         "entry_time": datetime.now().isoformat(),
-        "trade_date": date.today().isoformat()
+        "trade_date": date.today().isoformat(),
     }
 
     success = analytics.record_trade(trade_data)
@@ -626,14 +632,17 @@ async def get_daily_journal_summary(target_date: Optional[str] = None):
     if not HAS_TRADE_ANALYTICS:
         raise HTTPException(status_code=503, detail="Trade analytics not available")
 
-    from datetime import datetime, date
+    from datetime import date, datetime
+
     analytics = get_trade_analytics()
 
     if target_date:
         try:
             dt = datetime.strptime(target_date, "%Y-%m-%d").date()
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD"
+            )
     else:
         dt = date.today()
 
@@ -697,6 +706,7 @@ async def get_full_trading_report(days: int = Query(default=30, ge=1, le=365)):
         raise HTTPException(status_code=503, detail="Trade analytics not available")
 
     from datetime import datetime
+
     analytics = get_trade_analytics()
 
     return {
@@ -708,7 +718,7 @@ async def get_full_trading_report(days: int = Query(default=30, ge=1, le=365)):
         "top_symbols": analytics.get_symbol_performance(10),
         "strategy_performance": analytics.get_strategy_performance(),
         "time_analysis": analytics.get_time_analysis(),
-        "insights": analytics.get_insights()
+        "insights": analytics.get_insights(),
     }
 
 

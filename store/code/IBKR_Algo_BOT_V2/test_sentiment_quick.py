@@ -6,32 +6,36 @@ Tests basic functionality without requiring API keys
 import asyncio
 import sys
 
+
 def test_finbert_import():
     """Test if FinBERT dependencies are available"""
     print("Testing FinBERT dependencies...")
     try:
-        from transformers import AutoTokenizer, AutoModelForSequenceClassification
         import torch
+        from transformers import (AutoModelForSequenceClassification,
+                                  AutoTokenizer)
+
         print("  [OK] transformers and torch imported successfully")
         return True
     except ImportError as e:
         print(f"  [FAIL] Import failed: {e}")
         return False
 
+
 def test_sentiment_analyzer_import():
     """Test if sentiment analyzer can be imported"""
     print("\nTesting sentiment analyzer import...")
     try:
-        from ai.warrior_sentiment_analyzer import (
-            FinBERTSentimentAnalyzer,
-            WarriorSentimentAnalyzer,
-            get_sentiment_analyzer
-        )
+        from ai.warrior_sentiment_analyzer import (FinBERTSentimentAnalyzer,
+                                                   WarriorSentimentAnalyzer,
+                                                   get_sentiment_analyzer)
+
         print("  [OK] Sentiment analyzer imported successfully")
         return True
     except ImportError as e:
         print(f"  [FAIL] Import failed: {e}")
         return False
+
 
 def test_finbert_analysis():
     """Test FinBERT sentiment analysis"""
@@ -43,7 +47,9 @@ def test_finbert_analysis():
         print("  [OK] FinBERT analyzer created")
 
         # Test positive sentiment
-        text = "Stock is surging with strong bullish momentum, great buying opportunity!"
+        text = (
+            "Stock is surging with strong bullish momentum, great buying opportunity!"
+        )
         score, confidence = analyzer.analyze(text)
         print(f"  [OK] Positive text: score={score:+.2f}, confidence={confidence:.2f}")
 
@@ -56,6 +62,7 @@ def test_finbert_analysis():
     except Exception as e:
         print(f"  [FAIL] Analysis failed: {e}")
         return False
+
 
 async def test_sentiment_analyzer():
     """Test main sentiment analyzer"""
@@ -78,11 +85,13 @@ async def test_sentiment_analyzer():
         print(f"  [FAIL] Analyzer test failed: {e}")
         return False
 
+
 def test_api_router_import():
     """Test if API router can be imported"""
     print("\nTesting API router import...")
     try:
         from ai.warrior_sentiment_router import router
+
         print("  [OK] API router imported successfully")
         print(f"  [OK] Router has {len(router.routes)} routes")
         return True
@@ -90,11 +99,12 @@ def test_api_router_import():
         print(f"  [FAIL] Import failed: {e}")
         return False
 
+
 async def main():
     """Run all tests"""
-    print("="*60)
+    print("=" * 60)
     print("SENTIMENT ANALYSIS QUICK TEST")
-    print("="*60)
+    print("=" * 60)
 
     results = []
 
@@ -112,9 +122,9 @@ async def main():
     results.append(("API Router Import", test_api_router_import()))
 
     # Summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST SUMMARY")
-    print("="*60)
+    print("=" * 60)
 
     passed = sum(1 for _, result in results if result)
     total = len(results)
@@ -123,7 +133,7 @@ async def main():
         status = "[OK] PASS" if result else "[FAIL] FAIL"
         print(f"{status:8s} | {name}")
 
-    print("="*60)
+    print("=" * 60)
     print(f"RESULTS: {passed}/{total} tests passed")
 
     if passed == total:
@@ -136,6 +146,7 @@ async def main():
     else:
         print(f"[FAIL] {total - passed} test(s) failed. Check errors above.")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())

@@ -9,18 +9,18 @@ SQLite database for persisting:
 - Scan results (historical analysis)
 """
 
-import sqlite3
 import json
 import logging
-from pathlib import Path
-from typing import List, Dict, Optional, Any
-from datetime import datetime, date, timedelta
+import sqlite3
 from contextlib import contextmanager
 from dataclasses import asdict
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from ai.warrior_scanner import WarriorCandidate
-from ai.warrior_pattern_detector import TradingSetup, SetupType
+from ai.warrior_pattern_detector import SetupType, TradingSetup
 from ai.warrior_risk_manager import TradeRecord
+from ai.warrior_scanner import WarriorCandidate
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,8 @@ class WarriorDatabase:
             cursor = conn.cursor()
 
             # Table 1: Watchlist candidates
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS watchlist_candidates (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     symbol TEXT NOT NULL,
@@ -82,16 +83,20 @@ class WarriorDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(symbol, scan_date)
                 )
-            """)
+            """
+            )
 
             # Index for fast date queries
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_watchlist_scan_date
                 ON watchlist_candidates(scan_date DESC)
-            """)
+            """
+            )
 
             # Table 2: Trades
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS trades (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     trade_id TEXT UNIQUE NOT NULL,
@@ -113,26 +118,34 @@ class WarriorDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Indexes for trades
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trades_symbol
                 ON trades(symbol)
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trades_entry_time
                 ON trades(entry_time DESC)
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trades_status
                 ON trades(status)
-            """)
+            """
+            )
 
             # Table 3: Daily statistics
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS daily_stats (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     trade_date DATE UNIQUE NOT NULL,
@@ -158,10 +171,12 @@ class WarriorDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Table 4: Pattern detections
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS pattern_detections (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     symbol TEXT NOT NULL,
@@ -187,26 +202,34 @@ class WarriorDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (trade_id) REFERENCES trades(trade_id)
                 )
-            """)
+            """
+            )
 
             # Indexes for pattern detections
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_patterns_symbol
                 ON pattern_detections(symbol)
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_patterns_detection_time
                 ON pattern_detections(detection_time DESC)
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_patterns_setup_type
                 ON pattern_detections(setup_type)
-            """)
+            """
+            )
 
             # Table 5: Scan results (historical)
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS scan_results (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     scan_date DATE NOT NULL,
@@ -217,14 +240,16 @@ class WarriorDatabase:
                     parameters TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # ═════════════════════════════════════════════════════════════════
             #                   CLAUDE AI TABLES (PHASE 7)
             # ═════════════════════════════════════════════════════════════════
 
             # Table 6: AI Optimization Suggestions
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS ai_suggestions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     suggestion_date DATE NOT NULL,
@@ -241,20 +266,26 @@ class WarriorDatabase:
                     actual_impact TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_suggestions_date
                 ON ai_suggestions(suggestion_date DESC)
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_suggestions_status
                 ON ai_suggestions(status)
-            """)
+            """
+            )
 
             # Table 7: Market Regimes
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS market_regimes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     detection_time DATETIME NOT NULL,
@@ -267,15 +298,19 @@ class WarriorDatabase:
                     duration_minutes INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_regimes_detection_time
                 ON market_regimes(detection_time DESC)
-            """)
+            """
+            )
 
             # Table 8: AI Insights and Recommendations
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS ai_insights (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     insight_date DATE NOT NULL,
@@ -286,15 +321,19 @@ class WarriorDatabase:
                     acknowledged BOOLEAN DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_insights_date
                 ON ai_insights(insight_date DESC)
-            """)
+            """
+            )
 
             # Table 9: Error Recovery Log
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS error_recovery_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     error_time DATETIME NOT NULL,
@@ -312,20 +351,26 @@ class WarriorDatabase:
                     resolution_time DATETIME,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_errors_time
                 ON error_recovery_log(error_time DESC)
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_errors_status
                 ON error_recovery_log(recovery_status)
-            """)
+            """
+            )
 
             # Table 10: AI Usage Tracking (for cost monitoring)
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS ai_usage_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     request_time DATETIME NOT NULL,
@@ -336,23 +381,26 @@ class WarriorDatabase:
                     success BOOLEAN,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_usage_time
                 ON ai_usage_log(request_time DESC)
-            """)
+            """
+            )
 
-            logger.info("Database schema initialized successfully (includes Claude AI tables)")
+            logger.info(
+                "Database schema initialized successfully (includes Claude AI tables)"
+            )
 
     # ═════════════════════════════════════════════════════════════════
     #                     WATCHLIST OPERATIONS
     # ═════════════════════════════════════════════════════════════════
 
     def save_watchlist_candidates(
-        self,
-        candidates: List[WarriorCandidate],
-        scan_date: Optional[date] = None
+        self, candidates: List[WarriorCandidate], scan_date: Optional[date] = None
     ) -> int:
         """
         Save watchlist candidates to database
@@ -376,27 +424,30 @@ class WarriorDatabase:
             saved_count = 0
             for candidate in candidates:
                 try:
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT OR REPLACE INTO watchlist_candidates (
                             symbol, scan_date, scan_time, price, gap_percent,
                             relative_volume, float_shares, pre_market_volume,
                             catalyst, daily_chart_signal, distance_to_resistance,
                             confidence_score
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        candidate.symbol,
-                        scan_date,
-                        scan_time,
-                        candidate.price,
-                        candidate.gap_percent,
-                        candidate.relative_volume,
-                        candidate.float_shares,
-                        candidate.pre_market_volume,
-                        candidate.catalyst,
-                        candidate.daily_chart_signal,
-                        candidate.distance_to_resistance,
-                        candidate.confidence_score
-                    ))
+                    """,
+                        (
+                            candidate.symbol,
+                            scan_date,
+                            scan_time,
+                            candidate.price,
+                            candidate.gap_percent,
+                            candidate.relative_volume,
+                            candidate.float_shares,
+                            candidate.pre_market_volume,
+                            candidate.catalyst,
+                            candidate.daily_chart_signal,
+                            candidate.distance_to_resistance,
+                            candidate.confidence_score,
+                        ),
+                    )
                     saved_count += 1
                 except Exception as e:
                     logger.error(f"Error saving candidate {candidate.symbol}: {e}")
@@ -405,9 +456,7 @@ class WarriorDatabase:
             return saved_count
 
     def get_watchlist(
-        self,
-        scan_date: Optional[date] = None,
-        limit: int = 20
+        self, scan_date: Optional[date] = None, limit: int = 20
     ) -> List[Dict[str, Any]]:
         """
         Get watchlist candidates
@@ -424,20 +473,21 @@ class WarriorDatabase:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM watchlist_candidates
                 WHERE scan_date = ?
                 ORDER BY confidence_score DESC
                 LIMIT ?
-            """, (scan_date, limit))
+            """,
+                (scan_date, limit),
+            )
 
             results = cursor.fetchall()
             return [dict(row) for row in results]
 
     def get_watchlist_history(
-        self,
-        days: int = 7,
-        limit_per_day: int = 10
+        self, days: int = 7, limit_per_day: int = 10
     ) -> Dict[str, List[Dict]]:
         """
         Get watchlist history for multiple days
@@ -452,14 +502,17 @@ class WarriorDatabase:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT DISTINCT scan_date
                 FROM watchlist_candidates
                 ORDER BY scan_date DESC
                 LIMIT ?
-            """, (days,))
+            """,
+                (days,),
+            )
 
-            dates = [row['scan_date'] for row in cursor.fetchall()]
+            dates = [row["scan_date"] for row in cursor.fetchall()]
 
             history = {}
             for scan_date in dates:
@@ -481,7 +534,7 @@ class WarriorDatabase:
         entry_price: float,
         shares: int,
         stop_price: float,
-        target_price: float
+        target_price: float,
     ) -> bool:
         """
         Save trade entry to database
@@ -503,15 +556,24 @@ class WarriorDatabase:
             cursor = conn.cursor()
 
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO trades (
                         trade_id, symbol, setup_type, entry_time, entry_price,
                         shares, stop_price, target_price, status
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')
-                """, (
-                    trade_id, symbol, setup_type, entry_time, entry_price,
-                    shares, stop_price, target_price
-                ))
+                """,
+                    (
+                        trade_id,
+                        symbol,
+                        setup_type,
+                        entry_time,
+                        entry_price,
+                        shares,
+                        stop_price,
+                        target_price,
+                    ),
+                )
 
                 logger.info(f"Trade entry saved: {trade_id}")
                 return True
@@ -528,7 +590,7 @@ class WarriorDatabase:
         exit_reason: str,
         pnl: float,
         pnl_percent: float,
-        r_multiple: float
+        r_multiple: float,
     ) -> bool:
         """
         Save trade exit to database
@@ -549,7 +611,8 @@ class WarriorDatabase:
             cursor = conn.cursor()
 
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE trades
                     SET exit_time = ?,
                         exit_price = ?,
@@ -560,10 +623,17 @@ class WarriorDatabase:
                         status = 'CLOSED',
                         updated_at = CURRENT_TIMESTAMP
                     WHERE trade_id = ?
-                """, (
-                    exit_time, exit_price, exit_reason, pnl,
-                    pnl_percent, r_multiple, trade_id
-                ))
+                """,
+                    (
+                        exit_time,
+                        exit_price,
+                        exit_reason,
+                        pnl,
+                        pnl_percent,
+                        r_multiple,
+                        trade_id,
+                    ),
+                )
 
                 if cursor.rowcount > 0:
                     logger.info(f"Trade exit saved: {trade_id}")
@@ -600,7 +670,7 @@ class WarriorDatabase:
         symbol: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """
         Get trades with filters
@@ -647,7 +717,7 @@ class WarriorDatabase:
 
     def get_open_trades(self) -> List[Dict[str, Any]]:
         """Get all open trades"""
-        return self.get_trades(status='OPEN')
+        return self.get_trades(status="OPEN")
 
     def get_trades_by_date(self, trade_date: date) -> List[Dict[str, Any]]:
         """Get all trades for a specific date"""
@@ -657,11 +727,7 @@ class WarriorDatabase:
     #                     DAILY STATISTICS
     # ═════════════════════════════════════════════════════════════════
 
-    def save_daily_stats(
-        self,
-        trade_date: date,
-        stats: Dict[str, Any]
-    ) -> bool:
+    def save_daily_stats(self, trade_date: date, stats: Dict[str, Any]) -> bool:
         """
         Save daily statistics
 
@@ -676,7 +742,8 @@ class WarriorDatabase:
             cursor = conn.cursor()
 
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT OR REPLACE INTO daily_stats (
                         trade_date, total_trades, winning_trades, losing_trades,
                         win_rate, gross_profit, gross_loss, net_pnl,
@@ -687,28 +754,30 @@ class WarriorDatabase:
                         goal_reached, trading_halted, halt_reason,
                         updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (
-                    trade_date,
-                    stats.get('total_trades', 0),
-                    stats.get('winning_trades', 0),
-                    stats.get('losing_trades', 0),
-                    stats.get('win_rate', 0.0),
-                    stats.get('gross_profit', 0.0),
-                    stats.get('gross_loss', 0.0),
-                    stats.get('current_pnl', 0.0),
-                    stats.get('avg_win', 0.0),
-                    stats.get('avg_loss', 0.0),
-                    stats.get('avg_r_multiple', 0.0),
-                    stats.get('largest_win', 0.0),
-                    stats.get('largest_loss', 0.0),
-                    stats.get('consecutive_wins', 0),
-                    stats.get('consecutive_losses', 0),
-                    stats.get('max_drawdown', 0.0),
-                    stats.get('profit_factor', 0.0),
-                    stats.get('goal_reached', False),
-                    stats.get('is_halted', False),
-                    stats.get('halt_reason')
-                ))
+                """,
+                    (
+                        trade_date,
+                        stats.get("total_trades", 0),
+                        stats.get("winning_trades", 0),
+                        stats.get("losing_trades", 0),
+                        stats.get("win_rate", 0.0),
+                        stats.get("gross_profit", 0.0),
+                        stats.get("gross_loss", 0.0),
+                        stats.get("current_pnl", 0.0),
+                        stats.get("avg_win", 0.0),
+                        stats.get("avg_loss", 0.0),
+                        stats.get("avg_r_multiple", 0.0),
+                        stats.get("largest_win", 0.0),
+                        stats.get("largest_loss", 0.0),
+                        stats.get("consecutive_wins", 0),
+                        stats.get("consecutive_losses", 0),
+                        stats.get("max_drawdown", 0.0),
+                        stats.get("profit_factor", 0.0),
+                        stats.get("goal_reached", False),
+                        stats.get("is_halted", False),
+                        stats.get("halt_reason"),
+                    ),
+                )
 
                 logger.info(f"Daily stats saved for {trade_date}")
                 return True
@@ -718,8 +787,7 @@ class WarriorDatabase:
                 return False
 
     def get_daily_stats(
-        self,
-        trade_date: Optional[date] = None
+        self, trade_date: Optional[date] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Get daily statistics
@@ -736,17 +804,13 @@ class WarriorDatabase:
             cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT * FROM daily_stats WHERE trade_date = ?",
-                (trade_date,)
+                "SELECT * FROM daily_stats WHERE trade_date = ?", (trade_date,)
             )
             row = cursor.fetchone()
 
             return dict(row) if row else None
 
-    def get_stats_history(
-        self,
-        days: int = 30
-    ) -> List[Dict[str, Any]]:
+    def get_stats_history(self, days: int = 30) -> List[Dict[str, Any]]:
         """
         Get historical statistics
 
@@ -759,11 +823,14 @@ class WarriorDatabase:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM daily_stats
                 ORDER BY trade_date DESC
                 LIMIT ?
-            """, (days,))
+            """,
+                (days,),
+            )
 
             results = cursor.fetchall()
             return [dict(row) for row in results]
@@ -776,7 +843,7 @@ class WarriorDatabase:
         self,
         setup: TradingSetup,
         was_traded: bool = False,
-        trade_id: Optional[str] = None
+        trade_id: Optional[str] = None,
     ) -> int:
         """
         Save pattern detection
@@ -793,7 +860,8 @@ class WarriorDatabase:
             cursor = conn.cursor()
 
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO pattern_detections (
                         symbol, detection_time, setup_type, timeframe,
                         entry_price, stop_price, target_1r, target_2r, target_3r,
@@ -802,31 +870,35 @@ class WarriorDatabase:
                         entry_condition, stop_reason, current_price,
                         was_traded, trade_id
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    setup.symbol,
-                    setup.timestamp,
-                    setup.setup_type.value,
-                    setup.timeframe,
-                    setup.entry_price,
-                    setup.stop_price,
-                    setup.target_1r,
-                    setup.target_2r,
-                    setup.target_3r,
-                    setup.risk_per_share,
-                    setup.reward_per_share,
-                    setup.risk_reward_ratio,
-                    setup.confidence,
-                    json.dumps(setup.strength_factors),
-                    json.dumps(setup.risk_factors),
-                    setup.entry_condition,
-                    setup.stop_reason,
-                    setup.current_price,
-                    was_traded,
-                    trade_id
-                ))
+                """,
+                    (
+                        setup.symbol,
+                        setup.timestamp,
+                        setup.setup_type.value,
+                        setup.timeframe,
+                        setup.entry_price,
+                        setup.stop_price,
+                        setup.target_1r,
+                        setup.target_2r,
+                        setup.target_3r,
+                        setup.risk_per_share,
+                        setup.reward_per_share,
+                        setup.risk_reward_ratio,
+                        setup.confidence,
+                        json.dumps(setup.strength_factors),
+                        json.dumps(setup.risk_factors),
+                        setup.entry_condition,
+                        setup.stop_reason,
+                        setup.current_price,
+                        was_traded,
+                        trade_id,
+                    ),
+                )
 
                 pattern_id = cursor.lastrowid
-                logger.info(f"Pattern detection saved: {setup.symbol} {setup.setup_type.value}")
+                logger.info(
+                    f"Pattern detection saved: {setup.symbol} {setup.setup_type.value}"
+                )
                 return pattern_id
 
             except Exception as e:
@@ -840,7 +912,7 @@ class WarriorDatabase:
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         was_traded: Optional[bool] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """
         Get pattern detections with filters
@@ -892,8 +964,8 @@ class WarriorDatabase:
             for row in results:
                 pattern = dict(row)
                 # Parse JSON fields
-                pattern['strength_factors'] = json.loads(pattern['strength_factors'])
-                pattern['risk_factors'] = json.loads(pattern['risk_factors'])
+                pattern["strength_factors"] = json.loads(pattern["strength_factors"])
+                pattern["risk_factors"] = json.loads(pattern["risk_factors"])
                 patterns.append(pattern)
 
             return patterns
@@ -903,9 +975,7 @@ class WarriorDatabase:
     # ═════════════════════════════════════════════════════════════════
 
     def get_performance_summary(
-        self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        self, start_date: Optional[date] = None, end_date: Optional[date] = None
     ) -> Dict[str, Any]:
         """
         Get comprehensive performance summary
@@ -918,54 +988,48 @@ class WarriorDatabase:
             Performance summary dict
         """
         trades = self.get_trades(
-            status='CLOSED',
-            start_date=start_date,
-            end_date=end_date,
-            limit=10000
+            status="CLOSED", start_date=start_date, end_date=end_date, limit=10000
         )
 
         if not trades:
             return {
-                'total_trades': 0,
-                'win_rate': 0.0,
-                'net_pnl': 0.0,
-                'avg_r_multiple': 0.0
+                "total_trades": 0,
+                "win_rate": 0.0,
+                "net_pnl": 0.0,
+                "avg_r_multiple": 0.0,
             }
 
-        winning_trades = [t for t in trades if t['pnl'] > 0]
-        losing_trades = [t for t in trades if t['pnl'] < 0]
+        winning_trades = [t for t in trades if t["pnl"] > 0]
+        losing_trades = [t for t in trades if t["pnl"] < 0]
 
-        gross_profit = sum(t['pnl'] for t in winning_trades)
-        gross_loss = sum(t['pnl'] for t in losing_trades)
+        gross_profit = sum(t["pnl"] for t in winning_trades)
+        gross_loss = sum(t["pnl"] for t in losing_trades)
         net_pnl = gross_profit + gross_loss
 
         win_rate = (len(winning_trades) / len(trades) * 100) if trades else 0.0
         avg_win = (gross_profit / len(winning_trades)) if winning_trades else 0.0
         avg_loss = (gross_loss / len(losing_trades)) if losing_trades else 0.0
-        avg_r = sum(t['r_multiple'] for t in trades) / len(trades) if trades else 0.0
+        avg_r = sum(t["r_multiple"] for t in trades) / len(trades) if trades else 0.0
 
         profit_factor = abs(gross_profit / gross_loss) if gross_loss != 0 else 0.0
 
         return {
-            'total_trades': len(trades),
-            'winning_trades': len(winning_trades),
-            'losing_trades': len(losing_trades),
-            'win_rate': win_rate,
-            'gross_profit': gross_profit,
-            'gross_loss': gross_loss,
-            'net_pnl': net_pnl,
-            'avg_win': avg_win,
-            'avg_loss': avg_loss,
-            'avg_r_multiple': avg_r,
-            'profit_factor': profit_factor,
-            'largest_win': max((t['pnl'] for t in trades), default=0.0),
-            'largest_loss': min((t['pnl'] for t in trades), default=0.0)
+            "total_trades": len(trades),
+            "winning_trades": len(winning_trades),
+            "losing_trades": len(losing_trades),
+            "win_rate": win_rate,
+            "gross_profit": gross_profit,
+            "gross_loss": gross_loss,
+            "net_pnl": net_pnl,
+            "avg_win": avg_win,
+            "avg_loss": avg_loss,
+            "avg_r_multiple": avg_r,
+            "profit_factor": profit_factor,
+            "largest_win": max((t["pnl"] for t in trades), default=0.0),
+            "largest_loss": min((t["pnl"] for t in trades), default=0.0),
         }
 
-    def get_pattern_success_rates(
-        self,
-        days: int = 30
-    ) -> Dict[str, Dict[str, Any]]:
+    def get_pattern_success_rates(self, days: int = 30) -> Dict[str, Dict[str, Any]]:
         """
         Get success rates by pattern type
 
@@ -977,46 +1041,44 @@ class WarriorDatabase:
         """
         start_date = date.today() - timedelta(days=days)
         patterns = self.get_pattern_detections(
-            start_date=start_date,
-            was_traded=True,
-            limit=10000
+            start_date=start_date, was_traded=True, limit=10000
         )
 
         # Group by setup type
         pattern_stats = {}
         for pattern in patterns:
-            setup_type = pattern['setup_type']
+            setup_type = pattern["setup_type"]
 
             if setup_type not in pattern_stats:
                 pattern_stats[setup_type] = {
-                    'total': 0,
-                    'traded': 0,
-                    'wins': 0,
-                    'losses': 0,
-                    'total_pnl': 0.0
+                    "total": 0,
+                    "traded": 0,
+                    "wins": 0,
+                    "losses": 0,
+                    "total_pnl": 0.0,
                 }
 
-            pattern_stats[setup_type]['total'] += 1
+            pattern_stats[setup_type]["total"] += 1
 
-            if pattern['trade_id']:
-                trade = self.get_trade(pattern['trade_id'])
-                if trade and trade['status'] == 'CLOSED':
-                    pattern_stats[setup_type]['traded'] += 1
-                    if trade['pnl'] > 0:
-                        pattern_stats[setup_type]['wins'] += 1
+            if pattern["trade_id"]:
+                trade = self.get_trade(pattern["trade_id"])
+                if trade and trade["status"] == "CLOSED":
+                    pattern_stats[setup_type]["traded"] += 1
+                    if trade["pnl"] > 0:
+                        pattern_stats[setup_type]["wins"] += 1
                     else:
-                        pattern_stats[setup_type]['losses'] += 1
-                    pattern_stats[setup_type]['total_pnl'] += trade['pnl']
+                        pattern_stats[setup_type]["losses"] += 1
+                    pattern_stats[setup_type]["total_pnl"] += trade["pnl"]
 
         # Calculate success rates
         for setup_type, stats in pattern_stats.items():
-            traded = stats['traded']
+            traded = stats["traded"]
             if traded > 0:
-                stats['win_rate'] = (stats['wins'] / traded * 100)
-                stats['avg_pnl'] = stats['total_pnl'] / traded
+                stats["win_rate"] = stats["wins"] / traded * 100
+                stats["avg_pnl"] = stats["total_pnl"] / traded
             else:
-                stats['win_rate'] = 0.0
-                stats['avg_pnl'] = 0.0
+                stats["win_rate"] = 0.0
+                stats["avg_pnl"] = 0.0
 
         return pattern_stats
 

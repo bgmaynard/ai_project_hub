@@ -9,16 +9,17 @@ I put my money at risk"
 """
 
 import logging
-from datetime import datetime
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
 from enum import Enum
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class SetupType(Enum):
     """Trading setup types from Warrior Trading"""
+
     BULL_FLAG = "Bull Flag Breakout"
     ABCD = "ABCD Pattern"
     MICRO_PULLBACK = "Micro Pullback"
@@ -31,16 +32,18 @@ class SetupType(Enum):
 
 class SetupGrade(Enum):
     """Position sizing grades"""
+
     A_PLUS = "A+"  # Perfect setup - full position + add
-    A = "A"        # 5/5 criteria - full position
-    B = "B"        # 4/5 criteria - half position
-    C = "C"        # 3/5 or less - scalp only
-    F = "F"        # No trade
+    A = "A"  # 5/5 criteria - full position
+    B = "B"  # 4/5 criteria - half position
+    C = "C"  # 3/5 or less - scalp only
+    F = "F"  # No trade
 
 
 @dataclass
 class StockCriteria:
     """Ross Cameron's 5 criteria for stock selection"""
+
     symbol: str
 
     # The 5 criteria
@@ -59,13 +62,15 @@ class StockCriteria:
 
     @property
     def criteria_met(self) -> int:
-        return sum([
-            self.has_news,
-            self.float_under_10m,
-            self.price_in_range,
-            self.change_over_10pct,
-            self.rvol_over_5x
-        ])
+        return sum(
+            [
+                self.has_news,
+                self.float_under_10m,
+                self.price_in_range,
+                self.change_over_10pct,
+                self.rvol_over_5x,
+            ]
+        )
 
     @property
     def grade(self) -> SetupGrade:
@@ -79,29 +84,30 @@ class StockCriteria:
 
     def to_dict(self) -> dict:
         return {
-            'symbol': self.symbol,
-            'criteria_met': self.criteria_met,
-            'grade': self.grade.value,
-            'details': {
-                'has_news': self.has_news,
-                'float_under_10m': self.float_under_10m,
-                'price_in_range': self.price_in_range,
-                'change_over_10pct': self.change_over_10pct,
-                'rvol_over_5x': self.rvol_over_5x
+            "symbol": self.symbol,
+            "criteria_met": self.criteria_met,
+            "grade": self.grade.value,
+            "details": {
+                "has_news": self.has_news,
+                "float_under_10m": self.float_under_10m,
+                "price_in_range": self.price_in_range,
+                "change_over_10pct": self.change_over_10pct,
+                "rvol_over_5x": self.rvol_over_5x,
             },
-            'raw_values': {
-                'float': self.float_shares,
-                'price': self.price,
-                'change_pct': self.change_pct,
-                'rvol': self.relative_volume,
-                'news': self.news_headline
-            }
+            "raw_values": {
+                "float": self.float_shares,
+                "price": self.price,
+                "change_pct": self.change_pct,
+                "rvol": self.relative_volume,
+                "news": self.news_headline,
+            },
         }
 
 
 @dataclass
 class SetupClassification:
     """Complete setup classification result"""
+
     symbol: str
     timestamp: datetime
 
@@ -129,27 +135,35 @@ class SetupClassification:
 
     def to_dict(self) -> dict:
         return {
-            'symbol': self.symbol,
-            'timestamp': self.timestamp.isoformat(),
-            'setup_type': self.setup_type.value,
-            'setup_grade': self.setup_grade.value,
-            'confidence': round(self.confidence, 3),
-            'trade': {
-                'entry': self.entry_price,
-                'stop': self.stop_loss,
-                'target': self.target_price,
-                'risk_reward': round((self.target_price - self.entry_price) /
-                                     (self.entry_price - self.stop_loss), 2)
-                              if self.stop_loss and self.entry_price else 0,
-                'position_size_pct': self.position_size_pct
+            "symbol": self.symbol,
+            "timestamp": self.timestamp.isoformat(),
+            "setup_type": self.setup_type.value,
+            "setup_grade": self.setup_grade.value,
+            "confidence": round(self.confidence, 3),
+            "trade": {
+                "entry": self.entry_price,
+                "stop": self.stop_loss,
+                "target": self.target_price,
+                "risk_reward": (
+                    round(
+                        (self.target_price - self.entry_price)
+                        / (self.entry_price - self.stop_loss),
+                        2,
+                    )
+                    if self.stop_loss and self.entry_price
+                    else 0
+                ),
+                "position_size_pct": self.position_size_pct,
             },
-            'analysis': {
-                'pattern': self.pattern_detected,
-                'tape_signal': self.tape_signal,
-                'stock_criteria': self.stock_criteria.to_dict() if self.stock_criteria else None
+            "analysis": {
+                "pattern": self.pattern_detected,
+                "tape_signal": self.tape_signal,
+                "stock_criteria": (
+                    self.stock_criteria.to_dict() if self.stock_criteria else None
+                ),
             },
-            'action': self.action,
-            'reasons': self.reasons
+            "action": self.action,
+            "reasons": self.reasons,
         }
 
 
@@ -179,7 +193,7 @@ class SetupClassifier:
             SetupGrade.A: 75,
             SetupGrade.B: 50,
             SetupGrade.C: 25,
-            SetupGrade.F: 0
+            SetupGrade.F: 0,
         }
 
         logger.info("SetupClassifier initialized")
@@ -190,7 +204,7 @@ class SetupClassifier:
         stock_criteria: StockCriteria,
         pattern_results: Dict = None,
         tape_analysis: Dict = None,
-        current_price: float = 0
+        current_price: float = 0,
     ) -> SetupClassification:
         """
         Classify the current trading setup.
@@ -206,9 +220,7 @@ class SetupClassifier:
             SetupClassification with complete analysis
         """
         result = SetupClassification(
-            symbol=symbol,
-            timestamp=datetime.now(),
-            stock_criteria=stock_criteria
+            symbol=symbol, timestamp=datetime.now(), stock_criteria=stock_criteria
         )
 
         reasons = []
@@ -224,49 +236,54 @@ class SetupClassifier:
 
         if pattern_results:
             detected_patterns = [
-                (name, p) for name, p in pattern_results.items()
-                if p.detected
+                (name, p) for name, p in pattern_results.items() if p.detected
             ]
 
             if detected_patterns:
-                best_name, best_pattern = max(detected_patterns, key=lambda x: x[1].confidence)
+                best_name, best_pattern = max(
+                    detected_patterns, key=lambda x: x[1].confidence
+                )
                 pattern_confidence = best_pattern.confidence
                 result.pattern_detected = best_pattern.pattern_type
 
                 # Map pattern to setup type
                 pattern_map = {
-                    'BULL_FLAG': SetupType.BULL_FLAG,
-                    'ABCD': SetupType.ABCD,
-                    'MICRO_PULLBACK': SetupType.MICRO_PULLBACK,
-                    'HOD_BREAK': SetupType.HOD_BREAK
+                    "BULL_FLAG": SetupType.BULL_FLAG,
+                    "ABCD": SetupType.ABCD,
+                    "MICRO_PULLBACK": SetupType.MICRO_PULLBACK,
+                    "HOD_BREAK": SetupType.HOD_BREAK,
                 }
-                result.setup_type = pattern_map.get(best_pattern.pattern_type, SetupType.NO_SETUP)
+                result.setup_type = pattern_map.get(
+                    best_pattern.pattern_type, SetupType.NO_SETUP
+                )
 
                 # Set trade levels from pattern
                 result.entry_price = best_pattern.entry_price
                 result.stop_loss = best_pattern.stop_loss
                 result.target_price = best_pattern.target_price
 
-                reasons.append(f"Pattern: {best_pattern.pattern_type} ({pattern_confidence:.0%})")
+                reasons.append(
+                    f"Pattern: {best_pattern.pattern_type} ({pattern_confidence:.0%})"
+                )
 
         # Analyze tape
         tape_confidence = 0
         if tape_analysis:
-            tape_signal = tape_analysis.get('signal', 'NO_SIGNAL')
+            tape_signal = tape_analysis.get("signal", "NO_SIGNAL")
             result.tape_signal = tape_signal
 
-            if tape_signal != 'NO_SIGNAL':
-                tape_confidence = tape_analysis.get('confidence', 0)
+            if tape_signal != "NO_SIGNAL":
+                tape_confidence = tape_analysis.get("confidence", 0)
 
                 # Check for dip buy setup from tape
-                if tape_signal == 'IRRATIONAL_FLUSH':
+                if tape_signal == "IRRATIONAL_FLUSH":
                     result.setup_type = SetupType.DIP_BUY
                     result.entry_price = current_price
                     result.stop_loss = current_price * 0.97  # 3% stop
                     result.target_price = current_price * 1.05  # 5% target
                     reasons.append(f"Tape: Irrational flush detected")
 
-                elif tape_signal in ['FIRST_GREEN_PRINT', 'SELLER_THINNING']:
+                elif tape_signal in ["FIRST_GREEN_PRINT", "SELLER_THINNING"]:
                     reasons.append(f"Tape: {tape_signal} ({tape_confidence:.0%})")
 
         # Calculate combined confidence
@@ -286,7 +303,7 @@ class SetupClassifier:
             SetupGrade.A: 1.0,
             SetupGrade.B: 0.85,
             SetupGrade.C: 0.7,
-            SetupGrade.F: 0.5
+            SetupGrade.F: 0.5,
         }
         combined_confidence *= grade_multiplier.get(stock_grade, 0.5)
         result.confidence = min(combined_confidence, 1.0)
@@ -338,7 +355,7 @@ class SetupClassifier:
         volume: int,
         avg_volume: int,
         float_shares: float = 0,
-        has_news: bool = False
+        has_news: bool = False,
     ) -> SetupClassification:
         """
         Quick classification with minimal data.
@@ -355,13 +372,11 @@ class SetupClassifier:
             float_shares=float_shares,
             price=price,
             change_pct=change_pct,
-            relative_volume=volume / avg_volume if avg_volume > 0 else 0
+            relative_volume=volume / avg_volume if avg_volume > 0 else 0,
         )
 
         return self.classify(
-            symbol=symbol,
-            stock_criteria=criteria,
-            current_price=price
+            symbol=symbol, stock_criteria=criteria, current_price=price
         )
 
     def get_entry_rules(self, setup_type: SetupType) -> Dict:
@@ -371,54 +386,54 @@ class SetupClassifier:
         """
         rules = {
             SetupType.BULL_FLAG: {
-                'entry': 'Break above flag high',
-                'confirmation': 'Volume surge on breakout',
-                'stop': 'Low of flag',
-                'target': 'Pole height added to breakout',
-                'timeout': '5 minutes (breakout or bailout)'
+                "entry": "Break above flag high",
+                "confirmation": "Volume surge on breakout",
+                "stop": "Low of flag",
+                "target": "Pole height added to breakout",
+                "timeout": "5 minutes (breakout or bailout)",
             },
             SetupType.ABCD: {
-                'entry': 'Break above B after C formed',
-                'confirmation': 'C holds above A, volume on D break',
-                'stop': 'Below C',
-                'target': 'D level (AB=CD)',
-                'timeout': 'Pattern invalidates if C breaks A'
+                "entry": "Break above B after C formed",
+                "confirmation": "C holds above A, volume on D break",
+                "stop": "Below C",
+                "target": "D level (AB=CD)",
+                "timeout": "Pattern invalidates if C breaks A",
             },
             SetupType.MICRO_PULLBACK: {
-                'entry': 'First green candle after mini dip',
-                'confirmation': 'MACD still bullish, volume returning',
-                'stop': 'Low of pullback',
-                'target': 'Previous high + extension',
-                'timeout': '2-3 candles max for pullback'
+                "entry": "First green candle after mini dip",
+                "confirmation": "MACD still bullish, volume returning",
+                "stop": "Low of pullback",
+                "target": "Previous high + extension",
+                "timeout": "2-3 candles max for pullback",
             },
             SetupType.HOD_BREAK: {
-                'entry': 'Break above HOD',
-                'confirmation': 'Volume surge, tight pre-break consolidation',
-                'stop': 'Low of consolidation',
-                'target': 'HOD + average range',
-                'timeout': '5 minutes for follow-through'
+                "entry": "Break above HOD",
+                "confirmation": "Volume surge, tight pre-break consolidation",
+                "stop": "Low of consolidation",
+                "target": "HOD + average range",
+                "timeout": "5 minutes for follow-through",
             },
             SetupType.VWAP_BREAKOUT: {
-                'entry': 'First break above VWAP',
-                'confirmation': 'Hold above VWAP on retest',
-                'stop': 'Below VWAP',
-                'target': 'Pre-market high or HOD',
-                'timeout': 'Invalidates on close below VWAP'
+                "entry": "First break above VWAP",
+                "confirmation": "Hold above VWAP on retest",
+                "stop": "Below VWAP",
+                "target": "Pre-market high or HOD",
+                "timeout": "Invalidates on close below VWAP",
             },
             SetupType.DIP_BUY: {
-                'entry': 'First green print after flush',
-                'confirmation': 'Seller thinning, tape turning green',
-                'stop': 'Low of flush',
-                'target': 'Back to pre-flush levels',
-                'timeout': 'Exit if no bounce in 30 seconds'
+                "entry": "First green print after flush",
+                "confirmation": "Seller thinning, tape turning green",
+                "stop": "Low of flush",
+                "target": "Back to pre-flush levels",
+                "timeout": "Exit if no bounce in 30 seconds",
             },
             SetupType.HALT_RESUME: {
-                'entry': 'Resumption price confirmation',
-                'confirmation': 'Direction matches expected (up halt = up resume)',
-                'stop': '3% from resume price',
-                'target': 'Next halt level or previous high',
-                'timeout': 'Exit quickly if opens wrong direction'
-            }
+                "entry": "Resumption price confirmation",
+                "confirmation": "Direction matches expected (up halt = up resume)",
+                "stop": "3% from resume price",
+                "target": "Next halt level or previous high",
+                "timeout": "Exit quickly if opens wrong direction",
+            },
         }
         return rules.get(setup_type, {})
 
@@ -443,7 +458,7 @@ async def classify_setup(
     volume: int,
     avg_volume: int,
     float_shares: float = 0,
-    has_news: bool = False
+    has_news: bool = False,
 ) -> SetupClassification:
     """Quick setup classification"""
     classifier = get_setup_classifier()
@@ -457,7 +472,7 @@ async def get_full_classification(
     stock_criteria: StockCriteria,
     pattern_results: Dict = None,
     tape_analysis: Dict = None,
-    current_price: float = 0
+    current_price: float = 0,
 ) -> SetupClassification:
     """Full classification with all signals"""
     classifier = get_setup_classifier()
