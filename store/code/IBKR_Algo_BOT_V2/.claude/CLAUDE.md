@@ -2173,8 +2173,31 @@ GET /api/validation/safe/trading-window - Get current trading window status
 |----------|-------|--------|
 | HIGH | Polygon WebSocket concurrency fix needs server restart | PENDING |
 | HIGH | SERVICE_NOT_RUNNING states causing Governor UI instability | FIX APPLIED |
+| HIGH | News catalyst detection not working - all trades show `has_news_catalyst: false` | NEEDS FIX |
+| MEDIUM | VWAP position unknown - all trades show `vwap_position: unknown` | NEEDS FIX |
 | MEDIUM | All 20 momentum symbols showing DEAD (no momentum detected) | MONITORING |
 | LOW | UI data feeds showing "disconnected" while backend connected | UI BUG |
+
+### Jan 8, 2026 Session Findings
+
+**Key Bugs Fixed:**
+1. `signal_gating_engine.py` - Undefined `symbol` variable (lines 172, 205, 215, 226) → changed to `contract.symbol`
+2. `time_controls.py` - Trading window 7:00-9:30 AM too restrictive → extended to 7:00 AM - 4:00 PM
+3. `scalper_config.json` - max_daily_trades: 10 blocked wins → increased to 50
+
+**Session Results (After Fixes):**
+- 10 trades, 40% win rate, +$1.68 P&L (GREEN!)
+- Profit factor: 1.29 (above 1.0 = profitable)
+- Avg win: +$1.85 vs Avg loss: -$0.95 (good risk/reward)
+
+**What Worked:**
+- FAILED_MOMENTUM exit rule (Ross Cameron rule) - prevented big losses
+- Gating 100% approval rate after NameError fix
+
+**What Still Needs Work:**
+- News catalyst detection returning false even when news exists
+- VWAP position not being calculated/used
+- Consider dynamic trade limits based on P&L (limit losses, not wins)
 
 ### Stability Goal
 

@@ -1,9 +1,11 @@
 {
   "_meta": {
-    "version": "1.0",
+    "version": "1.1",
     "created": "2025-12-12",
+    "updated": "2026-01-10",
     "description": "Claude's persistent trading knowledge - survives reboots",
-    "purpose": "Embedded consciousness for autonomous trading decisions"
+    "purpose": "Embedded consciousness for autonomous trading decisions",
+    "last_update_notes": "Added lessons learned from Jan 8 2026 session (gating fix, trading window, daily trade limit)"
   },
 
   "trading_philosophy": {
@@ -185,6 +187,37 @@
       "issue": "Old positions lingering with big losses",
       "lesson": "Position Guardian must catch and exit zombies",
       "threshold": "3% loss = zombie, must exit"
+    },
+    "gating_nameerror_2026_01_08": {
+      "issue": "77 gating attempts failed silently due to undefined 'symbol' variable",
+      "location": "signal_gating_engine.py lines 172, 205, 215, 226",
+      "fix": "Changed 'symbol' to 'contract.symbol'",
+      "lesson": "Always use fully qualified object references in gating engine",
+      "result": "100% approval rate after fix (10/10 trades approved)"
+    },
+    "trading_window_too_restrictive_2026_01_08": {
+      "issue": "Trading window hard-coded to 7:00-9:30 AM blocked midday opportunities",
+      "location": "ai/time_controls.py line 31",
+      "fix": "Extended trading window to 7:00 AM - 4:00 PM ET",
+      "lesson": "Allow trading throughout market hours, not just pre-market"
+    },
+    "daily_trade_limit_2026_01_08": {
+      "issue": "max_daily_trades: 10 blocked profitable opportunities when system was winning",
+      "fix": "Increased to max_daily_trades: 50",
+      "lesson": "Limit losses, not wins - if profitable, let system run",
+      "future_enhancement": "Dynamic limits based on P&L: winning = unlimited, losing > $50 = reduce to 5, losing > $100 = stop"
+    },
+    "failed_momentum_exit_works_2026_01_08": {
+      "observation": "9/10 exits used FAILED_MOMENTUM rule (Ross Cameron rule)",
+      "result": "Prevented large losses - avg loss $0.95 vs avg win $1.85",
+      "lesson": "Exit if stock doesn't gain 0.5% in 30s - momentum is GONE",
+      "keep_this_rule": true
+    },
+    "profit_factor_breakthrough_2026_01_08": {
+      "before_fixes": "Profit factor 0.37 (losing $0.63 for every $1 risked)",
+      "after_fixes": "Profit factor 1.29 (making $1.29 for every $1 risked)",
+      "key_changes": "Gating fix + trading window extension + FAILED_MOMENTUM exit",
+      "lesson": "Small bug fixes can transform a losing system into profitable one"
     }
   },
 
@@ -229,7 +262,7 @@
     "mode": "paper",
     "require_confirmation": true,
     "max_daily_loss": -500,
-    "max_daily_trades": 10,
+    "max_daily_trades": 50,
     "halt_on_3_consecutive_losses": true,
     "pre_trade_checklist": [
       "Check spread < 2%",
