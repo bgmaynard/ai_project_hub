@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSymbolStore } from '../stores/symbolStore'
-import api from '../services/api'
 
 interface Trade {
   time: string
@@ -22,14 +21,9 @@ export default function TimeSales() {
     setIsLoading(true)
 
     try {
-      // Try Polygon streaming first, fallback to API
-      let data: any
-      try {
-        const response = await fetch(`/api/polygon/stream/trades/${activeSymbol}`)
-        data = await response.json()
-      } catch {
-        data = await api.getTimeSales(activeSymbol)
-      }
+      // Use timesales endpoint which has Schwab fallback
+      const response = await fetch(`/api/timesales/${activeSymbol}`)
+      const data = await response.json()
 
       if (data?.trades || Array.isArray(data)) {
         const tradesArray = data.trades || data
@@ -90,7 +84,7 @@ export default function TimeSales() {
     }
 
     fetchTrades()
-    const interval = setInterval(fetchTrades, 1000) // Refresh every 1 second
+    const interval = setInterval(fetchTrades, 3000) // Refresh every 1 second
     return () => clearInterval(interval)
   }, [activeSymbol, fetchTrades, lastSymbol])
 
@@ -138,8 +132,8 @@ export default function TimeSales() {
               <div>Loading {activeSymbol}...</div>
             ) : (
               <>
-                <div>No T&S data (market closed)</div>
-                <div className="text-[12px] mt-2">Polygon subscription required</div>
+                <div>No T&S data available</div>
+                <div className="text-[12px] mt-2">Waiting for market data...</div>
               </>
             )}
           </div>

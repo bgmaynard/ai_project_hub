@@ -1,0 +1,396 @@
+{
+  "status": "FAILED",
+  "reason": "No symbols meet criteria",
+  "data": {
+    "task_id": "DISCOVERY_GAPPERS",
+    "symbols": [],
+    "symbol_count": 0,
+    "recompute_model": "FULL_RECOMPUTE",
+    "filter_criteria": {
+      "max_active_symbols": 10,
+      "min_rel_vol_floor": 1.5,
+      "current_rel_vol_floor": 1.5,
+      "use_dynamic_rel_vol": true,
+      "rel_vol_schedule": [
+        [
+          4,
+          9,
+          5.0
+        ],
+        [
+          9,
+          10,
+          3.0
+        ],
+        [
+          10,
+          12,
+          2.0
+        ],
+        [
+          12,
+          20,
+          1.5
+        ]
+      ],
+      "min_price": 1.0,
+      "max_price": 20.0,
+      "min_gap_pct": 2.0,
+      "enforce_session_boundary": true
+    },
+    "data_quality_summary": {
+      "total_evaluated": 31,
+      "float_missing_count": 31,
+      "avg_volume_missing_count": 31,
+      "hod_inconsistent_count": 6,
+      "rel_vol_absurd_count": 0
+    },
+    "rank_snapshot": {
+      "cycle_number": 1,
+      "session_date": "2026-01-03",
+      "timestamp": "2026-01-03T17:37:03.931238+00:00",
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 1.5,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      },
+      "current_rel_vol_floor": 1.5,
+      "total_candidates": 31,
+      "passed_filters": 0,
+      "excluded_count": 31,
+      "active_count": 0,
+      "below_cutoff_count": 0,
+      "active_watchlist": [],
+      "below_cutoff": [],
+      "excluded": [
+        {
+          "symbol": "TEST1",
+          "reason": "PRICE_OUT_OF_RANGE",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 0,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "PARK",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0.34,
+          "rel_vol_daily": null,
+          "gap_pct": 0.27,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "XBP",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 5.4,
+          "rel_vol_daily": null,
+          "gap_pct": 4.26,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "SIDU",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 52.71,
+          "rel_vol_daily": null,
+          "gap_pct": 46.18,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "SOC",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 46.08,
+          "rel_vol_daily": null,
+          "gap_pct": 35.14,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "BNAI",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 45.0,
+          "rel_vol_daily": null,
+          "gap_pct": 62.07,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "SLS",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 16.51,
+          "rel_vol_daily": null,
+          "gap_pct": 16.98,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "TTRX",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 13.65,
+          "rel_vol_daily": null,
+          "gap_pct": 14.72,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "RDW",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 28.84,
+          "rel_vol_daily": null,
+          "gap_pct": 18.82,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "IRWD",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 29.2,
+          "rel_vol_daily": null,
+          "gap_pct": 27.0,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "YDDL",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 12.56,
+          "rel_vol_daily": null,
+          "gap_pct": 5.97,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "SOPA",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 4.01,
+          "rel_vol_daily": null,
+          "gap_pct": 7.11,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "NUAI",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 26.18,
+          "rel_vol_daily": null,
+          "gap_pct": 16.72,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "UAVS",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 40.52,
+          "rel_vol_daily": null,
+          "gap_pct": 42.54,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "CHRS",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 3.67,
+          "rel_vol_daily": null,
+          "gap_pct": 2.9,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "ZEO",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 1.83,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "TROO",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 10.05,
+          "rel_vol_daily": null,
+          "gap_pct": 11.88,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "ATLN",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 45.0,
+          "rel_vol_daily": null,
+          "gap_pct": 62.41,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "VSTM",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 1.89,
+          "rel_vol_daily": null,
+          "gap_pct": 5.44,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "ALCY",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 25.61,
+          "rel_vol_daily": null,
+          "gap_pct": 12.32,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "BVC",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 10.55,
+          "rel_vol_daily": null,
+          "gap_pct": 12.28,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "EGG",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 3.43,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "ODV",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 1.46,
+          "rel_vol_daily": null,
+          "gap_pct": 1.15,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "TEST2",
+          "reason": "PRICE_OUT_OF_RANGE",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 0,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "DVLT",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 50.0,
+          "rel_vol_daily": null,
+          "gap_pct": 65.62,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "IBBS",
+          "reason": "PRICE_OUT_OF_RANGE",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 0,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "SRFM",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 35.65,
+          "rel_vol_daily": null,
+          "gap_pct": 24.2,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "LVRO",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 45.0,
+          "rel_vol_daily": null,
+          "gap_pct": 142.22,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "TE",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 22.56,
+          "rel_vol_daily": null,
+          "gap_pct": 17.81,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "DGNX",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 5.93,
+          "rel_vol_daily": null,
+          "gap_pct": 8.63,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "UNCY",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0.67,
+          "rel_vol_daily": null,
+          "gap_pct": 0.53,
+          "floor_used": 1.5
+        }
+      ],
+      "exclusion_summary": {
+        "PRICE_OUT_OF_RANGE": 3,
+        "REL_VOL_BELOW_FLOOR": 28
+      },
+      "ranking_proof": {
+        "top_5": [],
+        "recomputed_all": true,
+        "force_fresh": true,
+        "rel_vol_floor_applied": 1.5
+      }
+    },
+    "watchlist_status": {
+      "session_date": "2026-01-03",
+      "cycle_count": 1,
+      "last_recompute": "2026-01-03T17:37:03.931238+00:00",
+      "active_count": 0,
+      "total_candidates": 31,
+      "archived_count": 0,
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 1.5,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      }
+    },
+    "timestamp": "2026-01-03T17:37:03.931238+00:00"
+  },
+  "timestamp": "2026-01-03T11:37:03.931238"
+}

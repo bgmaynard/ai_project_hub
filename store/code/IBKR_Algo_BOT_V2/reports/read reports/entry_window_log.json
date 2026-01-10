@@ -1,0 +1,23 @@
+{
+  "last_updated": "2025-12-30T21:41:35.308012-05:00",
+  "total_events": 1,
+  "symbol_counts": {
+    "TEST_LOG": 1
+  },
+  "events": [
+    {
+      "timestamp": "2025-12-30T21:41:35.308012-05:00",
+      "time_et": "21:41:35",
+      "symbol": "TEST_LOG",
+      "price": 9.5,
+      "hod_price": 10.0,
+      "pullback_start_hod": 10.0,
+      "pullback_pct": 4.0,
+      "pct_from_hod": -1.5,
+      "rel_vol": 5.0,
+      "gap_pct": 8.5,
+      "dominance_score": 72.5,
+      "rank": 1
+    }
+  ]
+}

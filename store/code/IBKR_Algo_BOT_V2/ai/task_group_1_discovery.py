@@ -259,7 +259,14 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
         "float_missing_count": 0,
         "avg_volume_missing_count": 0,
         "hod_inconsistent_count": 0,
-        "rel_vol_absurd_count": 0
+        "rel_vol_absurd_count": 0,
+        # TASK 1: Track avgVolume provenance
+        "avg_volume_sources": {
+            "schwab": 0,
+            "polygon": 0,
+            "yfinance_fallback": 0,
+            "unavailable": 0
+        }
     }
 
     for symbol, raw in raw_candidates.items():
@@ -277,7 +284,13 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
         price = quote.get("lastPrice") or quote.get("price") or raw.get("price") or 0
         high_price = quote.get("highPrice") or quote.get("dayHigh") or quote.get("high") or raw.get("high") or price
         volume = quote.get("totalVolume") or quote.get("volume") or raw.get("volume") or 0
-        avg_volume = quote.get("averageVolume") or quote.get("avgVolume") or quote.get("averageVolume10Day")
+
+        # =====================================================================
+        # TASK 1: Multi-source avgVolume resolution with provenance tracking
+        # =====================================================================
+        avg_volume, avg_volume_source = await conn.fetch_avg_volume(symbol)
+        data_quality_summary["avg_volume_sources"][avg_volume_source] = \
+            data_quality_summary["avg_volume_sources"].get(avg_volume_source, 0) + 1
 
         # Gap percent (use change_pct from raw if quote doesn't have it)
         gap_pct = abs(raw.get("change_pct") or 0)
@@ -325,7 +338,10 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
             "at_hod": at_hod,
             "near_hod": near_hod,
             "pct_gain": gap_pct,  # Use gap as intraday gain proxy
-            "source": raw.get("source", "unknown")
+            "source": raw.get("source", "unknown"),
+            # TASK 1: Track avgVolume provenance
+            "avg_volume": avg_volume,
+            "avg_volume_source": avg_volume_source
         }
         enriched_candidates.append(candidate)
 
@@ -344,11 +360,13 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
 
     logger.info(
         f"R1: MomentumWatchlist recompute complete - "
-        f"{len(active_symbols)} active, {rank_snapshot.get('excluded_count', 0)} excluded"
+        f"{len(active_symbols)} active, {rank_snapshot.get('excluded_count', 0)} excluded, "
+        f"{rank_snapshot.get('degraded_count', 0)} degraded"
     )
 
     # ==========================================================================
     # STEP 4: Build output with full transparency
+    # TASK 2: Include DEGRADED symbols in output for downstream processing
     # ==========================================================================
 
     # Convert active watchlist to SignalSnapshot format for downstream compatibility
@@ -369,13 +387,27 @@ async def task_discovery_gappers(inputs: Dict) -> Dict:
             "NORMAL" if ranked.dominance_score >= 40 else
             "LOW"
         )
+        symbol_dict["data_quality"] = "PASS"  # Active symbols have good data
 
         symbols_output.append(symbol_dict)
+
+    # TASK 2: Add degraded symbols to output with warning flag
+    # These symbols proceed downstream but are marked for careful handling
+    degraded_symbols = rank_snapshot.get("degraded", [])
+    for degraded_dict in degraded_symbols:
+        # Add SignalSnapshot-required fields for degraded symbols
+        degraded_dict["hod_status"] = "UNKNOWN"  # Can't determine without good data
+        degraded_dict["priority"] = "LOW"  # Lower priority due to missing data
+        degraded_dict["data_quality"] = "DEGRADED"  # Flag for downstream tasks
+        degraded_dict["data_quality_warning"] = "Missing avgVolume - rel_vol unavailable"
+        symbols_output.append(degraded_dict)
 
     return {
         "task_id": "DISCOVERY_GAPPERS",
         "symbols": symbols_output,
         "symbol_count": len(symbols_output),
+        "active_count": len(active_symbols),  # TASK 2: Separate active from degraded count
+        "degraded_count": len(degraded_symbols),  # TASK 2: Track degraded count
         "recompute_model": "FULL_RECOMPUTE",  # Flag indicating new model
         "filter_criteria": watchlist.config.to_dict(),
         "data_quality_summary": data_quality_summary,
@@ -495,6 +527,8 @@ async def task_discovery_rel_volume(inputs: Dict) -> Dict:
         "rel_vol_absurd": 0
     }
 
+    conn = get_connection_manager()
+
     for s in symbols:
         # Reconstruct SignalSnapshot
         snapshot = SignalSnapshot.from_dict(s)
@@ -506,16 +540,25 @@ async def task_discovery_rel_volume(inputs: Dict) -> Dict:
             # Update volume fields
             snapshot.volume_today = quote.get("totalVolume") or quote.get("volume") or snapshot.volume_today
 
-            # Get avg volume - NO FALLBACK TO 1
-            avg_vol = quote.get("averageVolume") or quote.get("avgVolume") or quote.get("averageVolume10Day")
-            if avg_vol and avg_vol > 0:
-                snapshot.avg_daily_volume_30d = avg_vol
-                snapshot.compute_rel_volumes()
-            else:
-                snapshot.avg_daily_volume_30d = None
-                snapshot.rel_vol_daily = None
-                data_quality_issues["avg_volume_missing"] += 1
-                snapshot.data_quality.add_flag(DataQualityFlag.AVG_VOLUME_MISSING)
+        # =====================================================================
+        # TASK 1: Multi-source avgVolume resolution with provenance tracking
+        # =====================================================================
+        avg_vol, avg_vol_source = await conn.fetch_avg_volume(symbol)
+
+        # Track provenance in data quality
+        if "avg_volume_sources" not in data_quality_issues:
+            data_quality_issues["avg_volume_sources"] = {"schwab": 0, "polygon": 0, "yfinance_fallback": 0, "unavailable": 0}
+        data_quality_issues["avg_volume_sources"][avg_vol_source] = \
+            data_quality_issues["avg_volume_sources"].get(avg_vol_source, 0) + 1
+
+        if avg_vol and avg_vol > 0:
+            snapshot.avg_daily_volume_30d = avg_vol
+            snapshot.compute_rel_volumes()
+        else:
+            snapshot.avg_daily_volume_30d = None
+            snapshot.rel_vol_daily = None
+            data_quality_issues["avg_volume_missing"] += 1
+            snapshot.data_quality.add_flag(DataQualityFlag.AVG_VOLUME_MISSING)
 
         # Check for absurd rel_vol
         if snapshot.rel_vol_daily and snapshot.rel_vol_daily > 5000:

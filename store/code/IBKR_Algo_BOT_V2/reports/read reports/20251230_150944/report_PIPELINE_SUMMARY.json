@@ -1,0 +1,98 @@
+{
+  "run_id": "20251230_150944",
+  "pipeline_status": "HALTED",
+  "halted_reason": "cannot access local variable 'get_connection_manager' where it is not associated with a value",
+  "tasks": {
+    "DATA_QUALITY_CHECK": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R0_data_quality.json",
+      "error": null,
+      "duration_ms": 16176
+    },
+    "DISCOVERY_GAPPERS": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R1_daily_top_gappers.json",
+      "error": null,
+      "duration_ms": 154437
+    },
+    "DISCOVERY_FLOAT_FILTER": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R2_low_float_universe.json",
+      "error": null,
+      "duration_ms": 0
+    },
+    "DISCOVERY_REL_VOLUME": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R3_rel_volume.json",
+      "error": null,
+      "duration_ms": 64177
+    },
+    "DISCOVERY_HOD_BEHAVIOR": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R4_hod_behavior.json",
+      "error": null,
+      "duration_ms": 58046
+    },
+    "QLIB_HOD_PROBABILITY": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R5_hod_probability.json",
+      "error": null,
+      "duration_ms": 3
+    },
+    "QLIB_REGIME_CHECK": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R6_regime_validity.json",
+      "error": null,
+      "duration_ms": 10803
+    },
+    "QLIB_FEATURE_RANK": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R7_feature_importance.json",
+      "error": null,
+      "duration_ms": 0
+    },
+    "CHRONOS_PERSISTENCE": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R8_momentum_persistence.json",
+      "error": null,
+      "duration_ms": 144174
+    },
+    "CHRONOS_PULLBACK_DEPTH": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20251230_150944\\report_R9_pullback_depth.json",
+      "error": null,
+      "duration_ms": 138961
+    },
+    "GATING_SIGNAL_EVAL": {
+      "status": "FAILED",
+      "output_file": null,
+      "error": "cannot access local variable 'get_connection_manager' where it is not associated with a value",
+      "duration_ms": 0
+    },
+    "EXECUTION_QUEUE": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "POST_TRADE_OUTCOME": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "POST_STRATEGY_HEALTH": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "POST_STRATEGY_TOGGLE": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    }
+  },
+  "timestamp": "2025-12-30T15:19:31.289074"
+}

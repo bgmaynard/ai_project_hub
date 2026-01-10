@@ -1368,6 +1368,42 @@ async def get_scalper_watchlist():
         return {"count": 0, "symbols": [], "error": str(e)}
 
 
+@router.post("/scalper/watchlist/purge")
+async def purge_scalper_watchlist():
+    """Purge scalper watchlist and reset to defaults.
+
+    Called during 4 AM startup to clear previous day's auto-scanned symbols.
+    Resets watchlist to: SPY, QQQ, AAPL, TSLA, NVDA
+    """
+    try:
+        from .hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+
+        old_count = len(scalper.config.watchlist)
+        old_symbols = scalper.config.watchlist.copy()
+
+        # Reset to defaults
+        default_symbols = ["SPY", "QQQ", "AAPL", "TSLA", "NVDA"]
+        scalper.config.watchlist = default_symbols
+
+        # Save to config file
+        scalper._save_config()
+
+        logger.info(f"Scalper watchlist purged: {old_count} -> {len(default_symbols)} symbols")
+
+        return {
+            "status": "purged",
+            "old_count": old_count,
+            "new_count": len(default_symbols),
+            "old_symbols": old_symbols,
+            "new_symbols": default_symbols,
+            "message": "Watchlist reset to defaults"
+        }
+    except Exception as e:
+        logger.error(f"Purge watchlist error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 @router.post("/scalper/reset")
 async def reset_scalper_daily():
     """Reset daily stats for fresh start"""
@@ -2617,13 +2653,12 @@ async def scan_hod_from_finviz():
     """
     try:
         from .hod_momentum_scanner import get_hod_scanner
-        from .finviz_scanner import get_finviz_scanner
+        from .finviz_scanner import async_get_top_gainers
 
         scanner = get_hod_scanner()
-        finviz = get_finviz_scanner()
 
-        # Get top gainers from Finviz (synchronous method)
-        gainers = finviz.get_top_gainers(min_change=5.0, max_price=20.0)
+        # Get top gainers from Finviz (async, non-blocking)
+        gainers = await async_get_top_gainers(min_change=5.0, max_price=20.0)
 
         added = []
         for stock in gainers[:30]:  # Top 30
@@ -2976,10 +3011,11 @@ async def add_gappers_to_watchlist(grade: str = "A"):
 
 
 # ============ FinViz Elite Scanner ============
+# Note: Routes renamed to /finviz-elite/* to avoid conflict with free scanner in finviz_routes.py
 
-@router.get("/finviz/status")
-async def finviz_status():
-    """Get FinViz scanner status"""
+@router.get("/finviz-elite/status")
+async def finviz_elite_status():
+    """Get FinViz Elite scanner status"""
     scanner = get_finviz_scanner()
     return {
         "configured": bool(scanner.token),
@@ -2989,9 +3025,9 @@ async def finviz_status():
     }
 
 
-@router.post("/finviz/start")
-async def finviz_start(interval: int = 60, min_change: float = 10.0, auto_add: bool = True):
-    """Start FinViz auto-scanner that auto-adds movers to worklist"""
+@router.post("/finviz-elite/start")
+async def finviz_elite_start(interval: int = 60, min_change: float = 10.0, auto_add: bool = True):
+    """Start FinViz Elite auto-scanner that auto-adds movers to worklist"""
     scanner = get_finviz_scanner()
     if not scanner.token:
         return {"success": False, "error": "FinViz Elite token not configured"}
@@ -3009,9 +3045,9 @@ async def finviz_start(interval: int = 60, min_change: float = 10.0, auto_add: b
     }
 
 
-@router.post("/finviz/stop")
-async def finviz_stop():
-    """Stop FinViz auto-scanner"""
+@router.post("/finviz-elite/stop")
+async def finviz_elite_stop():
+    """Stop FinViz Elite auto-scanner"""
     success = stop_finviz_scanner()
     return {
         "success": success,
@@ -3020,9 +3056,9 @@ async def finviz_stop():
     }
 
 
-@router.get("/finviz/movers")
-async def finviz_movers(min_change: float = 5.0, max_price: float = 20.0):
-    """Scan FinViz for momentum movers"""
+@router.get("/finviz-elite/movers")
+async def finviz_elite_movers(min_change: float = 5.0, max_price: float = 20.0):
+    """Scan FinViz Elite for momentum movers"""
     scanner = get_finviz_scanner()
     if not scanner.token:
         return {"error": "FinViz Elite token not configured", "candidates": []}
@@ -3039,9 +3075,9 @@ async def finviz_movers(min_change: float = 5.0, max_price: float = 20.0):
         return {"success": False, "error": str(e), "results": []}
 
 
-@router.get("/finviz/gappers")
-async def finviz_gappers(min_gap: float = 5.0, max_price: float = 20.0):
-    """Scan FinViz for gap plays"""
+@router.get("/finviz-elite/gappers")
+async def finviz_elite_gappers(min_gap: float = 5.0, max_price: float = 20.0):
+    """Scan FinViz Elite for gap plays"""
     scanner = get_finviz_scanner()
     if not scanner.token:
         return {"error": "FinViz Elite token not configured", "gappers": []}
@@ -3058,9 +3094,9 @@ async def finviz_gappers(min_gap: float = 5.0, max_price: float = 20.0):
         return {"success": False, "error": str(e), "results": []}
 
 
-@router.get("/finviz/top-plays")
-async def finviz_top_plays(limit: int = 10):
-    """Get top momentum plays with news enrichment"""
+@router.get("/finviz-elite/top-plays")
+async def finviz_elite_top_plays(limit: int = 10):
+    """Get top FinViz Elite momentum plays with news enrichment"""
     scanner = get_finviz_scanner()
     if not scanner.token:
         return {"error": "FinViz Elite token not configured", "plays": []}
@@ -3077,9 +3113,9 @@ async def finviz_top_plays(limit: int = 10):
         return {"success": False, "error": str(e), "results": []}
 
 
-@router.post("/finviz/sync-to-worklist")
-async def finviz_sync_to_worklist(min_score: float = 15.0, max_add: int = 5):
-    """Sync top FinViz plays to scalper watchlist"""
+@router.post("/finviz-elite/sync-to-worklist")
+async def finviz_elite_sync_to_worklist(min_score: float = 15.0, max_add: int = 5):
+    """Sync top FinViz Elite plays to scalper watchlist"""
     scanner = get_finviz_scanner()
     if not scanner.token:
         return {"error": "FinViz Elite token not configured"}
@@ -3092,4 +3128,94 @@ async def finviz_sync_to_worklist(min_score: float = 15.0, max_add: int = 5):
         return {"success": False, "error": str(e)}
 
 
-logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader, MACD Analyzer, Two-Phase Strategy, Phase 2 Manager, Chronos Exit Manager, HOD Momentum Scanner, Top Gappers Scanner, FinViz Elite)")
+# ============================================================================
+# TASK E: Setup Quality vs Execution Permission
+# ============================================================================
+# This endpoint provides setup grade (A/B/C) and execution status (YES/NO)
+# for scanner results, enabling the UI to show both dimensions clearly.
+
+@router.get("/setup-exec-status/{symbol}")
+async def get_setup_exec_status(symbol: str):
+    """
+    Get setup quality grade and execution permission for a symbol.
+
+    Returns:
+    - grade: A/B/C based on Warrior Trading criteria
+    - score: 0-100 setup quality score
+    - exec_status: YES/NO based on gating
+    - exec_reason: Why gating approved/denied
+    """
+    symbol = symbol.upper()
+    result = {
+        "symbol": symbol,
+        "grade": None,
+        "score": None,
+        "exec_status": None,
+        "exec_reason": None
+    }
+
+    # Get setup grade from Warrior Trading
+    try:
+        from ai.warrior_setup_detector import get_warrior_detector
+        detector = get_warrior_detector()
+        warrior_grade = detector.grade_symbol(symbol)
+        if warrior_grade:
+            result["grade"] = warrior_grade.get("grade", "C")
+            result["score"] = warrior_grade.get("score", 0)
+    except Exception as e:
+        logger.debug(f"Warrior grade not available for {symbol}: {e}")
+        # Fallback: estimate grade from price/volume
+        result["grade"] = "C"
+        result["score"] = 50
+
+    # Get execution permission from gating/funnel
+    try:
+        from ai.funnel_metrics import get_funnel_metrics
+        funnel = get_funnel_metrics()
+        status = funnel.get_funnel_status()
+
+        # Check if symbol was recently vetoed
+        vetoes = status.get("vetoes", {})
+        if symbol in vetoes:
+            result["exec_status"] = "NO"
+            result["exec_reason"] = vetoes[symbol].get("last_reason", "VETOED")
+        else:
+            # Check gating system
+            try:
+                from ai.signal_gating_engine import get_gating_engine
+                gating = get_gating_engine()
+                gating_stats = gating.veto_logger.get_veto_stats()
+
+                # Check recent vetoes for this symbol
+                recent_vetoes = [
+                    v for v in gating.veto_logger.veto_history
+                    if not v.approved and v.symbol == symbol
+                ]
+                if recent_vetoes:
+                    last_veto = recent_vetoes[-1]
+                    result["exec_status"] = "NO"
+                    result["exec_reason"] = last_veto.veto_reason or "GATED"
+                else:
+                    result["exec_status"] = "YES"
+                    result["exec_reason"] = "PASS"
+            except ImportError:
+                result["exec_status"] = "YES"
+                result["exec_reason"] = "NO_GATING"
+    except ImportError:
+        result["exec_status"] = "YES"
+        result["exec_reason"] = "NO_FUNNEL"
+
+    return result
+
+
+@router.post("/setup-exec-status/batch")
+async def get_batch_setup_exec_status(symbols: List[str]):
+    """Get setup/exec status for multiple symbols"""
+    results = {}
+    for sym in symbols[:20]:  # Limit to 20
+        status = await get_setup_exec_status(sym.upper())
+        results[sym.upper()] = status
+    return {"count": len(results), "results": results}
+
+
+logger.info("Scanner API routes initialized (Penny, Warrior, Split Tracker, Pattern Correlator, HFT Scalper, Correlation Report, Order Flow, Borrow Status, Backtest, ATR Stops, News Auto-Trader, MACD Analyzer, Two-Phase Strategy, Phase 2 Manager, Chronos Exit Manager, HOD Momentum Scanner, Top Gappers Scanner, FinViz Elite, Setup/Exec Status)")

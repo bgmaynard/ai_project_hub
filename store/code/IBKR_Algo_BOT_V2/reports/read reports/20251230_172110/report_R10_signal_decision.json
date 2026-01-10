@@ -1,0 +1,28 @@
+{
+  "status": "FAILED",
+  "reason": "Gating failed: Unknown",
+  "data": {
+    "status": "FAILED",
+    "reason": "DATA_STALE: Last good data 166.8s ago",
+    "data": {
+      "task_id": "GATING_SIGNAL_EVAL",
+      "approved": false,
+      "veto_reason": "DATA_STALE: Last good data 166.8s ago",
+      "approved_symbols": [],
+      "vetoed_symbols": [],
+      "total_evaluated": 0,
+      "approved_count": 0,
+      "vetoed_count": 0,
+      "gating_summary": {
+        "data_stale": true,
+        "overall_status": "BLOCKED"
+      },
+      "data_quality_flags": [
+        "PRICE_STALE"
+      ],
+      "timestamp": "2025-12-30T23:28:08.392229+00:00"
+    },
+    "timestamp": "2025-12-30T23:28:08.392229+00:00"
+  },
+  "timestamp": "2025-12-30T17:28:08.392229"
+}

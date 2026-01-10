@@ -134,7 +134,13 @@ class PositionGuardian:
         """Get all current positions"""
         try:
             r = requests.get(f"{self.api}/positions", timeout=5)
-            return r.json() if r.status_code == 200 else []
+            if r.status_code == 200:
+                data = r.json()
+                # API returns {"positions": [...]} - extract the array
+                if isinstance(data, dict):
+                    return data.get('positions', [])
+                return data if isinstance(data, list) else []
+            return []
         except:
             return []
 

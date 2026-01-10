@@ -13,6 +13,12 @@ export interface WatchlistItem {
   hasNews: boolean
   lastNews?: string
   fsmState?: string
+  // TASK 4: Setup vs Execution separation
+  setupGrade?: string // A, B, C, or -
+  setupGradeColor?: string
+  gatingStatus?: string // APPROVED, VETOED, PENDING, READY
+  gatingReason?: string
+  gatingColor?: string
 }
 
 interface WatchlistState {

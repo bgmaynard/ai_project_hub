@@ -247,6 +247,36 @@ class ApiService {
       method: 'POST',
     })
   }
+
+  // =========================================================================
+  // TASK E: Setup Quality vs Execution Permission
+  // =========================================================================
+
+  async getSetupExecStatus(symbol: string): Promise<{
+    symbol: string
+    grade: 'A' | 'B' | 'C' | null
+    score: number | null
+    exec_status: 'YES' | 'NO' | null
+    exec_reason: string | null
+  }> {
+    return this.fetch(`/scanner/setup-exec-status/${symbol}`)
+  }
+
+  async getBatchSetupExecStatus(symbols: string[]): Promise<{
+    count: number
+    results: Record<string, {
+      symbol: string
+      grade: 'A' | 'B' | 'C' | null
+      score: number | null
+      exec_status: 'YES' | 'NO' | null
+      exec_reason: string | null
+    }>
+  }> {
+    return this.fetch('/scanner/setup-exec-status/batch', {
+      method: 'POST',
+      body: JSON.stringify(symbols),
+    })
+  }
 }
 
 export const api = new ApiService()

@@ -1,0 +1,98 @@
+{
+  "run_id": "20260106_074319",
+  "pipeline_status": "HALTED",
+  "halted_reason": "No symbols meet criteria",
+  "tasks": {
+    "DATA_QUALITY_CHECK": {
+      "status": "COMPLETED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20260106_074319\\report_R0_data_quality.json",
+      "error": null,
+      "duration_ms": 39941
+    },
+    "DISCOVERY_GAPPERS": {
+      "status": "FAILED",
+      "output_file": "C:\\ai_project_hub\\store\\code\\IBKR_Algo_BOT_V2\\reports\\20260106_074319\\report_R1_daily_top_gappers.json",
+      "error": "No symbols meet criteria",
+      "duration_ms": 206658
+    },
+    "DISCOVERY_FLOAT_FILTER": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "DISCOVERY_REL_VOLUME": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "DISCOVERY_HOD_BEHAVIOR": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "QLIB_HOD_PROBABILITY": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "QLIB_REGIME_CHECK": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "QLIB_FEATURE_RANK": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "CHRONOS_PERSISTENCE": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "CHRONOS_PULLBACK_DEPTH": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "GATING_SIGNAL_EVAL": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "EXECUTION_QUEUE": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "POST_TRADE_OUTCOME": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "POST_STRATEGY_HEALTH": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    },
+    "POST_STRATEGY_TOGGLE": {
+      "status": "PENDING",
+      "output_file": null,
+      "error": null,
+      "duration_ms": 0
+    }
+  },
+  "timestamp": "2026-01-06T07:47:26.067319"
+}

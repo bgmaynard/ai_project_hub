@@ -53,11 +53,15 @@ class ChronosAdapter:
         self.volatility_threshold = 1.5  # 1.5x avg = VOLATILE regime
         self.trend_adx_threshold = 25    # ADX > 25 = trending
 
+        # TASK 3: Macro regime caching (don't re-fetch SPY every call)
+        self._macro_cache: Dict[str, Any] = {}
+        self._macro_cache_ttl = 300  # 5 minutes TTL
+
         # Observability tracking
         self.last_inference_time: Optional[datetime] = None
         self.symbols_tracked: set = set()
         self.inference_count: int = 0
-        self.model_name = "amazon/chronos-t5-small"
+        self.model_name = "amazon/chronos-bolt-small"  # Chronos-2: 250x faster
 
         logger.info("ChronosAdapter initialized (context-only mode)")
 
@@ -71,6 +75,64 @@ class ChronosAdapter:
         except Exception as e:
             logger.warning(f"Chronos not available: {e}")
             self.available = False
+
+    def _fetch_macro_regime(self, context: ChronosContext) -> ChronosContext:
+        """
+        TASK 3: Fetch MACRO regime from SPY.
+
+        This provides market-level context that applies to all symbols.
+        Cached for 5 minutes to avoid excessive API calls.
+        """
+        import time
+
+        # Check cache
+        cache_key = "SPY_macro"
+        now = time.time()
+
+        if cache_key in self._macro_cache:
+            cached = self._macro_cache[cache_key]
+            if (now - cached.get("timestamp", 0)) < self._macro_cache_ttl:
+                context.macro_regime = cached.get("regime", MarketRegime.UNKNOWN.value)
+                context.macro_confidence = cached.get("confidence", 0.0)
+                logger.debug(f"MACRO regime from cache: {context.macro_regime}")
+                return context
+
+        # Fetch fresh MACRO regime from SPY
+        try:
+            if self.chronos_predictor and self.available:
+                result = self.chronos_predictor.predict("SPY", horizon=5)
+
+                if "error" not in result:
+                    chronos_signal = result.get("signal", "NEUTRAL")
+                    confidence = result.get("confidence", 0.5)
+
+                    # Map to regime
+                    if chronos_signal in ["STRONG_BULLISH", "BULLISH"]:
+                        macro_regime = MarketRegime.TRENDING_UP.value
+                    elif chronos_signal in ["STRONG_BEARISH", "BEARISH"]:
+                        macro_regime = MarketRegime.TRENDING_DOWN.value
+                    else:
+                        macro_regime = MarketRegime.RANGING.value
+
+                    # Cache result
+                    self._macro_cache[cache_key] = {
+                        "regime": macro_regime,
+                        "confidence": confidence,
+                        "timestamp": now
+                    }
+
+                    context.macro_regime = macro_regime
+                    context.macro_confidence = confidence
+                    logger.info(f"MACRO regime fetched from SPY: {macro_regime} ({confidence:.0%})")
+                    return context
+
+        except Exception as e:
+            logger.warning(f"Failed to fetch MACRO regime: {e}")
+
+        # Fallback to UNKNOWN if fetch failed
+        context.macro_regime = MarketRegime.UNKNOWN.value
+        context.macro_confidence = 0.0
+        return context
 
     def get_context(
         self,
@@ -96,7 +158,9 @@ class ChronosAdapter:
         context = ChronosContext()
 
         try:
-            # Get Chronos forecast
+            # =================================================================
+            # TASK 3: Get MICRO regime (symbol-specific)
+            # =================================================================
             if self.chronos_predictor and self.available:
                 result = self.chronos_predictor.predict(symbol, horizon=horizon)
 
@@ -106,17 +170,28 @@ class ChronosAdapter:
                     context.prob_down = 1 - context.prob_up
                     context.expected_return_5d = result.get("expected_return_pct", 0) / 100
 
-                    # Map Chronos signal to regime (informational only)
+                    # Map Chronos signal to MICRO regime (symbol-specific)
                     chronos_signal = result.get("signal", "NEUTRAL")
-                    context.regime_confidence = result.get("confidence", 0.5)
+                    context.micro_confidence = result.get("confidence", 0.5)
 
-                    # Derive regime from Chronos output
+                    # Derive MICRO regime from Chronos output
                     if chronos_signal in ["STRONG_BULLISH", "BULLISH"]:
-                        context.market_regime = MarketRegime.TRENDING_UP.value
+                        context.micro_regime = MarketRegime.TRENDING_UP.value
                     elif chronos_signal in ["STRONG_BEARISH", "BEARISH"]:
-                        context.market_regime = MarketRegime.TRENDING_DOWN.value
+                        context.micro_regime = MarketRegime.TRENDING_DOWN.value
                     else:
-                        context.market_regime = MarketRegime.RANGING.value
+                        context.micro_regime = MarketRegime.RANGING.value
+
+            # =================================================================
+            # TASK 3: Get MACRO regime (market-level from SPY)
+            # =================================================================
+            context = self._fetch_macro_regime(context)
+
+            # =================================================================
+            # TASK 3: Set legacy field to effective regime
+            # =================================================================
+            context.market_regime = context.get_effective_regime()
+            context.regime_confidence = max(context.macro_confidence, context.micro_confidence)
 
             # Enhance with technical analysis if DataFrame provided
             if df is not None and len(df) >= 50:
@@ -125,6 +200,8 @@ class ChronosAdapter:
         except Exception as e:
             logger.warning(f"Chronos context extraction failed: {e}")
             context.market_regime = MarketRegime.UNKNOWN.value
+            context.micro_regime = MarketRegime.UNKNOWN.value
+            context.macro_regime = MarketRegime.UNKNOWN.value
             context.regime_confidence = 0.0
 
         context.computed_at = datetime.now().isoformat()

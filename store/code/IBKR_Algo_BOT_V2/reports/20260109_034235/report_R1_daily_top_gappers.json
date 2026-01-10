@@ -1,0 +1,156 @@
+{
+  "status": "WAITING",
+  "reason": "No symbols meet criteria - waiting for opportunities",
+  "action": "WAIT",
+  "can_resume": true,
+  "data": {
+    "task_id": "DISCOVERY_GAPPERS",
+    "symbols": [],
+    "symbol_count": 0,
+    "active_count": 0,
+    "degraded_count": 0,
+    "recompute_model": "FULL_RECOMPUTE",
+    "filter_criteria": {
+      "max_active_symbols": 10,
+      "min_rel_vol_floor": 1.5,
+      "current_rel_vol_floor": 5.0,
+      "use_dynamic_rel_vol": true,
+      "rel_vol_schedule": [
+        [
+          4,
+          9,
+          5.0
+        ],
+        [
+          9,
+          10,
+          3.0
+        ],
+        [
+          10,
+          12,
+          2.0
+        ],
+        [
+          12,
+          20,
+          1.5
+        ]
+      ],
+      "min_price": 1.0,
+      "max_price": 20.0,
+      "min_gap_pct": 2.0,
+      "enforce_session_boundary": true
+    },
+    "data_quality_summary": {
+      "total_evaluated": 0,
+      "float_missing_count": 0,
+      "avg_volume_missing_count": 0,
+      "hod_inconsistent_count": 0,
+      "rel_vol_absurd_count": 0,
+      "avg_volume_sources": {
+        "schwab": 0,
+        "polygon": 0,
+        "yfinance_fallback": 0,
+        "unavailable": 0
+      }
+    },
+    "rank_snapshot": {
+      "cycle_number": 2,
+      "session_date": "2026-01-09",
+      "timestamp": "2026-01-09T09:48:53.877864+00:00",
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 5.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      },
+      "current_rel_vol_floor": 5.0,
+      "total_candidates": 0,
+      "passed_filters": 0,
+      "excluded_count": 0,
+      "degraded_count": 0,
+      "active_count": 0,
+      "below_cutoff_count": 0,
+      "active_watchlist": [],
+      "below_cutoff": [],
+      "degraded": [],
+      "excluded": [],
+      "exclusion_summary": {},
+      "ranking_proof": {
+        "top_5": [],
+        "recomputed_all": true,
+        "force_fresh": true,
+        "rel_vol_floor_applied": 5.0
+      }
+    },
+    "watchlist_status": {
+      "session_date": "2026-01-09",
+      "cycle_count": 2,
+      "last_recompute": "2026-01-09T09:48:53.877864+00:00",
+      "active_count": 0,
+      "total_candidates": 0,
+      "archived_count": 0,
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 5.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      }
+    },
+    "timestamp": "2026-01-09T09:48:53.877962+00:00"
+  },
+  "timestamp": "2026-01-09T03:48:53.877999"
+}

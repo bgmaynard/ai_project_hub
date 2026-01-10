@@ -151,11 +151,41 @@ async def get_news_log(limit: int = 50, small_cap_only: bool = True):
 
 @router.get("/api/news-log/today")
 async def get_today_news():
-    """Get today's news only"""
+    """Get today's news only - includes Finviz for watchlist symbols"""
     try:
         from .premarket_scanner import get_premarket_scanner
         scanner = get_premarket_scanner()
         news = scanner.news_logger.get_today_news()
+
+        # ALWAYS fetch Finviz news for watchlist symbols (better small cap coverage)
+        if True:  # Always include Finviz for watchlist
+            try:
+                from watchlist_manager import get_watchlist_manager
+                from finvizfinance.quote import finvizfinance
+
+                wm = get_watchlist_manager()
+                symbols = wm.get_all_symbols()[:15] if wm else []
+
+                for sym in symbols:
+                    try:
+                        stock = finvizfinance(sym)
+                        news_df = stock.ticker_news()
+                        if news_df is not None and not news_df.empty:
+                            for idx, row in news_df.head(3).iterrows():
+                                news.append({
+                                    "time": str(row.get("Date", "")),
+                                    "time_str": str(row.get("Date", "")),
+                                    "symbol": sym,
+                                    "headline": row.get("Title", ""),
+                                    "source": "FinViz"
+                                })
+                    except Exception:
+                        continue
+
+                news.sort(key=lambda x: x.get("time", ""), reverse=True)
+            except Exception as fe:
+                logger.warning(f"Finviz fallback failed: {fe}")
+
         return {
             "success": True,
             "count": len(news),

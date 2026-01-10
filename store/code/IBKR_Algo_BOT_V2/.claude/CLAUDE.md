@@ -9,6 +9,7 @@ Morpheus Trading Bot - automated trading platform using **Schwab** as the primar
 **Dashboards:**
 - Trading UI: `http://localhost:9100/trading-new` (primary)
 - AI Control Center: `http://localhost:9100/ai-control-center` (system oversight)
+- Orchestrator Console: `http://localhost:9100/orchestrator` (read-only observer, Monitor #3)
 - Legacy Dashboard: `http://localhost:9100/dashboard` (deprecated)
 
 ## ThinkOrSwim Reference (Connection Stability Patterns)
@@ -2397,3 +2398,524 @@ curl http://localhost:9100/api/scanner/scalper/status
 - Server: Running on port 9100
 - Scalper: Paper mode, gating enabled
 - TOS reference: Documented in CLAUDE.md for connection stability patterns
+
+## Jan 6, 2026 Session - Pipeline Resilience Architecture
+
+### Problem Solved
+
+Zero trades executed during pre-market despite extreme movers (ALMS +141%, CYCN +55%, AZI +41%). Root cause: Pipeline had hard dependency where R1 (DISCOVERY_GAPPERS) failure blocked ALL downstream tasks.
+
+### Solution: Multi-Source Symbol Injection
+
+Implemented 4-part fix to decouple the pipeline from batch discovery:
+
+1. **WAITING State**: Pipeline enters WAITING (not HALTED) when discovery finds nothing
+2. **Continuous Discovery**: Polls every 5 minutes for new movers
+3. **ATS-Schwab Wiring**: Real-time streaming triggers inject symbols
+4. **Synthetic Reports**: Injected symbols bypass R1-R4, go straight to Qlib/Chronos
+
+### New Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          SYMBOL SOURCES                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Batch Discovery (R1)  │  Continuous Discovery  │  ATS Triggers         │
+│  Schwab/Finviz/Yahoo   │  Every 5 min poll      │  Real-time streaming  │
+└──────────┬─────────────┴──────────┬─────────────┴──────────┬────────────┘
+           │                        │                        │
+           ▼                        ▼                        ▼
+      ┌─────────────────────────────────────────────────────────────┐
+      │                   inject_symbols(source)                     │
+      │              Creates synthetic R1-R4 if needed               │
+      └──────────────────────────────┬──────────────────────────────┘
+                                     │
+                                     ▼
+      ┌─────────────────────────────────────────────────────────────┐
+      │                  Qlib/Chronos Analysis (R5-R9)               │
+      │              Works with injected symbols                     │
+      └──────────────────────────────┬──────────────────────────────┘
+                                     │
+                                     ▼
+      ┌─────────────────────────────────────────────────────────────┐
+      │                  Signal Gating (R10-R11)                     │
+      │              Approve/Reject trade                            │
+      └─────────────────────────────────────────────────────────────┘
+```
+
+### New Files Created
+
+| File | Purpose |
+|------|---------|
+| `ai/ats/__init__.py` | ATS module initialization |
+| `ai/ats/types.py` | Bar, AtsTrigger, AtsState types |
+| `ai/ats/schwab_adapter.py` | Schwab streaming to ATS wiring |
+| `ai/ats/ats_feed.py` | Main ATS integration layer |
+| `ai/ats/ats_detector.py` | SmartZone pattern detection |
+| `ai/ats/ats_registry.py` | Per-symbol state tracking |
+| `ai/ats/gating_hook.py` | Gating integration |
+| `ai/ats/scalper_hook.py` | Scalper integration |
+| `ai/ats_routes.py` | ATS API endpoints |
+| `ai/continuous_discovery.py` | Continuous polling service |
+
+### New API Endpoints
+
+```bash
+# Continuous Discovery
+POST /api/task-queue/discovery/start?poll_interval_seconds=300
+POST /api/task-queue/discovery/stop
+POST /api/task-queue/discovery/poll-now
+GET  /api/task-queue/discovery/status
+
+# Symbol Injection
+POST /api/task-queue/inject-symbols  (body: ["ALMS", "CYCN"])
+POST /api/task-queue/resume
+GET  /api/task-queue/is-waiting
+
+# ATS Signal Feed
+GET  /api/ats/status
+POST /api/ats/schwab/wire
+GET  /api/ats/schwab/status
+GET  /api/ats/triggers
+GET  /api/ats/active
+```
+
+### Auto-Start Behavior
+
+On server startup (10s delay):
+1. Wires ATS to Schwab streaming
+2. Starts continuous discovery if within trading hours (7 AM - 3:30 PM ET)
+
+### Manual Testing
+
+```bash
+# Start server
+python morpheus_trading_api.py
+
+# Manually inject symbols (simulates ATS trigger)
+curl -X POST "http://localhost:9100/api/task-queue/inject-symbols" \
+  -H "Content-Type: application/json" \
+  -d '["ALMS", "CYCN", "AZI"]'
+
+# Resume pipeline from WAITING
+curl -X POST "http://localhost:9100/api/task-queue/resume"
+
+# Check status
+curl "http://localhost:9100/api/task-queue/status"
+curl "http://localhost:9100/api/ats/status"
+```
+
+### Key Code Changes
+
+**task_queue_manager.py:**
+- Added `PipelineStatus.WAITING` enum
+- Added `inject_symbols()` method
+- Added `_create_synthetic_discovery_reports()` for R1-R4 bypass
+- Modified `resume_from_waiting()` to skip to R5 (Qlib)
+
+**continuous_discovery.py:**
+- Polls Schwab movers, Finviz, news every 5 min
+- Auto-resumes pipeline when symbols found
+- Filters: $1-$25 price, 5%+ gap
+
+**ats_feed.py:**
+- Auto-injects triggered symbols into pipeline
+- Registered callback for pipeline integration
+
+### Result
+
+System now continues analyzing even when batch discovery finds nothing:
+- WAITING state allows resume (not permanent HALTED)
+- Continuous discovery finds movers every 5 minutes
+- ATS triggers inject symbols in real-time
+- Synthetic R1-R4 reports enable Qlib/Chronos analysis
+
+## Jan 6, 2026 - Post-Resilience Hardening (Phase 2)
+
+### Overview
+
+Signal Quality Control phase implementing rate limiting, quality gates, TTLs, time-aware filtering, and postmortem reporting.
+
+### TASK 1: Symbol Injection Rate Limiting
+
+Prevents overwhelming Chronos on volatile days with soft rejection (defer, don't drop).
+
+**Configuration:**
+```python
+DEFAULT_INJECTION_LIMITS = {
+    "window_seconds": 600,    # 10 minute rolling window
+    "max_total": 5,           # Max symbols across all sources
+    "per_source": {
+        "ATS": 3,
+        "ATS_TRIGGER": 3,
+        "ATS_STREAM": 3,
+        "CONTINUOUS_DISCOVERY": 3,
+        "MANUAL": 5,
+        "NEWS": 2,
+    }
+}
+```
+
+**API:**
+```bash
+GET /api/task-queue/injection-stats  # Rate limiter statistics
+```
+
+### TASK 2: Conditional Synthetic Bypass (Quality Gate)
+
+R1-R4 bypass only when quality conditions met.
+
+**Rules:**
+- IF source in `["ATS_STREAM", "ATS_TRIGGER", "ATS"]` → bypass allowed
+- ELSE IF ATS state == ACTIVE → bypass allowed
+- ELSE IF Chronos confidence >= 0.7 → bypass allowed
+- ELSE IF ATS score >= 70 → bypass allowed
+- ELSE → defer to discovery cycle (not discarded)
+
+**Configuration:**
+```python
+DEFAULT_BYPASS_CONFIG = {
+    "min_chronos_confidence": 0.7,
+    "ats_active_bypasses": True,
+    "require_quality_check": True,
+    "sources_always_bypass": ["ATS_STREAM", "ATS_TRIGGER", "ATS"],
+    "defer_on_quality_fail": True,
+}
+```
+
+**API:**
+```bash
+GET /api/task-queue/quality-gate/config  # View config
+GET /api/task-queue/quality-gate/status  # Quality gate status + deferred symbols
+```
+
+### TASK 3: Injection Provenance Tagging
+
+Every injection tagged with source, reason, score, and timestamp for observability.
+
+**Provenance Fields:**
+- `injection_source`: ATS_STREAM, CONTINUOUS_DISCOVERY, MANUAL, NEWS
+- `trigger_reason`: SMARTZONE_EXPANSION, GAP_SCAN, etc.
+- `ats_score`: ATS quality score (0-100)
+- `timestamp`: When injected
+- `metadata`: Additional context (entry_price, stop_loss, etc.)
+
+### TASK 4: Time-Aware Discovery Filter Scheduling
+
+Different filter criteria by time of day.
+
+**Schedule:**
+```json
+[
+  {
+    "name": "premarket",
+    "time_range_et": ["04:00", "09:29"],
+    "filters": {"min_gap_pct": 3.0, "min_rel_vol": 2.0, "min_premarket_volume": 250000}
+  },
+  {
+    "name": "open",
+    "time_range_et": ["09:30", "09:45"],
+    "filters": {"min_gap_pct": 5.0, "min_rel_vol": 2.5, "cooldown_seconds": 120}
+  },
+  {
+    "name": "post_open",
+    "time_range_et": ["09:45", "11:30"],
+    "filters": {"min_gap_pct": 8.0, "min_rel_vol": 3.0, "min_volume": 1000000}
+  },
+  {
+    "name": "midday",
+    "time_range_et": ["11:30", "15:00"],
+    "filters": {"min_gap_pct": 10.0, "min_rel_vol": 2.0}
+  }
+]
+```
+
+**Discovery status includes:**
+- Active schedule name
+- Applied thresholds
+- Candidates found/excluded counts
+- Filter statistics
+
+### TASK 5: ATS Exhaustion Propagation to R10
+
+ATS exhaustion blocks entry at R10 gating.
+
+**Veto States:**
+- `EXHAUSTION` - Momentum exhausted
+- `INVALIDATED` - Pattern failed
+
+**Gating check added:**
+```python
+checks = {
+    ...
+    'ats_not_exhausted': ats_state not in ["EXHAUSTION", "INVALIDATED"]
+}
+```
+
+### TASK 6: Deferred Queue TTL + Session Boundary Safety
+
+Prevents stale symbols from persisting.
+
+**Configuration:**
+```python
+DEFAULT_TTL_CONFIG = {
+    "deferred_symbol_ttl_seconds": 1200,  # 20 minutes
+    "clear_deferred_on_new_session": True,
+    "session_start_hour_et": 4,  # 4 AM ET = new trading day
+}
+```
+
+**Behavior:**
+- Symbols expire after TTL (logged as `SYMBOL_DEFERRED_EXPIRED`)
+- New session clears deferred queue (logged as `SESSION_BOUNDARY_CLEAR`)
+- TTL remaining shown in injection stats
+
+### TASK 7: Postmortem "Why Not Traded" Report
+
+Daily report explaining why top movers weren't traded.
+
+**Report Path:** `reports/postmortem_YYYY-MM-DD.json`
+
+**Sections:**
+- `top_movers_snapshot` - Top 20 movers of the day
+- `discovery_status` - Were they discovered?
+- `injection_provenance` - Were they injected?
+- `quality_gate_results` - Did they pass quality gate?
+- `chronos_pattern_summary` - Did Chronos emit patterns?
+- `gating_veto_reasons` - Did R10 approve? If not, why?
+- `opportunity_misses` - Symbols that should have been traded
+
+**API:**
+```bash
+GET /api/task-queue/postmortem/today           # Generate today's report
+GET /api/task-queue/postmortem/{date}          # Get report by date
+GET /api/task-queue/postmortem/list            # List all reports
+GET /api/task-queue/postmortem/missed-opportunities  # Just missed opportunities
+```
+
+### Files Modified/Created
+
+| File | Purpose |
+|------|---------|
+| `ai/task_queue_manager.py` | Rate limiter, TTL, quality gate, provenance |
+| `ai/task_queue_routes.py` | API endpoints for all new features |
+| `ai/continuous_discovery.py` | Time-aware scheduling, filter stats |
+| `ai/task_group_4_gating.py` | ATS exhaustion check in R10 |
+| `ai/postmortem_report.py` | Daily "Why Not Traded" report generator |
+
+### Quick Reference Commands
+
+```bash
+# Check injection rate limits
+curl http://localhost:9100/api/task-queue/injection-stats
+
+# Check quality gate status
+curl http://localhost:9100/api/task-queue/quality-gate/status
+
+# Check discovery schedule
+curl http://localhost:9100/api/task-queue/discovery/status
+
+# Generate postmortem
+curl http://localhost:9100/api/task-queue/postmortem/today
+
+# View missed opportunities
+curl http://localhost:9100/api/task-queue/postmortem/missed-opportunities
+```
+
+## Jan 7, 2026 Session - Orchestration & Observer Console
+
+### Overview
+
+Built a dedicated **read-only** Orchestration & Observer Console for Monitor #3. This separate React application provides system observability without any execution capability.
+
+**Access URL:** `http://localhost:9100/orchestrator`
+
+**Design Philosophy:**
+- **Read-only** - No execution actions, no risk parameter modification
+- **Clarity, not power** - Explains WHY things happened, not just WHAT
+- **Multi-monitor** - Designed for dedicated monitor (Monitor #3)
+- **Auto-refresh** - All data refreshes every 3-5 seconds
+
+### 6 Screens Implemented
+
+| Screen | Purpose |
+|--------|---------|
+| **System Overview** (top bar) | Bot status, mode, phase, profile, scouts, strategy count |
+| **Symbol Flow Funnel** | Pipeline visualization with drop-off analysis |
+| **Phase & Strategy** | Current phase, enabled/disabled strategies with reasons |
+| **Gating Decisions** | Filterable table of all gating decisions with full context |
+| **Symbol Timeline** | End-to-end event timeline for any symbol |
+| **Daily Reports** | Visual daily baseline report rendering |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `ui/orchestrator/` | Complete React app directory |
+| `ui/orchestrator/src/App.tsx` | Main app + SystemOverviewBar + Navigation |
+| `ui/orchestrator/src/components/SymbolFunnel.tsx` | Screen 2: Funnel visualization |
+| `ui/orchestrator/src/components/PhaseStrategy.tsx` | Screen 3: Phase & strategy routing |
+| `ui/orchestrator/src/components/GatingExplainer.tsx` | Screen 4: Gating decision explainer |
+| `ui/orchestrator/src/components/SymbolTimeline.tsx` | Screen 5: Symbol lifecycle timeline |
+| `ui/orchestrator/src/components/DailyReport.tsx` | Screen 6: Daily baseline report viewer |
+| `ui/orchestrator/src/services/api.ts` | API service for all data fetching |
+| `ui/orchestrator/src/types/index.ts` | TypeScript type definitions |
+| `ai/orchestrator_routes.py` | Backend API endpoints |
+
+### Backend API Endpoints
+
+```
+GET  /api/orchestrator/status                    - Aggregated system state
+GET  /api/orchestrator/gating/decisions          - Gating decision log
+GET  /api/orchestrator/gating/stats              - Approval rates and veto reasons
+GET  /api/orchestrator/symbol/{symbol}/lifecycle - Symbol event timeline
+GET  /api/orchestrator/symbols/active            - Active symbols in pipeline
+GET  /api/orchestrator/reports/daily/{date}      - Daily baseline report
+GET  /api/orchestrator/reports/dates             - Available report dates
+```
+
+### Gating Decision Tracking
+
+The orchestrator tracks all gating decisions with:
+- Timestamp
+- Symbol
+- Strategy
+- Decision (APPROVED/VETOED)
+- Primary reason
+- Secondary factors
+- Chronos regime & confidence
+- ATS state
+- Micro-override flag
+
+**In-memory storage:** Last 500 decisions retained.
+
+### Symbol Lifecycle Tracking
+
+Records events for each symbol:
+- DISCOVERED, INJECTED
+- QUALITY_PASSED, QUALITY_REJECTED
+- SCOUT_ATTEMPT, SCOUT_CONFIRMED, SCOUT_STOPPED
+- GATING_ATTEMPT, GATING_APPROVED, GATING_VETOED
+- TRADE_EXECUTED, TRADE_CLOSED
+- PHASE_CHANGE, COOLDOWN, HANDOFF
+
+### Daily Report Contents
+
+- Market context (breadth, small-cap participation, gap rate, regime)
+- Funnel summary (discovered → injected → gated → approved → executed)
+- Strategy activity (signals, approvals, vetoes, trades per strategy)
+- Top veto reasons with percentages
+- Phase transitions timeline
+- Trade summary (wins, losses, P&L, avg win/loss)
+
+### Quick Start
+
+```bash
+# Build orchestrator UI
+cd ui/orchestrator && npm install && npm run build
+
+# Open orchestrator
+start http://localhost:9100/orchestrator
+```
+
+### Integration Notes
+
+- Uses `StaticFiles(html=True)` for SPA support
+- No route handlers needed - static mount handles everything
+- Auto-fallback for missing endpoints with mock data
+- Dark theme matching Trading UI aesthetic
+
+## Jan 10, 2026 Session - Weekend Checkpoint & Backup
+
+### Current System State
+
+| Component | Status |
+|-----------|--------|
+| Server | Running (port 9100) |
+| Broker (Schwab) | Disconnected (weekend) |
+| Scalper | Running, paper mode, 5 symbols |
+| Task Queue | IDLE |
+| Gating | Disabled |
+| Trading Window | WEEKEND (closed) |
+
+### Lifetime Performance (279 Trades)
+
+| Metric | Value | Target |
+|--------|-------|--------|
+| Total Trades | 279 | - |
+| Win Rate | 28.0% | 40%+ |
+| Total P&L | -$233.26 | Profitable |
+| Avg Win | +$3.37 | - |
+| Avg Loss | -$2.47 | - |
+| Profit Factor | 0.53 | >1.0 |
+
+### Priority Actions (From Jan 9 EOD Report)
+
+Based on detailed exit analysis, these changes should be made:
+
+1. **Disable FAILED_MOMENTUM exit** - 20.3% WR, -$106.28 loss
+   ```json
+   {"use_failed_momentum_exit": false}
+   ```
+
+2. **Block midday trading (11 AM - 2:30 PM ET)** - 23% WR, -$75 loss
+   ```json
+   {"blocked_hours": ["11:00-14:30"]}
+   ```
+
+3. **Blacklist losing symbols** - LRHC, ICON, KUST, TCGL, FEED
+   ```json
+   {"blacklist": ["LRHC", "ICON", "KUST", "TCGL", "FEED"]}
+   ```
+
+4. **Increase MAX_HOLD_TIME** - From 180s to 300s
+   ```json
+   {"max_hold_seconds": 300}
+   ```
+
+### Key Insight
+
+**Trades need to live longer.** The data shows:
+- TRAILING_STOP: 100% WR, +$16.69 avg (winners run)
+- MAX_HOLD_TIME: 63.2% WR (patience pays)
+- Early exits (VWAP, Chronos, FAILED_MOMENTUM): All negative P&L
+
+Every early-exit mechanism has been destroying P&L. The winning formula is:
+- Enter on momentum
+- Let it run (300s max hold)
+- Exit on trailing stop OR max hold time
+- Skip aggressive exit signals
+
+### Files Changed This Session
+
+155 files changed including:
+- 28 deleted batch files (cleanup)
+- 50+ new AI modules (ATS, phases, scouts, etc.)
+- UI updates (Trading, AI Control Center, Orchestrator)
+- Core system updates (morpheus_trading_api.py, scalper, etc.)
+
+### Quick Start (Next Trading Day)
+
+```bash
+# Start server
+python morpheus_trading_api.py
+
+# Apply recommended config changes
+curl -X POST "http://localhost:9100/api/scanner/scalper/config" \
+  -H "Content-Type: application/json" \
+  -d '{"use_failed_momentum_exit": false, "max_hold_seconds": 300}'
+
+# Start scalper
+curl -X POST "http://localhost:9100/api/scanner/scalper/start"
+
+# Open dashboards
+start http://localhost:9100/trading-new
+start http://localhost:9100/ai-control-center
+start http://localhost:9100/orchestrator
+```
+
+### Backup Created
+
+- Full git commit with all changes
+- Pushed to GitHub main branch
+- Date: January 10, 2026

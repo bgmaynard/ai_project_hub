@@ -1,0 +1,157 @@
+{
+  "report_generated": "2026-01-09T18:22:33.019780",
+  "system_state": "SERVICE_NOT_RUNNING",
+  "system_state_reason": "Required services not started",
+  "market": {
+    "status": "AFTER_HOURS",
+    "detail": "After-hours (07:22 PM ET)",
+    "et_time": "07:22 PM ET",
+    "is_trading_day": true
+  },
+  "first_tick": {
+    "received": null,
+    "symbol": null
+  },
+  "startup": {
+    "time": "2026-01-09T18:22:32.545057",
+    "complete": true,
+    "events": [
+      {
+        "timestamp": "2026-01-09T18:22:32.976648",
+        "service": "chronos",
+        "event": "health_check",
+        "success": true,
+        "duration_ms": 272.989,
+        "detail": ""
+      },
+      {
+        "timestamp": "2026-01-09T18:22:32.978706",
+        "service": "market_data",
+        "event": "connection_check",
+        "success": true,
+        "duration_ms": 1.9220000000000002,
+        "detail": "schwab_active"
+      },
+      {
+        "timestamp": "2026-01-09T18:22:32.980330",
+        "service": "websocket",
+        "event": "stream_check",
+        "success": true,
+        "duration_ms": 1.552,
+        "detail": "Trades: 0, Quotes: 0"
+      },
+      {
+        "timestamp": "2026-01-09T18:22:33.019247",
+        "service": "scanners",
+        "event": "job_check",
+        "success": true,
+        "duration_ms": 38.86,
+        "detail": "1/4 running"
+      }
+    ]
+  },
+  "services": {
+    "chronos": {
+      "name": "chronos",
+      "status": "UP",
+      "last_successful_event": null,
+      "last_check_time": "2026-01-09T18:22:32.976641",
+      "detail": "Model: amazon/chronos-bolt-small",
+      "error": null
+    },
+    "market_data": {
+      "name": "market_data",
+      "status": "UP",
+      "last_successful_event": null,
+      "last_check_time": "2026-01-09T18:22:32.978702",
+      "detail": "schwab_active",
+      "error": null
+    },
+    "websocket": {
+      "name": "websocket",
+      "status": "UP",
+      "last_successful_event": null,
+      "last_check_time": "2026-01-09T18:22:32.980329",
+      "detail": "",
+      "error": null
+    },
+    "polygon_stream": {
+      "name": "polygon_stream",
+      "status": "UP",
+      "last_successful_event": null,
+      "last_check_time": "2026-01-09T18:22:32.980325",
+      "detail": "Trades: 0, Quotes: 0",
+      "error": null
+    },
+    "scalper": {
+      "name": "scalper",
+      "status": "DOWN",
+      "last_successful_event": null,
+      "last_check_time": "2026-01-09T18:22:32.981986",
+      "detail": "Watchlist: 15",
+      "error": null
+    },
+    "news_trader": {
+      "name": "news_trader",
+      "status": "DOWN",
+      "last_successful_event": null,
+      "last_check_time": "2026-01-09T18:22:33.010637",
+      "detail": "",
+      "error": null
+    },
+    "premarket_scanner": {
+      "name": "premarket_scanner",
+      "status": "UP",
+      "last_successful_event": "2026-01-09T18:22:33.016668",
+      "last_check_time": "2026-01-09T18:22:33.017527",
+      "detail": "",
+      "error": null
+    },
+    "gating_engine": {
+      "name": "gating_engine",
+      "status": "DOWN",
+      "last_successful_event": null,
+      "last_check_time": "2026-01-09T18:22:33.019238",
+      "detail": "Contracts: 7, Enabled: False",
+      "error": null
+    }
+  },
+  "summary": {
+    "total_services": 8,
+    "services_up": 5,
+    "services_down": 3,
+    "services_degraded": 0
+  },
+  "self_test_results": {
+    "timestamp": "2026-01-09T18:22:32.545057",
+    "tests": [
+      {
+        "service": "chronos",
+        "passed": true,
+        "duration_ms": 272.989,
+        "detail": "Model: amazon/chronos-bolt-small"
+      },
+      {
+        "service": "market_data",
+        "passed": true,
+        "duration_ms": 1.9220000000000002,
+        "detail": "schwab_active"
+      },
+      {
+        "service": "websocket",
+        "passed": true,
+        "duration_ms": 1.552,
+        "detail": "Trades: 0, Quotes: 0"
+      },
+      {
+        "service": "scanners",
+        "passed": true,
+        "duration_ms": 38.86,
+        "detail": "Scalper: DOWN, News: DOWN, Premarket: UP, Gating: DOWN",
+        "scanners_running": 1,
+        "scanners_total": 4
+      }
+    ],
+    "all_passed": true
+  }
+}

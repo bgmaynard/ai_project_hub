@@ -1,0 +1,124 @@
+{
+  "phases": {
+    "PRE_MARKET": {
+      "name": "PRE_MARKET",
+      "description": "Pre-market session. Gap plays, news reactions, low liquidity.",
+      "start_time": "04:00",
+      "end_time": "09:30",
+      "expected_volatility": "HIGH",
+      "expected_volume": "LOW",
+      "trend_reliability": "LOW",
+      "allowed_strategies": [
+        "WARRIOR",
+        "FAST_SCALPER",
+        "NEWS_TRADER",
+        "PROBE_ENTRY"
+      ],
+      "default_aggressiveness": 2,
+      "position_size_multiplier": 0.75,
+      "stop_loss_multiplier": 1.5,
+      "max_trades_per_phase": 8
+    },
+    "OPEN_IGNITION": {
+      "name": "OPEN_IGNITION",
+      "description": "First 15 minutes after open. Extreme volatility, gap fills, opening range.",
+      "start_time": "09:30",
+      "end_time": "09:45",
+      "expected_volatility": "EXTREME",
+      "expected_volume": "HIGH",
+      "trend_reliability": "LOW",
+      "allowed_strategies": [
+        "WARRIOR",
+        "FAST_SCALPER"
+      ],
+      "default_aggressiveness": 3,
+      "position_size_multiplier": 0.5,
+      "stop_loss_multiplier": 2.0,
+      "max_trades_per_phase": 5
+    },
+    "STRUCTURED_MOMENTUM": {
+      "name": "STRUCTURED_MOMENTUM",
+      "description": "Post-open momentum phase. Trends develop, follow-through on gaps.",
+      "start_time": "09:45",
+      "end_time": "11:30",
+      "expected_volatility": "MEDIUM",
+      "expected_volume": "HIGH",
+      "trend_reliability": "HIGH",
+      "allowed_strategies": [
+        "ATS",
+        "PULLBACK_SCALPER",
+        "PROBE_ENTRY",
+        "NEWS_TRADER"
+      ],
+      "default_aggressiveness": 2,
+      "position_size_multiplier": 1.0,
+      "stop_loss_multiplier": 1.0,
+      "max_trades_per_phase": 15
+    },
+    "MIDDAY_COMPRESSION": {
+      "name": "MIDDAY_COMPRESSION",
+      "description": "Lunch doldrums. Low volume, choppy, false breakouts common.",
+      "start_time": "11:30",
+      "end_time": "14:00",
+      "expected_volatility": "LOW",
+      "expected_volume": "LOW",
+      "trend_reliability": "LOW",
+      "allowed_strategies": [
+        "DEFENSIVE_SCALPER"
+      ],
+      "default_aggressiveness": 1,
+      "position_size_multiplier": 0.5,
+      "stop_loss_multiplier": 0.75,
+      "max_trades_per_phase": 3
+    },
+    "POWER_HOUR": {
+      "name": "POWER_HOUR",
+      "description": "Final push before close. Institutional activity, trend continuation.",
+      "start_time": "14:00",
+      "end_time": "16:00",
+      "expected_volatility": "MEDIUM",
+      "expected_volume": "HIGH",
+      "trend_reliability": "MEDIUM",
+      "allowed_strategies": [
+        "ATS",
+        "SWING_ENTRY",
+        "PULLBACK_SCALPER"
+      ],
+      "default_aggressiveness": 2,
+      "position_size_multiplier": 1.0,
+      "stop_loss_multiplier": 1.0,
+      "max_trades_per_phase": 10
+    },
+    "AFTER_HOURS": {
+      "name": "AFTER_HOURS",
+      "description": "After-hours session. Low liquidity, wide spreads.",
+      "start_time": "16:00",
+      "end_time": "20:00",
+      "expected_volatility": "MEDIUM",
+      "expected_volume": "LOW",
+      "trend_reliability": "LOW",
+      "allowed_strategies": [
+        "NEWS_TRADER"
+      ],
+      "default_aggressiveness": 1,
+      "position_size_multiplier": 0.5,
+      "stop_loss_multiplier": 1.5,
+      "max_trades_per_phase": 3
+    },
+    "CLOSED": {
+      "name": "CLOSED",
+      "description": "Market closed. No trading allowed.",
+      "start_time": "20:00",
+      "end_time": "04:00",
+      "expected_volatility": "LOW",
+      "expected_volume": "LOW",
+      "trend_reliability": "LOW",
+      "allowed_strategies": [],
+      "default_aggressiveness": 1,
+      "position_size_multiplier": 0.0,
+      "stop_loss_multiplier": 1.0,
+      "max_trades_per_phase": 0
+    }
+  },
+  "last_updated": "2026-01-07T19:10:25.424985"
+}

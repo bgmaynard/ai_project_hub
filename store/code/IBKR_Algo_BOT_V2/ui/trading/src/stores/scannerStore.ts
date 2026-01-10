@@ -11,9 +11,11 @@ export interface ScannerResult {
   gapPct?: number      // Gap scanner
   float?: number
   lastNews?: string
-  grade?: 'A' | 'B' | 'C'
-  score?: number
-  scanner?: 'GAPPER' | 'GAINER' | 'HOD'  // Source scanner
+  grade?: 'A' | 'B' | 'C'     // Setup quality grade (Task E)
+  score?: number              // Setup score 0-100 (Task E)
+  execStatus?: 'YES' | 'NO'   // Execution permission (Task E)
+  execReason?: string         // Why YES or NO (Task E)
+  scanner?: 'GAPPER' | 'GAINER' | 'HOD' | 'SCHWAB' | 'FINVIZ' | string  // Source scanner
 }
 
 export type ScannerType = 'hod' | 'gappers' | 'gainers' | 'premarket'

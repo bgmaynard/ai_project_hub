@@ -561,7 +561,7 @@ export default function Chart() {
       }
     }
 
-    const pollInterval = setInterval(pollPolygon, 100) // 100ms = 10 updates/sec (server optimized)
+    const pollInterval = setInterval(pollPolygon, 2000) // 100ms = 10 updates/sec (server optimized)
 
     return () => {
       clearInterval(pollInterval)

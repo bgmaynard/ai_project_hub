@@ -75,6 +75,9 @@ class PositionContext:
     momentum_stalled: bool = False
     stall_count: int = 0  # Consecutive stall readings
 
+    # Consecutive weak trend tracking (ChatGPT directive - Jan 9, 2026)
+    weak_trend_count: int = 0  # Consecutive weak trend readings
+
 
 class ChronosExitManager:
     """
@@ -104,9 +107,10 @@ class ChronosExitManager:
             "min_confidence": 0.4,  # Exit if confidence drops below this
             "confidence_drop_threshold": 0.2,  # Exit if drops 20% from entry
 
-            # Trend-based exits
-            "min_trend_strength": 0.3,  # Exit if trend weakens below this
+            # Trend-based exits (ChatGPT directive - Jan 9, 2026: relax threshold, require consecutive)
+            "min_trend_strength": 0.2,  # Exit if trend weakens below this (was 0.3)
             "trend_fade_threshold": 0.3,  # Exit if drops 30% from entry
+            "consecutive_weak_reads_required": 2,  # Require N consecutive weak readings before exit
 
             # Volatility-based exits
             "max_volatility": 0.5,  # 50% annualized = danger zone
@@ -495,23 +499,40 @@ class ChronosExitManager:
 
     def _check_trend_fade(self, ctx: PositionContext, pnl_pct: float,
                           signal: ChronosExitSignal) -> ChronosExitSignal:
-        """Check for trend strength fading"""
-        # Absolute threshold
+        """Check for trend strength fading (requires consecutive weak reads)"""
+        consecutive_required = self.config.get("consecutive_weak_reads_required", 2)
+
+        # Absolute threshold check
         if ctx.current_trend_strength < self.config["min_trend_strength"]:
             if pnl_pct < 0.5:  # Flat or losing
-                signal.should_exit = True
-                signal.reason = "TREND_WEAK"
-                signal.urgency = "MEDIUM"
-                signal.trend_strength = ctx.current_trend_strength
-                signal.details = {
-                    "message": f"Trend strength {ctx.current_trend_strength:.0%} < {self.config['min_trend_strength']:.0%} min",
-                    "pnl_pct": pnl_pct
-                }
-                logger.warning(
-                    f"[CHRONOS EXIT] {ctx.symbol}: WEAK TREND "
-                    f"{ctx.current_trend_strength:.0%} @ {pnl_pct:+.1f}%"
+                # Increment consecutive weak read counter
+                ctx.weak_trend_count += 1
+                logger.debug(
+                    f"[CHRONOS] {ctx.symbol}: Weak trend read {ctx.weak_trend_count}/{consecutive_required} "
+                    f"(strength={ctx.current_trend_strength:.0%})"
                 )
-                return signal
+
+                # Only exit after consecutive weak readings
+                if ctx.weak_trend_count >= consecutive_required:
+                    signal.should_exit = True
+                    signal.reason = "TREND_WEAK"
+                    signal.urgency = "MEDIUM"
+                    signal.trend_strength = ctx.current_trend_strength
+                    signal.details = {
+                        "message": f"Trend strength {ctx.current_trend_strength:.0%} < {self.config['min_trend_strength']:.0%} min",
+                        "pnl_pct": pnl_pct,
+                        "consecutive_weak_reads": ctx.weak_trend_count
+                    }
+                    logger.warning(
+                        f"[CHRONOS EXIT] {ctx.symbol}: WEAK TREND "
+                        f"{ctx.current_trend_strength:.0%} @ {pnl_pct:+.1f}% ({ctx.weak_trend_count} consecutive reads)"
+                    )
+                    return signal
+        else:
+            # Reset counter if trend strength recovers
+            if ctx.weak_trend_count > 0:
+                logger.debug(f"[CHRONOS] {ctx.symbol}: Trend recovered, resetting weak counter")
+            ctx.weak_trend_count = 0
 
         # Check for declining trend (last 3 readings)
         if len(ctx.trend_history) >= 3:

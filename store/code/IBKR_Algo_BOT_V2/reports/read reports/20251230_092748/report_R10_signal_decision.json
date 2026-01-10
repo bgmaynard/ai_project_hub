@@ -1,0 +1,188 @@
+{
+  "status": "FAILED",
+  "reason": "Gating failed: Unknown",
+  "data": {
+    "task_id": "GATING_SIGNAL_EVAL",
+    "approved": false,
+    "approved_symbols": [],
+    "vetoed_symbols": [
+      {
+        "symbol": "FONR",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "ZBAI",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "WOK",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "BNAI",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "MSC",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "ANL",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "NTRB",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "TROO",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "SOPA",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "SIDU",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "DXST",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "NOMA",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "NKLR",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "HIT",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "LITB",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "TTRX",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "BRAG",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "ORBS",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "OPTX",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      },
+      {
+        "symbol": "MMA",
+        "veto_reason": "hod_status= not AT_HOD/NEAR_HOD",
+        "failed_checks": [
+          "hod_status"
+        ],
+        "entry_score": 0.835
+      }
+    ],
+    "total_evaluated": 20,
+    "approved_count": 0,
+    "vetoed_count": 20,
+    "gating_summary": {
+      "lead_gapper_check": false,
+      "hod_structure_check": false,
+      "qlib_probability_check": false,
+      "chronos_persistence_check": false,
+      "regime_check": true,
+      "overall_status": "BLOCKED"
+    },
+    "regime": "TREND",
+    "regime_confidence": 0.55,
+    "trading_allowed": true,
+    "kill_switch_active": false,
+    "timestamp": "2025-12-30T09:31:55.473496"
+  },
+  "timestamp": "2025-12-30T09:31:55.473595"
+}

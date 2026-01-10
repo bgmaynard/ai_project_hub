@@ -1,0 +1,144 @@
+{
+  "status": "FAILED",
+  "reason": "No symbols meet criteria",
+  "data": {
+    "task_id": "DISCOVERY_GAPPERS",
+    "symbols": [],
+    "symbol_count": 0,
+    "recompute_model": "FULL_RECOMPUTE",
+    "filter_criteria": {
+      "max_active_symbols": 10,
+      "min_rel_vol_floor": 1.5,
+      "current_rel_vol_floor": 3.0,
+      "use_dynamic_rel_vol": true,
+      "rel_vol_schedule": [
+        [
+          4,
+          9,
+          5.0
+        ],
+        [
+          9,
+          10,
+          3.0
+        ],
+        [
+          10,
+          12,
+          2.0
+        ],
+        [
+          12,
+          20,
+          1.5
+        ]
+      ],
+      "min_price": 1.0,
+      "max_price": 20.0,
+      "min_gap_pct": 2.0,
+      "enforce_session_boundary": true
+    },
+    "data_quality_summary": {
+      "total_evaluated": 0,
+      "float_missing_count": 0,
+      "avg_volume_missing_count": 0,
+      "hod_inconsistent_count": 0,
+      "rel_vol_absurd_count": 0
+    },
+    "rank_snapshot": {
+      "cycle_number": 1,
+      "session_date": "2026-01-06",
+      "timestamp": "2026-01-06T14:24:09.051996+00:00",
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 3.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      },
+      "current_rel_vol_floor": 3.0,
+      "total_candidates": 0,
+      "passed_filters": 0,
+      "excluded_count": 0,
+      "active_count": 0,
+      "below_cutoff_count": 0,
+      "active_watchlist": [],
+      "below_cutoff": [],
+      "excluded": [],
+      "exclusion_summary": {},
+      "ranking_proof": {
+        "top_5": [],
+        "recomputed_all": true,
+        "force_fresh": true,
+        "rel_vol_floor_applied": 3.0
+      }
+    },
+    "watchlist_status": {
+      "session_date": "2026-01-06",
+      "cycle_count": 1,
+      "last_recompute": "2026-01-06T14:24:09.051996+00:00",
+      "active_count": 0,
+      "total_candidates": 0,
+      "archived_count": 0,
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 3.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      }
+    },
+    "timestamp": "2026-01-06T14:24:09.052084+00:00"
+  },
+  "timestamp": "2026-01-06T08:24:09.052093"
+}

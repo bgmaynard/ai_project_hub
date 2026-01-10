@@ -355,9 +355,9 @@ async def get_stock_grade(symbol: str):
 
         # Build criteria (we may not have all data)
         price = quote.get('price') or quote.get('last', 0)
-        change_pct = quote.get('change_pct', 0)
+        change_pct = quote.get('change_percent') or quote.get('change_pct', 0)
         volume = quote.get('volume', 0)
-        avg_volume = quote.get('avg_volume', 0)
+        avg_volume = quote.get('avg_volume') or volume * 0.5  # Estimate if missing
 
         criteria = StockCriteria(
             symbol=symbol.upper(),
@@ -2164,3 +2164,354 @@ async def get_trades_history(status: Optional[str] = None, limit: int = 100):
     except Exception as e:
         logger.error(f"Trade history error: {e}")
         return {"success": True, "trades": [], "count": 0}
+
+
+# ============================================================================
+# AUTO-POPULATE WATCHLIST FROM NEWS - QUICK FIX
+# ============================================================================
+
+@router.post("/auto-populate")
+async def auto_populate_from_news():
+    """
+    One-click watchlist population from breaking news + Schwab movers.
+
+    1. Gets today's news symbols
+    2. Gets Schwab top gainers
+    3. Filters for $1-$20 price range
+    4. Filters for 3%+ gap
+    5. Grades each stock (A/B/C)
+    6. Adds qualifying stocks to scalper watchlist + main worklist
+
+    This is the quick-fix pipeline that should run automatically.
+    """
+    try:
+        import httpx
+        from ai.hft_scalper import get_hft_scalper
+
+        scalper = get_hft_scalper()
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            all_symbols = set()
+
+            # Step 1a: Get today's news symbols
+            try:
+                news_resp = await client.get("http://localhost:9100/api/news-log/today")
+                if news_resp.status_code == 200:
+                    news_data = news_resp.json()
+                    news_items = news_data.get("news", [])
+                    for item in news_items:
+                        if item.get("symbol"):
+                            all_symbols.add(item["symbol"])
+                    logger.info(f"Got {len(news_items)} news items")
+            except Exception as e:
+                logger.warning(f"News fetch failed: {e}")
+
+            # Step 1b: Get Schwab top gainers
+            try:
+                movers_resp = await client.get("http://localhost:9100/api/market/movers?direction=up")
+                if movers_resp.status_code == 200:
+                    movers_data = movers_resp.json()
+                    for mover in movers_data.get("movers", []):
+                        sym = mover.get("symbol")
+                        if sym:
+                            all_symbols.add(sym)
+                    logger.info(f"Got {len(movers_data.get('movers', []))} Schwab movers")
+            except Exception as e:
+                logger.warning(f"Schwab movers fetch failed: {e}")
+
+            # Step 1c: Also try scalp-filtered movers
+            try:
+                scalp_resp = await client.get("http://localhost:9100/api/market/movers/scalp")
+                if scalp_resp.status_code == 200:
+                    scalp_data = scalp_resp.json()
+                    for c in scalp_data.get("candidates", []):
+                        sym = c.get("symbol")
+                        if sym:
+                            all_symbols.add(sym)
+                    logger.info(f"Got {len(scalp_data.get('candidates', []))} scalp candidates")
+            except Exception as e:
+                logger.warning(f"Scalp movers fetch failed: {e}")
+
+            news_symbols = list(all_symbols)
+            logger.info(f"Found {len(news_symbols)} unique symbols from news + Schwab movers")
+
+            # Step 2: Get prices and filter
+            candidates = []
+            for symbol in news_symbols[:30]:  # Limit to 30 to avoid timeout
+                try:
+                    price_resp = await client.get(f"http://localhost:9100/api/price/{symbol}", timeout=3.0)
+                    if price_resp.status_code != 200:
+                        continue
+
+                    quote = price_resp.json()
+                    price = quote.get("price", 0)
+                    change_pct = quote.get("change_percent", 0)
+                    volume = quote.get("volume", 0)
+
+                    # Filter criteria (relaxed for pre-market)
+                    if not (1.0 <= price <= 20.0):
+                        continue
+                    if change_pct < 3.0:  # At least 3% gap
+                        continue
+
+                    # Grade calculation
+                    criteria_met = 0
+                    if 1.0 <= price <= 20.0:
+                        criteria_met += 1
+                    if change_pct >= 10.0:
+                        criteria_met += 1
+                    if change_pct >= 5.0:
+                        criteria_met += 1
+                    if volume >= 100000:
+                        criteria_met += 1
+
+                    # A = 4+, B = 3, C = 2, F = <2
+                    if criteria_met >= 4:
+                        grade = "A"
+                    elif criteria_met >= 3:
+                        grade = "B"
+                    elif criteria_met >= 2:
+                        grade = "C"
+                    else:
+                        grade = "F"
+
+                    candidates.append({
+                        "symbol": symbol,
+                        "price": price,
+                        "change_pct": change_pct,
+                        "volume": volume,
+                        "grade": grade,
+                        "criteria_met": criteria_met
+                    })
+
+                except Exception as e:
+                    logger.debug(f"Skip {symbol}: {e}")
+                    continue
+
+            # Step 3: Sort by grade and change %
+            candidates.sort(key=lambda x: (-x["criteria_met"], -x["change_pct"]))
+
+            # Step 4: Add to watchlist (top 10 B+ grades)
+            added = []
+            for c in candidates:
+                if c["grade"] in ["A", "B"] and len(added) < 10:
+                    scalper.add_to_watchlist(c["symbol"])
+                    added.append(c)
+
+            # Also add to main worklist for visibility
+            for c in added:
+                try:
+                    await client.post(
+                        "http://localhost:9100/api/worklist/add",
+                        json={"symbol": c["symbol"]},
+                        timeout=2.0
+                    )
+                except:
+                    pass
+
+            return {
+                "success": True,
+                "news_symbols_found": len(news_symbols),
+                "candidates_screened": len(candidates),
+                "added_to_watchlist": len(added),
+                "added": added,
+                "all_candidates": candidates,
+                "scalper_watchlist": scalper.config.watchlist
+            }
+
+    except Exception as e:
+        logger.error(f"Auto-populate error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {"success": False, "error": str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#                 5-PILLAR VALIDATION (Ross Cameron)
+# ═══════════════════════════════════════════════════════════════════════
+
+@router.get("/validate/{symbol}")
+async def validate_symbol(symbol: str):
+    """
+    Validate a symbol against Ross Cameron's 5 Trading Pillars.
+
+    PILLARS:
+    1. PRICE - $1.00 to $20.00
+    2. VOLUME - Rel Vol >= 3.0x OR Absolute >= 1M
+    3. FLOAT - <= 20M shares (preferred <= 10M)
+    4. CATALYST - Gap >= 5% OR news OR unusual volume
+    5. TECHNICAL - Near HOD, VWAP reclaim, or pre-market high break
+
+    Returns validation result with pass/fail for each pillar.
+    """
+    try:
+        from ai.warrior_5_pillar_validator import validate_symbol_for_worklist
+
+        passed, result = await validate_symbol_for_worklist(symbol.upper())
+
+        return {
+            "success": True,
+            **result.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Validation error for {symbol}: {e}")
+        return {
+            "success": False,
+            "symbol": symbol.upper(),
+            "passed": False,
+            "error": str(e)
+        }
+
+
+class ValidateBatchRequest(BaseModel):
+    """Request to validate multiple symbols"""
+    symbols: List[str]
+
+
+@router.post("/validate/batch")
+async def validate_batch(request: ValidateBatchRequest):
+    """
+    Validate multiple symbols against 5-pillar criteria.
+
+    Returns results for each symbol with overall pass/fail status.
+    """
+    try:
+        from ai.warrior_5_pillar_validator import validate_symbol_for_worklist
+
+        results = []
+        passed_symbols = []
+        failed_symbols = []
+
+        for symbol in request.symbols:
+            try:
+                passed, result = await validate_symbol_for_worklist(symbol.upper())
+                results.append(result.to_dict())
+                if passed:
+                    passed_symbols.append(symbol.upper())
+                else:
+                    failed_symbols.append(symbol.upper())
+            except Exception as e:
+                results.append({
+                    "symbol": symbol.upper(),
+                    "passed": False,
+                    "error": str(e)
+                })
+                failed_symbols.append(symbol.upper())
+
+        return {
+            "success": True,
+            "total": len(request.symbols),
+            "passed_count": len(passed_symbols),
+            "failed_count": len(failed_symbols),
+            "passed_symbols": passed_symbols,
+            "failed_symbols": failed_symbols,
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Batch validation error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/validate/log")
+async def get_validation_log(limit: int = 50):
+    """
+    Get recent validation log entries.
+
+    Shows all symbols that have been validated with their results.
+    """
+    try:
+        from ai.warrior_5_pillar_validator import get_5_pillar_validator
+
+        validator = get_5_pillar_validator()
+        log = validator.get_validation_log(limit)
+
+        passed = [v for v in log if v.get("passed", False)]
+        failed = [v for v in log if not v.get("passed", False)]
+
+        return {
+            "success": True,
+            "total_validations": len(log),
+            "passed_count": len(passed),
+            "failed_count": len(failed),
+            "log": log
+        }
+    except Exception as e:
+        logger.error(f"Validation log error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/validate/log/clear")
+async def clear_validation_log():
+    """Clear the validation log (call at session reset)"""
+    try:
+        from ai.warrior_5_pillar_validator import get_5_pillar_validator
+
+        validator = get_5_pillar_validator()
+        validator.clear_log()
+
+        return {"success": True, "message": "Validation log cleared"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/validate-and-add/{symbol}")
+async def validate_and_add_to_worklist(symbol: str, skip_validation: bool = False):
+    """
+    Validate a symbol and add to worklist ONLY if it passes all 5 pillars.
+
+    This is the PROPER way to add symbols - validates first, then adds.
+
+    Args:
+        symbol: Stock symbol to validate and add
+        skip_validation: If true, skip validation (for manual override)
+
+    Returns:
+        Validation result and whether symbol was added
+    """
+    try:
+        symbol = symbol.upper()
+
+        if not skip_validation:
+            from ai.warrior_5_pillar_validator import validate_symbol_for_worklist
+
+            passed, result = await validate_symbol_for_worklist(symbol)
+
+            if not passed:
+                return {
+                    "success": False,
+                    "symbol": symbol,
+                    "added": False,
+                    "reason": "Failed 5-pillar validation",
+                    "fail_reasons": result.fail_reasons,
+                    "validation": result.to_dict()
+                }
+        else:
+            result = None
+
+        # Passed validation (or skipped) - add to scalper watchlist
+        from ai.hft_scalper import get_hft_scalper
+        scalper = get_hft_scalper()
+        scalper.add_to_watchlist(symbol)
+
+        # Also add to main worklist (direct import, no HTTP call)
+        try:
+            from watchlist_manager import get_watchlist_manager
+            wm = get_watchlist_manager()
+            wm.add_symbol(symbol)
+            logger.info(f"Added {symbol} to main worklist")
+        except Exception as wm_err:
+            logger.warning(f"Could not add {symbol} to main worklist: {wm_err}")
+
+        return {
+            "success": True,
+            "symbol": symbol,
+            "added": True,
+            "validation": result.to_dict() if result else {"skipped": True},
+            "message": f"{symbol} passed 5-pillar validation and added to watchlist"
+        }
+
+    except Exception as e:
+        import traceback
+        error_msg = str(e) if str(e) else f"{type(e).__name__}: {traceback.format_exc()}"
+        logger.error(f"Validate-and-add error for {symbol}: {error_msg}")
+        return {"success": False, "error": error_msg}

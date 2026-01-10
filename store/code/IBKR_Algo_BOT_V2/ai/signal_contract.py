@@ -172,6 +172,11 @@ class GateResult:
     required_confidence: float = 0.0
     required_regimes: List[str] = field(default_factory=list)
 
+    # Micro-momentum override info (Task D)
+    override_applied: bool = False
+    override_reason: Optional[str] = None
+    override_size_multiplier: float = 1.0
+
     # Timestamp
     gated_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -181,8 +186,11 @@ class GateResult:
     def log_entry(self) -> str:
         """Generate log entry for this gate result."""
         status = "APPROVED" if self.approved else f"VETOED ({self.veto_reason})"
+        override_info = ""
+        if self.override_applied:
+            override_info = f" | MICRO_OVERRIDE (size_mult={self.override_size_multiplier})"
         return (
-            f"[GATE] {self.symbol} | {status} | "
+            f"[GATE] {self.symbol} | {status}{override_info} | "
             f"regime={self.current_regime} | conf={self.chronos_confidence:.2%} | "
             f"{self.veto_details}"
         )
@@ -195,10 +203,31 @@ class ChronosContext:
 
     IMPORTANT: Chronos ONLY provides context - it does NOT make trading decisions.
     This context is used by the Gating Engine to validate SignalContracts.
+
+    TASK 3: Regime Reconciliation
+    - macro_regime: SPY/market-level assessment (overall market conditions)
+    - micro_regime: Symbol-specific assessment (individual stock behavior)
+    - market_regime: Legacy field, now defaults to micro_regime
     """
-    # Current regime classification
+    # =========================================================================
+    # TASK 3: Split regime into MACRO (market) and MICRO (symbol)
+    # =========================================================================
+    # Macro regime - from SPY/QQQ market-level analysis
+    macro_regime: str = "UNKNOWN"
+    macro_confidence: float = 0.0
+
+    # Micro regime - symbol-specific analysis
+    micro_regime: str = "UNKNOWN"
+    micro_confidence: float = 0.0
+
+    # Legacy field - for backwards compatibility, defaults to micro_regime
     market_regime: str = "UNKNOWN"
     regime_confidence: float = 0.0
+
+    # TASK 3: Override settings
+    # Strong micro signals can override cautious macro regimes
+    micro_override_threshold: float = 0.75  # Micro confidence required for override
+    macro_blocklist: List[str] = field(default_factory=lambda: ["TRENDING_DOWN"])  # Macro regimes that NEVER allow override
 
     # Probabilistic forecast (informational only)
     prob_up: float = 0.5
@@ -215,6 +244,35 @@ class ChronosContext:
 
     # Timestamp
     computed_at: str = field(default_factory=lambda: datetime.now().isoformat())
+
+    # TASK 3: Helper methods for regime reconciliation
+    def get_effective_regime(self) -> str:
+        """
+        Get effective regime after reconciliation.
+
+        Logic:
+        1. If macro is in blocklist (TRENDING_DOWN), use macro (never override)
+        2. If micro confidence >= threshold, use micro (override allowed)
+        3. Otherwise, use macro (cautious default)
+        """
+        # Never override hard bearish macro
+        if self.macro_regime in self.macro_blocklist:
+            return self.macro_regime
+
+        # Strong micro signal can override cautious macro
+        if self.micro_confidence >= self.micro_override_threshold:
+            return self.micro_regime
+
+        # Default to macro (cautious)
+        return self.macro_regime
+
+    def get_regime_decision_explanation(self) -> str:
+        """Explain why the effective regime was chosen."""
+        if self.macro_regime in self.macro_blocklist:
+            return f"Using MACRO={self.macro_regime} (in blocklist, never override)"
+        if self.micro_confidence >= self.micro_override_threshold:
+            return f"Using MICRO={self.micro_regime} (confidence {self.micro_confidence:.0%} >= {self.micro_override_threshold:.0%} threshold)"
+        return f"Using MACRO={self.macro_regime} (micro confidence {self.micro_confidence:.0%} < {self.micro_override_threshold:.0%})"
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

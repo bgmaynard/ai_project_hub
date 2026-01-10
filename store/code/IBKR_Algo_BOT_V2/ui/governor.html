@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morpheus System Governor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-size: 12px;
+        }
+        .header {
+            background: #252526;
+            border-bottom: 1px solid #3e3e42;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: #d4d4d4; font-size: 14px; font-weight: 600; }
+        .header-right { display: flex; gap: 15px; align-items: center; }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            display: inline-block; margin-right: 5px;
+        }
+        .status-dot.green { background: #4ec9b0; }
+        .status-dot.yellow { background: #dcdcaa; }
+        .status-dot.red { background: #f48771; }
+        .status-dot.animated { animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .btn {
+            padding: 6px 12px;
+            border: 1px solid #3e3e42;
+            background: #2d2d30;
+            color: #d4d4d4;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .btn:hover { border-color: #007acc; }
+        .btn-primary { background: #007acc; border-color: #007acc; color: white; }
+
+        /* Safety Banner - CRITICAL */
+        .safety-banner {
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .safety-banner.safe {
+            background: rgba(78, 201, 176, 0.15);
+            color: #4ec9b0;
+            border-bottom: 2px solid #4ec9b0;
+        }
+        .safety-banner.degraded {
+            background: rgba(220, 220, 170, 0.15);
+            color: #dcdcaa;
+            border-bottom: 2px solid #dcdcaa;
+        }
+        .safety-banner.halted {
+            background: rgba(244, 135, 113, 0.15);
+            color: #f48771;
+            border-bottom: 2px solid #f48771;
+        }
+
+        .main { padding: 20px; padding-bottom: 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel {
+            background: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .panel-header {
+            background: #2d2d30;
+            padding: 10px 15px;
+            border-bottom: 1px solid #3e3e42;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header .data-age { font-weight: 400; font-size: 10px; color: #888; }
+        .panel-body { padding: 15px; }
+        .full-width { grid-column: 1 / -1; }
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #3e3e42;
+        }
+        .status-row:last-child { border-bottom: none; }
+        .status-label { color: #888; }
+        .status-value { font-weight: 500; }
+        .status-value.green { color: #4ec9b0; }
+        .status-value.yellow { color: #dcdcaa; }
+        .status-value.red { color: #f48771; }
+        .status-value.blue { color: #007acc; }
+        .health-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .health-item {
+            background: #2d2d30;
+            padding: 10px;
+            border-radius: 3px;
+            text-align: center;
+        }
+        .health-item .name { font-size: 10px; color: #888; margin-bottom: 5px; }
+        .health-item .status { font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; }
+
+        /* Recent Decisions - Scrollable */
+        .decisions-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .decision-row {
+            padding: 8px 10px;
+            background: #2d2d30;
+            margin-bottom: 5px;
+            border-radius: 3px;
+            display: grid;
+            grid-template-columns: 70px 60px 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+        .decision-time { color: #888; font-size: 10px; }
+        .decision-symbol { font-weight: 600; color: #007acc; }
+        .decision-reason { color: #888; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .decision-action { padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; text-align: center; }
+        .decision-action.entry { background: #4ec9b0; color: #1e1e1e; }
+        .decision-action.exit { background: #569cd6; color: #1e1e1e; }
+        .decision-action.stop { background: #f48771; color: #1e1e1e; }
+        .decision-action.trailing { background: #dcdcaa; color: #1e1e1e; }
+        .decision-action.vetoed { background: #f48771; color: #1e1e1e; }
+        .decision-action.no_action { background: #3e3e42; color: #888; }
+        .decision-pnl { font-size: 10px; font-weight: 600; }
+        .decision-pnl.positive { color: #4ec9b0; }
+        .decision-pnl.negative { color: #f48771; }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #252526;
+            border-top: 1px solid #3e3e42;
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #888;
+        }
+        .timestamp { color: #888; font-size: 10px; }
+        a { color: #007acc; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .loading { color: #888; font-style: italic; }
+        .error-inline { color: #f48771; font-style: italic; }
+
+        /* Scrollbar styling */
+        .decisions-list::-webkit-scrollbar { width: 6px; }
+        .decisions-list::-webkit-scrollbar-track { background: #1e1e1e; }
+        .decisions-list::-webkit-scrollbar-thumb { background: #3e3e42; border-radius: 3px; }
+        .decisions-list::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MORPHEUS SYSTEM GOVERNOR</h1>
+        <div class="header-right">
+            <span id="lastUpdate" class="timestamp">Loading...</span>
+            <button class="btn" onclick="refreshAll()">Refresh</button>
+            <a href="/trading-new" class="btn btn-primary">Trading UI</a>
+            <span><span id="wsStatus" class="status-dot yellow"></span><span id="wsLabel">POLLING</span></span>
+        </div>
+    </div>
+
+    <!-- Safety Status Banner - CRITICAL: Always visible -->
+    <div id="safetyBanner" class="safety-banner safe">
+        SYSTEM SAFETY STATUS: SAFE
+    </div>
+
+    <div class="main">
+        <!-- Global Status -->
+        <div class="panel">
+            <div class="panel-header">
+                <span>Global Status</span>
+                <span id="globalDataAge" class="data-age">--</span>
+            </div>
+            <div class="panel-body">
+                <div class="status-row">
+                    <span class="status-label">Mode</span>
+                    <span id="mode" class="status-value blue">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Trading Window</span>
+                    <span id="tradingWindow" class="status-value">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">AI Posture</span>
+                    <span id="aiPosture" class="status-value">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">System State</span>
+                    <span id="systemState" class="status-value">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Kill Switch</span>
+                    <span id="killSwitch" class="status-value green">READY</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Context -->
+        <div class="panel">
+            <div class="panel-header">
+                <span>Market Context</span>
+                <span id="marketDataAge" class="data-age">--</span>
+            </div>
+            <div class="panel-body">
+                <div class="status-row">
+                    <span class="status-label">Regime</span>
+                    <span id="regime" class="status-value">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Confidence</span>
+                    <span id="regimeConfidence" class="status-value">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Volatility</span>
+                    <span id="volatility" class="status-value">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Data Feed</span>
+                    <span id="dataFeed" class="status-value">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Scalper</span>
+                    <span id="scalperStatus" class="status-value">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health -->
+        <div class="panel full-width">
+            <div class="panel-header">
+                <span>System Health</span>
+                <span id="healthDataAge" class="data-age">--</span>
+            </div>
+            <div class="panel-body">
+                <div class="health-grid" id="healthGrid">
+                    <div class="health-item"><div class="name">Loading...</div><div class="status">--</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Components - FROM OLD GOVERNOR -->
+        <div class="panel full-width">
+            <div class="panel-header">
+                <span>AI Components</span>
+                <span id="aiDataAge" class="data-age">--</span>
+            </div>
+            <div class="panel-body">
+                <div class="health-grid" id="aiGrid">
+                    <div class="health-item"><div class="name">Loading...</div><div class="status">--</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Decisions - REAL DATA -->
+        <div class="panel full-width">
+            <div class="panel-header">
+                <span>Recent Governor Decisions</span>
+                <span id="decisionsCount" class="data-age">--</span>
+            </div>
+            <div class="panel-body">
+                <div class="decisions-list" id="decisionsBody">
+                    <div class="loading">Loading decisions...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <span>Morpheus Trading Platform v2.0</span>
+        <span id="footerStatus">Mode: -- | Window: -- | AI: --</span>
+    </div>
+
+    <script>
+        // State
+        let lastFetchTime = null;
+        let fetchErrors = {};
+
+        // Fetch helpers with error tracking and timeout
+        async function fetchJSON(url, name) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout (server is slow)
+
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!res.ok) {
+                    fetchErrors[name] = `HTTP ${res.status}`;
+                    return null;
+                }
+                delete fetchErrors[name];
+                return await res.json();
+            } catch (e) {
+                clearTimeout(timeoutId);
+                if (e.name === 'AbortError') {
+                    console.error('Fetch timeout:', url);
+                    fetchErrors[name] = 'Timeout';
+                } else {
+                    console.error('Fetch error:', url, e);
+                    fetchErrors[name] = e.message;
+                }
+                return null;
+            }
+        }
+
+        // Color helpers
+        function getColor(value, type) {
+            const greenValues = ['HEALTHY', 'ACTIVE', 'CONNECTED', 'OPEN', 'READY', 'SAFE', 'ENABLED', 'PAPER', 'RUNNING', 'AVAILABLE'];
+            const yellowValues = ['DEGRADED', 'PAUSED', 'PRE_MARKET', 'AFTER_HOURS', 'RANGING', 'NORMAL', 'DEFENSIVE', 'IDLE', 'STOPPED'];
+            const redValues = ['ERROR', 'OFFLINE', 'CLOSED', 'HALTED', 'LOCKED', 'DISABLED', 'LIVE', 'ARMED'];
+
+            if (greenValues.includes(value)) return 'green';
+            if (yellowValues.includes(value)) return 'yellow';
+            if (redValues.includes(value)) return 'red';
+            return '';
+        }
+
+        function setStatus(id, value, colorOverride) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = value || '--';
+            el.className = 'status-value ' + (colorOverride || getColor(value));
+        }
+
+        // Format time ago
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            if (seconds < 60) return `${seconds}s ago`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            return `${Math.floor(seconds / 3600)}h ago`;
+        }
+
+        // Format decision action
+        function getActionClass(exitReason, entrySignal) {
+            if (!exitReason && entrySignal) return 'entry';
+            const reason = (exitReason || '').toUpperCase();
+            if (reason.includes('STOP_LOSS')) return 'stop';
+            if (reason.includes('TRAILING')) return 'trailing';
+            if (reason.includes('VETO')) return 'vetoed';
+            return 'exit';
+        }
+
+        function getActionLabel(trade) {
+            if (trade.status === 'open') return 'ENTRY';
+            const reason = (trade.exit_reason || '').toUpperCase();
+            if (reason.includes('STOP_LOSS')) return 'STOP';
+            if (reason.includes('TRAILING')) return 'TRAIL';
+            if (reason.includes('REVERSAL')) return 'EXIT';
+            if (reason.includes('MAX_HOLD')) return 'TIMEOUT';
+            return 'EXIT';
+        }
+
+        // Determine safety status
+        function determineSafetyStatus(safe, health, scalp) {
+            // HALTED conditions - only if explicitly bad
+            if (safe?.kill_switch_active) return 'HALTED';
+
+            // DEGRADED conditions
+            if (health && health.status !== 'healthy') return 'DEGRADED';
+            if (health?.broker && !health.broker.connected) return 'DEGRADED';
+            if (scalp && !scalp.running) return 'DEGRADED';
+            if (safe && safe.position_multiplier < 0.5) return 'DEGRADED';
+            if (safe && safe.veto_count > 5) return 'DEGRADED';
+            if (Object.keys(fetchErrors).length > 0) return 'DEGRADED';
+
+            // If we have no data at all, show DEGRADED not HALTED
+            if (!health && !safe && !scalp) return 'DEGRADED';
+
+            return 'SAFE';
+        }
+
+        // Update safety banner
+        function updateSafetyBanner(status) {
+            const banner = document.getElementById('safetyBanner');
+            banner.className = 'safety-banner ' + status.toLowerCase();
+            banner.textContent = `SYSTEM SAFETY STATUS: ${status}`;
+        }
+
+        // Fetch all data - SEQUENTIAL to reduce server load
+        async function refreshAll() {
+            document.getElementById('lastUpdate').textContent = 'Refreshing...';
+            const startTime = Date.now();
+
+            // Fetch sequentially to reduce server load (Schwab multi-stream causes slowdown)
+            let health, governor, scalp, momentum, safe, trades, vetoes, warrior, gating, chronos;
+
+            try {
+                // Critical endpoints first
+                health = await fetchJSON('/api/health', 'health');
+                document.getElementById('lastUpdate').textContent = 'Loading governor...';
+
+                governor = await fetchJSON('/api/governor/status', 'governor');
+                document.getElementById('lastUpdate').textContent = 'Loading scalper...';
+
+                scalp = await fetchJSON('/api/scalp/status', 'scalp');
+                document.getElementById('lastUpdate').textContent = 'Loading momentum...';
+
+                // Less critical - continue even if these fail
+                momentum = await fetchJSON('/api/validation/momentum/states', 'momentum');
+                safe = await fetchJSON('/api/validation/safe/status', 'safe');
+                trades = await fetchJSON('/api/scanner/scalper/trades', 'trades');
+                vetoes = await fetchJSON('/api/gating/vetoes', 'vetoes');
+
+                // AI components
+                document.getElementById('lastUpdate').textContent = 'Loading AI components...';
+                warrior = await fetchJSON('/api/warrior/status', 'warrior');
+                gating = await fetchJSON('/api/gating/status', 'gating');
+                chronos = await fetchJSON('/api/scanner/chronos-exit/status', 'chronos');
+            } catch (e) {
+                console.error('refreshAll error:', e);
+            }
+
+            lastFetchTime = new Date();
+            const fetchDuration = Date.now() - startTime;
+            console.log('Fetch completed in', fetchDuration, 'ms');
+
+            // Update Safety Banner - CRITICAL
+            const safetyStatus = determineSafetyStatus(safe, health, scalp);
+            updateSafetyBanner(safetyStatus);
+
+            // Global Status
+            const mode = scalp?.paper_mode !== false ? 'PAPER' : 'LIVE';
+            setStatus('mode', mode);
+
+            if (governor) {
+                const safeData = governor.safe_activation || safe || {};
+                setStatus('killSwitch', safeData.kill_switch_active ? 'ARMED' : 'READY',
+                    safeData.kill_switch_active ? 'red' : 'green');
+            }
+
+            if (safe) {
+                setStatus('aiPosture', safe.mode || 'SAFE');
+                setStatus('systemState', safe.health_state || 'ACTIVE');
+            }
+
+            // Trading Window (use server time if available)
+            let tradingWindow = 'CLOSED';
+            if (governor?.trading_window) {
+                tradingWindow = governor.trading_window.window || 'CLOSED';
+            } else {
+                const now = new Date();
+                const hours = now.getHours();
+                if (hours >= 4 && hours < 9.5) tradingWindow = 'PRE_MARKET';
+                else if (hours >= 9.5 && hours < 16) tradingWindow = 'OPEN';
+                else if (hours >= 16 && hours < 20) tradingWindow = 'AFTER_HOURS';
+            }
+            setStatus('tradingWindow', tradingWindow);
+
+            // Market Context
+            if (momentum) {
+                const states = momentum.states || {};
+                const active = Object.values(states).filter(s => s !== 'DEAD').length;
+                const total = Object.keys(states).length;
+                setStatus('regime', active > 0 ? 'ACTIVE' : 'RANGING');
+                setStatus('regimeConfidence', `${active}/${total} symbols active`);
+            }
+
+            if (health) {
+                setStatus('dataFeed', health.status === 'healthy' ? 'CONNECTED' : 'ERROR');
+                setStatus('volatility', 'NORMAL');
+            }
+
+            if (scalp) {
+                const status = scalp.running ? 'RUNNING' : 'STOPPED';
+                setStatus('scalperStatus', `${status} (${scalp.watchlist_count || 0} symbols)`);
+            }
+
+            // Data age indicators
+            document.getElementById('globalDataAge').textContent = `${fetchDuration}ms`;
+            document.getElementById('marketDataAge').textContent = governor?.server_time ?
+                timeAgo(governor.server_time) : `${fetchDuration}ms`;
+            document.getElementById('healthDataAge').textContent = `${fetchDuration}ms`;
+
+            // Health Grid with animated dots
+            const healthItems = [
+                { name: 'API', status: health?.status === 'healthy' ? 'HEALTHY' : 'ERROR' },
+                { name: 'Broker', status: health?.broker?.connected ? 'CONNECTED' : 'OFFLINE' },
+                { name: 'Data Feed', status: health?.services?.market_data ? 'HEALTHY' : 'OFFLINE' },
+                { name: 'Scalper', status: scalp?.running ? 'RUNNING' : 'STOPPED' },
+                { name: 'Kill Switch', status: safe?.kill_switch_active ? 'ARMED' : 'READY' },
+                { name: 'Momentum', status: momentum?.stats?.total_symbols > 0 ? 'ACTIVE' : 'IDLE' },
+                { name: 'AI Predictor', status: health?.services?.ai_predictor === 'operational' ? 'HEALTHY' : 'OFFLINE' },
+                { name: 'Gating', status: vetoes ? 'ACTIVE' : 'OFFLINE' }
+            ];
+
+            const grid = document.getElementById('healthGrid');
+            grid.innerHTML = healthItems.map(item => {
+                const color = getColor(item.status);
+                const isHealthy = ['HEALTHY', 'CONNECTED', 'RUNNING', 'ACTIVE', 'READY'].includes(item.status);
+                return `
+                    <div class="health-item">
+                        <div class="name">${item.name}</div>
+                        <div class="status">
+                            <span class="status-dot ${color} ${isHealthy ? 'animated' : ''}"></span>
+                            <span class="${color}">${item.status}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // AI Components Grid - FROM OLD GOVERNOR
+            const aiItems = [
+                {
+                    name: 'Warrior Trading',
+                    status: warrior?.available ? 'AVAILABLE' : 'OFFLINE',
+                    detail: warrior?.patterns_enabled?.length ? `${warrior.patterns_enabled.length} patterns` : ''
+                },
+                {
+                    name: 'Signal Gating',
+                    status: gating?.gating_enabled ? 'ACTIVE' : 'OFFLINE',
+                    detail: gating?.contracts_loaded ? `${gating.contracts_loaded} contracts` : ''
+                },
+                {
+                    name: 'Chronos Exit',
+                    status: chronos?.success ? 'READY' : 'OFFLINE',
+                    detail: Object.keys(chronos?.positions || {}).length ? `${Object.keys(chronos.positions).length} monitored` : ''
+                },
+                {
+                    name: 'Safe Activation',
+                    status: safe?.activated ? (safe.mode === 'SAFE' ? 'SAFE' : safe.mode) : 'OFFLINE',
+                    detail: safe?.position_multiplier ? `${(safe.position_multiplier * 100).toFixed(0)}% size` : ''
+                },
+                {
+                    name: 'Momentum FSM',
+                    status: momentum?.stats?.total_symbols > 0 ? 'TRACKING' : 'IDLE',
+                    detail: momentum?.stats?.total_symbols ? `${momentum.stats.total_symbols} symbols` : ''
+                },
+                {
+                    name: 'Regime Detection',
+                    status: safe?.current_regime || 'UNKNOWN',
+                    detail: ''
+                },
+                {
+                    name: 'Qlib Model',
+                    status: health?.services?.ai_predictor === 'operational' ? 'LOADED' : 'OFFLINE',
+                    detail: ''
+                },
+                {
+                    name: 'Trade Validator',
+                    status: gating?.gating_enabled ? 'ENABLED' : 'DISABLED',
+                    detail: gating?.vetoed > 0 ? `${gating.vetoed} vetoes` : ''
+                }
+            ];
+
+            document.getElementById('aiDataAge').textContent = `${fetchDuration}ms`;
+            const aiGrid = document.getElementById('aiGrid');
+            aiGrid.innerHTML = aiItems.map(item => {
+                const color = getColor(item.status);
+                const isHealthy = ['AVAILABLE', 'ACTIVE', 'READY', 'SAFE', 'TRACKING', 'LOADED', 'ENABLED', 'TRENDING_UP'].includes(item.status);
+                return `
+                    <div class="health-item">
+                        <div class="name">${item.name}</div>
+                        <div class="status">
+                            <span class="status-dot ${color} ${isHealthy ? 'animated' : ''}"></span>
+                            <span class="${color}">${item.status}</span>
+                        </div>
+                        ${item.detail ? `<div class="name" style="margin-top:3px">${item.detail}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            // Recent Decisions - REAL DATA from trades + vetoes
+            const decisionsBody = document.getElementById('decisionsBody');
+
+            // Combine trades and vetoes into decisions
+            let decisions = [];
+
+            // Add trades (entries and exits)
+            if (trades?.trades && Array.isArray(trades.trades)) {
+                trades.trades.slice(0, 20).forEach(trade => {
+                    // Add exit as decision
+                    if (trade.exit_time) {
+                        decisions.push({
+                            time: trade.exit_time,
+                            symbol: trade.symbol,
+                            action: getActionLabel(trade),
+                            actionClass: getActionClass(trade.exit_reason),
+                            reason: trade.exit_reason || 'Unknown',
+                            pnl: trade.pnl,
+                            type: 'trade'
+                        });
+                    }
+                    // Add entry as decision
+                    decisions.push({
+                        time: trade.entry_time,
+                        symbol: trade.symbol,
+                        action: 'ENTRY',
+                        actionClass: 'entry',
+                        reason: trade.entry_signal || 'momentum_spike',
+                        pnl: null,
+                        type: 'trade'
+                    });
+                });
+            }
+
+            // Add vetoes
+            if (vetoes?.vetoes && Array.isArray(vetoes.vetoes)) {
+                vetoes.vetoes.forEach(veto => {
+                    decisions.push({
+                        time: veto.timestamp,
+                        symbol: veto.symbol,
+                        action: 'VETOED',
+                        actionClass: 'vetoed',
+                        reason: veto.reason || 'Gating rejected',
+                        pnl: null,
+                        type: 'veto'
+                    });
+                });
+            }
+
+            // Sort by time descending
+            decisions.sort((a, b) => new Date(b.time) - new Date(a.time));
+            decisions = decisions.slice(0, 20);
+
+            // Update count
+            document.getElementById('decisionsCount').textContent =
+                `${decisions.length} decisions | ${trades?.count || 0} trades total`;
+
+            if (decisions.length === 0) {
+                decisionsBody.innerHTML = `
+                    <div class="decision-row" style="justify-content: center;">
+                        <span class="loading">No recent decisions - system monitoring active</span>
+                    </div>
+                `;
+            } else {
+                decisionsBody.innerHTML = decisions.map(d => {
+                    const time = new Date(d.time);
+                    const timeStr = time.toLocaleTimeString('en-US', {
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                    });
+                    const pnlHtml = d.pnl !== null ?
+                        `<span class="decision-pnl ${d.pnl >= 0 ? 'positive' : 'negative'}">
+                            ${d.pnl >= 0 ? '+' : ''}$${d.pnl.toFixed(2)}
+                        </span>` : '';
+
+                    return `
+                        <div class="decision-row">
+                            <span class="decision-time">${timeStr}</span>
+                            <span class="decision-symbol">${d.symbol}</span>
+                            <span class="decision-reason" title="${d.reason}">${d.reason}</span>
+                            <span class="decision-action ${d.actionClass}">${d.action}</span>
+                            ${pnlHtml}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Footer
+            document.getElementById('footerStatus').innerHTML =
+                `Mode: <span class="${getColor(mode)}">${mode}</span> | ` +
+                `Window: <span class="${getColor(tradingWindow)}">${tradingWindow}</span> | ` +
+                `AI: <span class="${getColor(safe?.mode || 'SAFE')}">${safe?.mode || 'SAFE'}</span>`;
+
+            document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+
+            // Connection status indicator (polling-based, always shows POLLING unless errors)
+            const hasErrors = Object.keys(fetchErrors).length > 0;
+            document.getElementById('wsStatus').className = `status-dot ${hasErrors ? 'yellow' : 'green'} animated`;
+            document.getElementById('wsLabel').textContent = hasErrors ? 'DEGRADED' : 'POLLING';
+        }
+
+        // Auto refresh every 5 seconds
+        refreshAll();
+        setInterval(refreshAll, 5000);
+    </script>
+</body>
+</html>

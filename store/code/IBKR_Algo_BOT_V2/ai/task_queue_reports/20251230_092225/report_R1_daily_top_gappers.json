@@ -1,0 +1,16 @@
+{
+  "status": "FAILED",
+  "reason": "No symbols meet criteria",
+  "data": {
+    "task_id": "DISCOVERY_GAPPERS",
+    "symbols": [],
+    "symbol_count": 0,
+    "filter_criteria": {
+      "min_gap_pct": 10,
+      "min_price": 1.0,
+      "max_price": 20.0
+    },
+    "timestamp": "2025-12-30T09:22:41.328234"
+  },
+  "timestamp": "2025-12-30T09:22:41.328268"
+}

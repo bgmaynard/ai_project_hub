@@ -303,19 +303,33 @@ class SafeActivationMode:
         """
         Check if we're in a valid trading window.
 
-        Pre-market: 4:00 AM - 9:30 AM ET -> Trading allowed
-        Market hours: 9:30 AM - 4:00 PM ET -> Trading allowed
-        After hours: 4:00 PM - 8:00 PM ET -> Trading allowed (configurable)
-        Outside hours: No trading
+        Weekdays only (Mon-Fri):
+        - Pre-market: 4:00 AM - 9:30 AM ET -> Trading allowed
+        - Market hours: 9:30 AM - 4:00 PM ET -> Trading allowed
+        - After hours: 4:00 PM - 8:00 PM ET -> Trading allowed
+
+        Weekends: No trading
         """
         try:
             et_tz = pytz.timezone('US/Eastern')
-            now_et = datetime.now(et_tz).time()
+            now_et = datetime.now(et_tz)
+            now_time = now_et.time()
 
-            # TRADING WINDOW: 7:00 AM - 9:30 AM ET (pre-market only)
-            # Before 7 AM = validation/monitoring mode
-            # After 9:30 AM = no trading (too chaotic)
-            if time(7, 0) <= now_et < time(9, 30):
+            # Check day of week (0=Monday, 6=Sunday)
+            day_of_week = now_et.weekday()
+            if day_of_week >= 5:  # Saturday (5) or Sunday (6)
+                return False
+
+            # Pre-market: 4:00 AM - 9:30 AM ET
+            if time(4, 0) <= now_time < time(9, 30):
+                return True
+
+            # Regular market hours: 9:30 AM - 4:00 PM ET
+            if time(9, 30) <= now_time < time(16, 0):
+                return True
+
+            # After hours: 4:00 PM - 8:00 PM ET
+            if time(16, 0) <= now_time < time(20, 0):
                 return True
 
             # Outside trading window
@@ -332,22 +346,29 @@ class SafeActivationMode:
             et_tz = pytz.timezone('US/Eastern')
             now_et = datetime.now(et_tz)
             now_time = now_et.time()
+            day_of_week = now_et.weekday()
+            day_name = now_et.strftime('%A')
 
-            if time(4, 0) <= now_time < time(7, 0):
-                window = "VALIDATION"
-                window_detail = "Validation mode (4:00 AM - 7:00 AM ET) - monitoring only"
-            elif time(7, 0) <= now_time < time(9, 30):
-                window = "TRADING"
-                window_detail = "Trading window (7:00 AM - 9:30 AM ET)"
+            # Check weekend first
+            if day_of_week >= 5:  # Saturday or Sunday
+                window = "WEEKEND"
+                window_detail = f"Market closed ({day_name})"
+            elif time(4, 0) <= now_time < time(9, 30):
+                window = "PRE_MARKET"
+                window_detail = "Pre-market session (4:00 AM - 9:30 AM ET)"
             elif time(9, 30) <= now_time < time(16, 0):
-                window = "MARKET_CLOSED"
-                window_detail = "Market hours - outside trading window"
+                window = "MARKET_OPEN"
+                window_detail = "Regular market hours (9:30 AM - 4:00 PM ET)"
+            elif time(16, 0) <= now_time < time(20, 0):
+                window = "AFTER_HOURS"
+                window_detail = "After-hours session (4:00 PM - 8:00 PM ET)"
             else:
                 window = "CLOSED"
-                window_detail = "Outside trading hours"
+                window_detail = "Market closed (outside trading hours)"
 
             return {
                 'current_et_time': now_et.strftime('%I:%M %p ET'),
+                'current_day': day_name,
                 'window': window,
                 'window_detail': window_detail,
                 'trading_allowed': self.is_trading_window(),

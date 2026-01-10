@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Tooltip styles */
+.tooltip {
+  @apply absolute z-50 px-2 py-1 text-xs bg-gray-900 text-white rounded shadow-lg;
+  max-width: 300px;
+}
+
+/* Funnel visualization */
+.funnel-stage {
+  @apply relative transition-all duration-300;
+}
+
+.funnel-stage:hover {
+  @apply transform scale-105;
+}
+
+/* Timeline connector */
+.timeline-connector {
+  @apply absolute left-4 top-8 bottom-0 w-0.5 bg-border-color;
+}
+
+/* Status badge animations */
+.status-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-200;
+}
+
+.card-hover:hover {
+  @apply bg-bg-tertiary border-status-yellow;
+}

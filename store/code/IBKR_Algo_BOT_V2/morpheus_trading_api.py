@@ -11,6 +11,9 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Union
+
+# Centralized market time - ALL timestamps should use ET
+from ai.market_time import get_et_now, get_time_status
 from pydantic import BaseModel
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -483,6 +486,16 @@ except ImportError as e:
     logger.warning(f"Scalp Assistant routes not available: {e}")
     HAS_SCALP_ASSISTANT = False
 
+# DERO - Daily Evaluation Reporting Overlay (Read-Only Reports)
+try:
+    from services.dero.routes import router as dero_router
+    app.include_router(dero_router, tags=["DERO Reports"])
+    HAS_DERO = True
+    logger.info("DERO reporting routes included")
+except ImportError as e:
+    logger.warning(f"DERO routes not available: {e}")
+    HAS_DERO = False
+
 # Polygon Real-Time Streaming Routes
 try:
     from polygon_streaming_routes import router as polygon_stream_router
@@ -553,6 +566,26 @@ except ImportError as e:
     logger.warning(f"Task Queue routes not available: {e}")
     HAS_TASK_QUEUE = False
 
+# Paper Account Metrics Routes
+try:
+    from ai.paper_account_routes import router as paper_account_router
+    app.include_router(paper_account_router, tags=["Paper Account"])
+    HAS_PAPER_ACCOUNT = True
+    logger.info("Paper Account metrics routes included")
+except ImportError as e:
+    logger.warning(f"Paper Account routes not available: {e}")
+    HAS_PAPER_ACCOUNT = False
+
+# Market Phase Strategy Router
+try:
+    from ai.market_phase_routes import router as market_phase_router
+    app.include_router(market_phase_router, tags=["Market Phase"])
+    HAS_MARKET_PHASE = True
+    logger.info("Market Phase Strategy Router included")
+except ImportError as e:
+    logger.warning(f"Market Phase routes not available: {e}")
+    HAS_MARKET_PHASE = False
+
 # Momentum Watchlist Operator Controls
 try:
     from ai.momentum_watchlist_routes import router as momentum_watchlist_router
@@ -582,6 +615,106 @@ try:
 except ImportError as e:
     logger.warning(f"Warrior Scanners not available: {e}")
     HAS_WARRIOR_SCANNERS = False
+
+# ATS (Advanced Trading Signal) Feed Routes
+try:
+    from ai.ats_routes import router as ats_router
+    app.include_router(ats_router, tags=["ATS Signal Feed"])
+    HAS_ATS_FEED = True
+    logger.info("ATS Signal Feed routes included (SmartZone + Gating)")
+except ImportError as e:
+    logger.warning(f"ATS Feed routes not available: {e}")
+    HAS_ATS_FEED = False
+
+# Trading Window Watchdog Routes
+try:
+    from ai.watchdog_routes import router as watchdog_router
+    app.include_router(watchdog_router, tags=["Trading Window Watchdog"])
+    HAS_WATCHDOG = True
+    logger.info("Trading Window Watchdog routes included")
+except ImportError as e:
+    logger.warning(f"Watchdog routes not available: {e}")
+    HAS_WATCHDOG = False
+
+# Funnel Metrics Routes (Pipeline Observability)
+try:
+    from ai.funnel_routes import router as funnel_router
+    app.include_router(funnel_router, tags=["Ops - Funnel Metrics"])
+    HAS_FUNNEL_METRICS = True
+    logger.info("Funnel Metrics routes included (pipeline observability)")
+except ImportError as e:
+    logger.warning(f"Funnel Metrics routes not available: {e}")
+    HAS_FUNNEL_METRICS = False
+
+# RelVol Resolver Routes
+try:
+    from ai.relvol_routes import router as relvol_router
+    app.include_router(relvol_router, tags=["Ops - RelVol Resolver"])
+    HAS_RELVOL_RESOLVER = True
+    logger.info("RelVol Resolver routes included (avgVolume fallback)")
+except ImportError as e:
+    logger.warning(f"RelVol Resolver routes not available: {e}")
+    HAS_RELVOL_RESOLVER = False
+
+# Micro-Momentum Override Routes
+try:
+    from ai.micro_override_routes import router as micro_override_router
+    app.include_router(micro_override_router, tags=["Ops - Micro Override"])
+    HAS_MICRO_OVERRIDE = True
+    logger.info("Micro-Momentum Override routes included (regime bypass)")
+except ImportError as e:
+    logger.warning(f"Micro-Momentum Override routes not available: {e}")
+    HAS_MICRO_OVERRIDE = False
+
+# Probe Entry Routes (Task F)
+try:
+    from ai.probe_entry_routes import router as probe_router
+    app.include_router(probe_router, tags=["Probe Entry Layer"])
+    HAS_PROBE_ENTRY = True
+    logger.info("Probe Entry routes included (controlled initiation)")
+except ImportError as e:
+    logger.warning(f"Probe Entry routes not available: {e}")
+    HAS_PROBE_ENTRY = False
+
+# Baseline Profile Routes (Task G-J)
+try:
+    from ai.baseline_routes import router as baseline_router
+    app.include_router(baseline_router, tags=["Baseline Profiles"])
+    HAS_BASELINE_PROFILES = True
+    logger.info("Baseline Profile routes included (adaptive configuration)")
+except ImportError as e:
+    logger.warning(f"Baseline Profile routes not available: {e}")
+    HAS_BASELINE_PROFILES = False
+
+# Market Phase Routes (Task K-O)
+try:
+    from ai.phase_routes import router as phase_router
+    app.include_router(phase_router, tags=["Market Phase"])
+    HAS_MARKET_PHASES = True
+    logger.info("Market Phase routes included (time-of-day strategy orchestration)")
+except ImportError as e:
+    logger.warning(f"Market Phase routes not available: {e}")
+    HAS_MARKET_PHASES = False
+
+# Momentum Scout Routes (Task P-T)
+try:
+    from ai.scout_routes import router as scout_router
+    app.include_router(scout_router, tags=["Momentum Scout"])
+    HAS_MOMENTUM_SCOUT = True
+    logger.info("Momentum Scout routes included (early discovery mode)")
+except ImportError as e:
+    logger.warning(f"Momentum Scout routes not available: {e}")
+    HAS_MOMENTUM_SCOUT = False
+
+# Orchestrator Routes (Observer Console)
+try:
+    from ai.orchestrator_routes import router as orchestrator_router
+    app.include_router(orchestrator_router, tags=["Orchestrator"])
+    HAS_ORCHESTRATOR = True
+    logger.info("Orchestrator routes included (Observer Console API)")
+except ImportError as e:
+    logger.warning(f"Orchestrator routes not available: {e}")
+    HAS_ORCHESTRATOR = False
 
 
 # ============================================================================
@@ -709,7 +842,7 @@ async def health_check():
 
     result = {
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": get_et_now().isoformat(),
         "broker": {
             "type": "schwab",
             "connected": schwab_trading_status != "not_available",
@@ -873,7 +1006,7 @@ async def get_system_status():
     status = {
         "name": "Morpheus Trading Bot",
         "version": "2.1.0",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": get_et_now().isoformat(),
         "overall_status": "operational"
     }
 
@@ -1732,7 +1865,7 @@ async def websocket_market_stream(websocket: WebSocket):
                 elif action == "ping":
                     await websocket.send_json({
                         "type": "pong",
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": get_et_now().isoformat()
                     })
 
             except WebSocketDisconnect:
@@ -1804,7 +1937,7 @@ async def websocket_governor(websocket: WebSocket):
         await websocket.send_json({
             "type": "connected",
             "client_id": client_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": get_et_now().isoformat(),
             "status": initial_status
         })
     except Exception as e:
@@ -1822,8 +1955,8 @@ async def websocket_governor(websocket: WebSocket):
                 await websocket.send_json({
                     "type": "heartbeat",
                     "seq": heartbeat_seq,
-                    "timestamp": datetime.now().isoformat(),
-                    "server_time": datetime.now().strftime("%H:%M:%S")
+                    "timestamp": get_et_now().isoformat(),
+                    "server_time": get_et_now().strftime("%H:%M:%S ET")
                 })
                 await asyncio.sleep(3)
             except Exception:
@@ -1841,7 +1974,7 @@ async def websocket_governor(websocket: WebSocket):
                 if status_json != last_status:
                     await websocket.send_json({
                         "type": "status",
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": get_et_now().isoformat(),
                         "data": current_status
                     })
                     last_status = status_json
@@ -1860,14 +1993,14 @@ async def websocket_governor(websocket: WebSocket):
                 if command == "ping":
                     await websocket.send_json({
                         "type": "pong",
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": get_et_now().isoformat(),
                         "client_seq": data.get("seq", 0)
                     })
                 elif command == "status":
                     status = await get_governor_status()
                     await websocket.send_json({
                         "type": "status",
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": get_et_now().isoformat(),
                         "data": status
                     })
                 elif command == "reconnect_feeds":
@@ -1974,7 +2107,7 @@ async def get_governor_status() -> dict:
             "hft_scalper": hft_scalper_status,
             "broker": {"connected": True, "source": "Schwab"},  # Using Schwab for data
             "connectivity": connectivity,
-            "server_time": datetime.now().isoformat(),
+            "server_time": get_et_now().isoformat(),
             "trading_window": get_trading_window_status()
         }
     except Exception as e:
@@ -2694,8 +2827,8 @@ async def claude_query(request: ClaudeQueryRequest):
                 "success": True,
                 "data": {
                     "response": f"📊 **Broker Status**\n\n• **Schwab:** {schwab_status}\n\nSchwab is the active broker for trading.",
-                    "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                    "timestamp": datetime.now().isoformat(),
+                    "conversation_id": conversation_id or f"conv_{get_et_now().strftime('%Y%m%d_%H%M%S')}",
+                    "timestamp": get_et_now().isoformat(),
                     "action": "status_check",
                     "action_details": {"schwab": schwab_status}
                 }
@@ -2754,8 +2887,8 @@ async def claude_query(request: ClaudeQueryRequest):
             "success": True,
             "data": {
                 "response": response_text,
-                "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "timestamp": datetime.now().isoformat(),
+                "conversation_id": conversation_id or f"conv_{get_et_now().strftime('%Y%m%d_%H%M%S')}",
+                "timestamp": get_et_now().isoformat(),
                 "action": action_taken,
                 "action_details": action_details
             }
@@ -2767,8 +2900,8 @@ async def claude_query(request: ClaudeQueryRequest):
             "success": False,
             "data": {
                 "response": "I'm here to help with your trading questions. The AI service may be initializing - please try again in a moment.",
-                "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "timestamp": datetime.now().isoformat()
+                "conversation_id": conversation_id or f"conv_{get_et_now().strftime('%Y%m%d_%H%M%S')}",
+                "timestamp": get_et_now().isoformat()
             }
         }
     except Exception as e:
@@ -2777,8 +2910,8 @@ async def claude_query(request: ClaudeQueryRequest):
             "success": False,
             "data": {
                 "response": f"Error processing request: {str(e)}",
-                "conversation_id": conversation_id or f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "timestamp": datetime.now().isoformat()
+                "conversation_id": conversation_id or f"conv_{get_et_now().strftime('%Y%m%d_%H%M%S')}",
+                "timestamp": get_et_now().isoformat()
             }
         }
 
@@ -3065,19 +3198,39 @@ if ui_path.exists():
         """Serve AI control center - all controls in one view"""
         return FileResponse("ui/ai_control_dashboard.html")
 
+    @app.get("/governor")
+    @app.get("/governor/")
+    async def governor_page():
+        """Serve simple Governor HTML page (no React)"""
+        governor_html = Path("ui/governor.html")
+        if governor_html.exists():
+            return FileResponse(governor_html)
+        return {"error": "Governor page not found"}
+
     @app.get("/ai-control-center")
     @app.get("/ai-control-center/")
     async def ai_control_center():
-        """Serve AI Control Center React app"""
+        """Serve AI Control Center - uses simple HTML version"""
+        # Use simple governor (more reliable than React)
+        governor_html = Path("ui/governor.html")
+        if governor_html.exists():
+            return FileResponse(governor_html)
+        # Fallback to React app
         ai_cc_index = Path("ui/ai-control-center/build/index.html")
         if ai_cc_index.exists():
             return FileResponse(ai_cc_index)
-        return {"error": "AI Control Center not built. Run 'npm run build' in ui/ai-control-center/"}
+        return {"error": "AI Control Center not available"}
 
     # Mount AI Control Center React app
     ai_cc_path = Path("ui/ai-control-center/build")
     if ai_cc_path.exists():
         app.mount("/ai-control-center", StaticFiles(directory="ui/ai-control-center/build", html=True), name="ai-control-center")
+
+    # Orchestrator & Observer Console - use StaticFiles with html=True for SPA support
+    orchestrator_path = Path("ui/orchestrator/build")
+    if orchestrator_path.exists():
+        app.mount("/orchestrator", StaticFiles(directory="ui/orchestrator/build", html=True), name="orchestrator")
+        logger.info("Orchestrator UI mounted at /orchestrator")
 
 
 # ============================================================================
@@ -3422,7 +3575,7 @@ async def websocket_realtime_hub(websocket: WebSocket):
                 elif action == "ping":
                     await websocket.send_json({
                         "type": "pong",
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": get_et_now().isoformat()
                     })
 
             except WebSocketDisconnect:
@@ -3626,6 +3779,182 @@ async def run_startup_connectivity_test():
 
     asyncio.create_task(delayed_test())
     logger.info("Scheduled startup connectivity self-test (5s delay)")
+
+
+@app.on_event("startup")
+async def start_discovery_and_ats_services():
+    """
+    Start continuous discovery and wire ATS to Schwab streaming.
+
+    These services enable real-time symbol detection independent of
+    batch discovery, preventing zero-trade sessions when R1 finds nothing.
+    """
+    async def delayed_start():
+        await asyncio.sleep(10)  # Wait for Schwab connection to initialize
+
+        try:
+            # Wire ATS to Schwab streaming
+            from ai.ats.schwab_adapter import wire_schwab_to_ats, is_wired
+            if not is_wired():
+                success = wire_schwab_to_ats()
+                if success:
+                    logger.info("[OK] ATS wired to Schwab streaming")
+                else:
+                    logger.warning("[!] Failed to wire ATS to Schwab streaming")
+            else:
+                logger.info("[OK] ATS already wired to Schwab")
+
+        except Exception as e:
+            logger.warning(f"ATS-Schwab wiring failed: {e}")
+
+        try:
+            # Start continuous discovery during trading hours
+            from ai.continuous_discovery import (
+                start_continuous_discovery,
+                is_discovery_window,
+                get_status
+            )
+
+            if is_discovery_window():
+                start_continuous_discovery(poll_interval_seconds=300)  # 5 min
+                status = get_status()
+                logger.info(f"[OK] Continuous discovery started (poll every 5 min)")
+                logger.info(f"     Discovery window: {status.get('in_discovery_window')}")
+            else:
+                logger.info("[INFO] Outside discovery window, continuous discovery not started")
+                logger.info("       Use POST /api/task-queue/discovery/start to start manually")
+
+        except Exception as e:
+            logger.warning(f"Continuous discovery startup failed: {e}")
+
+    asyncio.create_task(delayed_start())
+    logger.info("Scheduled discovery + ATS services startup (10s delay)")
+
+
+@app.on_event("startup")
+async def start_trading_window_watchdog():
+    """
+    Start the Trading Window Watchdog.
+
+    This watchdog ensures the scalper is running and enabled during
+    trading windows (pre-market, market hours, after-hours).
+
+    Solves the "no trades in 2 weeks" problem caused by scalper not
+    being started during market hours.
+    """
+    async def delayed_watchdog_start():
+        await asyncio.sleep(15)  # Wait for scalper to be available
+
+        try:
+            from ai.trading_window_watchdog import get_trading_watchdog
+
+            watchdog = get_trading_watchdog()
+            await watchdog.start()
+
+            status = watchdog.get_status()
+            logger.info("=" * 60)
+            logger.info("TRADING WINDOW WATCHDOG STARTED")
+            logger.info("=" * 60)
+            logger.info(f"  Check interval: {status['check_interval_seconds']}s")
+            logger.info(f"  Auto-start scalper: {status['auto_start_scalper']}")
+            logger.info(f"  Auto-enable scalper: {status['auto_enable_scalper']}")
+            logger.info(f"  Current window: {status['current_window']['window']}")
+            logger.info("=" * 60)
+
+        except Exception as e:
+            logger.warning(f"Trading Window Watchdog startup failed: {e}")
+
+    asyncio.create_task(delayed_watchdog_start())
+    logger.info("Scheduled Trading Window Watchdog startup (15s delay)")
+
+
+@app.on_event("startup")
+async def start_baseline_profile_selector():
+    """
+    Start the Baseline Profile Selector (Task G-J).
+
+    Automatically selects profile (CONSERVATIVE/NEUTRAL/AGGRESSIVE)
+    based on market conditions at checkpoints:
+    - Pre-market
+    - +15-30 min after open
+    - Midday
+    """
+    async def delayed_selector_start():
+        await asyncio.sleep(20)  # Wait for market data services
+
+        try:
+            from ai.profile_selector import get_profile_selector
+            from ai.baseline_profiles import get_baseline_manager
+
+            # Initialize baseline manager first
+            manager = get_baseline_manager()
+            logger.info(f"Baseline Profile Manager initialized: {manager.current_profile.value}")
+
+            # Start profile selector
+            selector = get_profile_selector()
+            selector.start()
+
+            logger.info("=" * 60)
+            logger.info("BASELINE PROFILE SELECTOR STARTED")
+            logger.info("=" * 60)
+            logger.info(f"  Current Profile: {manager.current_profile.value}")
+            logger.info(f"  Lock Duration: {selector.min_lock_minutes} minutes")
+            logger.info(f"  Checkpoints: PRE_MARKET, POST_OPEN, MIDDAY, AFTERNOON, CLOSE")
+            logger.info("=" * 60)
+
+        except Exception as e:
+            logger.warning(f"Baseline Profile Selector startup failed: {e}")
+
+    asyncio.create_task(delayed_selector_start())
+    logger.info("Scheduled Baseline Profile Selector startup (20s delay)")
+
+
+@app.on_event("startup")
+async def start_market_phase_evaluator():
+    """
+    Start the Market Phase Evaluator (Task K-O).
+
+    Automatically evaluates market phase based on:
+    - Time of day (primary)
+    - Market breadth, momentum, Chronos regime (secondary overrides)
+
+    Phases: OPEN_IGNITION, STRUCTURED_MOMENTUM, MIDDAY_COMPRESSION, POWER_HOUR
+    """
+    async def delayed_phase_start():
+        await asyncio.sleep(25)  # Wait for other services to start
+
+        try:
+            from ai.market_phases import get_phase_manager
+            from ai.phase_evaluator import get_phase_evaluator, evaluate_and_apply_phase
+            from ai.strategy_gate import get_strategy_gate
+
+            # Initialize phase manager
+            manager = get_phase_manager()
+
+            # Initialize strategy gate
+            gate = get_strategy_gate()
+
+            # Initialize phase evaluator and run initial evaluation
+            evaluator = get_phase_evaluator()
+            result = await evaluate_and_apply_phase(force=True)
+
+            logger.info("=" * 60)
+            logger.info("MARKET PHASE EVALUATOR STARTED")
+            logger.info("=" * 60)
+            logger.info(f"  Current Phase: {result.get('new_phase', 'UNKNOWN')}")
+            logger.info(f"  Confidence: {result.get('confidence', 0):.0%}")
+            logger.info(f"  Enabled Strategies: {manager.get_enabled_strategies()}")
+            logger.info(f"  Phase Lock: {evaluator.min_lock_minutes} minutes")
+            logger.info(f"  Reasons: {result.get('reasons', [])[:2]}")
+            logger.info("=" * 60)
+
+        except Exception as e:
+            logger.warning(f"Market Phase Evaluator startup failed: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+
+    asyncio.create_task(delayed_phase_start())
+    logger.info("Scheduled Market Phase Evaluator startup (25s delay)")
 
 
 # ============================================================================

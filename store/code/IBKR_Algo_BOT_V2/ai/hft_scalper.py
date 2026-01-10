@@ -345,6 +345,10 @@ class ScalpTrade:
     is_scout: bool = False  # Whether this is a scout trade (no contract)
     scout_max_hold: int = 0  # Max hold time for scout trades
 
+    # Consecutive check counters (ChatGPT directive - Jan 9, 2026)
+    failed_momentum_checks: int = 0  # Counter for consecutive failed momentum checks
+    chronos_weak_reads: int = 0  # Counter for consecutive chronos weak trend reads
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -1864,23 +1868,44 @@ class HFTScalper:
                     }
 
         # ===== FAILED MOMENTUM EARLY EXIT =====
-        # If trade hasn't worked after 45 seconds and is flat/down, exit early
-        # Don't wait for MAX_HOLD_TIME - cut losers fast
-        failed_momentum_seconds = getattr(self.config, 'failed_momentum_seconds', 45)
-        failed_momentum_threshold = getattr(self.config, 'failed_momentum_threshold', 0.5)
+        # If trade hasn't worked after X seconds and is flat/down, exit early
+        # Requires consecutive failed checks before exiting (ChatGPT directive - Jan 9, 2026)
+        # DISABLED via use_failed_momentum_exit: false (ChatGPT directive - Jan 9, 2026 EOD)
+        use_failed_momentum = getattr(self.config, 'use_failed_momentum_exit', True)
+        failed_momentum_seconds = getattr(self.config, 'failed_momentum_seconds', 60)
+        failed_momentum_threshold = getattr(self.config, 'failed_momentum_threshold', 0.3)
+        failed_momentum_consecutive = getattr(self.config, 'failed_momentum_consecutive_checks', 3)
 
-        if exit_signal is None and hold_seconds >= failed_momentum_seconds:
-            # Exit if: (1) currently flat or down, (2) never reached +1% gain
+        if use_failed_momentum and exit_signal is None and hold_seconds >= failed_momentum_seconds:
+            # Check if: (1) currently flat or down, (2) never reached +1% gain
             if pnl_pct < failed_momentum_threshold and max_gain < 1.0:
-                exit_signal = {
-                    "reason": "FAILED_MOMENTUM",
-                    "hold_seconds": hold_seconds,
-                    "pnl_percent": pnl_pct,
-                    "max_gain": max_gain,
-                    "price": price,
-                    "details": f"Flat/down after {hold_seconds:.0f}s, never hit +1%"
-                }
-                logger.info(f"FAILED_MOMENTUM: {symbol} @ {pnl_pct:+.1f}% after {hold_seconds:.0f}s (max was {max_gain:+.1f}%)")
+                # Increment consecutive failed checks
+                trade.failed_momentum_checks += 1
+                logger.debug(
+                    f"FAILED_MOMENTUM CHECK {trade.failed_momentum_checks}/{failed_momentum_consecutive}: "
+                    f"{symbol} @ {pnl_pct:+.1f}% after {hold_seconds:.0f}s"
+                )
+
+                # Only exit after consecutive failures
+                if trade.failed_momentum_checks >= failed_momentum_consecutive:
+                    exit_signal = {
+                        "reason": "FAILED_MOMENTUM",
+                        "hold_seconds": hold_seconds,
+                        "pnl_percent": pnl_pct,
+                        "max_gain": max_gain,
+                        "price": price,
+                        "consecutive_checks": trade.failed_momentum_checks,
+                        "details": f"Flat/down after {hold_seconds:.0f}s, {trade.failed_momentum_checks} consecutive checks"
+                    }
+                    logger.info(
+                        f"FAILED_MOMENTUM: {symbol} @ {pnl_pct:+.1f}% after {hold_seconds:.0f}s "
+                        f"({trade.failed_momentum_checks} checks, max was {max_gain:+.1f}%)"
+                    )
+            else:
+                # Reset counter if momentum shows up
+                if trade.failed_momentum_checks > 0:
+                    logger.debug(f"FAILED_MOMENTUM RESET: {symbol} showing momentum, resetting counter")
+                trade.failed_momentum_checks = 0
 
         # Check max hold time - but only exit if in profit or small loss
         # Scout trades use shorter max hold time

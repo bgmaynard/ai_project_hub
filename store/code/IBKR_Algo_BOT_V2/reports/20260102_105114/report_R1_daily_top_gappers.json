@@ -1,0 +1,292 @@
+{
+  "status": "FAILED",
+  "reason": "No symbols meet criteria",
+  "data": {
+    "task_id": "DISCOVERY_GAPPERS",
+    "symbols": [],
+    "symbol_count": 0,
+    "recompute_model": "FULL_RECOMPUTE",
+    "filter_criteria": {
+      "max_active_symbols": 10,
+      "min_rel_vol_floor": 1.5,
+      "current_rel_vol_floor": 2.0,
+      "use_dynamic_rel_vol": true,
+      "rel_vol_schedule": [
+        [
+          4,
+          9,
+          5.0
+        ],
+        [
+          9,
+          10,
+          3.0
+        ],
+        [
+          10,
+          12,
+          2.0
+        ],
+        [
+          12,
+          20,
+          1.5
+        ]
+      ],
+      "min_price": 1.0,
+      "max_price": 20.0,
+      "min_gap_pct": 2.0,
+      "enforce_session_boundary": true
+    },
+    "data_quality_summary": {
+      "total_evaluated": 18,
+      "float_missing_count": 18,
+      "avg_volume_missing_count": 18,
+      "hod_inconsistent_count": 5,
+      "rel_vol_absurd_count": 0
+    },
+    "rank_snapshot": {
+      "cycle_number": 1,
+      "session_date": "2026-01-02",
+      "timestamp": "2026-01-02T16:52:39.791717+00:00",
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 2.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      },
+      "current_rel_vol_floor": 2.0,
+      "total_candidates": 18,
+      "passed_filters": 0,
+      "excluded_count": 18,
+      "active_count": 0,
+      "below_cutoff_count": 0,
+      "active_watchlist": [],
+      "below_cutoff": [],
+      "excluded": [
+        {
+          "symbol": "PARK",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0.1,
+          "rel_vol_daily": null,
+          "gap_pct": 0.08,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "SOC",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 31.83,
+          "rel_vol_daily": null,
+          "gap_pct": 21.18,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "XBP",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0.92,
+          "rel_vol_daily": null,
+          "gap_pct": 0.73,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "BVC",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 15.55,
+          "rel_vol_daily": null,
+          "gap_pct": 8.33,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "DGNX",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 29.29,
+          "rel_vol_daily": null,
+          "gap_pct": 19.18,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "ZEO",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 1.17,
+          "rel_vol_daily": null,
+          "gap_pct": 0.92,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "TTRX",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 12.71,
+          "rel_vol_daily": null,
+          "gap_pct": 6.09,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "UNCY",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0.22,
+          "rel_vol_daily": null,
+          "gap_pct": 0.17,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "NUAI",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 16.45,
+          "rel_vol_daily": null,
+          "gap_pct": 9.04,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "ALCY",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 0.63,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "YDDL",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 15.85,
+          "rel_vol_daily": null,
+          "gap_pct": 4.62,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "SOPA",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 0.79,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "SIDU",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 34.9,
+          "rel_vol_daily": null,
+          "gap_pct": 27.55,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "TROO",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 4.5,
+          "rel_vol_daily": null,
+          "gap_pct": 7.5,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "SLS",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 10.62,
+          "rel_vol_daily": null,
+          "gap_pct": 12.33,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "IBBS",
+          "reason": "PRICE_OUT_OF_RANGE",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 0,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "EGG",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 2.86,
+          "floor_used": 2.0
+        },
+        {
+          "symbol": "ODV",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 0,
+          "rel_vol_daily": null,
+          "gap_pct": 2.15,
+          "floor_used": 2.0
+        }
+      ],
+      "exclusion_summary": {
+        "REL_VOL_BELOW_FLOOR": 17,
+        "PRICE_OUT_OF_RANGE": 1
+      },
+      "ranking_proof": {
+        "top_5": [],
+        "recomputed_all": true,
+        "force_fresh": true,
+        "rel_vol_floor_applied": 2.0
+      }
+    },
+    "watchlist_status": {
+      "session_date": "2026-01-02",
+      "cycle_count": 1,
+      "last_recompute": "2026-01-02T16:52:39.791717+00:00",
+      "active_count": 0,
+      "total_candidates": 18,
+      "archived_count": 0,
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 2.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      }
+    },
+    "timestamp": "2026-01-02T16:52:39.791931+00:00"
+  },
+  "timestamp": "2026-01-02T10:52:39.791962"
+}

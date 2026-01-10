@@ -1,0 +1,86 @@
+{
+  "last_updated": "2025-12-31T06:54:29.411212",
+  "action_count": 12,
+  "actions": [
+    {
+      "action_type": "purge",
+      "timestamp": "2025-12-30T23:26:29.294027+00:00",
+      "symbols_before": [
+        "FONR",
+        "ZBAI",
+        "ANL",
+        "NKLR",
+        "WOK",
+        "TTRX",
+        "TROO",
+        "SOPA",
+        "NOMA",
+        "BNAI"
+      ],
+      "symbols_after": [],
+      "triggered_by": "test_operator",
+      "session_date": "2025-12-30"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-30T18:16:42.888302",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2025-12-31T00:24:43.388324+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "test",
+      "session_date": "2025-12-30"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-30T18:24:46.355966",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-30T18:49:40.996355",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-30T19:52:00.682887",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2025-12-31T01:53:19.801744+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2025-12-30"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-30T21:24:07.474374",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-30T21:45:46.236595",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-31T04:23:48.458228",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-31T05:00:36.790736",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2025-12-31T06:54:29.409727",
+      "triggered_by": "operator"
+    }
+  ]
+}

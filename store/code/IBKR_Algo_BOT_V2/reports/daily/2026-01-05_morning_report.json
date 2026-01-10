@@ -1,0 +1,57 @@
+{
+  "report_date": "2026-01-05",
+  "report_time": "To be updated after 9:30 AM ET",
+  "trading_window": {
+    "validation_start": "04:00 AM ET",
+    "trading_start": "07:00 AM ET",
+    "trading_end": "09:30 AM ET"
+  },
+  "startup_status": {
+    "server_started": true,
+    "server_start_time": "05:36 AM ET approx",
+    "scalper_started": true,
+    "news_trader_started": true,
+    "startup_issues": [
+      {
+        "component": "AI Control Center",
+        "issue": "Grey screen - UI not rendering",
+        "status": "INVESTIGATING",
+        "impact": "Dashboard unavailable, API endpoints working",
+        "workaround": "Use Trading UI at /trading-new or curl API endpoints"
+      }
+    ]
+  },
+  "pre_validation_window": {
+    "period": "04:00 - 07:00 AM ET",
+    "mode": "VALIDATION",
+    "activities": ["Monitoring gappers", "Loading float data", "No trades"]
+  },
+  "trading_window": {
+    "period": "07:00 - 09:30 AM ET",
+    "mode": "TRADING",
+    "paper_mode": true,
+    "activities": ["Execute paper trades", "Monitor momentum", "News triggers"]
+  },
+  "post_930_actions": {
+    "required": [
+      "Update this report with actual trading results",
+      "Record any startup failures or issues",
+      "Document scalper performance metrics",
+      "Note any missed opportunities due to startup issues"
+    ]
+  },
+  "fail_points_to_track": [
+    {
+      "fail_point": "AI Control Center grey screen",
+      "first_observed": "2026-01-05 ~06:00 AM ET",
+      "root_cause": "Unknown - React app not rendering despite build success",
+      "investigation_notes": [
+        "HTTP 200 returned from /ai-control-center",
+        "CSS and JS files load correctly",
+        "No console errors reported",
+        "API endpoints responding normally"
+      ]
+    }
+  ],
+  "notes": "This report should be updated after 9:30 AM ET with actual performance data"
+}

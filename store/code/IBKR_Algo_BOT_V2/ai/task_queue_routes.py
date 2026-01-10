@@ -294,6 +294,292 @@ async def get_task_details(task_id: str):
     }
 
 
+
+@router.get("/is-waiting")
+async def check_is_waiting():
+    """Check if pipeline is in WAITING state (can resume with symbols)"""
+    ensure_tasks_registered()
+    manager = get_task_queue_manager()
+
+    return {
+        "is_waiting": manager.is_waiting(),
+        "pipeline_status": manager.pipeline_status.value,
+        "halted_reason": manager.halted_reason,
+        "can_resume": manager.is_waiting(),
+        "message": "Use POST /inject-symbols to add symbols, then POST /resume to continue"
+            if manager.is_waiting() else "Pipeline not in WAITING state"
+    }
+
+
+@router.post("/inject-symbols")
+async def inject_symbols(
+    symbols: list,
+    source: str = "MANUAL",
+    trigger_reason: str = "MANUAL_ADD"
+):
+    """
+    Inject symbols into the pipeline from external source.
+
+    Implements rate limiting per Post-Resilience Hardening spec.
+
+    Args:
+        symbols: List of symbols to inject
+        source: Source identifier (MANUAL, ATS_STREAM, CONTINUOUS_DISCOVERY, NEWS)
+        trigger_reason: Why injection was triggered (GAP_SCAN, SMARTZONE_EXPANSION, etc.)
+
+    Use this when pipeline is WAITING and symbols arrive from:
+    - ATS trigger
+    - News feed detection
+    - Manual addition
+    - Real-time scanner
+    """
+    ensure_tasks_registered()
+    manager = get_task_queue_manager()
+
+    if not symbols:
+        raise HTTPException(status_code=400, detail="No symbols provided")
+
+    # Normalize symbols
+    symbols = [s.upper().strip() for s in symbols if s.strip()]
+
+    success, result = manager.inject_symbols(
+        symbols=symbols,
+        source=source,
+        trigger_reason=trigger_reason
+    )
+
+    return {
+        "success": success,
+        "accepted": result.get("accepted", []),
+        "deferred": result.get("deferred", []),
+        "total_in_pipeline": result.get("total_in_pipeline", 0),
+        "rate_limit_stats": result.get("rate_limit_stats", {}),
+        "source": source,
+        "pipeline_status": manager.pipeline_status.value,
+        "can_resume": manager.is_waiting(),
+        "next_step": "POST /resume to continue pipeline" if manager.is_waiting() else None
+    }
+
+
+@router.get("/injection-stats")
+async def get_injection_stats():
+    """Get injection rate limiter statistics"""
+    ensure_tasks_registered()
+    manager = get_task_queue_manager()
+    return manager.get_injection_stats()
+
+
+@router.post("/resume")
+async def resume_pipeline():
+    """
+    Resume pipeline from WAITING state.
+
+    Prerequisites:
+    - Pipeline must be in WAITING state
+    - Symbols must be injected via /inject-symbols
+    """
+    ensure_tasks_registered()
+    manager = get_task_queue_manager()
+
+    if not manager.is_waiting():
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot resume: pipeline is {manager.pipeline_status.value}, not WAITING"
+        )
+
+    try:
+        results = await manager.resume_from_waiting()
+
+        completed = sum(1 for r in results.values() if r.status == TaskStatus.COMPLETED)
+        failed = sum(1 for r in results.values() if r.status == TaskStatus.FAILED)
+
+        return {
+            "success": manager.pipeline_status not in [PipelineStatus.HALTED, PipelineStatus.WAITING],
+            "run_id": manager.run_id,
+            "pipeline_status": manager.pipeline_status.value,
+            "tasks_completed": completed,
+            "tasks_failed": failed,
+            "halted_reason": manager.halted_reason
+        }
+
+    except Exception as e:
+        logger.error(f"Resume failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# Continuous Discovery Endpoints
+# =============================================================================
+
+@router.get("/discovery/status")
+async def get_discovery_status():
+    """Get continuous discovery service status"""
+    from .continuous_discovery import get_status
+    return get_status()
+
+
+@router.post("/discovery/start")
+async def start_discovery(poll_interval_seconds: int = 300):
+    """
+    Start the continuous discovery service.
+
+    Args:
+        poll_interval_seconds: How often to poll for new symbols (default 5 minutes)
+    """
+    from .continuous_discovery import start_continuous_discovery, get_status
+
+    start_continuous_discovery(poll_interval_seconds)
+
+    return {
+        "success": True,
+        "message": f"Continuous discovery started (poll every {poll_interval_seconds}s)",
+        **get_status()
+    }
+
+
+@router.post("/discovery/stop")
+async def stop_discovery():
+    """Stop the continuous discovery service"""
+    from .continuous_discovery import stop_continuous_discovery, get_status
+
+    stop_continuous_discovery()
+
+    return {
+        "success": True,
+        "message": "Continuous discovery stopped",
+        **get_status()
+    }
+
+
+@router.post("/discovery/poll-now")
+async def poll_discovery_now():
+    """Trigger an immediate discovery poll (don't wait for next interval)"""
+    from .continuous_discovery import poll_now
+
+    new_symbols = await poll_now()
+
+    return {
+        "success": True,
+        "new_symbols": new_symbols,
+        "count": len(new_symbols),
+        "message": f"Found {len(new_symbols)} new symbols" if new_symbols else "No new symbols found"
+    }
+
+
+@router.post("/discovery/reset-session")
+async def reset_discovery_session():
+    """Reset discovered symbols for a new trading session"""
+    from .continuous_discovery import reset_session, get_status
+
+    reset_session()
+
+    return {
+        "success": True,
+        "message": "Discovery session reset",
+        **get_status()
+    }
+
+
+@router.get("/quality-gate/config")
+async def get_quality_gate_config():
+    """Get quality gate configuration for R1-R4 bypass"""
+    from .task_queue_manager import DEFAULT_BYPASS_CONFIG, DEFAULT_INJECTION_LIMITS
+    return {
+        "bypass_config": DEFAULT_BYPASS_CONFIG,
+        "injection_limits": DEFAULT_INJECTION_LIMITS,
+        "description": "Quality gate controls which symbols bypass R1-R4 discovery"
+    }
+
+
+@router.get("/quality-gate/status")
+async def get_quality_gate_status():
+    """Get current quality gate status including deferred symbols"""
+    ensure_tasks_registered()
+    manager = get_task_queue_manager()
+
+    # Check for quality gate report
+    quality_report_path = manager.reports_dir / "report_QUALITY_GATE.json"
+    quality_data = None
+    if quality_report_path.exists():
+        with open(quality_report_path, 'r') as f:
+            quality_data = json.load(f)
+
+    # Check for deferred symbols
+    deferred_path = manager.reports_dir / "deferred_symbols.json"
+    deferred_data = None
+    if deferred_path.exists():
+        with open(deferred_path, 'r') as f:
+            deferred_data = json.load(f)
+
+    return {
+        "pipeline_status": manager.pipeline_status.value,
+        "is_waiting": manager.is_waiting(),
+        "quality_gate_report": quality_data,
+        "deferred_symbols": deferred_data,
+        "injection_stats": manager.get_injection_stats()
+    }
+
+
+# =============================================================================
+# TASK 7: Postmortem Report Endpoints
+# =============================================================================
+
+@router.get("/postmortem/today")
+async def get_todays_postmortem():
+    """Generate or retrieve today's postmortem report"""
+    from .postmortem_report import generate_daily_postmortem
+    report = await generate_daily_postmortem(save=True)
+    return report
+
+
+@router.get("/postmortem/{date}")
+async def get_postmortem_by_date(date: str):
+    """Get postmortem report for a specific date (YYYY-MM-DD)"""
+    from pathlib import Path
+    report_path = Path(f"C:/ai_project_hub/store/code/IBKR_Algo_BOT_V2/reports/postmortem_{date}.json")
+
+    if not report_path.exists():
+        raise HTTPException(status_code=404, detail=f"Postmortem report for {date} not found")
+
+    with open(report_path, 'r') as f:
+        return json.load(f)
+
+
+@router.get("/postmortem/list")
+async def list_postmortem_reports():
+    """List all available postmortem reports"""
+    from pathlib import Path
+    reports_dir = Path("C:/ai_project_hub/store/code/IBKR_Algo_BOT_V2/reports")
+    reports = []
+
+    for f in reports_dir.glob("postmortem_*.json"):
+        stat = f.stat()
+        reports.append({
+            "date": f.stem.replace("postmortem_", ""),
+            "path": str(f),
+            "size_bytes": stat.st_size,
+            "modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
+        })
+
+    return {
+        "count": len(reports),
+        "reports": sorted(reports, key=lambda x: x["date"], reverse=True)
+    }
+
+
+@router.get("/postmortem/missed-opportunities")
+async def get_missed_opportunities():
+    """Get summary of missed opportunities from today's postmortem"""
+    from .postmortem_report import generate_daily_postmortem
+    report = await generate_daily_postmortem(save=False)
+
+    return {
+        "date": report.get("report_date"),
+        "missed_count": report.get("summary", {}).get("opportunity_misses_count", 0),
+        "opportunities": report.get("sections", {}).get("opportunity_misses", [])
+    }
+
+
 @router.get("/execution-contract")
 async def get_execution_contract():
     """Get the execution contract rules"""

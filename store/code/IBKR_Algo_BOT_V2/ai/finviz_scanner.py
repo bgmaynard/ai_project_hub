@@ -5,6 +5,9 @@ Free stock screening using Finviz data.
 Provides gap scanners, momentum filters, and pre-market movers.
 """
 import logging
+import threading
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict, List, Optional
 from dataclasses import dataclass
@@ -34,18 +37,39 @@ class ScanResult:
 
 
 class FinvizScanner:
-    """Scanner using Finviz free data"""
+    """Scanner using Finviz free data - with async support and caching"""
 
     def __init__(self):
         self._cache: Dict[str, List[ScanResult]] = {}
         self._cache_time: Dict[str, datetime] = {}
-        self._cache_ttl = 60  # 1 minute cache
+        self._cache_ttl = 300  # 5 minute cache (was 60s - too short)
+        self._scan_lock = threading.Lock()  # Prevent concurrent scans
+        self._is_scanning = False
+        self._last_scan_time: Optional[datetime] = None
+        self._min_scan_interval = 30  # Min seconds between scans
 
     def _is_cache_valid(self, scan_type: str) -> bool:
         if scan_type not in self._cache_time:
             return False
         elapsed = (datetime.now() - self._cache_time[scan_type]).total_seconds()
         return elapsed < self._cache_ttl
+
+    def _should_rate_limit(self) -> bool:
+        """Check if we should rate limit the scan"""
+        if self._last_scan_time is None:
+            return False
+        elapsed = (datetime.now() - self._last_scan_time).total_seconds()
+        return elapsed < self._min_scan_interval
+
+    def get_status(self) -> Dict:
+        """Get scanner status"""
+        return {
+            "is_scanning": self._is_scanning,
+            "last_scan": self._last_scan_time.isoformat() if self._last_scan_time else None,
+            "cache_entries": len(self._cache),
+            "cache_ttl_seconds": self._cache_ttl,
+            "min_scan_interval": self._min_scan_interval
+        }
 
     def get_top_gainers(self,
                         min_change: float = 5.0,
@@ -61,14 +85,28 @@ class FinvizScanner:
         """
         cache_key = f"gainers_{min_change}_{max_price}_{min_volume}"
 
+        # Return cached results if valid
         if self._is_cache_valid(cache_key):
+            logger.debug(f"Finviz: returning cached results for {cache_key}")
             return self._cache[cache_key]
+
+        # Rate limit check
+        if self._should_rate_limit():
+            logger.info(f"Finviz: rate limited, returning stale cache for {cache_key}")
+            return self._cache.get(cache_key, [])
 
         if not HAS_FINVIZ:
             logger.warning("Finviz not available")
             return []
 
+        # Use lock to prevent concurrent scans
+        if not self._scan_lock.acquire(blocking=False):
+            logger.info("Finviz: scan already in progress, returning cached results")
+            return self._cache.get(cache_key, [])
+
         try:
+            self._is_scanning = True
+            logger.info(f"Finviz: starting scan for {cache_key}")
             foverview = Overview()
 
             # Build filter based on change threshold
@@ -139,13 +177,25 @@ class FinvizScanner:
             # Cache results
             self._cache[cache_key] = results
             self._cache_time[cache_key] = datetime.now()
+            self._last_scan_time = datetime.now()
+
+            # Record to funnel metrics
+            try:
+                from ai.funnel_metrics import record_scanner_find
+                for r in results:
+                    record_scanner_find(r.symbol, "finviz_gainers")
+            except ImportError:
+                pass
 
             logger.info(f"Finviz scan found {len(results)} gainers")
             return results
 
         except Exception as e:
             logger.error(f"Finviz scan error: {e}")
-            return []
+            return self._cache.get(cache_key, [])  # Return stale cache on error
+        finally:
+            self._is_scanning = False
+            self._scan_lock.release()
 
     def get_low_float_movers(self, max_float: float = 20.0) -> List[ScanResult]:
         """Get low float stocks with momentum"""
@@ -249,6 +299,155 @@ class FinvizScanner:
             logger.error(f"Finviz breakout scan error: {e}")
             return []
 
+    def get_new_highs(self, max_price: float = 20.0) -> List[ScanResult]:
+        """Get stocks hitting new highs (HOD/52-week high) - momentum trigger"""
+        cache_key = f"new_highs_{max_price}"
+
+        if self._is_cache_valid(cache_key):
+            return self._cache[cache_key]
+
+        if self._should_rate_limit():
+            return self._cache.get(cache_key, [])
+
+        if not HAS_FINVIZ:
+            return []
+
+        if not self._scan_lock.acquire(blocking=False):
+            return self._cache.get(cache_key, [])
+
+        try:
+            self._is_scanning = True
+            foverview = Overview()
+
+            # New High filter - stocks hitting new highs today
+            filters = {
+                'Signal': 'New High',  # HOD/new high breakout
+                'Price': 'Under $20' if max_price <= 20 else 'Under $50',
+                'Average Volume': 'Over 200K',
+                'Change': 'Up'
+            }
+
+            foverview.set_filter(filters_dict=filters)
+            df = foverview.screener_view()
+
+            results = []
+            for _, row in df.iterrows():
+                try:
+                    change = row.get('Change', 0)
+                    if isinstance(change, str):
+                        change = float(change.replace('%', '')) / 100
+
+                    price = float(row.get('Price', 0))
+                    if price > max_price:
+                        continue
+
+                    results.append(ScanResult(
+                        symbol=row.get('Ticker', ''),
+                        price=price,
+                        change_pct=change * 100,
+                        volume=int(str(row.get('Volume', 0)).replace(',', '')),
+                        market_cap=str(row.get('Market Cap', '')),
+                        sector=str(row.get('Sector', ''))
+                    ))
+                except:
+                    continue
+
+            results.sort(key=lambda x: x.change_pct, reverse=True)
+            self._cache[cache_key] = results
+            self._cache_time[cache_key] = datetime.now()
+            self._last_scan_time = datetime.now()
+
+            # Record to funnel metrics
+            try:
+                from ai.funnel_metrics import record_scanner_find
+                for r in results:
+                    record_scanner_find(r.symbol, "finviz_new_highs")
+            except ImportError:
+                pass
+
+            logger.info(f"Finviz new highs scan found {len(results)} stocks")
+            return results
+
+        except Exception as e:
+            logger.error(f"Finviz new highs scan error: {e}")
+            return self._cache.get(cache_key, [])
+        finally:
+            self._is_scanning = False
+            self._scan_lock.release()
+
+    def get_momentum_breakouts(self, min_change: float = 5.0) -> List[ScanResult]:
+        """Get momentum breakouts - high relative volume + up movement"""
+        cache_key = f"momentum_{min_change}"
+
+        if self._is_cache_valid(cache_key):
+            return self._cache[cache_key]
+
+        if self._should_rate_limit():
+            return self._cache.get(cache_key, [])
+
+        if not HAS_FINVIZ:
+            return []
+
+        if not self._scan_lock.acquire(blocking=False):
+            return self._cache.get(cache_key, [])
+
+        try:
+            self._is_scanning = True
+            foverview = Overview()
+
+            change_filter = "Up 10%" if min_change >= 10 else "Up 5%"
+
+            filters = {
+                'Change': change_filter,
+                'Relative Volume': 'Over 2',  # At least 2x normal volume
+                'Price': 'Under $20',
+                'Average Volume': 'Over 200K'
+            }
+
+            foverview.set_filter(filters_dict=filters)
+            df = foverview.screener_view()
+
+            results = []
+            for _, row in df.iterrows():
+                try:
+                    change = row.get('Change', 0)
+                    if isinstance(change, str):
+                        change = float(change.replace('%', '')) / 100
+
+                    results.append(ScanResult(
+                        symbol=row.get('Ticker', ''),
+                        price=float(row.get('Price', 0)),
+                        change_pct=change * 100,
+                        volume=int(str(row.get('Volume', 0)).replace(',', '')),
+                        market_cap=str(row.get('Market Cap', '')),
+                        sector=str(row.get('Sector', ''))
+                    ))
+                except:
+                    continue
+
+            results.sort(key=lambda x: x.change_pct, reverse=True)
+            self._cache[cache_key] = results
+            self._cache_time[cache_key] = datetime.now()
+            self._last_scan_time = datetime.now()
+
+            # Record to funnel metrics
+            try:
+                from ai.funnel_metrics import record_scanner_find
+                for r in results:
+                    record_scanner_find(r.symbol, "finviz_momentum")
+            except ImportError:
+                pass
+
+            logger.info(f"Finviz momentum scan found {len(results)} stocks")
+            return results
+
+        except Exception as e:
+            logger.error(f"Finviz momentum scan error: {e}")
+            return self._cache.get(cache_key, [])
+        finally:
+            self._is_scanning = False
+            self._scan_lock.release()
+
     def get_premarket_movers(self) -> List[ScanResult]:
         """
         Get pre-market movers (Note: Finviz updates delayed in pre-market)
@@ -267,6 +466,10 @@ class FinvizScanner:
         }
 
 
+# Thread pool for async operations
+_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="finviz_")
+
+
 # Singleton
 _scanner: Optional[FinvizScanner] = None
 
@@ -277,6 +480,34 @@ def get_finviz_scanner() -> FinvizScanner:
     if _scanner is None:
         _scanner = FinvizScanner()
     return _scanner
+
+
+async def async_get_top_gainers(min_change: float = 5.0, max_price: float = 20.0, min_volume: int = 500000) -> List[ScanResult]:
+    """Async wrapper for get_top_gainers - runs in thread pool to avoid blocking"""
+    scanner = get_finviz_scanner()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, lambda: scanner.get_top_gainers(min_change, max_price, min_volume))
+
+
+async def async_get_low_float_movers(max_float: float = 20.0) -> List[ScanResult]:
+    """Async wrapper for get_low_float_movers"""
+    scanner = get_finviz_scanner()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, lambda: scanner.get_low_float_movers(max_float))
+
+
+async def async_get_high_volume_breakouts() -> List[ScanResult]:
+    """Async wrapper for get_high_volume_breakouts"""
+    scanner = get_finviz_scanner()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, scanner.get_high_volume_breakouts)
+
+
+async def async_scan_all() -> Dict:
+    """Async wrapper for scan_all"""
+    scanner = get_finviz_scanner()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, scanner.scan_all)
 
 
 def scan_top_gainers(min_change: float = 5.0, max_price: float = 20.0) -> List[Dict]:

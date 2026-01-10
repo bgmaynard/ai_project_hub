@@ -18,6 +18,8 @@ export default function ScannerPanel() {
   const { setActiveSymbol } = useSymbolStore()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDiscovering, setIsDiscovering] = useState(false)
+  const [isAddingAll, setIsAddingAll] = useState(false)
+  const [addedSymbols, setAddedSymbols] = useState<Set<string>>(new Set())
   const [scannerStatus, setScannerStatus] = useState<ScannerStatusInfo | null>(null)
   const [sortColumn, setSortColumn] = useState<SortColumn>('changePercent')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
@@ -123,19 +125,62 @@ export default function ScannerPanel() {
     setIsDiscovering(true)
     try {
       const data = await api.discoverCandidates() as any
-      if (data.raw_movers?.length > 0) {
-        // Map raw movers to scanner format
-        const mapped: ScannerResult[] = data.raw_movers.map((item: any) => ({
+      // Check raw_movers OR scanner_results for candidates
+      const rawMovers = data.raw_movers || []
+      const scannerResults = data.scanner_results || {}
+
+      // First try raw movers (Schwab gainers)
+      if (rawMovers.length > 0) {
+        const mapped: ScannerResult[] = rawMovers.map((item: any) => ({
           symbol: item.symbol,
-          price: item.price || 0,
-          changePercent: item.change_pct || 0,
-          direction: (item.change_pct || 0) > 0 ? 'UP' : 'DOWN',
-          volume: item.volume || 0,
+          price: item.price || item.lastPrice || 0,
+          changePercent: item.change_pct || item.percentChange || 0,
+          direction: (item.change_pct || item.percentChange || 0) > 0 ? 'UP' : 'DOWN',
+          volume: item.volume || item.totalVolume || 0,
           relVol: 0,
           scanner: 'SCHWAB',
         }))
-        // Set results for current scanner tab
         setResults(activeScanner, mapped)
+      }
+      // Fallback: try scanner_results
+      else if (Object.keys(scannerResults).length > 0) {
+        const allCandidates: ScannerResult[] = []
+        for (const [scannerName, candidates] of Object.entries(scannerResults)) {
+          if (Array.isArray(candidates)) {
+            candidates.forEach((item: any) => {
+              allCandidates.push({
+                symbol: item.symbol,
+                price: item.price || 0,
+                changePercent: item.change_pct || item.gap_pct || 0,
+                direction: (item.change_pct || item.gap_pct || 0) > 0 ? 'UP' : 'DOWN',
+                volume: item.volume || 0,
+                relVol: item.rel_vol || 0,
+                scanner: scannerName as 'GAPPER' | 'GAINER' | 'HOD',
+              })
+            })
+          }
+        }
+        if (allCandidates.length > 0) {
+          setResults(activeScanner, allCandidates)
+        }
+      }
+      // If still empty, try Finviz as backup
+      else {
+        console.log('[Scanner] No Schwab movers, trying Finviz backup...')
+        const finvizData = await api.getFinvizGainers(5, 50) as any
+        const finvizItems = finvizData?.results || finvizData?.candidates || []
+        if (finvizItems.length > 0) {
+          const mapped: ScannerResult[] = finvizItems.slice(0, 25).map((item: any) => ({
+            symbol: item.symbol,
+            price: item.price || 0,
+            changePercent: item.pct_change || item.change_pct || 0,
+            direction: (item.pct_change || 0) > 0 ? 'UP' : 'DOWN',
+            volume: item.volume || 0,
+            relVol: item.rel_vol || 0,
+            scanner: 'FINVIZ',
+          }))
+          setResults(activeScanner, mapped)
+        }
       }
     } catch (err) {
       console.error('Discovery failed:', err)
@@ -144,6 +189,94 @@ export default function ScannerPanel() {
   }, [activeScanner, setResults])
 
   const currentResults = results[activeScanner]
+
+  // Enrich scanner results with setup/exec status (Task E)
+  const enrichWithSetupExec = useCallback(async (items: ScannerResult[]): Promise<ScannerResult[]> => {
+    if (items.length === 0) return items
+    try {
+      const symbols = items.map(i => i.symbol)
+      const response = await api.getBatchSetupExecStatus(symbols)
+      if (response.results) {
+        return items.map(item => {
+          const status = response.results[item.symbol]
+          if (status) {
+            return {
+              ...item,
+              grade: status.grade || item.grade,
+              score: status.score || item.score,
+              execStatus: status.exec_status || undefined,
+              execReason: status.exec_reason || undefined,
+            }
+          }
+          return item
+        })
+      }
+    } catch (err) {
+      console.debug('Setup/exec enrichment failed:', err)
+    }
+    return items
+  }, [])
+
+  // Auto-enrich current results when they change (Task E)
+  useEffect(() => {
+    const enrichResults = async () => {
+      if (currentResults.length > 0 && !currentResults[0].execStatus) {
+        const enriched = await enrichWithSetupExec(currentResults)
+        if (enriched !== currentResults) {
+          setResults(activeScanner, enriched)
+        }
+      }
+    }
+    enrichResults()
+  }, [currentResults, activeScanner, setResults, enrichWithSetupExec])
+
+  // Add single symbol to worklist
+  const handleAddToWorklist = useCallback(async (symbol: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await fetch('/api/worklist/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol, skip_screening: true })
+      })
+      setAddedSymbols(prev => new Set(prev).add(symbol))
+      // Clear the added indicator after 3 seconds
+      setTimeout(() => {
+        setAddedSymbols(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(symbol)
+          return newSet
+        })
+      }, 3000)
+    } catch (err) {
+      console.error(`Failed to add ${symbol} to worklist:`, err)
+    }
+  }, [])
+
+  // Add all scanner results to worklist
+  const handleAddAllToWorklist = useCallback(async () => {
+    setIsAddingAll(true)
+    const symbols = currentResults.map(r => r.symbol)
+    try {
+      // Add symbols in parallel (batch of 5 at a time)
+      for (let i = 0; i < symbols.length; i += 5) {
+        const batch = symbols.slice(i, i + 5)
+        await Promise.all(batch.map(symbol =>
+          fetch('/api/worklist/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol, skip_screening: true })
+          })
+        ))
+      }
+      // Mark all as added
+      setAddedSymbols(new Set(symbols))
+      setTimeout(() => setAddedSymbols(new Set()), 3000)
+    } catch (err) {
+      console.error('Failed to add all to worklist:', err)
+    }
+    setIsAddingAll(false)
+  }, [currentResults])
 
   // Handle column sort click
   const handleSort = (column: SortColumn) => {
@@ -251,6 +384,16 @@ export default function ScannerPanel() {
             </span>
           )}
           <button
+            onClick={handleAddAllToWorklist}
+            disabled={isAddingAll || currentResults.length === 0}
+            className={`px-2 py-0.5 bg-accent-primary/20 text-accent-primary text-xxs font-bold rounded-sm hover:bg-accent-primary/30 disabled:opacity-50 ${
+              isAddingAll ? 'animate-pulse' : ''
+            }`}
+            title="Add all scanner results to worklist"
+          >
+            {isAddingAll ? '...' : '+ALL'}
+          </button>
+          <button
             onClick={handleDiscover}
             disabled={isDiscovering}
             className={`px-2 py-0.5 bg-up/20 text-up text-xxs font-bold rounded-sm hover:bg-up/30 disabled:opacity-50 ${
@@ -311,12 +454,15 @@ export default function ScannerPanel() {
               >
                 Vol<SortIndicator column="volume" />
               </th>
+              <th className="px-1 py-1 text-center" title="Setup Quality (A/B/C grade)">Setup</th>
+              <th className="px-1 py-1 text-center" title="Execution Permission (gating pass/fail)">Exec</th>
+              <th className="px-1 py-1 text-center w-8" title="Add to Worklist">+</th>
             </tr>
           </thead>
           <tbody>
             {sortedResults.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-4 text-sterling-muted">
+                <td colSpan={8} className="text-center py-4 text-sterling-muted">
                   {!isScannerActive(activeScanner)
                     ? `${activeScanner.toUpperCase()} scanner outside active window`
                     : 'No scanner results'}
@@ -351,6 +497,52 @@ export default function ScannerPanel() {
                   </td>
                   <td className="px-1 py-1 text-right text-sterling-text">
                     {item.volume ? `${(item.volume / 1000).toFixed(0)}K` : '--'}
+                  </td>
+                  {/* Setup Grade Column (Task E) */}
+                  <td className="px-1 py-1 text-center">
+                    {item.grade ? (
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-xxs font-bold ${
+                          item.grade === 'A' ? 'bg-up/30 text-up' :
+                          item.grade === 'B' ? 'bg-warning/30 text-warning' :
+                          'bg-sterling-muted/30 text-sterling-muted'
+                        }`}
+                        title={item.score ? `Score: ${item.score}%` : ''}
+                      >
+                        {item.grade}
+                        {item.score && <span className="ml-0.5 text-xxs opacity-70">({item.score})</span>}
+                      </span>
+                    ) : (
+                      <span className="text-sterling-muted">--</span>
+                    )}
+                  </td>
+                  {/* Exec Permission Column (Task E) */}
+                  <td className="px-1 py-1 text-center">
+                    {item.execStatus ? (
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-xxs font-bold ${
+                          item.execStatus === 'YES' ? 'bg-up/30 text-up' : 'bg-down/30 text-down'
+                        }`}
+                        title={item.execReason || ''}
+                      >
+                        {item.execStatus}
+                      </span>
+                    ) : (
+                      <span className="text-sterling-muted">--</span>
+                    )}
+                  </td>
+                  <td className="px-1 py-1 text-center">
+                    <button
+                      onClick={(e) => handleAddToWorklist(item.symbol, e)}
+                      className={`w-5 h-5 rounded-sm text-xxs font-bold transition-all ${
+                        addedSymbols.has(item.symbol)
+                          ? 'bg-up/30 text-up'
+                          : 'bg-accent-primary/20 text-accent-primary hover:bg-accent-primary/40'
+                      }`}
+                      title={addedSymbols.has(item.symbol) ? 'Added!' : `Add ${item.symbol} to worklist`}
+                    >
+                      {addedSymbols.has(item.symbol) ? '✓' : '+'}
+                    </button>
                   </td>
                 </tr>
               ))

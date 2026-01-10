@@ -1,0 +1,26 @@
+{
+  "task_id": "DATA_QUALITY_CHECK",
+  "timestamp": "2025-12-30T21:09:44.427382+00:00",
+  "api_status": {
+    "quotes": "OK",
+    "float": "OK",
+    "worklist": "OK"
+  },
+  "data_freshness": {
+    "state": "FRESH",
+    "is_fresh": true,
+    "stale_seconds": 0.000156,
+    "staleness_threshold_seconds": 10.0,
+    "last_good_data_time": "2025-12-30T21:10:00.596543+00:00",
+    "stale_reason": null
+  },
+  "issues": [],
+  "critical_failures": [],
+  "overall_quality": "GOOD",
+  "_meta": {
+    "task_id": "DATA_QUALITY_CHECK",
+    "status": "COMPLETED",
+    "timestamp": "2025-12-30T15:10:00.596730",
+    "duration_ms": 16176
+  }
+}

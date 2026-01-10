@@ -246,7 +246,7 @@ function App() {
   }, [deleteLayout])
 
   const handleOpenAIScreen = () => {
-    window.open('/ai-control-center/', 'ai_screen', 'width=1920,height=1080')
+    window.open('/governor', 'ai_screen', 'width=1920,height=1080')
   }
 
   const handleAddPanel = useCallback((panelType: string) => {

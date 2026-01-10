@@ -1,0 +1,1406 @@
+{
+  "SPY": {
+    "data": {
+      "symbol": "SPY",
+      "price": 690.37,
+      "bid": 690.34,
+      "ask": 690.38,
+      "volume": 29182,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 689.51,
+      "change": 0.86,
+      "change_percent": 0.12,
+      "timestamp": "2026-01-09T03:47:53.945460",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-09T09:47:59.790288+00:00"
+  },
+  "NKLR": {
+    "data": {
+      "symbol": "NKLR",
+      "price": 4.75,
+      "bid": 4.7,
+      "ask": 4.75,
+      "volume": 1665905,
+      "high": 4.84,
+      "low": 4.24,
+      "open": 4.5,
+      "close": 4.12,
+      "change": 0.63,
+      "change_percent": 15.29,
+      "timestamp": "2025-12-30T17:24:54.822832",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:24:58.988498+00:00"
+  },
+  "SIDU": {
+    "data": {
+      "symbol": "SIDU",
+      "price": 4.76,
+      "bid": 4.76,
+      "ask": 4.77,
+      "volume": 136188,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 4.64,
+      "change": 0.12,
+      "change_percent": 2.59,
+      "timestamp": "2026-01-08T03:44:08.873765",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-08T09:44:11.044323+00:00"
+  },
+  "FONR": {
+    "data": {
+      "symbol": "FONR",
+      "price": 18.63,
+      "bid": 18.63,
+      "ask": 18.82,
+      "volume": 1135586,
+      "high": 18.86,
+      "low": 18.58,
+      "open": 18.71,
+      "close": 14.66,
+      "change": 3.97,
+      "change_percent": 27.08,
+      "timestamp": "2025-12-30T17:24:47.741925",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:24:49.937133+00:00"
+  },
+  "SOPA": {
+    "data": {
+      "symbol": "SOPA",
+      "price": 3.09,
+      "bid": 3.04,
+      "ask": 3.1,
+      "volume": 9306,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 3.02,
+      "change": 0.07,
+      "change_percent": 2.32,
+      "timestamp": "2026-01-08T03:43:53.532583",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-08T09:43:56.685404+00:00"
+  },
+  "HIT": {
+    "data": {
+      "symbol": "HIT",
+      "price": 1.62,
+      "bid": 1.62,
+      "ask": 1.72,
+      "volume": 543119,
+      "high": 1.85,
+      "low": 1.6501,
+      "open": 1.78,
+      "close": 1.85,
+      "change": -0.23,
+      "change_percent": -12.43,
+      "timestamp": "2025-12-30T17:23:35.909387",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:23:38.002565+00:00"
+  },
+  "NTRB": {
+    "data": {
+      "symbol": "NTRB",
+      "price": 4.81,
+      "bid": 4.35,
+      "ask": 5.05,
+      "volume": 143456,
+      "high": 5.6595,
+      "low": 4.605,
+      "open": 5.65,
+      "close": 5.57,
+      "change": -0.76,
+      "change_percent": -13.64,
+      "timestamp": "2025-12-30T17:24:03.829954",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:24:05.539051+00:00"
+  },
+  "NOMA": {
+    "data": {
+      "symbol": "NOMA",
+      "price": 4.4,
+      "bid": 4.25,
+      "ask": 4.86,
+      "volume": 243470,
+      "high": 5.31,
+      "low": 4.25,
+      "open": 4.82,
+      "close": 5.24,
+      "change": -0.84,
+      "change_percent": -16.03,
+      "timestamp": "2025-12-30T17:25:15.986646",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:25:18.156856+00:00"
+  },
+  "ANL": {
+    "data": {
+      "symbol": "ANL",
+      "price": 1.43,
+      "bid": 1.38,
+      "ask": 1.43,
+      "volume": 604265,
+      "high": 1.76,
+      "low": 1.32,
+      "open": 1.65,
+      "close": 1.8,
+      "change": -0.37,
+      "change_percent": -20.56,
+      "timestamp": "2025-12-30T17:24:52.374738",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:24:54.828621+00:00"
+  },
+  "DXST": {
+    "data": {
+      "symbol": "DXST",
+      "price": 1.25,
+      "bid": 1.2,
+      "ask": 1.26,
+      "volume": 2709629,
+      "high": 1.32,
+      "low": 1.16,
+      "open": 1.29,
+      "close": 1.36,
+      "change": -0.11,
+      "change_percent": -8.09,
+      "timestamp": "2025-12-30T17:22:24.009373",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:22:24.035425+00:00"
+  },
+  "BNAI": {
+    "data": {
+      "symbol": "BNAI",
+      "price": 3.9,
+      "bid": 3.89,
+      "ask": 3.96,
+      "volume": 3910,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 3.76,
+      "change": 0.14,
+      "change_percent": 3.72,
+      "timestamp": "2026-01-08T03:42:41.712445",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-08T09:42:49.031055+00:00"
+  },
+  "MMA": {
+    "data": {
+      "symbol": "MMA",
+      "price": 1.15,
+      "bid": 1.15,
+      "ask": 1.19,
+      "volume": 1182532,
+      "high": 1.42,
+      "low": 1.16,
+      "open": 1.34,
+      "close": 1.24,
+      "change": -0.09,
+      "change_percent": -7.26,
+      "timestamp": "2025-12-30T17:23:47.636123",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:23:49.298733+00:00"
+  },
+  "BRAG": {
+    "data": {
+      "symbol": "BRAG",
+      "price": 2.05,
+      "bid": 0.8414,
+      "ask": 2.15,
+      "volume": 99091,
+      "high": 2.09,
+      "low": 1.99,
+      "open": 1.99,
+      "close": 1.99,
+      "change": 0.06,
+      "change_percent": 3.02,
+      "timestamp": "2025-12-30T17:22:03.108172",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:22:05.235281+00:00"
+  },
+  "ZBAI": {
+    "data": {
+      "symbol": "ZBAI",
+      "price": 5.22,
+      "bid": 5.22,
+      "ask": 5.98,
+      "volume": 77172,
+      "high": 6.28,
+      "low": 5.11,
+      "open": 5.8753,
+      "close": 7.45,
+      "change": -2.23,
+      "change_percent": -29.93,
+      "timestamp": "2025-12-30T17:24:47.741925",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:24:51.920827+00:00"
+  },
+  "TROO": {
+    "data": {
+      "symbol": "TROO",
+      "price": 3.58,
+      "bid": 3.57,
+      "ask": 3.58,
+      "volume": 522532,
+      "high": 3.94,
+      "low": 3.2,
+      "open": 3.28,
+      "close": 3.2,
+      "change": 0.38,
+      "change_percent": 11.88,
+      "timestamp": "2026-01-03T11:34:12.420460",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-03T17:34:15.277961+00:00"
+  },
+  "OPTX": {
+    "data": {
+      "symbol": "OPTX",
+      "price": 2.94,
+      "bid": 2.88,
+      "ask": 2.95,
+      "volume": 947929,
+      "high": 3.09,
+      "low": 2.66,
+      "open": 2.73,
+      "close": 2.7,
+      "change": 0.24,
+      "change_percent": 8.89,
+      "timestamp": "2025-12-30T17:23:43.065929",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:23:45.087059+00:00"
+  },
+  "WOK": {
+    "data": {
+      "symbol": "WOK",
+      "price": 2.76,
+      "bid": 2.75,
+      "ask": 2.8,
+      "volume": 993842,
+      "high": 3.3,
+      "low": 2.6,
+      "open": 3.23,
+      "close": 3.41,
+      "change": -0.65,
+      "change_percent": -19.06,
+      "timestamp": "2025-12-30T17:25:01.653988",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:25:04.592963+00:00"
+  },
+  "SKIL": {
+    "data": {
+      "symbol": "SKIL",
+      "price": 8.16,
+      "bid": 7.78,
+      "ask": 8.53,
+      "volume": 302803,
+      "high": 8.63,
+      "low": 7.71,
+      "open": 8.01,
+      "close": 7.83,
+      "change": 0.33,
+      "change_percent": 4.21,
+      "timestamp": "2025-12-30T17:22:44.238551",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:22:44.245572+00:00"
+  },
+  "TTRX": {
+    "data": {
+      "symbol": "TTRX",
+      "price": 4.52,
+      "bid": 4.5,
+      "ask": 4.75,
+      "volume": 155435,
+      "high": 4.79,
+      "low": 3.9,
+      "open": 4.19,
+      "close": 3.94,
+      "change": 0.58,
+      "change_percent": 14.72,
+      "timestamp": "2026-01-03T11:32:21.176327",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-03T17:32:25.661902+00:00"
+  },
+  "KULR": {
+    "data": {
+      "symbol": "KULR",
+      "price": 3.07,
+      "bid": 3.01,
+      "ask": 3.08,
+      "volume": 1609565,
+      "high": 3.17,
+      "low": 3.01,
+      "open": 3.1,
+      "close": 3.15,
+      "change": -0.08,
+      "change_percent": -2.54,
+      "timestamp": "2025-12-30T17:23:24.185350",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:23:26.079228+00:00"
+  },
+  "STI": {
+    "data": {
+      "symbol": "STI",
+      "price": 7.44,
+      "bid": 7.44,
+      "ask": 7.6,
+      "volume": 114201,
+      "high": 8.398,
+      "low": 7.16,
+      "open": 7.93,
+      "close": 7.705,
+      "change": -0.265,
+      "change_percent": -3.44,
+      "timestamp": "2025-12-30T17:23:58.803955",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:23:59.890219+00:00"
+  },
+  "ORBS": {
+    "data": {
+      "symbol": "ORBS",
+      "price": 1.96,
+      "bid": 1.96,
+      "ask": 2.01,
+      "volume": 31574279,
+      "high": 2.11,
+      "low": 1.78,
+      "open": 2.11,
+      "close": 1.82,
+      "change": 0.14,
+      "change_percent": 7.69,
+      "timestamp": "2026-01-05T19:25:50.336824",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.534713+00:00"
+  },
+  "LITB": {
+    "data": {
+      "symbol": "LITB",
+      "price": 2.42,
+      "bid": 2.23,
+      "ask": 2.88,
+      "volume": 30354,
+      "high": 2.6133,
+      "low": 2.2001,
+      "open": 2.43,
+      "close": 2.45,
+      "change": -0.03,
+      "change_percent": -1.22,
+      "timestamp": "2025-12-30T17:21:50.116108",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:21:53.974758+00:00"
+  },
+  "PALI": {
+    "data": {
+      "symbol": "PALI",
+      "price": 2.37,
+      "bid": 2.37,
+      "ask": 2.39,
+      "volume": 6904866,
+      "high": 2.64,
+      "low": 2.35,
+      "open": 2.64,
+      "close": 2.48,
+      "change": -0.11,
+      "change_percent": -4.44,
+      "timestamp": "2025-12-30T17:21:38.568226",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:21:39.898080+00:00"
+  },
+  "SMR": {
+    "data": {
+      "symbol": "SMR",
+      "price": 14.32,
+      "bid": 14.32,
+      "ask": 14.33,
+      "volume": 19377096,
+      "high": 14.74,
+      "low": 14.07,
+      "open": 14.63,
+      "close": 14.48,
+      "change": -0.16,
+      "change_percent": -1.1,
+      "timestamp": "2025-12-30T17:22:09.412477",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:22:11.735776+00:00"
+  },
+  "BBAI": {
+    "data": {
+      "symbol": "BBAI",
+      "price": 5.4983,
+      "bid": 5.49,
+      "ask": 5.5,
+      "volume": 42093556,
+      "high": 5.7,
+      "low": 5.4444,
+      "open": 5.69,
+      "close": 5.67,
+      "change": -0.1717,
+      "change_percent": -3.03,
+      "timestamp": "2025-12-30T17:22:39.413946",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:22:39.851555+00:00"
+  },
+  "MSC": {
+    "data": {
+      "symbol": "MSC",
+      "price": 3.67,
+      "bid": 2.85,
+      "ask": 3.7,
+      "volume": 11561,
+      "high": 3.9,
+      "low": 3.36,
+      "open": 3.57,
+      "close": 3.45,
+      "change": 0.22,
+      "change_percent": 6.38,
+      "timestamp": "2025-12-30T17:21:57.232301",
+      "source": "cache"
+    },
+    "timestamp": "2025-12-30T23:21:58.192793+00:00"
+  },
+  "ARBE": {
+    "data": {
+      "symbol": "ARBE",
+      "price": 1.1377,
+      "bid": 1.12,
+      "ask": 1.14,
+      "volume": 2809571,
+      "high": 1.19,
+      "low": 1.11,
+      "open": 1.18,
+      "close": 1.13,
+      "change": 0.0077,
+      "change_percent": 0.68,
+      "timestamp": "2025-12-30T17:21:46.641317",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:21:47.754319+00:00"
+  },
+  "QUBT": {
+    "data": {
+      "symbol": "QUBT",
+      "price": 10.4496,
+      "bid": 10.43,
+      "ask": 10.45,
+      "volume": 11304006,
+      "high": 10.88,
+      "low": 10.36,
+      "open": 10.58,
+      "close": 10.57,
+      "change": -0.1204,
+      "change_percent": -1.14,
+      "timestamp": "2025-12-30T17:23:52.839179",
+      "source": "schwab"
+    },
+    "timestamp": "2025-12-30T23:23:52.845687+00:00"
+  },
+  "PARK": {
+    "data": {
+      "symbol": "PARK",
+      "price": 14.8,
+      "bid": 13.5,
+      "ask": 15.3,
+      "volume": 43382,
+      "high": 15.17,
+      "low": 13.6935,
+      "open": 15.0,
+      "close": 14.76,
+      "change": 0.04,
+      "change_percent": 0.27,
+      "timestamp": "2026-01-03T11:30:45.147557",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-03T17:30:51.464113+00:00"
+  },
+  "SOC": {
+    "data": {
+      "symbol": "SOC",
+      "price": 12.19,
+      "bid": 12.15,
+      "ask": 12.19,
+      "volume": 20002677,
+      "high": 12.295,
+      "low": 10.26,
+      "open": 10.69,
+      "close": 9.02,
+      "change": 3.17,
+      "change_percent": 35.14,
+      "timestamp": "2026-01-04T04:27:47.348532",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-04T10:27:47.350073+00:00"
+  },
+  "XBP": {
+    "data": {
+      "symbol": "XBP",
+      "price": 7.1,
+      "bid": 2.76,
+      "ask": 7.1,
+      "volume": 167923,
+      "high": 7.255,
+      "low": 6.62,
+      "open": 7.09,
+      "close": 6.81,
+      "change": 0.29,
+      "change_percent": 4.26,
+      "timestamp": "2026-01-03T11:31:05.728643",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-03T17:31:09.428753+00:00"
+  },
+  "BVC": {
+    "data": {
+      "symbol": "BVC",
+      "price": 14.25,
+      "bid": 12.5,
+      "ask": 14.45,
+      "volume": 158573,
+      "high": 15.00311,
+      "low": 11.1701,
+      "open": 13.8999,
+      "close": 14.0,
+      "change": 0.25,
+      "change_percent": 1.79,
+      "timestamp": "2026-01-05T19:25:51.195908",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.522430+00:00"
+  },
+  "DGNX": {
+    "data": {
+      "symbol": "DGNX",
+      "price": 4.53,
+      "bid": 4.5,
+      "ask": 4.63,
+      "volume": 3245966,
+      "high": 5.03,
+      "low": 4.5,
+      "open": 5.01,
+      "close": 4.17,
+      "change": 0.36,
+      "change_percent": 8.63,
+      "timestamp": "2026-01-04T04:27:48.789249",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-04T10:27:49.193122+00:00"
+  },
+  "ZEO": {
+    "data": {
+      "symbol": "ZEO",
+      "price": 1.11,
+      "bid": 1.06,
+      "ask": 1.17,
+      "volume": 158001,
+      "high": 1.17,
+      "low": 1.0,
+      "open": 1.13,
+      "close": 1.09,
+      "change": 0.02,
+      "change_percent": 1.83,
+      "timestamp": "2026-01-03T11:00:59.524366",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-03T17:01:01.346760+00:00"
+  },
+  "UNCY": {
+    "data": {
+      "symbol": "UNCY",
+      "price": 5.8008,
+      "bid": 5.8,
+      "ask": 5.85,
+      "volume": 345564,
+      "high": 5.95,
+      "low": 5.66,
+      "open": 5.85,
+      "close": 5.77,
+      "change": 0.0308,
+      "change_percent": 0.53,
+      "timestamp": "2026-01-03T11:00:51.355990",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-03T17:00:52.995441+00:00"
+  },
+  "NUAI": {
+    "data": {
+      "symbol": "NUAI",
+      "price": 3.42,
+      "bid": 3.4,
+      "ask": 3.42,
+      "volume": 9833997,
+      "high": 3.46,
+      "low": 2.63,
+      "open": 2.95,
+      "close": 2.93,
+      "change": 0.49,
+      "change_percent": 16.72,
+      "timestamp": "2026-01-03T11:33:05.281584",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-03T17:33:05.769860+00:00"
+  },
+  "ALCY": {
+    "data": {
+      "symbol": "ALCY",
+      "price": 15.96,
+      "bid": 15.83,
+      "ask": 15.96,
+      "volume": 541233,
+      "high": 15.8999,
+      "low": 13.05,
+      "open": 14.15,
+      "close": 14.21,
+      "change": 1.75,
+      "change_percent": 12.32,
+      "timestamp": "2026-01-03T11:00:58.160983",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-03T17:00:58.579363+00:00"
+  },
+  "YDDL": {
+    "data": {
+      "symbol": "YDDL",
+      "price": 5.5,
+      "bid": 5.19,
+      "ask": 5.6,
+      "volume": 34182,
+      "high": 5.5956,
+      "low": 5.29,
+      "open": 5.31,
+      "close": 5.19,
+      "change": 0.31,
+      "change_percent": 5.97,
+      "timestamp": "2026-01-03T11:33:03.967336",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-03T17:33:04.431027+00:00"
+  },
+  "SLS": {
+    "data": {
+      "symbol": "SLS",
+      "price": 5.08,
+      "bid": 5.08,
+      "ask": 5.11,
+      "volume": 22589990,
+      "high": 5.1765,
+      "low": 4.45,
+      "open": 4.76,
+      "close": 4.35,
+      "change": 0.73,
+      "change_percent": 16.78,
+      "timestamp": "2026-01-05T19:25:51.195917",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.551664+00:00"
+  },
+  "EGG": {
+    "data": {
+      "symbol": "EGG",
+      "price": 5.43,
+      "bid": 5.0,
+      "ask": 5.9,
+      "volume": 20851,
+      "high": 5.8895,
+      "low": 5.0385,
+      "open": 5.85,
+      "close": 5.25,
+      "change": 0.18,
+      "change_percent": 3.43,
+      "timestamp": "2026-01-03T11:00:51.355990",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-03T17:00:52.973197+00:00"
+  },
+  "ODV": {
+    "data": {
+      "symbol": "ODV",
+      "price": 3.45,
+      "bid": 3.33,
+      "ask": 3.52,
+      "volume": 1324148,
+      "high": 3.6,
+      "low": 3.37,
+      "open": 3.52,
+      "close": 3.49,
+      "change": -0.04,
+      "change_percent": -1.15,
+      "timestamp": "2026-01-03T11:36:02.875247",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-03T17:36:06.712235+00:00"
+  },
+  "SRFM": {
+    "data": {
+      "symbol": "SRFM",
+      "price": 2.4094,
+      "bid": 2.38,
+      "ask": 2.41,
+      "volume": 10460676,
+      "high": 2.43,
+      "low": 1.9901,
+      "open": 2.01,
+      "close": 1.94,
+      "change": 0.4694,
+      "change_percent": 24.2,
+      "timestamp": "2026-01-04T04:22:56.366248",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-04T10:22:58.524447+00:00"
+  },
+  "IRWD": {
+    "data": {
+      "symbol": "IRWD",
+      "price": 4.28,
+      "bid": 4.25,
+      "ask": 4.29,
+      "volume": 85044335,
+      "high": 5.78,
+      "low": 4.2,
+      "open": 4.595,
+      "close": 3.37,
+      "change": 0.91,
+      "change_percent": 27.0,
+      "timestamp": "2026-01-03T11:32:53.895028",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-03T17:32:58.053789+00:00"
+  },
+  "UAVS": {
+    "data": {
+      "symbol": "UAVS",
+      "price": 1.53,
+      "bid": 1.53,
+      "ask": 1.54,
+      "volume": 34397213,
+      "high": 1.62,
+      "low": 1.16,
+      "open": 1.25,
+      "close": 1.23,
+      "change": 0.3,
+      "change_percent": 24.39,
+      "timestamp": "2026-01-05T19:25:51.195925",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.571844+00:00"
+  },
+  "ATLN": {
+    "data": {
+      "symbol": "ATLN",
+      "price": 2.16,
+      "bid": 2.16,
+      "ask": 2.21,
+      "volume": 5416831,
+      "high": 2.36,
+      "low": 1.3272,
+      "open": 1.36,
+      "close": 1.33,
+      "change": 0.83,
+      "change_percent": 62.41,
+      "timestamp": "2026-01-04T04:27:33.183706",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-04T10:27:37.446268+00:00"
+  },
+  "DVLT": {
+    "data": {
+      "symbol": "DVLT",
+      "price": 1.385,
+      "bid": 1.38,
+      "ask": 1.39,
+      "volume": 298063233,
+      "high": 1.5,
+      "low": 1.13,
+      "open": 1.31,
+      "close": 1.01,
+      "change": 0.375,
+      "change_percent": 37.13,
+      "timestamp": "2026-01-05T19:25:51.195905",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.516154+00:00"
+  },
+  "LVRO": {
+    "data": {
+      "symbol": "LVRO",
+      "price": 1.22,
+      "bid": 1.22,
+      "ask": 1.28,
+      "volume": 5040001,
+      "high": 1.28,
+      "low": 0.75,
+      "open": 0.9692,
+      "close": 1.1,
+      "change": 0.12,
+      "change_percent": 10.91,
+      "timestamp": "2026-01-05T19:25:51.195886",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.416085+00:00"
+  },
+  "VSTM": {
+    "data": {
+      "symbol": "VSTM",
+      "price": 7.3,
+      "bid": 7.25,
+      "ask": 7.55,
+      "volume": 1253258,
+      "high": 7.76,
+      "low": 7.185,
+      "open": 7.74,
+      "close": 7.72,
+      "change": -0.42,
+      "change_percent": -5.44,
+      "timestamp": "2026-01-04T04:26:04.898944",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-04T10:26:13.475655+00:00"
+  },
+  "RDW": {
+    "data": {
+      "symbol": "RDW",
+      "price": 10.0501,
+      "bid": 10.05,
+      "ask": 10.1,
+      "volume": 28271904,
+      "high": 10.565,
+      "low": 9.05,
+      "open": 9.204,
+      "close": 9.03,
+      "change": 1.0201,
+      "change_percent": 11.3,
+      "timestamp": "2026-01-05T19:25:51.195922",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.566097+00:00"
+  },
+  "TE": {
+    "data": {
+      "symbol": "TE",
+      "price": 7.87,
+      "bid": 7.84,
+      "ask": 7.87,
+      "volume": 26267384,
+      "high": 8.12,
+      "low": 6.99,
+      "open": 6.995,
+      "close": 6.68,
+      "change": 1.19,
+      "change_percent": 17.81,
+      "timestamp": "2026-01-04T04:26:29.844425",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-04T10:26:35.797300+00:00"
+  },
+  "CHRS": {
+    "data": {
+      "symbol": "CHRS",
+      "price": 1.3788,
+      "bid": 1.32,
+      "ask": 1.38,
+      "volume": 649436,
+      "high": 1.4362,
+      "low": 1.36,
+      "open": 1.42,
+      "close": 1.42,
+      "change": -0.0412,
+      "change_percent": -2.9,
+      "timestamp": "2026-01-03T11:00:58.578314",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-03T17:00:59.537373+00:00"
+  },
+  "XTIA": {
+    "data": {
+      "symbol": "XTIA",
+      "price": 1.56,
+      "bid": 1.55,
+      "ask": 1.58,
+      "volume": 4766324,
+      "high": 1.62,
+      "low": 1.47,
+      "open": 1.49,
+      "close": 1.43,
+      "change": 0.13,
+      "change_percent": 9.09,
+      "timestamp": "2026-01-05T19:25:51.195927",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.575650+00:00"
+  },
+  "TENX": {
+    "data": {
+      "symbol": "TENX",
+      "price": 12.496,
+      "bid": 12.4,
+      "ask": 13.0,
+      "volume": 635722,
+      "high": 13.85,
+      "low": 11.76,
+      "open": 13.29,
+      "close": 11.05,
+      "change": 1.446,
+      "change_percent": 13.09,
+      "timestamp": "2026-01-05T19:25:51.195891",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.462551+00:00"
+  },
+  "ADUR": {
+    "data": {
+      "symbol": "ADUR",
+      "price": 11.92,
+      "bid": 11.85,
+      "ask": 11.92,
+      "volume": 1351263,
+      "high": 12.42,
+      "low": 11.16,
+      "open": 11.59,
+      "close": 10.57,
+      "change": 1.35,
+      "change_percent": 12.77,
+      "timestamp": "2026-01-05T18:34:32.047369",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T00:34:34.417652+00:00"
+  },
+  "CNTX": {
+    "data": {
+      "symbol": "CNTX",
+      "price": 1.67,
+      "bid": 1.65,
+      "ask": 1.68,
+      "volume": 10806162,
+      "high": 2.0,
+      "low": 1.53,
+      "open": 1.785,
+      "close": 1.55,
+      "change": 0.12,
+      "change_percent": 7.74,
+      "timestamp": "2026-01-05T19:25:51.195889",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.443822+00:00"
+  },
+  "PRZO": {
+    "data": {
+      "symbol": "PRZO",
+      "price": 1.22,
+      "bid": 1.22,
+      "ask": 1.24,
+      "volume": 7014459,
+      "high": 1.335,
+      "low": 1.12,
+      "open": 1.29,
+      "close": 1.18,
+      "change": 0.04,
+      "change_percent": 3.39,
+      "timestamp": "2026-01-05T19:25:51.195883",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.372137+00:00"
+  },
+  "GHRS": {
+    "data": {
+      "symbol": "GHRS",
+      "price": 15.72,
+      "bid": 15.72,
+      "ask": 15.74,
+      "volume": 5580174,
+      "high": 19.0,
+      "low": 15.0,
+      "open": 18.8159,
+      "close": 13.24,
+      "change": 2.48,
+      "change_percent": 18.73,
+      "timestamp": "2026-01-05T19:25:51.195920",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.559516+00:00"
+  },
+  "ABTC": {
+    "data": {
+      "symbol": "ABTC",
+      "price": 2.021,
+      "bid": 2.02,
+      "ask": 2.03,
+      "volume": 32190273,
+      "high": 2.1,
+      "low": 1.9,
+      "open": 1.95,
+      "close": 1.78,
+      "change": 0.241,
+      "change_percent": 13.54,
+      "timestamp": "2026-01-05T19:25:51.195897",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.483792+00:00"
+  },
+  "WTI": {
+    "data": {
+      "symbol": "WTI",
+      "price": 1.59,
+      "bid": 1.58,
+      "ask": 1.6,
+      "volume": 2892596,
+      "high": 1.76,
+      "low": 1.55,
+      "open": 1.74,
+      "close": 1.61,
+      "change": -0.02,
+      "change_percent": -1.24,
+      "timestamp": "2026-01-05T19:25:51.195911",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.528093+00:00"
+  },
+  "LHAI": {
+    "data": {
+      "symbol": "LHAI",
+      "price": 7.41,
+      "bid": 7.4,
+      "ask": 7.41,
+      "volume": 1623579,
+      "high": 9.58,
+      "low": 6.6301,
+      "open": 7.98,
+      "close": 8.31,
+      "change": -0.9,
+      "change_percent": -10.83,
+      "timestamp": "2026-01-05T19:23:07.880191",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-06T01:23:19.683083+00:00"
+  },
+  "MNTS": {
+    "data": {
+      "symbol": "MNTS",
+      "price": 15.39,
+      "bid": 15.2,
+      "ask": 15.4,
+      "volume": 65949,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 13.9,
+      "change": 1.49,
+      "change_percent": 10.72,
+      "timestamp": "2026-01-08T03:43:26.148302",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-08T09:43:28.239245+00:00"
+  },
+  "FCEL": {
+    "data": {
+      "symbol": "FCEL",
+      "price": 8.18,
+      "bid": 8.18,
+      "ask": 8.4,
+      "volume": 1795880,
+      "high": 8.54,
+      "low": 7.91,
+      "open": 8.33,
+      "close": 8.17,
+      "change": 0.01,
+      "change_percent": 0.12,
+      "timestamp": "2026-01-05T19:25:51.195894",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.475102+00:00"
+  },
+  "ASTI": {
+    "data": {
+      "symbol": "ASTI",
+      "price": 4.72,
+      "bid": 4.71,
+      "ask": 4.76,
+      "volume": 8500614,
+      "high": 6.65,
+      "low": 4.33,
+      "open": 4.77,
+      "close": 4.06,
+      "change": 0.66,
+      "change_percent": 16.26,
+      "timestamp": "2026-01-05T19:25:51.195899",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.491115+00:00"
+  },
+  "AAL": {
+    "data": {
+      "symbol": "AAL",
+      "price": 15.84,
+      "bid": 15.83,
+      "ask": 15.84,
+      "volume": 56022856,
+      "high": 16.0268,
+      "low": 15.41,
+      "open": 15.46,
+      "close": 15.48,
+      "change": 0.36,
+      "change_percent": 2.33,
+      "timestamp": "2026-01-05T19:25:51.195902",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.497726+00:00"
+  },
+  "SDOT": {
+    "data": {
+      "symbol": "SDOT",
+      "price": 1.74,
+      "bid": 1.74,
+      "ask": 1.82,
+      "volume": 723775,
+      "high": 1.83,
+      "low": 1.53,
+      "open": 1.56,
+      "close": 1.75,
+      "change": -0.01,
+      "change_percent": -0.57,
+      "timestamp": "2026-01-05T19:25:50.762278",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.540645+00:00"
+  },
+  "LYFT": {
+    "data": {
+      "symbol": "LYFT",
+      "price": 19.1797,
+      "bid": 19.17,
+      "ask": 19.18,
+      "volume": 11765522,
+      "high": 19.96,
+      "low": 19.01,
+      "open": 19.87,
+      "close": 19.79,
+      "change": -0.6103,
+      "change_percent": -3.08,
+      "timestamp": "2026-01-05T19:25:51.195914",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-06T01:25:52.546824+00:00"
+  },
+  "RIME": {
+    "data": {
+      "symbol": "RIME",
+      "price": 1.19,
+      "bid": 1.19,
+      "ask": 1.22,
+      "volume": 3751,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 1.22,
+      "change": -0.03,
+      "change_percent": -2.46,
+      "timestamp": "2026-01-08T03:42:10.088222",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-08T09:42:11.813300+00:00"
+  },
+  "ANGH": {
+    "data": {
+      "symbol": "ANGH",
+      "price": 3.99,
+      "bid": 3.7,
+      "ask": 4.07,
+      "volume": 9,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 4.03,
+      "change": -0.04,
+      "change_percent": -0.99,
+      "timestamp": "2026-01-08T03:44:16.684007",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-08T09:44:18.819478+00:00"
+  },
+  "CYCN": {
+    "data": {
+      "symbol": "CYCN",
+      "price": 1.85,
+      "bid": 1.85,
+      "ask": 1.86,
+      "volume": 474915,
+      "high": 1.95,
+      "low": 1.84,
+      "open": 1.935,
+      "close": 1.95,
+      "change": -0.1,
+      "change_percent": -5.13,
+      "timestamp": "2026-01-07T08:33:46.272550",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-07T14:33:49.670519+00:00"
+  },
+  "AEVA": {
+    "data": {
+      "symbol": "AEVA",
+      "price": 16.1,
+      "bid": 16.08,
+      "ask": 16.16,
+      "volume": 780907,
+      "high": 17.245,
+      "low": 15.88,
+      "open": 17.245,
+      "close": 17.59,
+      "change": -1.49,
+      "change_percent": -8.47,
+      "timestamp": "2026-01-07T08:33:55.217863",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-07T14:33:57.658247+00:00"
+  },
+  "ALMS": {
+    "data": {
+      "symbol": "ALMS",
+      "price": 17.8,
+      "bid": 17.8,
+      "ask": 17.89,
+      "volume": 5424,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 17.92,
+      "change": -0.12,
+      "change_percent": -0.67,
+      "timestamp": "2026-01-08T03:43:12.578733",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-08T09:43:13.432409+00:00"
+  },
+  "CDIO": {
+    "data": {
+      "symbol": "CDIO",
+      "price": 3.13,
+      "bid": 3.13,
+      "ask": 3.14,
+      "volume": 17230375,
+      "high": 3.24,
+      "low": 3.13,
+      "open": 3.24,
+      "close": 2.955,
+      "change": 0.175,
+      "change_percent": 5.92,
+      "timestamp": "2026-01-07T08:33:09.593794",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-07T14:33:11.503214+00:00"
+  },
+  "CRIS": {
+    "data": {
+      "symbol": "CRIS",
+      "price": 0.8428,
+      "bid": 0.8403,
+      "ask": 0.8429,
+      "volume": 781,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 0.8403,
+      "change": 0.0025,
+      "change_percent": 0.3,
+      "timestamp": "2026-01-08T03:42:14.608651",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-08T09:42:17.393938+00:00"
+  },
+  "AZI": {
+    "data": {
+      "symbol": "AZI",
+      "price": 3.63,
+      "bid": 3.62,
+      "ask": 3.72,
+      "volume": 10508,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 3.59,
+      "change": 0.04,
+      "change_percent": 1.11,
+      "timestamp": "2026-01-08T03:43:38.982156",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-08T09:43:43.194216+00:00"
+  },
+  "ELAB": {
+    "data": {
+      "symbol": "ELAB",
+      "price": 6.94,
+      "bid": 6.94,
+      "ask": 6.95,
+      "volume": 422518,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 5.81,
+      "change": 1.13,
+      "change_percent": 19.45,
+      "timestamp": "2026-01-08T03:42:28.445145",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-08T09:42:30.591619+00:00"
+  },
+  "NVVE": {
+    "data": {
+      "symbol": "NVVE",
+      "price": 3.96,
+      "bid": 3.96,
+      "ask": 4.0,
+      "volume": 225386,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 3.51,
+      "change": 0.45,
+      "change_percent": 12.82,
+      "timestamp": "2026-01-08T03:42:57.152840",
+      "source": "cache"
+    },
+    "timestamp": "2026-01-08T09:42:59.620758+00:00"
+  },
+  "SMX": {
+    "data": {
+      "symbol": "SMX",
+      "price": 37.59,
+      "bid": 37.01,
+      "ask": 37.6,
+      "volume": 117556,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "close": 33.96,
+      "change": 3.63,
+      "change_percent": 10.69,
+      "timestamp": "2026-01-08T03:45:06.436914",
+      "source": "schwab"
+    },
+    "timestamp": "2026-01-08T09:45:08.582913+00:00"
+  }
+}

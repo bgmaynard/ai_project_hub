@@ -1,0 +1,285 @@
+{
+  "last_updated": "2026-01-10T03:00:02.308910",
+  "action_count": 39,
+  "actions": [
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-02T06:51:58.957719",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T16:09:50.913720+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:00:18.771998+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-03T11:00:29.007516",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-03T11:03:54.857526",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:03:58.764903+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:23:16.396534+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:24:33.602620+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-03T11:24:51.105386",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:25:44.541503+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:29:18.334116+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-03T11:29:24.790441",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:29:58.014321+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:33:28.541371+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-03T11:35:28.463324",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:38:41.366182+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:44:26.766484+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:58:13.864980+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T17:58:43.695253+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "test",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T18:01:49.550575+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T18:05:19.053089+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T18:06:43.155703+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T18:07:04.491419+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-03T18:09:39.766282+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-03"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-05T02:56:53.972835+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-04"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-05T05:23:24.785358",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-05T13:22:34.099876",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-06T09:00:40.160904+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-05"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-06T05:56:36.207237",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-06T13:22:20.873939+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-06"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-06T13:29:09.258319+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-06"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-06T13:39:14.533669+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-06"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-06T13:58:12.740712+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-06"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-06T18:55:46.874715+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-06"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-07T09:00:18.632784+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-06"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-07T07:57:31.383243",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-09T09:16:03.667571+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-08"
+    },
+    {
+      "action_type": "refresh",
+      "timestamp": "2026-01-09T11:55:59.749768",
+      "triggered_by": "operator"
+    },
+    {
+      "action_type": "purge",
+      "timestamp": "2026-01-10T09:00:02.288947+00:00",
+      "symbols_before": [],
+      "symbols_after": [],
+      "triggered_by": "operator",
+      "session_date": "2026-01-10"
+    }
+  ]
+}

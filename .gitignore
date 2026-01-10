@@ -49,6 +49,10 @@ secrets/
 # Old backup folder to delete
 store/code/IBKR_Algo_BOT/
 
+# Backup directories (too large / long filenames)
+backups/
+store/code/IBKR_Algo_BOT_V2/venv311/
+
 # Runtime data
 store/code/IBKR_Algo_BOT_V2/schwabdev_tokens.json
 store/code/IBKR_Algo_BOT_V2/store/

@@ -142,6 +142,8 @@ class ExclusionReason(Enum):
     PRICE_OUT_OF_RANGE = "PRICE_OUT_OF_RANGE"
     DATA_QUALITY_ISSUE = "DATA_QUALITY_ISSUE"
     MANUAL_EXCLUSION = "MANUAL_EXCLUSION"
+    # TASK 2: DEGRADED_DATA mode - missing data, not failed criteria
+    DATA_INCOMPLETE = "DATA_INCOMPLETE"  # Missing avgVolume/rel_vol - allow downstream with warning
 
 
 class PullbackState(Enum):
@@ -464,17 +466,25 @@ class MomentumWatchlist:
             evaluated.append(ranked)
 
         # Step 2: Apply hard filters (exclusions)
+        # TASK 2: Split into three categories: PASS, FAIL_CRITERIA, DEGRADED_DATA
         passed_filters = []
-        excluded = []
+        excluded = []      # FAIL_CRITERIA - actual failed criteria (price out of range, rel_vol too low)
+        degraded = []      # DEGRADED_DATA - missing data, can proceed downstream with warnings
 
         for ranked in evaluated:
             exclusion = self._check_exclusions(ranked)
-            if exclusion != ExclusionReason.NONE:
+            if exclusion == ExclusionReason.NONE:
+                passed_filters.append(ranked)
+            elif exclusion == ExclusionReason.DATA_INCOMPLETE:
+                # TASK 2: DEGRADED mode - allow downstream with warning
+                ranked.exclusion_reason = exclusion
+                ranked.is_active = False
+                degraded.append(ranked)
+            else:
+                # FAIL_CRITERIA - actual exclusion
                 ranked.exclusion_reason = exclusion
                 ranked.is_active = False
                 excluded.append(ranked)
-            else:
-                passed_filters.append(ranked)
 
         # Step 3: RANK by dominance score (descending)
         passed_filters.sort(key=lambda x: x.dominance_score, reverse=True)
@@ -510,6 +520,7 @@ class MomentumWatchlist:
         current_rel_vol_floor = self.config.get_current_rel_vol_floor()
 
         # Build rank snapshot report
+        # TASK 2: Include degraded symbols separately from excluded
         snapshot = {
             "cycle_number": self._cycle_count,
             "session_date": self.session_date.isoformat(),
@@ -519,10 +530,26 @@ class MomentumWatchlist:
             "total_candidates": len(evaluated),
             "passed_filters": len(passed_filters),
             "excluded_count": len(excluded),
+            "degraded_count": len(degraded),  # TASK 2: Track degraded count
             "active_count": len(active),
             "below_cutoff_count": len(below_cutoff),
             "active_watchlist": [s.to_dict() for s in active],
             "below_cutoff": [s.to_dict() for s in below_cutoff[:10]],  # Top 10 below cutoff
+            # TASK 2: Degraded symbols - missing data, can proceed downstream with warnings
+            "degraded": [
+                {
+                    "symbol": s.symbol,
+                    "reason": s.exclusion_reason.value,
+                    "dominance_score": s.dominance_score,
+                    "rel_vol_daily": s.rel_vol_daily,
+                    "gap_pct": s.gap_pct,
+                    "price": s.price,
+                    "volume_today": s.volume_today,
+                    "warning": "Missing avgVolume data - proceed with caution"
+                }
+                for s in degraded
+            ],
+            # Excluded symbols - failed actual criteria
             "excluded": [
                 {
                     "symbol": s.symbol,
@@ -534,7 +561,7 @@ class MomentumWatchlist:
                 }
                 for s in excluded
             ],
-            "exclusion_summary": self._summarize_exclusions(excluded),
+            "exclusion_summary": self._summarize_exclusions(excluded + degraded),  # Include both
             "ranking_proof": {
                 "top_5": [
                     {"rank": s.rank, "symbol": s.symbol, "score": s.dominance_score}
@@ -549,7 +576,7 @@ class MomentumWatchlist:
         logger.info(
             f"Watchlist recompute cycle {self._cycle_count}: "
             f"{len(active)} active, {len(excluded)} excluded, "
-            f"{len(below_cutoff)} below cutoff"
+            f"{len(degraded)} degraded, {len(below_cutoff)} below cutoff"
         )
 
         return active, snapshot
@@ -573,13 +600,16 @@ class MomentumWatchlist:
         current_floor = self.config.get_current_rel_vol_floor()
 
         if ranked.rel_vol_daily is None:
-            # NO REL_VOL DATA = REJECTED
-            # Cannot enter watchlist without volume confirmation
-            logger.debug(f"{ranked.symbol}: REJECTED - no rel_vol data (floor={current_floor})")
-            return ExclusionReason.REL_VOL_BELOW_FLOOR
+            # =================================================================
+            # TASK 2: DEGRADED_DATA mode - distinguish "no data" from "failed"
+            # =================================================================
+            # Missing avgVolume data = DATA_INCOMPLETE (not FAIL_CRITERIA)
+            # These symbols can proceed downstream with warnings
+            logger.debug(f"{ranked.symbol}: DEGRADED - no rel_vol data available (floor={current_floor})")
+            return ExclusionReason.DATA_INCOMPLETE
 
         if ranked.rel_vol_daily < current_floor:
-            # BELOW FLOOR = REJECTED
+            # BELOW FLOOR = FAIL_CRITERIA (actual data shows below threshold)
             logger.debug(
                 f"{ranked.symbol}: REJECTED - rel_vol {ranked.rel_vol_daily:.2f} < floor {current_floor}"
             )

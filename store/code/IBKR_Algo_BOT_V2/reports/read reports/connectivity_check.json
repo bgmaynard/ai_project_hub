@@ -1,0 +1,157 @@
+{
+  "report_generated": "2025-12-31T07:22:36.555679",
+  "system_state": "ACTIVE",
+  "system_state_reason": "All systems operational, trading enabled",
+  "market": {
+    "status": "PRE_MARKET",
+    "detail": "Pre-market (08:22 AM ET)",
+    "et_time": "08:22 AM ET",
+    "is_trading_day": true
+  },
+  "first_tick": {
+    "received": null,
+    "symbol": null
+  },
+  "startup": {
+    "time": "2025-12-31T07:22:09.353545",
+    "complete": true,
+    "events": [
+      {
+        "timestamp": "2025-12-31T07:22:21.297395",
+        "service": "chronos",
+        "event": "health_check",
+        "success": true,
+        "duration_ms": 11737.434000000001,
+        "detail": ""
+      },
+      {
+        "timestamp": "2025-12-31T07:22:24.766592",
+        "service": "market_data",
+        "event": "connection_check",
+        "success": true,
+        "duration_ms": 3469.019,
+        "detail": "schwab_active"
+      },
+      {
+        "timestamp": "2025-12-31T07:22:27.636634",
+        "service": "websocket",
+        "event": "stream_check",
+        "success": true,
+        "duration_ms": 2869.8320000000003,
+        "detail": "Trades: 0, Quotes: 0"
+      },
+      {
+        "timestamp": "2025-12-31T07:22:36.553579",
+        "service": "scanners",
+        "event": "job_check",
+        "success": true,
+        "duration_ms": 8916.859,
+        "detail": "1/3 running"
+      }
+    ]
+  },
+  "services": {
+    "chronos": {
+      "name": "chronos",
+      "status": "UP",
+      "last_successful_event": null,
+      "last_check_time": "2025-12-31T07:22:21.297386",
+      "detail": "Model: amazon/chronos-t5-small",
+      "error": null
+    },
+    "market_data": {
+      "name": "market_data",
+      "status": "UP",
+      "last_successful_event": null,
+      "last_check_time": "2025-12-31T07:22:24.766587",
+      "detail": "schwab_active",
+      "error": null
+    },
+    "websocket": {
+      "name": "websocket",
+      "status": "UP",
+      "last_successful_event": null,
+      "last_check_time": "2025-12-31T07:22:27.636633",
+      "detail": "",
+      "error": null
+    },
+    "polygon_stream": {
+      "name": "polygon_stream",
+      "status": "UP",
+      "last_successful_event": null,
+      "last_check_time": "2025-12-31T07:22:27.636628",
+      "detail": "Trades: 0, Quotes: 0",
+      "error": null
+    },
+    "scalper": {
+      "name": "scalper",
+      "status": "DOWN",
+      "last_successful_event": null,
+      "last_check_time": "2025-12-31T07:22:29.888321",
+      "detail": "Watchlist: 8",
+      "error": null
+    },
+    "news_trader": {
+      "name": "news_trader",
+      "status": "DOWN",
+      "last_successful_event": null,
+      "last_check_time": "2025-12-31T07:22:34.064813",
+      "detail": "",
+      "error": null
+    },
+    "premarket_scanner": {
+      "name": "premarket_scanner",
+      "status": "UP",
+      "last_successful_event": "2025-12-31T07:22:34.470515",
+      "last_check_time": "2025-12-31T07:22:36.553567",
+      "detail": "",
+      "error": null
+    },
+    "gating_engine": {
+      "name": "gating_engine",
+      "status": "NOT_CONFIGURED",
+      "last_successful_event": null,
+      "last_check_time": "2025-12-31T07:22:02.991479",
+      "detail": "",
+      "error": null
+    }
+  },
+  "summary": {
+    "total_services": 8,
+    "services_up": 5,
+    "services_down": 2,
+    "services_degraded": 0
+  },
+  "self_test_results": {
+    "timestamp": "2025-12-31T07:22:09.353545",
+    "tests": [
+      {
+        "service": "chronos",
+        "passed": true,
+        "duration_ms": 11737.434000000001,
+        "detail": "Model: amazon/chronos-t5-small"
+      },
+      {
+        "service": "market_data",
+        "passed": true,
+        "duration_ms": 3469.019,
+        "detail": "schwab_active"
+      },
+      {
+        "service": "websocket",
+        "passed": true,
+        "duration_ms": 2869.8320000000003,
+        "detail": "Trades: 0, Quotes: 0"
+      },
+      {
+        "service": "scanners",
+        "passed": true,
+        "duration_ms": 8916.859,
+        "detail": "Scalper: DOWN, News: DOWN, Premarket: UP",
+        "scanners_running": 1,
+        "scanners_total": 3
+      }
+    ],
+    "all_passed": true
+  }
+}

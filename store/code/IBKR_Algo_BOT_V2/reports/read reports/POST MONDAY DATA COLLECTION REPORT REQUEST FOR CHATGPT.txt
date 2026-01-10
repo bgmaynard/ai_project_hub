@@ -1,0 +1,133 @@
+You are now in POST-SESSION DATA COLLECTION MODE.
+
+DO NOT:
+- Modify trading logic
+- Tune thresholds
+- Add strategies
+- Refactor code
+
+Your task is ONLY to collect, summarize, and export Monday’s trading behavior
+for human review after the session.
+
+Trading window of interest:
+- 07:00 AM – 09:30 AM ET ONLY
+
+--------------------------------------------------
+DATA TO COLLECT (MANDATORY)
+--------------------------------------------------
+
+1) SIGNAL GATING / VETO DATA
+Collect and aggregate:
+- Total trade attempts
+- Total vetoed attempts
+- Veto counts grouped by reason:
+  - CONTRACT_EXPIRED
+  - REGIME_MISMATCH
+  - INVALID_REGIME
+  - CONFIDENCE_LOW
+  - COOLDOWN_ACTIVE
+  - RISK_LIMIT_EXCEEDED
+  - TRADING_WINDOW_CLOSED
+- Time-series (timestamped) veto events during 07:00–09:30 ET
+
+2) STRATEGY POLICY EVENTS
+Collect:
+- Strategy enable events (timestamp, strategy_id, reason)
+- Strategy disable events (timestamp, strategy_id, reason)
+- Cooldown start/end times
+- Active strategy timeline during the session
+
+3) MOMENTUM STATE TRANSITIONS
+Collect counts and transitions for:
+- IDLE → CANDIDATE
+- CANDIDATE → IGNITING
+- IGNITING → GATED
+- GATED → IN_POSITION
+- IN_POSITION → EXITING
+- EXITING → COOLDOWN
+
+Also collect:
+- Number of times GATED did NOT lead to IN_POSITION
+- Average time spent in GATED before entry or rejection
+
+4) EXIT IMPERATIVES
+Collect:
+- Total exits
+- Exit counts grouped by reason:
+  - REGIME_SHIFT
+  - MOMENTUM_DECAY
+  - TIME_STOP
+  - VOLATILITY_SPIKE
+- For each exit:
+  - timestamp
+  - symbol
+  - exit_reason
+  - momentum_state at exit
+  - regime at exit
+  - unrealized_pnl
+  - unrealized_pnl_pct
+
+5) TRADE SUMMARY (PAPER OR REDUCED LIVE)
+Collect:
+- Total trades taken
+- Win count / loss count
+- Average trade duration
+- Max favorable excursion (MFE)
+- Max adverse excursion (MAE)
+NOTE: This is secondary to behavior metrics.
+
+--------------------------------------------------
+EXPORT FORMAT (REQUIRED)
+--------------------------------------------------
+
+Produce ALL of the following files:
+
+1) CSV: monday_veto_summary.csv
+   - columns: veto_reason, count
+
+2) CSV: monday_exit_summary.csv
+   - columns: exit_reason, count
+
+3) CSV: monday_strategy_events.csv
+   - timestamp, strategy_id, event_type (ENABLE/DISABLE), reason
+
+4) CSV: monday_momentum_transitions.csv
+   - from_state, to_state, count
+
+5) JSON: monday_full_session_report.json
+   - metadata:
+       - date
+       - mode (PAPER / LIVE_REDUCED)
+       - trading_window
+   - veto_histogram
+   - exit_histogram
+   - strategy_events
+   - momentum_transition_counts
+   - trade_summary
+   - notes (free-text field for anomalies)
+
+--------------------------------------------------
+DELIVERY
+--------------------------------------------------
+
+- Save all files to a single folder:
+  /reports/YYYY-MM-DD/
+
+- Ensure files are downloadable via existing export mechanism
+  OR provide direct file paths for manual download.
+
+--------------------------------------------------
+FINAL CHECK
+--------------------------------------------------
+
+Before reporting completion, verify:
+- All data is restricted to 07:00–09:30 ET
+- No trades outside the window are included
+- Counts reconcile (entries ≤ gated approvals ≤ exits)
+
+When done, respond with:
+- Confirmation of report generation
+- File list with paths
+- Any anomalies noticed (DO NOT FIX THEM)
+
+END OF TASK

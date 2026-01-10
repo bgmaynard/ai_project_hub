@@ -141,9 +141,10 @@ async def get_symbol_status(symbol: str):
 @router.post("/purge")
 async def purge_watchlist(triggered_by: str = "operator"):
     """
-    PURGE ALL WATCHLIST
+    PURGE ALL WATCHLISTS (unified)
 
-    - Removes all ACTIVE symbols
+    - Removes all ACTIVE symbols from momentum watchlist
+    - ALSO clears the dashboard worklist (unified purge)
     - Resets discovery cache
     - Preserves historical reports
     - Does NOT approve trades or alter thresholds
@@ -157,14 +158,35 @@ async def purge_watchlist(triggered_by: str = "operator"):
     watchlist = get_momentum_watchlist()
     action = watchlist.purge_all(triggered_by=triggered_by)
 
+    # ALSO clear the main worklist (unified purge)
+    worklist_count = 0
+    try:
+        from watchlist_manager import get_watchlist_manager
+        mgr = get_watchlist_manager()
+        result = mgr.clear_default_watchlist()
+        worklist_count = result.get("symbols_cleared", 0)
+        logger.info(f"UNIFIED PURGE: Cleared {worklist_count} symbols from main worklist")
+
+        # Clear the worklist cache so UI updates immediately
+        try:
+            import compatibility_routes
+            compatibility_routes._worklist_cache["data"] = None
+            compatibility_routes._worklist_cache["timestamp"] = 0
+            logger.info("UNIFIED PURGE: Cleared worklist cache")
+        except Exception as cache_err:
+            logger.warning(f"Could not clear worklist cache: {cache_err}")
+    except Exception as e:
+        logger.warning(f"Could not clear main worklist: {e}")
+
     # Log to persistent file
     _log_operator_action(action)
 
-    logger.warning(f"OPERATOR PURGE: All watchlist cleared by {triggered_by}")
+    total_purged = len(action.get('symbols_before', [])) + worklist_count
+    logger.warning(f"OPERATOR PURGE: All watchlists cleared by {triggered_by} (momentum={len(action.get('symbols_before', []))}, worklist={worklist_count})")
 
     return {
         "status": "success",
-        "message": f"Purged {len(action.get('symbols_before', []))} symbols",
+        "message": f"Purged {total_purged} symbols (momentum={len(action.get('symbols_before', []))}, worklist={worklist_count})",
         "action": action
     }
 

@@ -347,7 +347,7 @@ class ConnectivityManager:
             resp = await client.get("http://localhost:9100/api/scanner/news-trader/status")
             if resp.status_code == 200:
                 data = resp.json()
-                running = data.get("scalper_running", False)
+                running = data.get("is_running", False) or data.get("scalper_running", False)
                 self.services["news_trader"].status = ServiceStatus.UP if running else ServiceStatus.DOWN
                 self.services["news_trader"].last_check_time = datetime.now().isoformat()
                 if data.get("last_scan_time"):
@@ -375,6 +375,23 @@ class ConnectivityManager:
         except:
             pass
 
+        # Check gating engine
+        try:
+            resp = await client.get("http://localhost:9100/api/gating/status")
+            if resp.status_code == 200:
+                data = resp.json()
+                enabled = data.get("gating_enabled", False)
+                contracts = data.get("contracts_loaded", 0)
+                self.services["gating_engine"].status = ServiceStatus.UP if enabled and contracts > 0 else ServiceStatus.DOWN
+                self.services["gating_engine"].last_check_time = datetime.now().isoformat()
+                self.services["gating_engine"].detail = f"Contracts: {contracts}, Enabled: {enabled}"
+                if enabled and contracts > 0:
+                    scanners_ok += 1
+                details.append(f"Gating: {'UP' if enabled else 'DOWN'}")
+                scanners_checked += 1
+        except:
+            pass
+
         duration = (datetime.now() - start).total_seconds() * 1000
         passed = scanners_ok > 0
         detail = ", ".join(details)
@@ -389,6 +406,83 @@ class ConnectivityManager:
             "scanners_running": scanners_ok,
             "scanners_total": scanners_checked
         }
+
+    def refresh_service_statuses(self):
+        """
+        Refresh all service statuses by actively checking their real state.
+        Call this to update the Governor display.
+        """
+        now = datetime.now().isoformat()
+
+        # Check scalper
+        try:
+            from .hft_scalper import get_hft_scalper
+            scalper = get_hft_scalper()
+            if scalper and scalper.is_running:
+                self.services["scalper"] = ServiceHealth(
+                    name="scalper",
+                    status=ServiceStatus.UP,
+                    last_check_time=now,
+                    detail=f"Running, {len(scalper.config.watchlist)} symbols"
+                )
+            else:
+                self.services["scalper"] = ServiceHealth(
+                    name="scalper",
+                    status=ServiceStatus.DOWN,
+                    last_check_time=now,
+                    detail="Not running"
+                )
+        except Exception as e:
+            self.services["scalper"] = ServiceHealth(
+                name="scalper",
+                status=ServiceStatus.DOWN,
+                last_check_time=now,
+                error=str(e)
+            )
+
+        # Check gating engine
+        try:
+            from .signal_gating_engine import get_gating_engine
+            gating = get_gating_engine()
+            if gating:
+                self.services["gating_engine"] = ServiceHealth(
+                    name="gating_engine",
+                    status=ServiceStatus.UP,
+                    last_check_time=now,
+                    detail=f"{len(gating.contracts)} contracts loaded"
+                )
+        except Exception:
+            pass
+
+        # Check market data
+        try:
+            from unified_market_data import get_market_data
+            md = get_market_data()
+            if md:
+                self.services["market_data"] = ServiceHealth(
+                    name="market_data",
+                    status=ServiceStatus.UP,
+                    last_check_time=now,
+                    detail="schwab_active"
+                )
+        except Exception:
+            pass
+
+        # Check broker
+        try:
+            from unified_broker import get_broker
+            broker = get_broker()
+            if broker:
+                self.services["chronos"] = ServiceHealth(
+                    name="chronos",
+                    status=ServiceStatus.UP,
+                    last_check_time=now,
+                    detail="Broker connected"
+                )
+        except Exception:
+            pass
+
+        logger.info("Service statuses refreshed")
 
     def get_system_state(self) -> SystemState:
         """

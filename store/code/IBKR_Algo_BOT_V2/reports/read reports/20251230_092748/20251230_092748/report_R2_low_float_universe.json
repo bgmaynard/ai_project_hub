@@ -1,0 +1,238 @@
+{
+  "task_id": "DISCOVERY_FLOAT_FILTER",
+  "symbols": [
+    {
+      "symbol": "FONR",
+      "gap_pct": 28.4,
+      "price": 18.824,
+      "volume": 712120,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:36.658675",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "ZBAI",
+      "gap_pct": 22.57,
+      "price": 5.7684,
+      "volume": 66353,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:25.382796",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "WOK",
+      "gap_pct": 19.65,
+      "price": 2.74,
+      "volume": 595232,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:32.431303",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "BNAI",
+      "gap_pct": 14.57,
+      "price": 2.14,
+      "volume": 3433937,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:13.216919",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "MSC",
+      "gap_pct": 13.04,
+      "price": 3.9,
+      "volume": 942,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:27:57.855209",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "ANL",
+      "gap_pct": 11.67,
+      "price": 1.59,
+      "volume": 305101,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:09.068003",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "NTRB",
+      "gap_pct": 10.55,
+      "price": 4.9821,
+      "volume": 71254,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:27:55.048161",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "TROO",
+      "gap_pct": 10.2,
+      "price": 2.7,
+      "volume": 138870,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:41.607894",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "SOPA",
+      "gap_pct": 10.07,
+      "price": 3.225,
+      "volume": 25599044,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:01.266479",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "SIDU",
+      "gap_pct": 9.72,
+      "price": 2.8199,
+      "volume": 44127871,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:14.307097",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "DXST",
+      "gap_pct": 9.55,
+      "price": 1.2301,
+      "volume": 330449,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:34.232636",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "NOMA",
+      "gap_pct": 8.2,
+      "price": 4.8102,
+      "volume": 178813,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:06.437118",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "NKLR",
+      "gap_pct": 7.28,
+      "price": 4.42,
+      "volume": 599476,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:23.272939",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "HIT",
+      "gap_pct": 5.95,
+      "price": 1.74,
+      "volume": 174969,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:27.625308",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "LITB",
+      "gap_pct": 4.9,
+      "price": 2.33,
+      "volume": 14835,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:19.510939",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "TTRX",
+      "gap_pct": 4.78,
+      "price": 3.29,
+      "volume": 30591,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:27:59.527912",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "BRAG",
+      "gap_pct": 4.77,
+      "price": 2.085,
+      "volume": 23113,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:04.698961",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "ORBS",
+      "gap_pct": 4.63,
+      "price": 1.75,
+      "volume": 1897451,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:21.209354",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "OPTX",
+      "gap_pct": 4.44,
+      "price": 2.82,
+      "volume": 239525,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:17.724358",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    },
+    {
+      "symbol": "MMA",
+      "gap_pct": 3.63,
+      "price": 1.195,
+      "volume": 1028186,
+      "float_shares": 0,
+      "vol_float_ratio": 0,
+      "timestamp": "2025-12-30T09:28:29.989847",
+      "priority": "HIGH",
+      "float_category": "MICRO"
+    }
+  ],
+  "symbol_count": 20,
+  "high_priority_count": 20,
+  "filter_criteria": {
+    "max_float": 15000000,
+    "high_priority_threshold": 5000000
+  },
+  "timestamp": "2025-12-30T09:28:43.612491",
+  "_meta": {
+    "task_id": "DISCOVERY_FLOAT_FILTER",
+    "status": "COMPLETED",
+    "timestamp": "2025-12-30T09:28:43.612502",
+    "duration_ms": 0
+  }
+}

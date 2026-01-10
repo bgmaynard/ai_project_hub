@@ -1,0 +1,20 @@
+{
+  "report_type": "postmortem",
+  "report_date": "2026-01-06",
+  "generated_at": "2026-01-06T20:38:21.024737-05:00",
+  "summary": {
+    "top_movers_count": 0,
+    "outcomes": {},
+    "opportunity_misses_count": 0
+  },
+  "sections": {
+    "top_movers_snapshot": [],
+    "discovery_status": {},
+    "injection_provenance": {},
+    "quality_gate_results": {},
+    "chronos_pattern_summary": {},
+    "gating_veto_reasons": {},
+    "opportunity_misses": []
+  },
+  "full_analysis": []
+}

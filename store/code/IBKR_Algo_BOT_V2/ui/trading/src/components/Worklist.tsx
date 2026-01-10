@@ -63,6 +63,12 @@ export default function Worklist() {
           hasNews: s.has_news || false,
           lastNews: s.last_news || '',
           fsmState: s.fsm_state || '',
+          // TASK 4: Setup vs Execution separation
+          setupGrade: s.setup_grade || '-',
+          setupGradeColor: s.setup_grade_color || '#666',
+          gatingStatus: s.gating_status || 'PENDING',
+          gatingReason: s.gating_reason || '',
+          gatingColor: s.gating_color || '#666',
         }))
         setItems(mapped)
       }
@@ -88,13 +94,16 @@ export default function Worklist() {
     setIsRefreshing(true)
     setError('')
     try {
-      const result = await api.refreshWatchlist()
+      const result = await api.refreshWatchlist() as any
       console.log('[Worklist] Refresh result:', result)
+      // Show success feedback
+      setError(result?.message || 'Watchlist refreshed')
+      setTimeout(() => setError(''), 2000)
       await fetchWatchlistStatus()
       await fetchWorklist()
     } catch (err) {
       console.error('[Worklist] Refresh failed:', err)
-      setError('Refresh failed')
+      setError('Refresh failed - check console')
       setTimeout(() => setError(''), 3000)
     }
     setIsRefreshing(false)
@@ -102,17 +111,20 @@ export default function Worklist() {
 
   // Purge momentum watchlist
   const handlePurgeWatchlist = async () => {
-    if (!confirm('Purge ALL symbols from momentum watchlist?')) return
     setIsPurging(true)
     setError('')
     try {
-      const result = await api.purgeWatchlist()
+      const result = await api.purgeWatchlist() as any
       console.log('[Worklist] Purge result:', result)
+      // Show success feedback
+      const purgedCount = result?.action?.symbols_before?.length || 0
+      setError(`Purged ${purgedCount} symbols`)
+      setTimeout(() => setError(''), 2000)
       await fetchWatchlistStatus()
       await fetchWorklist()
     } catch (err) {
       console.error('[Worklist] Purge failed:', err)
-      setError('Purge failed')
+      setError('Purge failed - check console')
       setTimeout(() => setError(''), 3000)
     }
     setIsPurging(false)
@@ -123,17 +135,24 @@ export default function Worklist() {
     setIsRunningDiscovery(true)
     setError('')
     try {
-      const result = await api.runDiscovery()
+      const result = await api.runDiscovery() as any
       console.log('[Worklist] Discovery result:', result)
+      // Show feedback based on result
+      if (result?.success) {
+        setError(`Discovery complete: ${result?.tasks_completed || 0} tasks`)
+      } else {
+        setError(result?.halted_reason || 'Discovery halted - no symbols')
+      }
+      setTimeout(() => setError(''), 3000)
       // Wait a moment for pipeline to process
       setTimeout(async () => {
         await fetchWatchlistStatus()
         await fetchWorklist()
         setIsRunningDiscovery(false)
-      }, 2000)
+      }, 1000)
     } catch (err) {
       console.error('[Worklist] Discovery failed:', err)
-      setError('Discovery failed')
+      setError('Discovery failed - check console')
       setTimeout(() => setError(''), 3000)
       setIsRunningDiscovery(false)
     }
@@ -380,13 +399,15 @@ export default function Worklist() {
                 AI<SortIndicator field="aiScore" />
               </th>
               <th className="px-1 py-1 text-center">News</th>
+              <th className="px-1 py-1 text-center" title="Setup Grade (A/B/C) - Warrior Trading criteria">Grade</th>
+              <th className="px-1 py-1 text-center" title="Gating Status - execution permission">Gate</th>
               <th className="px-1 py-1 text-center w-12" title="Delete from worklist / momentum watchlist">Del</th>
             </tr>
           </thead>
           <tbody>
             {sortedItems.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-sterling-muted">
+                <td colSpan={11} className="text-center py-8 text-sterling-muted">
                   <div className="mb-2">No symbols in worklist</div>
                   <div className="text-[10px]">Add symbols using the input above</div>
                 </td>
@@ -451,6 +472,24 @@ export default function Worklist() {
                     ) : (
                       <span className="text-sterling-muted">-</span>
                     )}
+                  </td>
+                  {/* TASK 4: Setup Grade Column */}
+                  <td
+                    className="px-1 py-1 text-center font-bold"
+                    style={{ color: item.setupGradeColor || '#666' }}
+                    title={`Setup Grade: ${item.setupGrade || '-'}`}
+                  >
+                    {item.setupGrade || '-'}
+                  </td>
+                  {/* TASK 4: Gating Status Column */}
+                  <td
+                    className="px-1 py-1 text-center text-xxs"
+                    style={{ color: item.gatingColor || '#666' }}
+                    title={item.gatingReason || 'Gating status'}
+                  >
+                    {item.gatingStatus === 'APPROVED' ? '✓' :
+                     item.gatingStatus === 'VETOED' ? '✗' :
+                     item.gatingStatus === 'READY' ? '○' : '…'}
                   </td>
                   <td className="px-1 py-1 text-center">
                     <div className="flex items-center justify-center gap-1">

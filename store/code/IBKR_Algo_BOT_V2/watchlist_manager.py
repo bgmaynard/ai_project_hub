@@ -479,6 +479,30 @@ class WatchlistManager:
 
         return sorted(list(all_symbols))
 
+    def clear_default_watchlist(self) -> Dict:
+        """Clear all symbols from the default watchlist (PURGE)
+
+        Returns:
+            Dict with symbols_cleared count and success status
+        """
+        default = self.get_default_watchlist()
+        if not default:
+            return {"success": False, "symbols_cleared": 0, "error": "No default watchlist"}
+
+        symbols_before = default.get("symbols", [])
+        count = len(symbols_before)
+
+        # Update to empty list
+        self.update_watchlist(default["watchlist_id"], symbols=[])
+
+        logger.warning(f"PURGE: Cleared {count} symbols from default watchlist")
+
+        return {
+            "success": True,
+            "symbols_cleared": count,
+            "symbols_before": symbols_before
+        }
+
 
 # Singleton instance
 _watchlist_manager = None

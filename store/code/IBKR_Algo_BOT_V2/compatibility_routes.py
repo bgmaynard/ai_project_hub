@@ -409,7 +409,18 @@ def _get_technical_metrics(symbol: str, quote: dict) -> dict:
         "entry_color": "#666",
         # Entry Status
         "entry_status": "WAIT",
-        "status_color": "#ef4444"  # red
+        "status_color": "#ef4444",  # red
+        # =====================================================================
+        # TASK 4: Separate SETUP quality from EXECUTION permission
+        # =====================================================================
+        # Setup Grade (A/B/C) - quality of the setup based on Warrior criteria
+        "setup_grade": "-",  # A, B, C, or - (not graded)
+        "setup_grade_color": "#666",
+        "setup_score": 0,  # 0-100 score
+        # Gating Status - permission to execute based on regime, risk, etc.
+        "gating_status": "PENDING",  # APPROVED, VETOED, PENDING
+        "gating_reason": "",  # Why this status
+        "gating_color": "#fbbf24"  # yellow for pending
     }
 
     # Check HALT status
@@ -548,6 +559,98 @@ def _get_technical_metrics(symbol: str, quote: dict) -> dict:
             result["entry_status"] = "WAIT"
             result["status_color"] = "#ef4444"
 
+        # =====================================================================
+        # TASK 4: Calculate SETUP GRADE (A/B/C) - Warrior Trading 5 criteria
+        # =====================================================================
+        # Criteria: Float (<10M), RelVol (>5x), Change% (>10%), Price ($1-$20), Catalyst
+        setup_criteria_met = 0
+
+        # Criterion 1: Price range $1-$20
+        if 1.0 <= price <= 20.0:
+            setup_criteria_met += 1
+
+        # Criterion 2: Change% > 10%
+        if change_pct >= 10:
+            setup_criteria_met += 1
+
+        # Criterion 3: RelVol > 5x (using our estimate)
+        if result["rel_volume"] >= 3.0:  # We capped at 3.0 for "High" volume
+            setup_criteria_met += 1
+
+        # Criterion 4: Catalyst (news)
+        if result["has_catalyst"]:
+            setup_criteria_met += 1
+
+        # Criterion 5: Float < 10M - check from cache if available
+        try:
+            float_val = _float_cache.get(symbol, {}).get("float_shares")
+            if float_val and float_val < 10_000_000:
+                setup_criteria_met += 1
+        except:
+            pass  # No float data available
+
+        # Grade assignment: A=5/5, B=4/5, C=3/5 or less
+        if setup_criteria_met >= 5:
+            result["setup_grade"] = "A"
+            result["setup_grade_color"] = "#22c55e"  # green
+            result["setup_score"] = 100
+        elif setup_criteria_met >= 4:
+            result["setup_grade"] = "B"
+            result["setup_grade_color"] = "#3b82f6"  # blue
+            result["setup_score"] = 80
+        elif setup_criteria_met >= 3:
+            result["setup_grade"] = "C"
+            result["setup_grade_color"] = "#fbbf24"  # yellow
+            result["setup_score"] = 60
+        else:
+            result["setup_grade"] = "-"
+            result["setup_grade_color"] = "#666"  # gray
+            result["setup_score"] = setup_criteria_met * 20
+
+        # =====================================================================
+        # TASK 4: Get GATING STATUS - permission from Signal Gating Engine
+        # =====================================================================
+        try:
+            from ai.signal_gating_engine import get_gating_engine
+            from ai.signal_contract import get_contract_repository
+
+            gating_engine = get_gating_engine()
+            contract_repo = get_contract_repository()
+
+            # Check if there's a contract for this symbol
+            contracts = contract_repo.get_for_symbol(symbol)
+
+            if not contracts:
+                # No contract = PENDING (needs setup)
+                result["gating_status"] = "PENDING"
+                result["gating_reason"] = "No signal contract"
+                result["gating_color"] = "#666"  # gray
+            else:
+                # Get recent vetoes to check status
+                recent_vetoes = gating_engine.get_recent_vetoes(50)
+                symbol_vetoes = [v for v in recent_vetoes if v.get("symbol") == symbol]
+
+                if symbol_vetoes:
+                    latest = symbol_vetoes[-1]
+                    if latest.get("approved"):
+                        result["gating_status"] = "APPROVED"
+                        result["gating_reason"] = "Signal gated OK"
+                        result["gating_color"] = "#22c55e"  # green
+                    else:
+                        result["gating_status"] = "VETOED"
+                        result["gating_reason"] = latest.get("veto_reason", "Unknown")
+                        result["gating_color"] = "#ef4444"  # red
+                else:
+                    # Has contract but no recent decisions
+                    result["gating_status"] = "READY"
+                    result["gating_reason"] = f"{len(contracts)} contract(s) available"
+                    result["gating_color"] = "#3b82f6"  # blue
+        except Exception as e:
+            logger.debug(f"Gating status error for {symbol}: {e}")
+            result["gating_status"] = "UNKNOWN"
+            result["gating_reason"] = str(e)[:50]
+            result["gating_color"] = "#666"
+
     except Exception as e:
         logger.debug(f"Technical metrics error for {symbol}: {e}")
 
@@ -566,7 +669,10 @@ def _get_cached_technicals(symbol: str) -> dict:
         "vwap": 0.0, "vwap_extension": 0.0, "vwap_color": "#666",
         "percent_from_hod": 0.0, "hod_color": "#666",
         "entry_score": 0, "entry_color": "#666",
-        "entry_status": "WAIT", "status_color": "#ef4444"
+        "entry_status": "WAIT", "status_color": "#ef4444",
+        # TASK 4: New fields for setup vs execution separation
+        "setup_grade": "-", "setup_grade_color": "#666", "setup_score": 0,
+        "gating_status": "PENDING", "gating_reason": "", "gating_color": "#666"
     }
 
 
@@ -612,7 +718,14 @@ def _get_empty_worklist_item(symbol: str) -> dict:
         "halt_type": "",
         "halt_duration": 0,
         "halt_time_str": "",
-        "halt_color": "#666"
+        "halt_color": "#666",
+        # TASK 4: Setup vs Execution separation
+        "setup_grade": "-",
+        "setup_grade_color": "#666",
+        "setup_score": 0,
+        "gating_status": "PENDING",
+        "gating_reason": "",
+        "gating_color": "#666"
     }
 
 
@@ -664,8 +777,8 @@ async def get_system_status():
 
     # Check AI
     try:
-        from ai_predictor import get_ai_predictor
-        predictor = get_ai_predictor()
+        from ai.ai_predictor import get_predictor
+        predictor = get_predictor()
         if predictor and predictor.model is not None:
             status["ai_ready"] = True
     except:
@@ -1026,9 +1139,8 @@ async def get_worklist_compat():
             t1 = time.time()
             logger.info(f"[WORKLIST] Got {len(watchlist_symbols)} symbols in {(t1-start_total)*1000:.0f}ms")
 
-            if not watchlist_symbols:
-                watchlist_symbols = ["SPY", "QQQ", "AAPL", "MSFT", "GOOGL",
-                                     "AMZN", "TSLA", "NVDA", "META", "AMD"]
+            # NO FALLBACK - if worklist is empty, return empty (purge should show empty)
+            # Previously had hardcoded defaults which made purge confusing
 
             symbols = []
             if HAS_UNIFIED:
@@ -1162,7 +1274,7 @@ async def get_worklist_compat():
             return result
         except Exception as e:
             logger.error(f"[WORKLIST] Error: {e}")
-            return {"success": True, "data": [_get_empty_worklist_item(s) for s in ["SPY", "QQQ", "AAPL"]], "count": 3}
+            return {"success": False, "data": [], "count": 0, "error": str(e)}
 
 
 @router.get("/api/stock/float/{symbol}")

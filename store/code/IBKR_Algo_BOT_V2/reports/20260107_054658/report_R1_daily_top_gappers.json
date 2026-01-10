@@ -1,0 +1,246 @@
+{
+  "status": "WAITING",
+  "reason": "No symbols meet criteria - waiting for opportunities",
+  "action": "WAIT",
+  "can_resume": true,
+  "data": {
+    "task_id": "DISCOVERY_GAPPERS",
+    "symbols": [],
+    "symbol_count": 0,
+    "recompute_model": "FULL_RECOMPUTE",
+    "filter_criteria": {
+      "max_active_symbols": 10,
+      "min_rel_vol_floor": 1.5,
+      "current_rel_vol_floor": 3.0,
+      "use_dynamic_rel_vol": true,
+      "rel_vol_schedule": [
+        [
+          4,
+          9,
+          5.0
+        ],
+        [
+          9,
+          10,
+          3.0
+        ],
+        [
+          10,
+          12,
+          2.0
+        ],
+        [
+          12,
+          20,
+          1.5
+        ]
+      ],
+      "min_price": 1.0,
+      "max_price": 20.0,
+      "min_gap_pct": 2.0,
+      "enforce_session_boundary": true
+    },
+    "data_quality_summary": {
+      "total_evaluated": 12,
+      "float_missing_count": 12,
+      "avg_volume_missing_count": 12,
+      "hod_inconsistent_count": 1,
+      "rel_vol_absurd_count": 0
+    },
+    "rank_snapshot": {
+      "cycle_number": 1,
+      "session_date": "2026-01-07",
+      "timestamp": "2026-01-07T14:34:24.553673+00:00",
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 3.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      },
+      "current_rel_vol_floor": 3.0,
+      "total_candidates": 12,
+      "passed_filters": 0,
+      "excluded_count": 12,
+      "active_count": 0,
+      "below_cutoff_count": 0,
+      "active_watchlist": [],
+      "below_cutoff": [],
+      "excluded": [
+        {
+          "symbol": "CRIS",
+          "reason": "PRICE_OUT_OF_RANGE",
+          "dominance_score": 19.78,
+          "rel_vol_daily": null,
+          "gap_pct": 19.56,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "RIME",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 1.38,
+          "rel_vol_daily": null,
+          "gap_pct": 5.04,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "BNAI",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 11.9,
+          "rel_vol_daily": null,
+          "gap_pct": 1.5,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "CDIO",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 8.79,
+          "rel_vol_daily": null,
+          "gap_pct": 6.94,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "MNTS",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 10.07,
+          "rel_vol_daily": null,
+          "gap_pct": 11.9,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "AZI",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 17.69,
+          "rel_vol_daily": null,
+          "gap_pct": 17.91,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "SIDU",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 4.5,
+          "rel_vol_daily": null,
+          "gap_pct": 3.55,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "CYCN",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 1.17,
+          "rel_vol_daily": null,
+          "gap_pct": 4.87,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "AEVA",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 4.79,
+          "rel_vol_daily": null,
+          "gap_pct": 7.73,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "SOPA",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 7.26,
+          "rel_vol_daily": null,
+          "gap_pct": 5.73,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "ALMS",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 7.83,
+          "rel_vol_daily": null,
+          "gap_pct": 6.18,
+          "floor_used": 3.0
+        },
+        {
+          "symbol": "ANGH",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 6.44,
+          "rel_vol_daily": null,
+          "gap_pct": 9.03,
+          "floor_used": 3.0
+        }
+      ],
+      "exclusion_summary": {
+        "PRICE_OUT_OF_RANGE": 1,
+        "REL_VOL_BELOW_FLOOR": 11
+      },
+      "ranking_proof": {
+        "top_5": [],
+        "recomputed_all": true,
+        "force_fresh": true,
+        "rel_vol_floor_applied": 3.0
+      }
+    },
+    "watchlist_status": {
+      "session_date": "2026-01-07",
+      "cycle_count": 1,
+      "last_recompute": "2026-01-07T14:34:24.553673+00:00",
+      "active_count": 0,
+      "total_candidates": 12,
+      "archived_count": 0,
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 3.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      }
+    },
+    "timestamp": "2026-01-07T14:34:24.553830+00:00"
+  },
+  "timestamp": "2026-01-07T08:34:24.553889"
+}

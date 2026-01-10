@@ -1,0 +1,133 @@
+{
+  "date": "2026-01-03",
+  "mode": "PAPER",
+  "data_health": "GREEN",
+  "market": {
+    "regime": "UNKNOWN",
+    "confidence": 0.0,
+    "features": {},
+    "spy_regime": null,
+    "qqq_regime": null,
+    "timestamp": "2026-01-03T10:55:45.937113"
+  },
+  "time_context": {
+    "date": "2026-01-03",
+    "timezone": "America/New_York",
+    "session_windows": {
+      "PREMARKET": {
+        "start": "04:00 ET",
+        "end": "09:30 ET"
+      },
+      "OPEN_DRIVE": {
+        "start": "09:30 ET",
+        "end": "10:30 ET"
+      },
+      "MIDDAY": {
+        "start": "10:30 ET",
+        "end": "14:00 ET"
+      },
+      "POWER_HOUR": {
+        "start": "14:00 ET",
+        "end": "16:00 ET"
+      },
+      "AFTER_HOURS": {
+        "start": "16:00 ET",
+        "end": "20:00 ET"
+      }
+    },
+    "event_window_counts": {
+      "PREMARKET": 0,
+      "OPEN_DRIVE": 0,
+      "MIDDAY": 0,
+      "POWER_HOUR": 0,
+      "AFTER_HOURS": 0,
+      "CLOSED": 0
+    },
+    "total_events": 0,
+    "market_hours_events": 0,
+    "premarket_events": 0
+  },
+  "infrastructure": {
+    "data_health": "GREEN",
+    "feed_uptime_pct": 100.0,
+    "error_count": 0,
+    "reconnect_count": 0,
+    "feed_drops": 0,
+    "total_events": 1
+  },
+  "discovery": {
+    "candidates_by_scanner": {},
+    "total_candidates": 0,
+    "unique_symbols": 1,
+    "symbols_added": 1,
+    "symbols_removed": 0,
+    "churn": 1,
+    "symbol_list": [
+      "AMD"
+    ]
+  },
+  "pipeline": {
+    "state_counts": {
+      "EXPANSION": 0,
+      "FIRST_PULLBACK": 0,
+      "ENTRY_WINDOW": 0,
+      "CONFIRMED": 0,
+      "IGNITION": 0,
+      "GATED": 0,
+      "DEAD": 0
+    },
+    "symbols_by_state": {
+      "EXPANSION": [],
+      "FIRST_PULLBACK": [],
+      "ENTRY_WINDOW": [],
+      "CONFIRMED": [],
+      "IGNITION": [],
+      "GATED": [],
+      "DEAD": []
+    },
+    "total_transitions": 0,
+    "funnel": {
+      "discovery_to_ignition": 0,
+      "ignition_to_confirmed": 0,
+      "confirmed_to_gated": 0
+    }
+  },
+  "gating": {
+    "total_decisions": 0,
+    "allowed": 0,
+    "blocked": 0,
+    "approval_rate_pct": 0,
+    "top_block_reasons": [],
+    "gated_symbols": [],
+    "blocked_symbols": []
+  },
+  "outcomes": {
+    "total_trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "breakeven": 0,
+    "win_rate_pct": 0,
+    "total_pnl": 0.0,
+    "avg_r": 0,
+    "avg_mae": 0,
+    "avg_mfe": 0,
+    "avg_slippage": 0,
+    "trade_details": []
+  },
+  "patterns": {
+    "pattern_flags": [],
+    "summary": {
+      "total_patterns": 0,
+      "confirmed": 0,
+      "possible": 0,
+      "sessions_analyzed": 2,
+      "green_sessions": 2
+    },
+    "analysis_timestamp": "2026-01-03T10:55:45.943624"
+  },
+  "artifacts": {
+    "raw_events_sources": [],
+    "report_version": "1.0",
+    "generated_at": "2026-01-03T10:55:45.943624"
+  }
+}

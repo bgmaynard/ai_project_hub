@@ -1,0 +1,195 @@
+{
+  "status": "FAILED",
+  "reason": "No symbols meet criteria",
+  "data": {
+    "task_id": "DISCOVERY_GAPPERS",
+    "symbols": [],
+    "symbol_count": 0,
+    "recompute_model": "FULL_RECOMPUTE",
+    "filter_criteria": {
+      "max_active_symbols": 10,
+      "min_rel_vol_floor": 1.5,
+      "current_rel_vol_floor": 1.5,
+      "use_dynamic_rel_vol": true,
+      "rel_vol_schedule": [
+        [
+          4,
+          9,
+          5.0
+        ],
+        [
+          9,
+          10,
+          3.0
+        ],
+        [
+          10,
+          12,
+          2.0
+        ],
+        [
+          12,
+          20,
+          1.5
+        ]
+      ],
+      "min_price": 1.0,
+      "max_price": 20.0,
+      "min_gap_pct": 2.0,
+      "enforce_session_boundary": true
+    },
+    "data_quality_summary": {
+      "total_evaluated": 6,
+      "float_missing_count": 6,
+      "avg_volume_missing_count": 6,
+      "hod_inconsistent_count": 3,
+      "rel_vol_absurd_count": 0
+    },
+    "rank_snapshot": {
+      "cycle_number": 2,
+      "session_date": "2026-01-03",
+      "timestamp": "2026-01-03T18:47:33.107250+00:00",
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 1.5,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      },
+      "current_rel_vol_floor": 1.5,
+      "total_candidates": 6,
+      "passed_filters": 0,
+      "excluded_count": 6,
+      "active_count": 0,
+      "below_cutoff_count": 0,
+      "active_watchlist": [],
+      "below_cutoff": [],
+      "excluded": [
+        {
+          "symbol": "SOPA",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 4.01,
+          "rel_vol_daily": null,
+          "gap_pct": 7.11,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "BNAI",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 45.0,
+          "rel_vol_daily": null,
+          "gap_pct": 62.07,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "SIDU",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 52.71,
+          "rel_vol_daily": null,
+          "gap_pct": 46.18,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "SLS",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 16.51,
+          "rel_vol_daily": null,
+          "gap_pct": 16.98,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "SOC",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 46.08,
+          "rel_vol_daily": null,
+          "gap_pct": 35.14,
+          "floor_used": 1.5
+        },
+        {
+          "symbol": "DGNX",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 5.93,
+          "rel_vol_daily": null,
+          "gap_pct": 8.63,
+          "floor_used": 1.5
+        }
+      ],
+      "exclusion_summary": {
+        "REL_VOL_BELOW_FLOOR": 6
+      },
+      "ranking_proof": {
+        "top_5": [],
+        "recomputed_all": true,
+        "force_fresh": true,
+        "rel_vol_floor_applied": 1.5
+      }
+    },
+    "watchlist_status": {
+      "session_date": "2026-01-03",
+      "cycle_count": 2,
+      "last_recompute": "2026-01-03T18:47:33.107250+00:00",
+      "active_count": 0,
+      "total_candidates": 6,
+      "archived_count": 0,
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 1.5,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      }
+    },
+    "timestamp": "2026-01-03T18:47:33.107250+00:00"
+  },
+  "timestamp": "2026-01-03T12:47:33.107250"
+}

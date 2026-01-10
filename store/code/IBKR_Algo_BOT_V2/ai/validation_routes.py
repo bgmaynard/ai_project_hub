@@ -560,9 +560,27 @@ async def get_connectivity_status():
     try:
         from .connectivity_manager import get_connectivity_manager
         manager = get_connectivity_manager()
+        # Refresh service statuses before returning report
+        manager.refresh_service_statuses()
         return {"success": True, **manager.get_connectivity_report()}
     except Exception as e:
         logger.error(f"Connectivity status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/connectivity/refresh")
+async def refresh_connectivity():
+    """
+    Force refresh all service statuses.
+    Call this to update the Governor display.
+    """
+    try:
+        from .connectivity_manager import get_connectivity_manager
+        manager = get_connectivity_manager()
+        manager.refresh_service_statuses()
+        return {"success": True, "message": "Service statuses refreshed", **manager.get_connectivity_report()}
+    except Exception as e:
+        logger.error(f"Refresh error: {e}")
         return {"success": False, "error": str(e)}
 
 

@@ -1,0 +1,203 @@
+{
+  "status": "FAILED",
+  "reason": "No symbols meet criteria",
+  "data": {
+    "task_id": "DISCOVERY_GAPPERS",
+    "symbols": [],
+    "symbol_count": 0,
+    "recompute_model": "FULL_RECOMPUTE",
+    "filter_criteria": {
+      "max_active_symbols": 10,
+      "min_rel_vol_floor": 1.5,
+      "current_rel_vol_floor": 5.0,
+      "use_dynamic_rel_vol": true,
+      "rel_vol_schedule": [
+        [
+          4,
+          9,
+          5.0
+        ],
+        [
+          9,
+          10,
+          3.0
+        ],
+        [
+          10,
+          12,
+          2.0
+        ],
+        [
+          12,
+          20,
+          1.5
+        ]
+      ],
+      "min_price": 1.0,
+      "max_price": 20.0,
+      "min_gap_pct": 2.0,
+      "enforce_session_boundary": true
+    },
+    "data_quality_summary": {
+      "total_evaluated": 7,
+      "float_missing_count": 7,
+      "avg_volume_missing_count": 7,
+      "hod_inconsistent_count": 0,
+      "rel_vol_absurd_count": 0
+    },
+    "rank_snapshot": {
+      "cycle_number": 1,
+      "session_date": "2026-01-06",
+      "timestamp": "2026-01-06T13:47:26.066353+00:00",
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 5.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      },
+      "current_rel_vol_floor": 5.0,
+      "total_candidates": 7,
+      "passed_filters": 0,
+      "excluded_count": 7,
+      "active_count": 0,
+      "below_cutoff_count": 0,
+      "active_watchlist": [],
+      "below_cutoff": [],
+      "excluded": [
+        {
+          "symbol": "GNPX",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 15.92,
+          "rel_vol_daily": null,
+          "gap_pct": 4.67,
+          "floor_used": 5.0
+        },
+        {
+          "symbol": "ALMS",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 60.0,
+          "rel_vol_daily": null,
+          "gap_pct": 116.49,
+          "floor_used": 5.0
+        },
+        {
+          "symbol": "ABTC",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 2.51,
+          "rel_vol_daily": null,
+          "gap_pct": 1.98,
+          "floor_used": 5.0
+        },
+        {
+          "symbol": "OPTX",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 5.79,
+          "rel_vol_daily": null,
+          "gap_pct": 4.57,
+          "floor_used": 5.0
+        },
+        {
+          "symbol": "AZI",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 45.77,
+          "rel_vol_daily": null,
+          "gap_pct": 28.24,
+          "floor_used": 5.0
+        },
+        {
+          "symbol": "BNAI",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 17.04,
+          "rel_vol_daily": null,
+          "gap_pct": 17.4,
+          "floor_used": 5.0
+        },
+        {
+          "symbol": "CYCN",
+          "reason": "REL_VOL_BELOW_FLOOR",
+          "dominance_score": 60.0,
+          "rel_vol_daily": null,
+          "gap_pct": 53.62,
+          "floor_used": 5.0
+        }
+      ],
+      "exclusion_summary": {
+        "REL_VOL_BELOW_FLOOR": 7
+      },
+      "ranking_proof": {
+        "top_5": [],
+        "recomputed_all": true,
+        "force_fresh": true,
+        "rel_vol_floor_applied": 5.0
+      }
+    },
+    "watchlist_status": {
+      "session_date": "2026-01-06",
+      "cycle_count": 1,
+      "last_recompute": "2026-01-06T13:47:26.066353+00:00",
+      "active_count": 0,
+      "total_candidates": 7,
+      "archived_count": 0,
+      "config": {
+        "max_active_symbols": 10,
+        "min_rel_vol_floor": 1.5,
+        "current_rel_vol_floor": 5.0,
+        "use_dynamic_rel_vol": true,
+        "rel_vol_schedule": [
+          [
+            4,
+            9,
+            5.0
+          ],
+          [
+            9,
+            10,
+            3.0
+          ],
+          [
+            10,
+            12,
+            2.0
+          ],
+          [
+            12,
+            20,
+            1.5
+          ]
+        ],
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_gap_pct": 2.0,
+        "enforce_session_boundary": true
+      }
+    },
+    "timestamp": "2026-01-06T13:47:26.066521+00:00"
+  },
+  "timestamp": "2026-01-06T07:47:26.066532"
+}

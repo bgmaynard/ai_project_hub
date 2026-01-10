@@ -19,10 +19,24 @@ import RecentDecisions from './RecentDecisions';
 import SystemHealth from './SystemHealth';
 
 export const Governor: React.FC = () => {
-  const { data, isLoading, error, refresh } = useGovernorData();
+  const { data, isLoading: hookLoading, error, refresh } = useGovernorData();
   const { connectionState, alerts, reconnectFeeds, clearAlerts } = useGovernorWebSocket();
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [reconnectMessage, setReconnectMessage] = useState<string | null>(null);
+  const [forceShow, setForceShow] = useState(false);
+
+  // Force show after 3 seconds even if still loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (hookLoading) {
+        console.warn('[Governor] Loading timeout - forcing display');
+        setForceShow(true);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [hookLoading]);
+
+  const isLoading = hookLoading && !forceShow;
 
   // Show alert when WebSocket disconnects
   useEffect(() => {

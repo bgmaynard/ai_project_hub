@@ -24,7 +24,7 @@ import logging
 import random
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from enum import Enum
 from typing import Optional, Dict, Any, Callable, Tuple
 from pathlib import Path
@@ -32,6 +32,19 @@ import json
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# AVG VOLUME CACHE (TASK 1 - Multi-Source Resolution)
+# =============================================================================
+# Cache avgVolume per symbol per trading day
+# Provenance tracked: "schwab" | "polygon" | "yfinance_fallback"
+
+_avg_volume_cache: Dict[str, Dict] = {}
+_AVG_VOLUME_CACHE_TTL = 14400  # 4 hours (refreshes mid-day)
+
+def _get_trading_day() -> str:
+    """Get current trading day as string for cache key"""
+    return date.today().isoformat()
 
 
 class CircuitState(Enum):
@@ -431,6 +444,119 @@ class ConnectionManager:
     async def fetch_market_movers(self, direction: str = "up") -> Tuple[Optional[Dict], bool]:
         """Fetch market movers"""
         return await self.fetch_with_retry(f"/api/market/movers?direction={direction}")
+
+    async def fetch_avg_volume(self, symbol: str) -> Tuple[Optional[int], str]:
+        """
+        TASK 1: Fetch average volume with multi-source fallback.
+
+        Resolution order:
+        1. Schwab API (if averageVolume present in quote)
+        2. Polygon.io (if available)
+        3. yfinance (cached fallback)
+
+        Returns:
+            Tuple of (avg_volume, source)
+            - avg_volume: 30-day average volume or None
+            - source: "schwab" | "polygon" | "yfinance_fallback" | "unavailable"
+        """
+        global _avg_volume_cache
+
+        # Check cache first (per symbol per trading day)
+        cache_key = f"{symbol}:{_get_trading_day()}"
+        now = time.time()
+
+        if cache_key in _avg_volume_cache:
+            cached = _avg_volume_cache[cache_key]
+            if (now - cached.get("timestamp", 0)) < _AVG_VOLUME_CACHE_TTL:
+                return cached.get("avg_volume"), cached.get("source", "cached")
+
+        avg_volume = None
+        source = "unavailable"
+
+        # =================================================================
+        # SOURCE 1: Try Schwab quote (primary)
+        # =================================================================
+        try:
+            quote_data, is_fresh = await self.fetch_quote(symbol)
+            if quote_data:
+                # Check multiple possible field names
+                schwab_avg = (
+                    quote_data.get("averageVolume") or
+                    quote_data.get("avgVolume") or
+                    quote_data.get("averageVolume10Day") or
+                    quote_data.get("average_volume")
+                )
+                if schwab_avg and schwab_avg > 0:
+                    avg_volume = int(schwab_avg)
+                    source = "schwab"
+                    logger.debug(f"AVG_VOLUME {symbol}: Got {avg_volume:,} from Schwab")
+        except Exception as e:
+            logger.debug(f"AVG_VOLUME {symbol}: Schwab failed: {e}")
+
+        # =================================================================
+        # SOURCE 2: Try Polygon.io (if Schwab didn't have it)
+        # =================================================================
+        if avg_volume is None:
+            try:
+                polygon_data, is_fresh = await self.fetch_with_retry(
+                    f"/api/polygon/ticker/{symbol}"
+                )
+                if polygon_data and isinstance(polygon_data, dict):
+                    # Polygon returns weighted_shares_outstanding and other data
+                    polygon_avg = polygon_data.get("average_volume") or polygon_data.get("avgVolume")
+                    if polygon_avg and polygon_avg > 0:
+                        avg_volume = int(polygon_avg)
+                        source = "polygon"
+                        logger.debug(f"AVG_VOLUME {symbol}: Got {avg_volume:,} from Polygon")
+            except Exception as e:
+                logger.debug(f"AVG_VOLUME {symbol}: Polygon failed: {e}")
+
+        # =================================================================
+        # SOURCE 3: yfinance fallback (queried once per day max)
+        # =================================================================
+        if avg_volume is None:
+            try:
+                import yfinance as yf
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+                yf_avg = info.get("averageVolume") or info.get("averageVolume10days")
+                if yf_avg and yf_avg > 0:
+                    avg_volume = int(yf_avg)
+                    source = "yfinance_fallback"
+                    logger.info(f"AVG_VOLUME {symbol}: Got {avg_volume:,} from yfinance fallback")
+            except ImportError:
+                logger.warning("AVG_VOLUME: yfinance not installed")
+            except Exception as e:
+                logger.debug(f"AVG_VOLUME {symbol}: yfinance failed: {e}")
+
+        # =================================================================
+        # Cache result (even if None, to prevent repeated failures)
+        # =================================================================
+        _avg_volume_cache[cache_key] = {
+            "avg_volume": avg_volume,
+            "source": source,
+            "timestamp": now,
+            "symbol": symbol,
+            "trading_day": _get_trading_day()
+        }
+
+        if avg_volume is None:
+            logger.warning(f"AVG_VOLUME {symbol}: UNAVAILABLE from all sources")
+
+        return avg_volume, source
+
+    async def fetch_avg_volume_batch(self, symbols: list) -> Dict[str, Tuple[Optional[int], str]]:
+        """
+        Fetch average volume for multiple symbols.
+
+        Returns:
+            Dict of symbol -> (avg_volume, source)
+        """
+        results = {}
+        for symbol in symbols:
+            avg_vol, source = await self.fetch_avg_volume(symbol)
+            results[symbol] = (avg_vol, source)
+        return results
 
     def get_status(self) -> Dict:
         """Get connection manager status"""

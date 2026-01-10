@@ -13,15 +13,15 @@
     "check_interval_ms": 500
   },
   "stats": {
-    "total_exits": 4,
+    "total_exits": 8,
     "stop_loss_exits": 2,
     "trailing_stop_exits": 0,
-    "reversal_exits": 2,
+    "reversal_exits": 6,
     "timeout_exits": 0,
     "manual_exits": 0,
-    "total_pnl": -13.826800000000036,
-    "winning_exits": 0,
-    "losing_exits": 4
+    "total_pnl": -7.3728000000000184,
+    "winning_exits": 2,
+    "losing_exits": 6
   },
-  "saved_at": "2025-12-22T08:08:26.541782"
+  "saved_at": "2026-01-06T12:54:12.965535"
 }

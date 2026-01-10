@@ -30,6 +30,38 @@ MIN_PERSISTENCE_SCORE = 0.50
 MIN_REL_VOL = 200
 BLOCKED_REGIMES = ["CHOP", "CRASH", "HALT_RISK"]
 
+# ATS Exhaustion states that block entry (TASK 5 - Post-Resilience Hardening)
+ATS_VETO_STATES = ["EXHAUSTION", "INVALIDATED"]
+
+
+def _get_ats_state(symbol: str) -> str:
+    """
+    TASK 5: Get ATS state for exhaustion propagation to R10.
+
+    ATS States:
+    - IDLE: No activity
+    - FORMING: Pattern forming
+    - ACTIVE: Tradeable setup
+    - EXHAUSTION: Momentum exhausted - VETO ENTRY
+    - INVALIDATED: Pattern failed - VETO ENTRY
+
+    Returns:
+        ATS state string or "UNAVAILABLE" if ATS not loaded
+    """
+    try:
+        from .ats.ats_registry import get_ats_registry
+        registry = get_ats_registry()
+        state = registry.get_state(symbol)
+        if state:
+            return state.state.value
+        return "UNKNOWN"
+    except ImportError:
+        logger.debug("ATS registry not available")
+        return "UNAVAILABLE"
+    except Exception as e:
+        logger.debug(f"Error getting ATS state for {symbol}: {e}")
+        return "ERROR"
+
 
 # =============================================================================
 # TASK 4.1 - GATING_SIGNAL_EVAL (R10) - CRITICAL
@@ -105,6 +137,10 @@ async def task_gating_signal_eval(inputs: Dict) -> Dict:
             qlib_prob = prob_data.get(symbol, {}).get('continuation_prob', 0)
             persistence = persistence_data.get(symbol, {}).get('persistence_score', 0)
 
+            # TASK 5: Get ATS state for exhaustion propagation
+            ats_state = _get_ats_state(symbol)
+            ats_not_exhausted = ats_state not in ATS_VETO_STATES
+
             # Run gating checks
             checks = {
                 'entry_quality': entry_score >= MIN_ENTRY_SCORE,
@@ -113,11 +149,16 @@ async def task_gating_signal_eval(inputs: Dict) -> Dict:
                 'hod_status': hod_status in ['AT_HOD', 'NEAR_HOD'],
                 'vwap_position': vwap_position in ['ABOVE', 'AT'],
                 'regime_check': current_regime not in BLOCKED_REGIMES,
-                'rel_vol_check': rel_vol >= MIN_REL_VOL or rel_vol == 0  # 0 means no data
+                'rel_vol_check': rel_vol >= MIN_REL_VOL or rel_vol == 0,  # 0 means no data
+                'ats_not_exhausted': ats_not_exhausted  # TASK 5: ATS exhaustion veto
             }
 
             all_passed = all(checks.values())
             failed_checks = [k for k, v in checks.items() if not v]
+
+            # TASK 5: Log ATS exhaustion veto specifically
+            if not ats_not_exhausted:
+                logger.warning(f"  ATS_EXHAUSTION veto for {symbol}: state={ats_state}")
 
             decision = {
                 'symbol': symbol,
@@ -130,7 +171,8 @@ async def task_gating_signal_eval(inputs: Dict) -> Dict:
                 'persistence': persistence,
                 'hod_status': hod_status,
                 'vwap_position': vwap_position,
-                'current_regime': current_regime
+                'current_regime': current_regime,
+                'ats_state': ats_state  # TASK 5: Include ATS state in decision
             }
 
             decisions.append(decision)
@@ -158,7 +200,8 @@ async def task_gating_signal_eval(inputs: Dict) -> Dict:
                 'min_continuation_prob': MIN_CONTINUATION_PROB,
                 'min_persistence_score': MIN_PERSISTENCE_SCORE,
                 'min_rel_vol': MIN_REL_VOL,
-                'blocked_regimes': BLOCKED_REGIMES
+                'blocked_regimes': BLOCKED_REGIMES,
+                'ats_veto_states': ATS_VETO_STATES  # TASK 5: ATS exhaustion veto states
             }
         }
 
