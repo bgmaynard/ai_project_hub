@@ -2420,3 +2420,118 @@ curl http://localhost:9100/api/scanner/scalper/status
 - Server: Running on port 9100
 - Scalper: Paper mode, gating enabled
 - TOS reference: Documented in CLAUDE.md for connection stability patterns
+
+## Jan 10, 2026 - Hot Symbol Engine (Market Reaction Detection)
+
+### Overview
+
+New architecture to replace slow headline-first news detection with instant market-reaction detection.
+Symbols enter monitoring **within seconds of abnormal behavior**, even before headlines arrive.
+
+**Core Principle:** Stop waiting for news. Treat market reaction as the news. Everything else is context.
+
+### Architecture
+
+```
++------------------------------+
+| PRICE / VOLUME SHOCK SCANNER |  <- PRIMARY TRIGGER
+| (Schwab / Polygon)           |
++-------------+----------------+
+              |
+              v
++------------------------------+
+| CROWD SIGNAL SCANNER         |  <- SECONDARY CONFIRM
+| (StockTwits / Reddit)        |
++-------------+----------------+
+              |
+              v
+       HOT SYMBOL QUEUE
+       (TTL 120-300 seconds)
+              |
+              v
++------------------------------+
+| MOMENTUM FSM / SCALPER       |
+| (confirm -> arm -> trade)    |
++------------------------------+
+```
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `ai/hot_symbol_queue.py` | TTL-based queue for hot symbols |
+| `ai/price_volume_shock_detector.py` | Detects price spikes, volume shocks, momentum chains |
+| `ai/crowd_signal_scanner.py` | StockTwits + Reddit mention spike detection |
+| `ai/hot_symbol_routes.py` | REST API endpoints |
+| `docs/UPGRADE_HOT_SYMBOL_ENGINE.md` | Full design documentation |
+
+### Hot Symbol Queue
+
+TTL-based promotion layer with:
+- Auto-expiration (default 180s)
+- Confidence scoring
+- Reason tracking (PRICE_SPIKE, VOLUME_SHOCK, CROWD_SURGE, etc.)
+- Priority ordering for FSM/Scalper
+
+### Shock Detection Triggers
+
+| Trigger | Condition |
+|---------|-----------|
+| PRICE_SPIKE | >= 3% move in 2-5 minutes |
+| VOLUME_SHOCK | >= 3x rolling average volume |
+| RANGE_EXPANSION | Candle range >= 2x average |
+| MOMENTUM_CHAIN | 3+ consecutive green candles |
+| CROWD_SURGE | Social mention spike >= 3x baseline |
+
+### API Endpoints
+
+```bash
+# Full status
+GET /api/hot-symbols/status
+
+# Current hot symbols
+GET /api/hot-symbols/queue
+
+# Priority symbols for trading
+GET /api/hot-symbols/priority
+
+# Check if symbol is hot
+GET /api/hot-symbols/is-hot/{symbol}
+
+# Manually add hot symbol
+POST /api/hot-symbols/add
+
+# Remove from queue
+DELETE /api/hot-symbols/{symbol}
+
+# Trigger manual scan
+POST /api/hot-symbols/scan
+
+# Shock detector status
+GET /api/hot-symbols/shock/status
+
+# Crowd scanner status
+GET /api/hot-symbols/crowd/status
+```
+
+### Integration
+
+To enable Hot Symbol Engine, add to `morpheus_trading_api.py`:
+
+```python
+from ai.hot_symbol_routes import router as hot_symbol_router, setup_hot_symbol_engine
+
+app.include_router(hot_symbol_router)
+setup_hot_symbol_engine()  # Wire all components together
+```
+
+### Why This Matters
+
+| Old Approach | New Approach |
+|--------------|--------------|
+| Wait for news headline | Detect market reaction |
+| Poll APIs every N seconds | Event-driven triggers |
+| Symbol appears after move | Symbol appears as move starts |
+| Miss first 1-3 candles | Catch the move forming |
+
+This aligns with Day Trade Dash behavior without paid feeds.
