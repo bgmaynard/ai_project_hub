@@ -486,6 +486,16 @@ except ImportError as e:
     logger.warning(f"Scalp Assistant routes not available: {e}")
     HAS_SCALP_ASSISTANT = False
 
+# ATS + 9 EMA Sniper Strategy Routes
+try:
+    from ai.strategies.sniper_routes import router as sniper_router
+    app.include_router(sniper_router, tags=["ATS 9EMA Sniper"])
+    HAS_SNIPER_STRATEGY = True
+    logger.info("ATS 9EMA Sniper strategy routes included")
+except ImportError as e:
+    logger.warning(f"Sniper strategy routes not available: {e}")
+    HAS_SNIPER_STRATEGY = False
+
 # DERO - Daily Evaluation Reporting Overlay (Read-Only Reports)
 try:
     from services.dero.routes import router as dero_router
