@@ -41,38 +41,88 @@ ET_TZ = pytz.timezone('US/Eastern')
 
 @dataclass
 class SniperConfig:
-    """Configuration for ATS + 9 EMA Sniper Strategy"""
+    """
+    Configuration for ATS + 9 EMA Sniper Strategy
 
-    # Time gate (HARD)
+    BASELINE DEFAULTS (Conservative, Capital-Preserving)
+    ====================================================
+    These values are intentionally NOT aggressive.
+    Edge comes from structure + discipline, not tight tuning.
+
+    Philosophy:
+    - Fewer trades > more trades
+    - Flat is success
+    - Let the market invite you
+    - Optimization comes after data, not before
+    """
+
+    # ========================================
+    # TIME GATE (PRIMARY SESSION)
+    # ========================================
     start_time_et: dt_time = dt_time(9, 40)   # 9:40 AM ET
     end_time_et: dt_time = dt_time(11, 0)     # 11:00 AM ET
 
-    # ATS qualification thresholds
-    ats_min_confidence: float = 0.6           # Min ATS score to qualify
+    # ========================================
+    # ATS QUALIFICATION (BASELINE VALUES)
+    # ========================================
+    ats_min_confidence: float = 0.70          # Conservative: 0.70 (prevents weak names)
     rvol_min: float = 2.0                     # Min relative volume
+    requires_prior_hot: bool = True           # Must have been HOT earlier
+    hot_bypass_confidence: float = 0.80       # Elite setups bypass HOT requirement
 
-    # Pullback requirements
-    max_pullback_pct: float = 30.0            # Max pullback as % of impulse
-    ema_pullback_zone_pct: float = 0.5        # Within 0.5% of EMA = pullback zone
+    # ========================================
+    # VWAP & TREND GUARDS
+    # ========================================
+    require_above_vwap: bool = True           # Must be above VWAP
+    max_vwap_distance_pct: float = 2.5        # Max distance above VWAP
+    vwap_reclaim_allowed: bool = True         # Can reclaim, but must before entry
+
+    # ========================================
+    # 9 EMA PULLBACK PARAMETERS (CORE)
+    # ========================================
+    max_pullback_pct: float = 35.0            # Max pullback as % of impulse
+    min_pullback_pct: float = 5.0             # Min pullback (too shallow = no reset)
+    ema_pullback_zone_pct: float = 0.75       # Max distance from 9 EMA to enter
     require_volume_decrease: bool = True       # Volume must decrease in pullback
+    pullback_volume_ratio_max: float = 0.70   # Pullback vol <= 70% of impulse vol
 
-    # Entry confirmation
+    # ========================================
+    # ENTRY CONFIRMATION (STRICT)
+    # ========================================
     reclaim_threshold_pct: float = 0.3        # Break above pullback high by 0.3%
-    volume_expansion_ratio: float = 1.2       # Volume must expand 20% on entry
+    volume_expansion_ratio: float = 1.25      # Entry volume must expand 25%
 
-    # Risk management
+    # ========================================
+    # STOP & RISK (SCALPER-FIRST)
+    # ========================================
     stop_below_pullback_low: bool = True      # Place stop below pullback low
     stop_below_ema9: bool = True              # Also use EMA9 as stop reference
-    stop_buffer_pct: float = 0.2              # Buffer below stop level
+    stop_buffer_pct: float = 0.2              # Buffer below stop level (ticks)
+    max_risk_per_trade_pct: float = 0.25      # Small losses are the design goal
 
-    # Profit targets
+    # ========================================
+    # PROFIT MANAGEMENT (SIMPLE, TESTABLE)
+    # ========================================
     target_prior_high: bool = True            # First target at prior high
-    trail_with_ema9: bool = True              # Trail with 9 EMA
+    partial_take_profit_pct: float = 50.0     # Take 50% at target
+    trail_with_ema9: bool = True              # Trail remainder with 9 EMA
+    stall_exit_candles: int = 3               # Exit if stalls for N candles
 
-    # Anti-overtrading
+    # ========================================
+    # ANTI-OVERTRADING (FAILURE & COOLDOWN)
+    # ========================================
     max_trades_per_symbol: int = 2            # Max trades per symbol per day
     cooldown_after_stop_minutes: int = 5      # Cooldown after stop-out
-    disable_after_failures: int = 2           # Disable symbol after X failures
+    disable_after_failures: int = 2           # Disable after consecutive losses
+
+    # ========================================
+    # EXTENDED SESSION ENABLEMENT (OUTSIDE 11 AM)
+    # ========================================
+    allow_extended_session: bool = True       # Allow trading after 11 AM
+    extended_ats_min: float = 0.80            # Higher ATS required for extended
+    extended_rvol_min: float = 2.5            # Higher RVOL required for extended
+    extended_vwap_hold_minutes: int = 15      # Must hold VWAP for 15 min
+    extended_end_time_et: dt_time = dt_time(15, 30)  # Hard stop at 3:30 PM
 
     def to_dict(self) -> Dict:
         return {
@@ -81,8 +131,16 @@ class SniperConfig:
             "ats_min_confidence": self.ats_min_confidence,
             "rvol_min": self.rvol_min,
             "max_pullback_pct": self.max_pullback_pct,
+            "min_pullback_pct": self.min_pullback_pct,
+            "ema_pullback_zone_pct": self.ema_pullback_zone_pct,
+            "pullback_volume_ratio_max": self.pullback_volume_ratio_max,
+            "volume_expansion_ratio": self.volume_expansion_ratio,
+            "max_risk_per_trade_pct": self.max_risk_per_trade_pct,
             "max_trades_per_symbol": self.max_trades_per_symbol,
             "cooldown_after_stop_minutes": self.cooldown_after_stop_minutes,
+            "requires_prior_hot": self.requires_prior_hot,
+            "allow_extended_session": self.allow_extended_session,
+            "extended_end_time_et": self.extended_end_time_et.strftime("%H:%M"),
         }
 
 
@@ -181,14 +239,21 @@ class ATS9EMASniperStrategy:
     # TIME GATE (HARD EXCLUSIONS)
     # ========================================
 
-    def is_active_window(self) -> bool:
+    def is_active_window(self, extended_check: bool = False) -> bool:
         """
         Check if current time is within strategy active window.
 
-        HARD TIME GATE:
-        - Active only when market_session == OPEN
+        PRIMARY SESSION (Default):
         - time >= 9:40 AM ET
         - time <= 11:00 AM ET
+
+        EXTENDED SESSION (Conditional):
+        - Time enables the strategy
+        - Market conditions keep it enabled
+        - Outside 11 AM, requires higher thresholds
+
+        Args:
+            extended_check: If True, check extended session eligibility
         """
         now_et = datetime.now(ET_TZ)
         current_time = now_et.time()
@@ -197,8 +262,57 @@ class ATS9EMASniperStrategy:
         if now_et.weekday() >= 5:  # Saturday or Sunday
             return False
 
-        # Check time window
-        return self.config.start_time_et <= current_time <= self.config.end_time_et
+        # Primary session window (default)
+        if self.config.start_time_et <= current_time <= self.config.end_time_et:
+            return True
+
+        # Extended session check
+        if self.config.allow_extended_session and extended_check:
+            # After primary window but before hard stop
+            if self.config.end_time_et < current_time <= self.config.extended_end_time_et:
+                return True  # Caller must verify extended conditions are met
+
+        return False
+
+    def check_extended_session_conditions(self, symbol: str, quote: Dict) -> Tuple[bool, str]:
+        """
+        Check if extended session conditions are met.
+
+        Outside 11:00 AM ET, strategy remains enabled only if:
+        - ATS_CONFIDENCE >= 0.80
+        - RVOL >= 2.5
+        - Price holds above VWAP for >= 15 minutes
+        - No chop detected
+
+        Returns (eligible, reason)
+        """
+        now_et = datetime.now(ET_TZ)
+        current_time = now_et.time()
+
+        # Not in extended window
+        if current_time <= self.config.end_time_et:
+            return True, "In primary session"
+
+        # Past hard stop
+        if current_time > self.config.extended_end_time_et:
+            return False, "Past extended session hard stop (3:30 PM)"
+
+        # Check extended requirements
+        ats_score = self._estimate_ats_score(symbol, quote)
+        if ats_score < self.config.extended_ats_min:
+            return False, f"ATS {ats_score:.2f} < {self.config.extended_ats_min} for extended"
+
+        rvol = quote.get("rvol", quote.get("relative_volume", 1.0))
+        if rvol < self.config.extended_rvol_min:
+            return False, f"RVOL {rvol:.1f} < {self.config.extended_rvol_min} for extended"
+
+        # VWAP check
+        vwap = quote.get("vwap", 0)
+        price = quote.get("price", quote.get("last", 0))
+        if vwap > 0 and price < vwap:
+            return False, "Price below VWAP - extended disabled"
+
+        return True, "Extended session conditions met"
 
     def get_market_session(self) -> str:
         """Get current market session"""
@@ -423,8 +537,9 @@ class ATS9EMASniperStrategy:
 
         Pullback Requirements:
         - Price pulls back toward 9 EMA
+        - Pullback depth >= MIN_PULLBACK_PCT (too shallow = no reset)
         - Pullback depth <= MAX_PULLBACK_PCT of last impulse
-        - Volume decreases during pullback
+        - Pullback volume <= 70% of impulse volume
         - VWAP is not lost
         - Candles compress (no wide range flush)
 
@@ -447,6 +562,12 @@ class ATS9EMASniperStrategy:
         impulse_high = self._impulse_highs.get(symbol, price)
         if impulse_high > 0:
             pullback_depth = ((impulse_high - price) / impulse_high) * 100
+
+            # MIN: Too shallow = no reset, price needs to actually pull back
+            if pullback_depth < self.config.min_pullback_pct:
+                return False, f"Pullback too shallow ({pullback_depth:.1f}% < {self.config.min_pullback_pct}%)"
+
+            # MAX: Too deep = lost momentum
             if pullback_depth > self.config.max_pullback_pct:
                 return False, f"Pullback too deep ({pullback_depth:.1f}% > {self.config.max_pullback_pct}%)"
 
@@ -458,6 +579,18 @@ class ATS9EMASniperStrategy:
                 prior_avg = sum(volumes[-6:-3]) / 3 if len(volumes) >= 6 else recent_avg
                 if recent_avg > prior_avg * 1.1:  # Volume should decrease, not increase
                     return False, "Volume not decreasing during pullback"
+
+        # Check pullback volume ratio (pullback vol <= 70% of impulse vol)
+        volumes = self._volume_history.get(symbol, [])
+        if len(volumes) >= 6:
+            # Impulse volume = earlier candles, pullback volume = recent candles
+            impulse_vol = sum(volumes[-6:-3]) / 3 if len(volumes) >= 6 else 0
+            pullback_vol = sum(volumes[-3:]) / 3
+
+            if impulse_vol > 0:
+                vol_ratio = pullback_vol / impulse_vol
+                if vol_ratio > self.config.pullback_volume_ratio_max:
+                    return False, f"Pullback volume too high ({vol_ratio:.0%} > {self.config.pullback_volume_ratio_max:.0%})"
 
         # Check bullish structure maintained
         if not ema_state.ema9_above_ema20:
