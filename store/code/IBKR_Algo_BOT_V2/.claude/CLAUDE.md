@@ -3031,3 +3031,178 @@ ba61ff7 feat: HRDC halt strategy + pre-9:30 LULD guard
 - Paper Mode: ON
 - All HRDC endpoints tested and working
 - Ready for Monday trading
+
+## Jan 11, 2026 Session - ATS + 9 EMA Sniper Strategy
+
+### Overview
+
+Implemented complete ATS + 9 EMA Sniper Strategy for morning scalping (9:40 AM - 11:00 AM ET).
+
+**Philosophy:**
+- NO PULLBACK = NO TRADE
+- NO CONFIRMATION = NO TRADE
+- FLAT = SUCCESS
+
+**Role Split:**
+- ATS = QUALIFICATION (Is this symbol worth trading?)
+- 9 EMA Sniper = EXECUTION (Where is the lowest-risk entry?)
+
+### New Files Created
+
+| File | Purpose |
+|------|---------|
+| `ai/strategies/ats_9ema_sniper.py` | Main strategy implementation |
+| `ai/strategies/sniper_routes.py` | REST API endpoints |
+| `ai/strategies/__init__.py` | Module exports |
+| `ai/fsm/strategy_states.py` | FSM with 7 states |
+| `ai/fsm/__init__.py` | FSM module exports |
+| `ai/indicators/ema.py` | EMA tracking (9/20/50) |
+| `ai/indicators/__init__.py` | Indicator module exports |
+| `ai/logging/events.py` | Trading event logger |
+| `ai/logging/__init__.py` | Logging module exports |
+
+### FSM States
+
+```
+IDLE → ATS_QUALIFIED → WAIT_9EMA_PULLBACK → SNIPER_CONFIRMATION → SCALP_ENTRY → EXIT_FAST → COOLDOWN
+                         ↓                       ↓
+                      CANCELLED              (back to IDLE)
+```
+
+| State | Description |
+|-------|-------------|
+| IDLE | No activity |
+| ATS_QUALIFIED | Passed ATS qualification |
+| WAIT_9EMA_PULLBACK | Watching for pullback to 9 EMA |
+| SNIPER_CONFIRMATION | Waiting for entry confirmation |
+| SCALP_ENTRY | In position |
+| EXIT_FAST | Exiting trade |
+| COOLDOWN | 5-minute cooldown after trade |
+
+### Baseline Configuration (Conservative)
+
+```python
+@dataclass
+class SniperConfig:
+    # TIME GATE
+    start_time_et: dt_time = dt_time(9, 40)   # 9:40 AM ET
+    end_time_et: dt_time = dt_time(11, 0)     # 11:00 AM ET
+
+    # ATS QUALIFICATION
+    ats_min_confidence: float = 0.70          # Conservative threshold
+    rvol_min: float = 2.0                     # Min relative volume
+    requires_prior_hot: bool = True           # Must have been HOT earlier
+    hot_bypass_confidence: float = 0.80       # Elite setups bypass HOT
+
+    # VWAP & TREND GUARDS
+    require_above_vwap: bool = True
+    max_vwap_distance_pct: float = 2.5
+    vwap_reclaim_allowed: bool = True
+
+    # 9 EMA PULLBACK (CORE)
+    max_pullback_pct: float = 35.0            # Max pullback depth
+    min_pullback_pct: float = 5.0             # Min pullback (too shallow = no reset)
+    ema_pullback_zone_pct: float = 0.75       # Max distance from EMA to enter
+    pullback_volume_ratio_max: float = 0.70   # Pullback vol <= 70% of impulse
+
+    # ENTRY CONFIRMATION
+    reclaim_threshold_pct: float = 0.3        # Break above pullback high
+    volume_expansion_ratio: float = 1.25      # 25% volume expansion required
+
+    # RISK MANAGEMENT
+    max_risk_per_trade_pct: float = 0.25      # Small losses are the design goal
+
+    # EXTENDED SESSION (After 11 AM)
+    allow_extended_session: bool = True
+    extended_ats_min: float = 0.80            # Higher ATS for extended
+    extended_rvol_min: float = 2.5            # Higher RVOL for extended
+    extended_end_time_et: dt_time = dt_time(15, 30)  # Hard stop 3:30 PM
+```
+
+### API Endpoints
+
+```bash
+# Strategy Status & Control
+GET  /api/strategy/sniper/status           - Get strategy status
+POST /api/strategy/sniper/enable           - Enable strategy
+POST /api/strategy/sniper/disable          - Disable strategy
+POST /api/strategy/sniper/reset-daily      - Reset daily counters
+
+# Symbol Processing
+POST /api/strategy/sniper/process          - Process symbol (main entry)
+GET  /api/strategy/sniper/qualify/{symbol} - Check ATS qualification
+GET  /api/strategy/sniper/pullback/{symbol} - Check pullback status
+
+# FSM State
+GET  /api/strategy/sniper/fsm/states       - All FSM states
+GET  /api/strategy/sniper/fsm/state/{symbol} - Symbol FSM state
+POST /api/strategy/sniper/fsm/cancel/{symbol} - Cancel symbol tracking
+
+# EMA Tracking
+GET  /api/strategy/sniper/ema/states       - All EMA states
+GET  /api/strategy/sniper/ema/{symbol}     - Symbol EMA state
+POST /api/strategy/sniper/ema/update/{symbol} - Update EMA
+
+# Events & Stats
+GET  /api/strategy/sniper/events/today     - Today's trading events
+GET  /api/strategy/sniper/events/{symbol}  - Symbol events
+GET  /api/strategy/sniper/stats            - Performance statistics
+GET  /api/strategy/sniper/time-window      - Active time window status
+```
+
+### Entry Confirmation Rules
+
+**CONFIRMATION 1: Reclaim of pullback high**
+- Price breaks above pullback high by 0.3%
+- Volume expands 25%+
+- Green candle
+
+**CONFIRMATION 2: Strong bullish candle off EMA**
+- Price at or near 9 EMA
+- Strong candle (body > 60% of range)
+- Green candle
+- Volume expansion
+
+### Pullback Validation
+
+Pullback is valid only if ALL conditions met:
+1. Price in pullback zone (within 0.75% of 9 EMA)
+2. Pullback depth >= 5% (too shallow = no reset)
+3. Pullback depth <= 35% (too deep = lost momentum)
+4. Pullback volume <= 70% of impulse volume
+5. Bullish EMA structure maintained (EMA9 > EMA20)
+
+### Commits
+
+```
+5dc1777 feat: Implement ATS + 9 EMA Sniper Strategy with FSM
+6f03711 feat: Apply baseline defaults to ATS + 9 EMA Sniper Strategy
+```
+
+### Quick Start (Monday Trading)
+
+```bash
+# Start server
+python morpheus_trading_api.py
+
+# Enable sniper strategy
+curl -X POST "http://localhost:9100/api/strategy/sniper/enable"
+
+# Check status
+curl http://localhost:9100/api/strategy/sniper/status
+
+# Check time window
+curl http://localhost:9100/api/strategy/sniper/time-window
+
+# Open dashboards
+start http://localhost:9100/trading-new
+start http://localhost:9100/orchestrator
+```
+
+### System State at Session End
+
+- Server: Running on port 9100
+- ATS + 9 EMA Sniper Strategy: Implemented and tested
+- Baseline defaults: Applied
+- All endpoints: Working
+- Ready for Monday trading
