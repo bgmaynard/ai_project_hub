@@ -1,6 +1,6 @@
 """
-Trading Halt Detector with LULD Band Calculations
-===================================================
+Trading Halt Detector with LULD Band Calculations & HRDC Strategy
+===================================================================
 Detects and tracks trading halts (LULD, news, circuit breakers).
 
 LULD (Limit Up Limit Down) Rules (Ross Cameron):
@@ -14,22 +14,151 @@ Band Calculations by Price Tier:
 - Under $3.00: +/- 20%
 - Under $0.75: Lesser of $0.15 or 75%
 
+CRITICAL RULE: NO LULD HALTS BEFORE 9:30 AM ET
+- LULD halts only enforced during regular market hours (9:30 AM - 4:00 PM ET)
+- Pre-market and after-hours do NOT trigger LULD halts
+- Only SEC/regulatory hard halts can occur pre-9:30
+
+HRDC (Halt Resumption Directional Confirmation):
+- MOMENTUM_ALLOWED: Strong gap + immediate follow-through = TRADE
+- FLAT_ONLY: Weak/no gap = STAY OUT
+- DEFENSIVE: Flush/failure = PROTECT CAPITAL
+- "No gap + no momentum = NO TRADE"
+
 This module monitors for:
 - LULD band proximity (warn when approaching)
 - Halt trigger countdown (15 sec timer)
 - False halt detection (10-12 sec bounce)
 - Resume direction prediction
+- HRDC classification for trading decisions
 """
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as dt_time
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
+from enum import Enum
 import threading
 import time
+import pytz
 
 logger = logging.getLogger(__name__)
+
+# Eastern timezone for market hours
+ET_TZ = pytz.timezone('US/Eastern')
+
+
+class HRDCMode(Enum):
+    """
+    Halt Resumption Directional Confirmation (HRDC) modes.
+    Determines trading behavior after halt resumption.
+    """
+    MOMENTUM_ALLOWED = "MOMENTUM_ALLOWED"  # Strong gap + follow-through = TRADE
+    FLAT_ONLY = "FLAT_ONLY"                # Weak/no gap = STAY OUT
+    DEFENSIVE = "DEFENSIVE"                 # Flush/failure = PROTECT CAPITAL
+    PENDING = "PENDING"                     # Waiting for resume data
+
+
+class HaltType(Enum):
+    """Types of trading halts"""
+    LULD_UP = "LULD_UP"           # Hit upper LULD band
+    LULD_DOWN = "LULD_DOWN"       # Hit lower LULD band
+    NEWS_PENDING = "NEWS_PENDING" # News pending halt
+    REGULATORY = "REGULATORY"     # SEC/exchange regulatory halt
+    CIRCUIT_BREAKER = "CIRCUIT_BREAKER"  # Market-wide circuit breaker
+    VOLATILITY = "VOLATILITY"     # General volatility halt
+    UNKNOWN = "UNKNOWN"
+
+
+@dataclass
+class HRDCClassification:
+    """
+    HRDC (Halt Resumption Directional Confirmation) result.
+
+    Based on user's trading rule:
+    "If there is not a lot of gap up or momentum showing on resumption,
+    the only safe place is flat."
+    """
+    symbol: str
+    mode: HRDCMode
+
+    # Resume metrics
+    resume_gap_percent: float = 0.0      # (resume_price - halt_price) / halt_price
+    resume_volume_5s: int = 0            # Volume in first 5 seconds
+
+    # Classification thresholds
+    min_gap_for_momentum: float = 0.5    # 0.5% minimum gap for MOMENTUM_ALLOWED
+    min_volume_threshold: int = 10000    # Minimum volume burst
+
+    # Result
+    confidence: float = 0.0
+    reason: str = ""
+
+    # Timing
+    classified_at: Optional[datetime] = None
+    seconds_since_resume: float = 0.0
+
+    def to_dict(self) -> Dict:
+        return {
+            'symbol': self.symbol,
+            'mode': self.mode.value,
+            'resume_gap_percent': round(self.resume_gap_percent, 2),
+            'resume_volume_5s': self.resume_volume_5s,
+            'confidence': round(self.confidence, 2),
+            'reason': self.reason,
+            'classified_at': self.classified_at.isoformat() if self.classified_at else None,
+            'seconds_since_resume': round(self.seconds_since_resume, 1)
+        }
+
+
+def is_luld_active() -> bool:
+    """
+    Check if LULD (Limit Up Limit Down) is active.
+
+    CRITICAL: LULD halts only occur during regular market hours.
+    - 9:30 AM - 4:00 PM ET = LULD active
+    - Pre-market (4:00 AM - 9:30 AM) = NO LULD
+    - After hours (4:00 PM - 8:00 PM) = NO LULD
+
+    Returns:
+        True if LULD can trigger, False otherwise
+    """
+    now_et = datetime.now(ET_TZ).time()
+    market_open = dt_time(9, 30)
+    market_close = dt_time(16, 0)
+
+    return market_open <= now_et < market_close
+
+
+def get_market_session() -> str:
+    """
+    Get current market session.
+
+    Returns:
+        'PRE_MARKET', 'OPEN', 'AFTER_HOURS', or 'CLOSED'
+    """
+    now_et = datetime.now(ET_TZ)
+    current_time = now_et.time()
+    weekday = now_et.weekday()
+
+    # Weekend
+    if weekday >= 5:
+        return 'CLOSED'
+
+    # Pre-market: 4:00 AM - 9:30 AM ET
+    if dt_time(4, 0) <= current_time < dt_time(9, 30):
+        return 'PRE_MARKET'
+
+    # Market hours: 9:30 AM - 4:00 PM ET
+    if dt_time(9, 30) <= current_time < dt_time(16, 0):
+        return 'OPEN'
+
+    # After hours: 4:00 PM - 8:00 PM ET
+    if dt_time(16, 0) <= current_time < dt_time(20, 0):
+        return 'AFTER_HOURS'
+
+    return 'CLOSED'
 
 
 @dataclass
@@ -170,6 +299,11 @@ class HaltInfo:
     resume_gap_percent: float = 0.0
     continuation_action: str = ""  # BUY, SELL, HOLD, WATCH
 
+    # HRDC (Halt Resumption Directional Confirmation)
+    hrdc_mode: str = ""  # MOMENTUM_ALLOWED, FLAT_ONLY, DEFENSIVE
+    hrdc_confidence: float = 0.0
+    hrdc_reason: str = ""
+
     # Stats
     duration_seconds: int = 0
 
@@ -189,6 +323,9 @@ class HaltInfo:
             "resume_direction": self.resume_direction,
             "resume_gap_percent": self.resume_gap_percent,
             "continuation_action": self.continuation_action,
+            "hrdc_mode": self.hrdc_mode,
+            "hrdc_confidence": self.hrdc_confidence,
+            "hrdc_reason": self.hrdc_reason,
             "duration_seconds": self.duration_seconds
         }
 
@@ -225,6 +362,9 @@ class HaltDetector:
         # Consecutive halt tracking
         self.halt_counts: Dict[str, int] = {}  # symbol -> count today
 
+        # HRDC (Halt Resumption Directional Confirmation) tracking
+        self._hrdc_classifications: Dict[str, HRDCClassification] = {}
+
         # Monitoring state
         self.monitored_symbols: List[str] = []
         self.is_running = False
@@ -236,8 +376,9 @@ class HaltDetector:
         self.on_resume: Optional[callable] = None
         self.on_false_halt: Optional[callable] = None
         self.on_approaching_band: Optional[callable] = None
+        self.on_hrdc_classification: Optional[callable] = None  # New: HRDC callback
 
-        logger.info("HaltDetector initialized with LULD band tracking")
+        logger.info("HaltDetector initialized with LULD band tracking and HRDC strategy")
 
     def calculate_luld_bands(
         self,
@@ -435,6 +576,133 @@ class HaltDetector:
 
         return prediction
 
+    def classify_hrdc(
+        self,
+        symbol: str,
+        halt_price: float,
+        resume_price: float,
+        resume_volume_5s: int = 0,
+        resume_time: Optional[datetime] = None,
+        judgment_window_seconds: int = 5
+    ) -> HRDCClassification:
+        """
+        Classify halt resumption using HRDC (Halt Resumption Directional Confirmation).
+
+        Based on user's trading rule:
+        "If there is not a lot of gap up or momentum showing on resumption,
+        the only safe place is flat and stay out of the halt."
+
+        Args:
+            symbol: Stock symbol
+            halt_price: Price when halt was triggered
+            resume_price: First print on resumption
+            resume_volume_5s: Volume in first 5 seconds after resume
+            resume_time: When trading resumed
+            judgment_window_seconds: How many seconds after resume to judge (3, 5, or 10)
+
+        Returns:
+            HRDCClassification with mode: MOMENTUM_ALLOWED, FLAT_ONLY, or DEFENSIVE
+        """
+        now = datetime.now()
+
+        # Calculate resume gap
+        if halt_price > 0:
+            resume_gap_pct = ((resume_price - halt_price) / halt_price) * 100
+        else:
+            resume_gap_pct = 0.0
+
+        # Initialize classification
+        classification = HRDCClassification(
+            symbol=symbol,
+            mode=HRDCMode.PENDING,
+            resume_gap_percent=resume_gap_pct,
+            resume_volume_5s=resume_volume_5s,
+            classified_at=now,
+            seconds_since_resume=0.0 if not resume_time else (now - resume_time).total_seconds()
+        )
+
+        # ============================================
+        # HRDC DECISION LOGIC
+        # "No gap + no momentum = NO TRADE"
+        # ============================================
+
+        # Thresholds (configurable)
+        MIN_GAP_FOR_MOMENTUM = 0.5    # 0.5% minimum gap to consider MOMENTUM_ALLOWED
+        MIN_VOLUME_THRESHOLD = 10000  # Minimum volume burst
+        FLUSH_THRESHOLD = -1.0        # -1% = bearish flush
+
+        # CASE 1: STRONG GAP + VOLUME = MOMENTUM_ALLOWED
+        # Resume price >= halt price with volume confirmation
+        if resume_gap_pct >= MIN_GAP_FOR_MOMENTUM:
+            if resume_volume_5s >= MIN_VOLUME_THRESHOLD or resume_volume_5s == 0:
+                # Volume threshold met OR volume not provided (trust the gap)
+                classification.mode = HRDCMode.MOMENTUM_ALLOWED
+                classification.confidence = min(0.5 + (resume_gap_pct / 10), 0.95)
+                classification.reason = f"Strong gap +{resume_gap_pct:.1f}% with volume confirmation - TRADE ALLOWED"
+
+                logger.info(
+                    f"HRDC {symbol}: MOMENTUM_ALLOWED - "
+                    f"Gap +{resume_gap_pct:.1f}%, Vol {resume_volume_5s:,}"
+                )
+            else:
+                # Gap but weak volume - be cautious
+                classification.mode = HRDCMode.FLAT_ONLY
+                classification.confidence = 0.6
+                classification.reason = f"Gap +{resume_gap_pct:.1f}% but weak volume ({resume_volume_5s:,}) - STAY FLAT"
+
+                logger.info(
+                    f"HRDC {symbol}: FLAT_ONLY - "
+                    f"Gap +{resume_gap_pct:.1f}% but low volume"
+                )
+
+        # CASE 2: FLUSH / FAILURE = DEFENSIVE
+        # Resume price significantly below halt price
+        elif resume_gap_pct <= FLUSH_THRESHOLD:
+            classification.mode = HRDCMode.DEFENSIVE
+            classification.confidence = 0.8
+            classification.reason = f"Bearish flush {resume_gap_pct:.1f}% - DEFENSIVE MODE, protect capital"
+
+            logger.warning(
+                f"HRDC {symbol}: DEFENSIVE - "
+                f"Flush {resume_gap_pct:.1f}%, avoid longs"
+            )
+
+        # CASE 3: SMALL GAP / WEAK OPEN / CHOP = FLAT_ONLY
+        # Resume near halt price, no clear direction
+        else:
+            classification.mode = HRDCMode.FLAT_ONLY
+            classification.confidence = 0.7
+            classification.reason = f"Weak resume gap {resume_gap_pct:+.1f}% - no edge, STAY FLAT"
+
+            logger.info(
+                f"HRDC {symbol}: FLAT_ONLY - "
+                f"No clear direction ({resume_gap_pct:+.1f}%)"
+            )
+
+        # Store classification
+        if symbol in self.halted_stocks:
+            self.halted_stocks[symbol].hrdc_mode = classification.mode.value
+            self.halted_stocks[symbol].hrdc_confidence = classification.confidence
+
+        # Cache for quick lookup
+        self._hrdc_classifications[symbol] = classification
+
+        return classification
+
+    def get_hrdc_status(self, symbol: str) -> Optional[Dict]:
+        """Get HRDC classification status for a symbol"""
+        if symbol in self._hrdc_classifications:
+            return self._hrdc_classifications[symbol].to_dict()
+        return None
+
+    def is_luld_enabled(self) -> bool:
+        """
+        Check if LULD monitoring should be active.
+
+        CRITICAL: LULD halts only during regular market hours (9:30 AM - 4:00 PM ET)
+        """
+        return is_luld_active()
+
     def get_luld_status(self, symbol: str) -> Optional[Dict]:
         """Get LULD band status for a symbol"""
         if symbol not in self.luld_bands:
@@ -511,12 +779,36 @@ class HaltDetector:
                     "HOLD": "HOLD"
                 }
 
+                # ============================================
+                # HRDC Classification on Resume
+                # "No gap + no momentum = NO TRADE"
+                # ============================================
+                hrdc = self.classify_hrdc(
+                    symbol=symbol,
+                    halt_price=halt_info.halt_price,
+                    resume_price=price,
+                    resume_volume_5s=0,  # Will be updated if volume data available
+                    resume_time=halt_info.resume_time
+                )
+                halt_info.hrdc_mode = hrdc.mode.value
+                halt_info.hrdc_confidence = hrdc.confidence
+                halt_info.hrdc_reason = hrdc.reason
+
+                # Fire HRDC callback
+                if self.on_hrdc_classification:
+                    try:
+                        self.on_hrdc_classification(hrdc.to_dict())
+                    except Exception as e:
+                        logger.error(f"HRDC callback error: {e}")
+
                 logger.warning(
                     f"\nHALT RESUMED: {symbol}\n"
                     f"  Duration: {halt_info.duration_seconds}s\n"
                     f"  Halt: ${halt_info.halt_price:.2f} -> Resume: ${price:.2f}\n"
                     f"  Gap: {halt_info.resume_gap_percent:+.1f}%\n"
                     f"  Direction: {halt_info.resume_direction}\n"
+                    f"  HRDC Mode: {hrdc.mode.value}\n"
+                    f"  HRDC Confidence: {hrdc.confidence:.0%}\n"
                     f"  ACTION: {action_emoji.get(halt_info.continuation_action, halt_info.continuation_action)}"
                 )
 
@@ -548,10 +840,22 @@ class HaltDetector:
         # Detect new halt
         if spread_percent >= self.SPREAD_THRESHOLD:
             # Determine halt type
+            market_session = get_market_session()
+            luld_active = is_luld_active()
+
             if spread_percent > 20:
                 halt_type = "NEWS"  # Major news halts have huge spreads
             elif spread_percent > 10:
-                halt_type = "LULD"  # Limit Up Limit Down
+                # CRITICAL: LULD halts only during regular market hours (9:30 AM - 4:00 PM ET)
+                if luld_active:
+                    halt_type = "LULD"  # Limit Up Limit Down
+                else:
+                    # Pre-market or after-hours - only regulatory halts, skip LULD detection
+                    halt_type = "REGULATORY"  # Could be SEC news pending halt
+                    logger.debug(
+                        f"{symbol}: LULD detection skipped (session={market_session}), "
+                        f"treating as REGULATORY"
+                    )
             else:
                 halt_type = "VOLATILITY"
 

@@ -6,6 +6,7 @@ REST API endpoints for Ross Cameron trading methodology:
 - Pattern recognition
 - Tape analysis
 - LULD halt detection
+- HRDC (Halt Resumption Directional Confirmation)
 
 Endpoints:
 - GET  /api/warrior/status           - System status
@@ -14,8 +15,25 @@ Endpoints:
 - GET  /api/warrior/patterns/{symbol} - Pattern detection
 - GET  /api/warrior/tape/{symbol}    - Tape analysis
 - GET  /api/warrior/luld/{symbol}    - LULD band status
+- POST /api/warrior/luld             - Calculate LULD bands
+- GET  /api/warrior/luld/active      - Check if LULD is active (9:30-4PM ET only)
+- GET  /api/warrior/halts            - Get all current halts
 - POST /api/warrior/feed/tape        - Feed tape data
 - POST /api/warrior/feed/candles     - Feed candle data
+
+HRDC (Halt Resumption Directional Confirmation):
+- GET  /api/warrior/hrdc/{symbol}    - Get HRDC status for symbol
+- GET  /api/warrior/hrdc/all         - Get all HRDC classifications
+- POST /api/warrior/hrdc/classify    - Manually classify halt resumption
+- GET  /api/warrior/session          - Get current market session
+
+Market Session Info:
+- PRE_MARKET: 4:00 AM - 9:30 AM ET (NO LULD halts)
+- OPEN: 9:30 AM - 4:00 PM ET (LULD halts ACTIVE)
+- AFTER_HOURS: 4:00 PM - 8:00 PM ET (NO LULD halts)
+- CLOSED: Outside trading hours or weekend
+
+CRITICAL RULE: LULD halts only occur during OPEN session (9:30 AM - 4:00 PM ET)
 """
 
 import logging
@@ -183,6 +201,41 @@ async def get_tape_analysis(symbol: str):
         }
     except Exception as e:
         logger.error(f"Tape analysis error for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/luld/active")
+async def check_luld_active_early():
+    """
+    Check if LULD (Limit Up Limit Down) is currently active.
+
+    NOTE: This endpoint must be defined BEFORE /luld/{symbol} for proper routing.
+
+    CRITICAL RULE:
+    - LULD halts ONLY occur during regular market hours (9:30 AM - 4:00 PM ET)
+    - Pre-market (4:00 AM - 9:30 AM) = NO LULD halts
+    - After hours (4:00 PM - 8:00 PM) = NO LULD halts
+    """
+    try:
+        from ai.halt_detector import is_luld_active, get_market_session
+        from datetime import datetime
+        import pytz
+
+        et_tz = pytz.timezone('US/Eastern')
+        now_et = datetime.now(et_tz)
+
+        active = is_luld_active()
+        session = get_market_session()
+
+        return {
+            "success": True,
+            "luld_active": active,
+            "session": session,
+            "current_time_et": now_et.strftime("%H:%M:%S"),
+            "message": "LULD halts are ACTIVE" if active else "LULD halts are DISABLED (pre-market/after-hours)"
+        }
+    except Exception as e:
+        logger.error(f"LULD active check error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -2452,6 +2505,157 @@ async def clear_validation_log():
         return {"success": True, "message": "Validation log cleared"}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+# ============================================================================
+# HRDC (Halt Resumption Directional Confirmation) ENDPOINTS
+# NOTE: Static routes (/hrdc/all) must come BEFORE dynamic routes (/hrdc/{symbol})
+# ============================================================================
+
+@router.get("/hrdc/all")
+async def get_all_hrdc_classifications():
+    """
+    Get all HRDC classifications for symbols that have resumed from halts.
+
+    Returns list of all classified halt resumptions with trading mode.
+    """
+    try:
+        from ai.halt_detector import get_halt_detector
+
+        detector = get_halt_detector()
+        classifications = []
+
+        for symbol, hrdc in detector._hrdc_classifications.items():
+            classifications.append(hrdc.to_dict())
+
+        return {
+            "success": True,
+            "count": len(classifications),
+            "classifications": classifications
+        }
+    except Exception as e:
+        logger.error(f"All HRDC error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/hrdc/{symbol}")
+async def get_hrdc_status(symbol: str):
+    """
+    Get HRDC (Halt Resumption Directional Confirmation) status for a symbol.
+
+    HRDC Modes:
+    - MOMENTUM_ALLOWED: Strong gap + follow-through = TRADE
+    - FLAT_ONLY: Weak/no gap = STAY OUT
+    - DEFENSIVE: Flush/failure = PROTECT CAPITAL
+    - PENDING: Waiting for resume data
+
+    Returns classification result if symbol has been halted and resumed.
+    """
+    try:
+        from ai.halt_detector import get_halt_detector
+
+        detector = get_halt_detector()
+        status = detector.get_hrdc_status(symbol.upper())
+
+        if status:
+            return {
+                "success": True,
+                "symbol": symbol.upper(),
+                **status
+            }
+        else:
+            return {
+                "success": True,
+                "symbol": symbol.upper(),
+                "hrdc": None,
+                "message": "No HRDC classification. Symbol hasn't resumed from halt yet."
+            }
+    except Exception as e:
+        logger.error(f"HRDC status error for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class HRDCClassifyRequest(BaseModel):
+    """Request to manually classify a halt resumption"""
+    symbol: str
+    halt_price: float
+    resume_price: float
+    resume_volume_5s: int = 0
+
+
+@router.post("/hrdc/classify")
+async def classify_hrdc(request: HRDCClassifyRequest):
+    """
+    Manually classify a halt resumption using HRDC methodology.
+
+    Use this when you observe a halt resume and want to get the trading mode.
+
+    Based on Ross Cameron rule:
+    "If there is not a lot of gap up or momentum showing on resumption,
+    the only safe place is flat."
+    """
+    try:
+        from ai.halt_detector import get_halt_detector
+
+        detector = get_halt_detector()
+        classification = detector.classify_hrdc(
+            symbol=request.symbol.upper(),
+            halt_price=request.halt_price,
+            resume_price=request.resume_price,
+            resume_volume_5s=request.resume_volume_5s
+        )
+
+        return {
+            "success": True,
+            **classification.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"HRDC classify error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/session")
+async def get_market_session():
+    """
+    Get current market session.
+
+    Sessions:
+    - PRE_MARKET: 4:00 AM - 9:30 AM ET
+    - OPEN: 9:30 AM - 4:00 PM ET (LULD active)
+    - AFTER_HOURS: 4:00 PM - 8:00 PM ET
+    - CLOSED: Outside trading hours or weekend
+
+    IMPORTANT: LULD halts only occur during OPEN session (9:30 AM - 4:00 PM ET).
+    Pre-market has NO LULD halts - only regulatory/news halts.
+    """
+    try:
+        from ai.halt_detector import get_market_session, is_luld_active
+        from datetime import datetime
+        import pytz
+
+        et_tz = pytz.timezone('US/Eastern')
+        now_et = datetime.now(et_tz)
+
+        session = get_market_session()
+        luld_active = is_luld_active()
+
+        return {
+            "success": True,
+            "session": session,
+            "luld_active": luld_active,
+            "current_time_et": now_et.strftime("%H:%M:%S"),
+            "current_date_et": now_et.strftime("%Y-%m-%d"),
+            "weekday": now_et.strftime("%A"),
+            "session_info": {
+                "PRE_MARKET": "4:00 AM - 9:30 AM ET (NO LULD halts)",
+                "OPEN": "9:30 AM - 4:00 PM ET (LULD halts active)",
+                "AFTER_HOURS": "4:00 PM - 8:00 PM ET (NO LULD halts)",
+                "CLOSED": "Outside trading hours"
+            }.get(session, "Unknown")
+        }
+    except Exception as e:
+        logger.error(f"Market session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/validate-and-add/{symbol}")
