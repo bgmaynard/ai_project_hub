@@ -1,51 +1,51 @@
 {
-  "report_generated": "2026-01-09T18:22:33.019780",
-  "system_state": "SERVICE_NOT_RUNNING",
-  "system_state_reason": "Required services not started",
+  "report_generated": "2026-01-11T17:39:25.772028",
+  "system_state": "MARKET_CLOSED",
+  "system_state_reason": "Market is closed (weekend/holiday/after hours)",
   "market": {
-    "status": "AFTER_HOURS",
-    "detail": "After-hours (07:22 PM ET)",
-    "et_time": "07:22 PM ET",
-    "is_trading_day": true
+    "status": "CLOSED",
+    "detail": "Weekend",
+    "et_time": "06:39 PM ET",
+    "is_trading_day": false
   },
   "first_tick": {
     "received": null,
     "symbol": null
   },
   "startup": {
-    "time": "2026-01-09T18:22:32.545057",
+    "time": "2026-01-11T17:39:23.158512",
     "complete": true,
     "events": [
       {
-        "timestamp": "2026-01-09T18:22:32.976648",
+        "timestamp": "2026-01-11T17:39:24.937938",
         "service": "chronos",
         "event": "health_check",
         "success": true,
-        "duration_ms": 272.989,
+        "duration_ms": 1624.192,
         "detail": ""
       },
       {
-        "timestamp": "2026-01-09T18:22:32.978706",
+        "timestamp": "2026-01-11T17:39:25.713894",
         "service": "market_data",
         "event": "connection_check",
         "success": true,
-        "duration_ms": 1.9220000000000002,
+        "duration_ms": 775.8770000000001,
         "detail": "schwab_active"
       },
       {
-        "timestamp": "2026-01-09T18:22:32.980330",
+        "timestamp": "2026-01-11T17:39:25.715424",
         "service": "websocket",
         "event": "stream_check",
         "success": true,
-        "duration_ms": 1.552,
+        "duration_ms": 1.46,
         "detail": "Trades: 0, Quotes: 0"
       },
       {
-        "timestamp": "2026-01-09T18:22:33.019247",
+        "timestamp": "2026-01-11T17:39:25.771400",
         "service": "scanners",
         "event": "job_check",
         "success": true,
-        "duration_ms": 38.86,
+        "duration_ms": 55.924,
         "detail": "1/4 running"
       }
     ]
@@ -55,7 +55,7 @@
       "name": "chronos",
       "status": "UP",
       "last_successful_event": null,
-      "last_check_time": "2026-01-09T18:22:32.976641",
+      "last_check_time": "2026-01-11T17:39:24.937932",
       "detail": "Model: amazon/chronos-bolt-small",
       "error": null
     },
@@ -63,7 +63,7 @@
       "name": "market_data",
       "status": "UP",
       "last_successful_event": null,
-      "last_check_time": "2026-01-09T18:22:32.978702",
+      "last_check_time": "2026-01-11T17:39:25.713891",
       "detail": "schwab_active",
       "error": null
     },
@@ -71,7 +71,7 @@
       "name": "websocket",
       "status": "UP",
       "last_successful_event": null,
-      "last_check_time": "2026-01-09T18:22:32.980329",
+      "last_check_time": "2026-01-11T17:39:25.715422",
       "detail": "",
       "error": null
     },
@@ -79,7 +79,7 @@
       "name": "polygon_stream",
       "status": "UP",
       "last_successful_event": null,
-      "last_check_time": "2026-01-09T18:22:32.980325",
+      "last_check_time": "2026-01-11T17:39:25.715418",
       "detail": "Trades: 0, Quotes: 0",
       "error": null
     },
@@ -87,23 +87,23 @@
       "name": "scalper",
       "status": "DOWN",
       "last_successful_event": null,
-      "last_check_time": "2026-01-09T18:22:32.981986",
-      "detail": "Watchlist: 15",
+      "last_check_time": "2026-01-11T17:39:25.734984",
+      "detail": "Watchlist: 5",
       "error": null
     },
     "news_trader": {
       "name": "news_trader",
       "status": "DOWN",
       "last_successful_event": null,
-      "last_check_time": "2026-01-09T18:22:33.010637",
+      "last_check_time": "2026-01-11T17:39:25.762462",
       "detail": "",
       "error": null
     },
     "premarket_scanner": {
       "name": "premarket_scanner",
       "status": "UP",
-      "last_successful_event": "2026-01-09T18:22:33.016668",
-      "last_check_time": "2026-01-09T18:22:33.017527",
+      "last_successful_event": "2026-01-11T17:39:25.766244",
+      "last_check_time": "2026-01-11T17:39:25.767100",
       "detail": "",
       "error": null
     },
@@ -111,7 +111,7 @@
       "name": "gating_engine",
       "status": "DOWN",
       "last_successful_event": null,
-      "last_check_time": "2026-01-09T18:22:33.019238",
+      "last_check_time": "2026-01-11T17:39:25.771390",
       "detail": "Contracts: 7, Enabled: False",
       "error": null
     }
@@ -123,30 +123,30 @@
     "services_degraded": 0
   },
   "self_test_results": {
-    "timestamp": "2026-01-09T18:22:32.545057",
+    "timestamp": "2026-01-11T17:39:23.158512",
     "tests": [
       {
         "service": "chronos",
         "passed": true,
-        "duration_ms": 272.989,
+        "duration_ms": 1624.192,
         "detail": "Model: amazon/chronos-bolt-small"
       },
       {
         "service": "market_data",
         "passed": true,
-        "duration_ms": 1.9220000000000002,
+        "duration_ms": 775.8770000000001,
         "detail": "schwab_active"
       },
       {
         "service": "websocket",
         "passed": true,
-        "duration_ms": 1.552,
+        "duration_ms": 1.46,
         "detail": "Trades: 0, Quotes: 0"
       },
       {
         "service": "scanners",
         "passed": true,
-        "duration_ms": 38.86,
+        "duration_ms": 55.924,
         "detail": "Scalper: DOWN, News: DOWN, Premarket: UP, Gating: DOWN",
         "scanners_running": 1,
         "scanners_total": 4

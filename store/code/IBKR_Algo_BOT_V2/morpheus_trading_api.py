@@ -726,6 +726,24 @@ except ImportError as e:
     logger.warning(f"Orchestrator routes not available: {e}")
     HAS_ORCHESTRATOR = False
 
+# Session Report routes
+try:
+    from ai.session_report import get_session_report, save_session_report
+
+    @app.get("/api/reports/session", tags=["Session Reports"])
+    async def api_get_session_report():
+        """Get current session report with statistics from all trading sessions"""
+        return await get_session_report()
+
+    @app.post("/api/reports/session/save", tags=["Session Reports"])
+    async def api_save_session_report():
+        """Save session report to file and return filepath"""
+        return await save_session_report()
+
+    logger.info("Session report routes registered")
+except ImportError as e:
+    logger.warning(f"Session report not available: {e}")
+
 
 # ============================================================================
 # PYDANTIC MODELS
